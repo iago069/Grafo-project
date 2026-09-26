@@ -9,7 +9,7 @@ Requer Node.js 18+.
 ```bash
 npm install
 npm start        # http://localhost:3000
-npm run dev      # reinicia sozinho ao salvar o server.js
+npm run dev      # reinicia sozinho ao salvar o servidor-local.js
 ```
 
 A porta pode ser trocada com a variável `PORT`.
@@ -30,7 +30,7 @@ O projeto já está pronto para a Vercel: o `index.html` e os `assets/` são ser
 | `scripts/gerar-icones-embutidos.js` | Gera o arquivo acima (`npm run icones`) |
 | `data/equipamentos.json` | Catálogo de tipos de equipamento — **edite aqui** (fica fora de `api/` para não colidir com `api/equipamentos.js` na Vercel) |
 | `api/equipamentos.js` | Função da Vercel que serve o catálogo |
-| `server.js` | Servidor Express para rodar localmente |
+| `servidor-local.js` | Servidor Express só para rodar localmente (não se chama `server.js` para a Vercel não tratar o projeto como app Express) |
 
 ## Onde ficam os dados
 
