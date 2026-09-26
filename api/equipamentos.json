@@ -1,0 +1,17 @@
+{
+  "tipos": [
+    { "nome": "OLT", "icone": "OLT.jpeg" },
+    { "nome": "Switch", "icone": "SWITCH.jpeg" },
+    { "nome": "Roteador", "icone": "MIKROTIK.png" },
+    { "nome": "MikroTik", "icone": "MIKROTIK.png" },
+    { "nome": "ONT", "icone": "" },
+    { "nome": "ONU", "icone": "" },
+    { "nome": "Firewall", "icone": "" },
+    { "nome": "Servidor", "icone": "" },
+    { "nome": "Antena", "icone": "" },
+    { "nome": "UPS", "icone": "NOBREAK.jpeg" },
+    { "nome": "Nobreak", "icone": "NOBREAK.jpeg" },
+    { "nome": "Camera IP", "icone": "" },
+    { "nome": "Rack", "icone": "" }
+  ]
+}
