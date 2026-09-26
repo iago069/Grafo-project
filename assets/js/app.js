@@ -202,6 +202,15 @@
     tentarProximo();
   }
 
+  // Capacidade em texto livre, padronizada: "10 gbps" -> "10G", "2,5g" -> "2.5G",
+  // "100 Mb" -> "100M", "xgs-pon" -> "XGS-PON".
+  function normalizarCapacidade(valor) {
+    var texto = String(valor || "").trim().toUpperCase().replace(/\s+/g, "");
+    var m = /^(\d+(?:[.,]\d+)?)([KMGT])(?:BPS|B|BIT\/S)?$/.exec(texto);
+    if (m) return m[1].replace(",", ".") + m[2];
+    return texto;
+  }
+
   function iconePorTipo(tipo) {
     var itemCatalogo = buscarTipoNoCatalogo(tipo);
     if (itemCatalogo && itemCatalogo.icone) return itemCatalogo.icone;
@@ -387,6 +396,7 @@
   // Depois de mover equipamentos: recalcula cabos e área do diagrama na hora.
   function finalizarMovimento() {
     if (roteamentoCabosFrame) { cancelAnimationFrame(roteamentoCabosFrame); roteamentoCabosFrame = null; }
+    ajustarCaixasDosGrupos();
     rotearCabosOrtogonalmente();
     ajustarViewBoxAoConteudo(true);
   }
@@ -719,7 +729,67 @@
     if (roteamentoCabosFrame) cancelAnimationFrame(roteamentoCabosFrame);
     roteamentoCabosFrame = requestAnimationFrame(function () {
       roteamentoCabosFrame = null;
+      ajustarCaixasDosGrupos();
       rotearCabosOrtogonalmente();
+    });
+  }
+
+  // Nomes dos grupos na mesma ordem que gerarDot numera os clusters (grupo_N).
+  function nomesDosGrupos(dados) {
+    var grupos = {};
+    dados.equipamentos.forEach(function (eq) { var g = String(eq.grupo || "").trim(); if (g) grupos[g] = true; });
+    return Object.keys(grupos);
+  }
+
+  // O Graphviz desenha a caixa de cada grupo onde ELE posicionou os equipamentos,
+  // mas eles ficam na posição salva (arrastada/organizada). Redesenha cada caixa
+  // em volta dos membros, com o rótulo no topo, na mesma distância de antes.
+  function ajustarCaixasDosGrupos() {
+    var svg = elCanvas.querySelector("svg");
+    if (!svg) return;
+    var nomes = nomesDosGrupos(estado);
+    var nosPorId = {};
+    svg.querySelectorAll("g.node").forEach(function (node) { var id = idEquipamentoDoNode(node); if (id) nosPorId[id] = node; });
+    nomes.forEach(function (nome, indice) {
+      var caixa = svg.querySelector('g.cluster[id="grupo_' + indice + '"]');
+      var forma = caixa && caixa.querySelector("path, polygon");
+      if (!forma) return;
+      var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      estado.equipamentos.forEach(function (eq) {
+        var node = String(eq.grupo || "").trim() === nome && nosPorId[eq.id];
+        if (!node) return;
+        var b, t = translateDoElemento(node);
+        try { b = node.getBBox(); } catch (e) { return; }
+        minX = Math.min(minX, b.x + t.x); minY = Math.min(minY, b.y + t.y);
+        maxX = Math.max(maxX, b.x + t.x + b.width); maxY = Math.max(maxY, b.y + t.y + b.height);
+      });
+      if (!Number.isFinite(minX)) return;
+
+      // Espaço do rótulo: guardado na primeira vez, a partir do desenho do Graphviz.
+      var rotulo = caixa.querySelector("text");
+      if (!caixa.hasAttribute("data-topo-rotulo")) {
+        var original = forma.getBBox();
+        var br = rotulo ? rotulo.getBBox() : null;
+        caixa.setAttribute("data-topo-rotulo", br ? (br.y + br.height - original.y + 6).toFixed(2) : "10");
+        caixa.setAttribute("data-base-rotulo", rotulo ? (numeroSvg(rotulo.getAttribute("y")) - original.y).toFixed(2) : "0");
+      }
+      var MARGEM = 10;
+      var topoRotulo = Number(caixa.getAttribute("data-topo-rotulo"));
+      var larguraRotulo = rotulo ? rotulo.getBBox().width + 16 : 0;
+      var x = minX - MARGEM, y = minY - topoRotulo, w = maxX - minX + 2 * MARGEM, h = maxY - y + MARGEM;
+      if (w < larguraRotulo) { x -= (larguraRotulo - w) / 2; w = larguraRotulo; }
+      var r = 6;
+      if (forma.tagName.toLowerCase() === "polygon") {
+        forma.setAttribute("points", [[x, y], [x + w, y], [x + w, y + h], [x, y + h], [x, y]].map(function (p) { return p.join(","); }).join(" "));
+      } else {
+        forma.setAttribute("d", "M" + (x + r) + "," + y + "H" + (x + w - r) + "Q" + (x + w) + "," + y + " " + (x + w) + "," + (y + r) +
+          "V" + (y + h - r) + "Q" + (x + w) + "," + (y + h) + " " + (x + w - r) + "," + (y + h) +
+          "H" + (x + r) + "Q" + x + "," + (y + h) + " " + x + "," + (y + h - r) + "V" + (y + r) + "Q" + x + "," + y + " " + (x + r) + "," + y + "Z");
+      }
+      if (rotulo) {
+        rotulo.setAttribute("x", (x + w / 2).toFixed(2));
+        rotulo.setAttribute("y", (y + Number(caixa.getAttribute("data-base-rotulo"))).toFixed(2));
+      }
     });
   }
 
@@ -914,7 +984,112 @@
     aplicarCanvasView();
   }
 
-  elBusca.addEventListener("input", function () { busca.atual = -1; aplicarBusca(); });
+  // Rastrear caminho: menor sequência de cabos entre dois equipamentos (busca em
+  // largura, ignorando o sentido do cabo). Usa as mesmas classes da busca, por
+  // isso abrir um fecha o outro.
+  var elCaminhoBar = document.getElementById("caminhoBar");
+  var elCaminhoDe = document.getElementById("caminhoDe");
+  var elCaminhoPara = document.getElementById("caminhoPara");
+  var elCaminhoResultado = document.getElementById("caminhoResultado");
+  var btnCaminho = document.getElementById("btnCaminho");
+
+  function caminhoAberto() { return !elCaminhoBar.classList.contains("hidden"); }
+
+  function preencherSelectsCaminho() {
+    [elCaminhoDe, elCaminhoPara].forEach(function (select) {
+      var atual = select.value;
+      select.innerHTML = '<option value="">— escolha —</option>' + estado.equipamentos.map(function (eq) {
+        return '<option value="' + escaparHtml(eq.id) + '">' + escaparHtml(eq.nome || eq.id) + '</option>';
+      }).join("");
+      if (estado.equipamentos.some(function (eq) { return eq.id === atual; })) select.value = atual;
+    });
+  }
+
+  function menorCaminho(origem, destino) {
+    var vizinhos = {};
+    estado.conexoes.forEach(function (c) {
+      (vizinhos[c.de] = vizinhos[c.de] || []).push(c.para);
+      (vizinhos[c.para] = vizinhos[c.para] || []).push(c.de);
+    });
+    var anterior = {};
+    anterior[origem] = null;
+    var fila = [origem];
+    while (fila.length) {
+      var atual = fila.shift();
+      if (atual === destino) break;
+      (vizinhos[atual] || []).forEach(function (v) {
+        if (!(v in anterior)) { anterior[v] = atual; fila.push(v); }
+      });
+    }
+    if (!(destino in anterior)) return null;
+    var caminho = [];
+    for (var no = destino; no !== null; no = anterior[no]) caminho.unshift(no);
+    return caminho;
+  }
+
+  function aplicarCaminho() {
+    if (!caminhoAberto()) return;
+    var svg = elCanvas.querySelector("svg");
+    var de = elCaminhoDe.value, para = elCaminhoPara.value;
+    elCaminhoResultado.classList.remove("sem-resultado");
+    if (svg) svg.querySelectorAll("g.node, g.edge").forEach(function (el) { el.classList.remove("apagado", "encontrado", "encontrado-atual", "caminho"); });
+    if (!de || !para) { elCaminhoResultado.textContent = "Escolha os dois equipamentos."; return; }
+    if (de === para) { elCaminhoResultado.textContent = "Escolha equipamentos diferentes."; return; }
+    var caminho = menorCaminho(de, para);
+    if (!caminho) {
+      elCaminhoResultado.textContent = "Não há ligação entre eles.";
+      elCaminhoResultado.classList.add("sem-resultado");
+      return;
+    }
+    var nosNoCaminho = {}, trechos = {};
+    caminho.forEach(function (id, i) {
+      nosNoCaminho[id] = true;
+      if (i) { trechos[caminho[i - 1] + "|" + id] = true; trechos[id + "|" + caminho[i - 1]] = true; }
+    });
+    var nomes = caminho.map(function (id) {
+      var eq = estado.equipamentos.find(function (e) { return e.id === id; });
+      return eq ? (eq.nome || eq.id) : id;
+    });
+    var saltos = caminho.length - 1;
+    elCaminhoResultado.textContent = saltos + (saltos === 1 ? " cabo: " : " cabos: ") + nomes.join(" → ");
+    if (!svg) return;
+    svg.querySelectorAll("g.node").forEach(function (node) {
+      node.classList.add(nosNoCaminho[idEquipamentoDoNode(node)] ? "encontrado" : "apagado");
+    });
+    svg.querySelectorAll("g.edge").forEach(function (aresta) {
+      var c = conexaoDaAresta(aresta);
+      aresta.classList.add(c && trechos[c.de + "|" + c.para] ? "caminho" : "apagado");
+    });
+  }
+
+  function abrirCaminho() {
+    elBusca.value = "";
+    busca.atual = -1;
+    aplicarBusca();
+    preencherSelectsCaminho();
+    elCaminhoBar.classList.remove("hidden");
+    btnCaminho.classList.add("active");
+    btnCaminho.setAttribute("aria-expanded", "true");
+    aplicarCaminho();
+    elCaminhoDe.focus();
+  }
+
+  function fecharCaminho() {
+    if (!caminhoAberto()) return;
+    elCaminhoBar.classList.add("hidden");
+    btnCaminho.classList.remove("active");
+    btnCaminho.setAttribute("aria-expanded", "false");
+    var svg = elCanvas.querySelector("svg");
+    if (svg) svg.querySelectorAll("g.edge.caminho").forEach(function (el) { el.classList.remove("caminho"); });
+    aplicarBusca();
+  }
+
+  btnCaminho.addEventListener("click", function () { if (caminhoAberto()) fecharCaminho(); else abrirCaminho(); });
+  document.getElementById("btnFecharCaminho").addEventListener("click", fecharCaminho);
+  elCaminhoDe.addEventListener("change", aplicarCaminho);
+  elCaminhoPara.addEventListener("change", aplicarCaminho);
+
+  elBusca.addEventListener("input", function () { fecharCaminho(); busca.atual = -1; aplicarBusca(); });
   elBusca.addEventListener("keydown", function (event) {
     if (event.key === "Enter") { event.preventDefault(); irParaResultado(event.shiftKey ? -1 : 1); }
     if (event.key === "Escape") { elBusca.value = ""; busca.atual = -1; aplicarBusca(); }
@@ -1154,7 +1329,7 @@
     campoEditor("editCaboSaida").value = c.saida || "";
     campoEditor("editCaboChegada").value = c.chegada || "";
     campoEditor("editCaboTipo").value = c.tipo || "";
-    selecionarOpcao(campoEditor("editCaboPotencia"), c.potencia || "1G");
+    campoEditor("editCaboPotencia").value = c.potencia || "";
     campoEditor("editCaboCor").value = corValida(c.cor, "#5A7284");
     campoEditor("editCaboGrossura").value = Number(c.grossura) || 2;
     selecionarOpcao(campoEditor("editCaboEstilo"), c.estilo || "solid");
@@ -1208,7 +1383,7 @@
     c.saida = campoEditor("editCaboSaida").value.trim();
     c.chegada = campoEditor("editCaboChegada").value.trim();
     c.tipo = campoEditor("editCaboTipo").value.trim();
-    c.potencia = campoEditor("editCaboPotencia").value;
+    c.potencia = normalizarCapacidade(campoEditor("editCaboPotencia").value);
     c.cor = campoEditor("editCaboCor").value;
     c.grossura = Math.min(10, Math.max(1, Number(campoEditor("editCaboGrossura").value) || 2));
     c.estilo = campoEditor("editCaboEstilo").value;
@@ -1662,9 +1837,7 @@
           '<input type="text" data-field="tipo" value="' + escaparHtml(c.tipo) + '" placeholder="Tipo de enlace" aria-label="Tipo de enlace">' +
           '<input type="text" data-field="saida" value="' + escaparHtml(c.saida || "") + '" placeholder="Porta origem" aria-label="Porta origem">' +
           '<input type="text" data-field="chegada" value="' + escaparHtml(c.chegada || "") + '" placeholder="Porta destino" aria-label="Porta destino">' +
-          '<select data-field="potencia" title="Capacidade do cabo" aria-label="Capacidade do cabo">' +
-            ["1G", "10G", "25G", "40G", "100G", "GPON"].map(function (potencia) { return '<option value="' + potencia + '"' + (potencia === (c.potencia || "1G") ? " selected" : "") + '>' + potencia + '</option>'; }).join("") +
-          '</select>' +
+          '<input type="text" data-field="potencia" value="' + escaparHtml(c.potencia || "") + '" list="capacidades-sugeridas" placeholder="Capacidade" title="Capacidade do cabo" aria-label="Capacidade do cabo" autocomplete="off">' +
           '<label class="color-picker">Linha <input type="color" data-field="cor" value="' + corValida(c.cor, "#5A7284") + '"></label>' +
           '<button type="button" class="ghost small" data-action="remover-conex" title="Remover" aria-label="Remover conexão">×</button>' +
         '</div>'
@@ -1673,6 +1846,7 @@
   }
 
   function renderSidebarPanels() {
+    preencherSelectsCaminho();
     var options = estado.equipamentos.map(function (eq) {
       return '<option value="' + escaparHtml(eq.id) + '">' + escaparHtml(eq.nome || eq.id) + '</option>';
     }).join("");
@@ -1927,7 +2101,7 @@
     estado.conexoes.push({
       de: de, para: para, tipo: document.getElementById("navCableTipo").value.trim(),
       cor: document.getElementById("navCableCor").value, grossura: Number(document.getElementById("navCableGrossura").value || 2),
-      estilo: document.getElementById("navCableEstilo").value, saida: document.getElementById("navCableSaida").value.trim(), chegada: document.getElementById("navCableChegada").value.trim(), potencia: document.getElementById("navCablePotencia").value
+      estilo: document.getElementById("navCableEstilo").value, saida: document.getElementById("navCableSaida").value.trim(), chegada: document.getElementById("navCableChegada").value.trim(), potencia: normalizarCapacidade(document.getElementById("navCablePotencia").value)
     });
     renderTudo();
     event.target.reset();
@@ -1993,7 +2167,7 @@
         de: de, para: para, tipo: cabNome, cor: cor, grossura: grossura,
         saida: document.getElementById("novoCabSaida").value.trim(),
         chegada: document.getElementById("novoCabChegada").value.trim(),
-        potencia: document.getElementById("novoCabPotencia").value,
+        potencia: normalizarCapacidade(document.getElementById("novoCabPotencia").value),
         estilo: document.getElementById("novoCabEstilo").value
       });
       renderTudo();
@@ -2008,6 +2182,16 @@
     var row = e.target.closest(".conex-row");
     var idx = parseInt(row.getAttribute("data-idx"), 10);
     estado.conexoes[idx][campo] = e.target.value;
+    salvarLocal();
+    atualizarJsonAvancado();
+    solicitarAtualizacaoDiagrama();
+  });
+
+  // Capacidade: padroniza ao sair do campo (durante a digitação fica como está).
+  elListaConex.addEventListener("change", function (e) {
+    if (e.target.getAttribute("data-field") !== "potencia") return;
+    var idx = parseInt(e.target.closest(".conex-row").getAttribute("data-idx"), 10);
+    e.target.value = estado.conexoes[idx].potencia = normalizarCapacidade(e.target.value);
     salvarLocal();
     atualizarJsonAvancado();
     solicitarAtualizacaoDiagrama();
@@ -2138,8 +2322,7 @@
       if (!nomeDestino) continue;
       var para = obterEquipamento(nomeDestino, valor(linha, "ip_destino"), valor(linha, "modelo_destino"), valor(linha, "tipo_destino"), numeroLinha);
       if (de === para) { avisos.push("Linha " + numeroLinha + ": origem e destino iguais, cabo ignorado."); continue; }
-      // "10 GB", "10Gbps" -> "10G"
-      var capacidade = valor(linha, "capacidade").toUpperCase().replace(/\s+/g, "").replace(/(BPS|B)$/, "");
+      var capacidade = normalizarCapacidade(valor(linha, "capacidade"));
       dados.conexoes.push({
         de: de.id, para: para.id, tipo: valor(linha, "tipo") || "Cabo", potencia: capacidade || "1G",
         saida: valor(linha, "porta_origem"), chegada: valor(linha, "porta_destino"),
@@ -2362,6 +2545,7 @@
     // (ou "Rack Á" e "Rack É") virarem o mesmo cluster.
     Object.keys(grupos).forEach(function (grupo, indiceGrupo) {
       linhas.push('  subgraph "cluster_' + indiceGrupo + '" {');
+      linhas.push('    id="grupo_' + indiceGrupo + '";');
       linhas.push('    label="' + escapar(grupo) + '";');
       linhas.push('    color="#6C8292"; style="rounded,dashed"; penwidth=1.0; fontname="Helvetica"; fontsize=9;');
       grupos[grupo].forEach(function (eq) { linhas.push(linhaEquipamento(eq)); });
@@ -2501,10 +2685,8 @@
     });
   }
 
-  // Organiza em camadas a partir das conexões (busca em largura; cada parte
-  // desconectada começa pela sua própria raiz) e grava a posição absoluta de
-  // cada equipamento. Roda duas vezes: depois da primeira, as portas mudam de
-  // lado e o tamanho dos equipamentos muda junto.
+  // Reposiciona todos os equipamentos pelo layout do Graphviz (veja organizarUmaVez).
+  // "opcoes" é aceito por compatibilidade com quem chama window.organizarDiagramaAutomaticamente.
   function organizarDiagramaAutomaticamente(opcoes) {
     // Registra qualquer mudança pendente antes, e o organizar inteiro como um
     // único passo no desfazer (as renderizações do meio não entram).
@@ -2512,7 +2694,7 @@
     var estadoAntes = ultimoEstadoHistorico;
     aplicandoHistorico = true;
     try {
-      for (var passada = 0; passada < 2; passada++) organizarUmaVez(opcoes);
+      organizarUmaVez();
     } finally {
       aplicandoHistorico = false;
     }
@@ -2527,90 +2709,12 @@
     atualizarJsonAvancado();
   }
 
-  function organizarUmaVez(opcoes) {
+  // Organizar = voltar ao layout do Graphviz: ele já respeita os grupos (clusters)
+  // e a direção escolhida. Apaga as posições salvas e redesenha; na renderização
+  // seguinte cada equipamento ganha posição nova a partir desse layout.
+  function organizarUmaVez() {
     if (!estado.equipamentos.length) return;
-    gerar();
-    var svg = elCanvas.querySelector("svg");
-    if (!svg) return;
-
-    var config = Object.assign({ espacoEntreCamadas: 140, espacoNaCamada: 60 }, opcoes || {});
-    var horizontal = ((selDirecao && selDirecao.value) || "LR") !== "TB";
-
-    // Tamanho de cada equipamento, para espaçar sem sobrepor.
-    var base = {};
-    svg.querySelectorAll("g.node").forEach(function (node) {
-      var id = idEquipamentoDoNode(node);
-      if (!id) return;
-      try {
-        var b = node.getBBox();
-        base[id] = { largura: b.width, altura: b.height };
-      } catch (e) {}
-    });
-
-    var ids = estado.equipamentos.map(function (eq) { return eq.id; }).filter(function (id) { return base[id]; });
-    if (!ids.length) return;
-
-    var vizinhos = {};
-    ids.forEach(function (id) { vizinhos[id] = []; });
-    estado.conexoes.forEach(function (c) {
-      if (!vizinhos[c.de] || !vizinhos[c.para] || c.de === c.para) return;
-      vizinhos[c.de].push(c.para);
-      vizinhos[c.para].push(c.de);
-    });
-
-    // Camadas por BFS; em cada parte, a raiz é o equipamento com mais conexões.
-    var camadaDe = {};
-    var camadas = [];
-    ids.slice().sort(function (a, b) { return vizinhos[b].length - vizinhos[a].length; }).forEach(function (raiz) {
-      if (camadaDe[raiz] !== undefined) return;
-      camadaDe[raiz] = 0;
-      var fila = [raiz];
-      while (fila.length) {
-        var atual = fila.shift();
-        var n = camadaDe[atual];
-        (camadas[n] = camadas[n] || []).push(atual);
-        vizinhos[atual].forEach(function (v) {
-          if (camadaDe[v] === undefined) { camadaDe[v] = n + 1; fila.push(v); }
-        });
-      }
-    });
-
-    // Ordena cada camada pela posição média dos vizinhos na camada anterior,
-    // o que reduz cabos cruzados.
-    var ordem = {};
-    camadas.forEach(function (camada, n) {
-      if (n > 0) {
-        camada.forEach(function (id) {
-          var pais = vizinhos[id].filter(function (v) { return camadaDe[v] === n - 1; });
-          ordem[id] = pais.length ? pais.reduce(function (s, v) { return s + ordem[v]; }, 0) / pais.length : 0;
-        });
-        camada.sort(function (a, b) { return ordem[a] - ordem[b]; });
-      }
-      camada.forEach(function (id, i) { ordem[id] = i; });
-    });
-
-    // Posições usando o tamanho real de cada equipamento, para nada se sobrepor.
-    var destino = {};
-    var inicioCamada = 0;
-    camadas.forEach(function (camada) {
-      var espessura = Math.max.apply(null, camada.map(function (id) { return horizontal ? base[id].largura : base[id].altura; }));
-      var total = camada.reduce(function (s, id) { return s + (horizontal ? base[id].altura : base[id].largura); }, 0) +
-        config.espacoNaCamada * (camada.length - 1);
-      var cursor = -total / 2;
-      var centroCamada = inicioCamada + espessura / 2;
-      camada.forEach(function (id) {
-        var tamanho = horizontal ? base[id].altura : base[id].largura;
-        var centroNaCamada = cursor + tamanho / 2;
-        destino[id] = horizontal ? { x: centroCamada, y: centroNaCamada } : { x: centroNaCamada, y: centroCamada };
-        cursor += tamanho + config.espacoNaCamada;
-      });
-      inicioCamada += espessura + config.espacoEntreCamadas;
-    });
-
-    estado.equipamentos.forEach(function (eq) {
-      if (destino[eq.id]) eq.posicao = { x: destino[eq.id].x, y: destino[eq.id].y };
-    });
-    // Renderiza de novo: com as posições novas as portas mudam de lado.
+    estado.equipamentos.forEach(function (eq) { delete eq.posicao; delete eq.deslocamento; });
     gerar();
   }
 
@@ -2651,6 +2755,7 @@
       // novo para as portas dele irem para o lado certo.
       if (sincronizarPosicoes()) { renderizarSvg(); sincronizarPosicoes(); }
       aplicarPosicoesEquipamentos();
+      ajustarCaixasDosGrupos();
       rotearCabosOrtogonalmente();
       ajustarViewBoxAoConteudo(false);
       if (ajustarNaProximaRenderizacao) {
@@ -2669,6 +2774,7 @@
       ativarArrasteDosEquipamentos();
       ativarEdicaoDosCabos();
       aplicarBusca();
+      aplicarCaminho();
       aplicarImagensNoSvg(estado);
       atualizarLegenda(estado);
       btnCopiar.disabled = false;
@@ -2709,6 +2815,14 @@
 
   btnGerar.addEventListener("click", gerar);
   btnOrganizar.addEventListener("click", function () { organizarDiagramaAutomaticamente(); });
+
+  // Direção do layout: lembrada neste navegador e aplicada na hora
+  // (antes só valia no próximo "Organizar").
+  try { if (/^(LR|TB)$/.test(localStorage.getItem("grafo-direcao"))) selDirecao.value = localStorage.getItem("grafo-direcao"); } catch (e) {}
+  selDirecao.addEventListener("change", function () {
+    try { localStorage.setItem("grafo-direcao", selDirecao.value); } catch (e) {}
+    if (estado.equipamentos.length) organizarDiagramaAutomaticamente();
+  });
 
   btnCopiar.addEventListener("click", function () {
     if (!ultimoDot) return;

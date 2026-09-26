@@ -10,6 +10,9 @@
 - **Edição direta**: duplo clique (ou Enter) num equipamento ou cabo abre o editor, com a opção de excluir.
 - **Grupos e status**: equipamentos agrupados por rack/sala/POP e marcados como ativo, em manutenção ou offline.
 - **Busca** por nome, IP ou modelo, com destaque no diagrama (Enter vai para o próximo resultado).
+- **Rastrear caminho**: escolha dois equipamentos e o menor caminho de cabos entre eles é destacado.
+- **Organizar** refaz o layout respeitando os grupos, na direção escolhida (esquerda→direita ou cima→baixo).
+- **Capacidade livre** nos cabos (100M, 2.5G, 400G, XGS-PON…), padronizada automaticamente (`2,5 gbps` → `2.5G`).
 - **Exportação em PNG e SVG** com cabeçalho (projeto, data, totais) e legenda.
 - **Vários projetos**, desfazer/refazer, importação de CSV e backup em JSON.
 - Botão **Carregar exemplo** na tela vazia para ver a ferramenta funcionando.

@@ -76,7 +76,7 @@
           </div>
           <div class="nav-form-grid">
             <label>Tipo de enlace<input id="editCaboTipo"></label>
-            <label>Capacidade<select id="editCaboPotencia"><option value="1G">1G</option><option value="10G">10G</option><option value="25G">25G</option><option value="40G">40G</option><option value="100G">100G</option><option value="GPON">GPON</option></select></label>
+            <label>Capacidade<input id="editCaboPotencia" list="capacidades-sugeridas" autocomplete="off" placeholder="Ex.: 10G"></label>
           </div>
           <div class="nav-form-grid">
             <label>Cor<input id="editCaboCor" type="color"></label>
@@ -144,7 +144,7 @@
                 <label>Porta equipamento 1<input id="navCableSaida" placeholder="Ex.: xe1/1/1"></label>
                 <label>Porta equipamento 2<input id="navCableChegada" placeholder="Ex.: XE1/1/7"></label>
               </div>
-              <label>Capacidade do cabo<select id="navCablePotencia"><option value="1G">1G</option><option value="10G">10G</option><option value="25G">25G</option><option value="40G">40G</option><option value="100G">100G</option><option value="GPON">GPON</option></select></label>
+              <label>Capacidade do cabo<input id="navCablePotencia" list="capacidades-sugeridas" autocomplete="off" value="1G" placeholder="Ex.: 10G"></label>
               <div class="nav-form-actions"><button class="primary" type="submit">Adicionar</button><button class="ghost" type="button" data-nav-close>Cancelar</button></div>
               <div class="nav-panel-message" id="navCableMessage"></div>
             </form>
@@ -285,7 +285,7 @@
               </label>
               <label>
                 Capacidade
-                <select id="novoCabPotencia"><option value="1G">1G</option><option value="10G">10G</option><option value="25G">25G</option><option value="40G">40G</option><option value="100G">100G</option><option value="GPON">GPON</option></select>
+                <input type="text" id="novoCabPotencia" list="capacidades-sugeridas" autocomplete="off" value="1G" placeholder="Ex.: 10G">
               </label>
               <label>
                 Estilo do traço
@@ -301,11 +301,6 @@
 
           <div class="controls-row">
             <button class="primary" id="btnGerar" type="button">Gerar diagrama</button>
-            <button class="ghost" id="btnOrganizarDiagrama" type="button">Organizar diagrama</button>
-            <select id="direcao" title="Sentido do layout">
-              <option value="LR">Esquerda → Direita</option>
-              <option value="TB">Cima → Baixo</option>
-            </select>
           </div>
 
           <div id="erro"></div>
@@ -352,6 +347,20 @@
               <button class="ghost" id="btnBaixarPng" type="button" disabled>Baixar PNG</button>
             </div>
           </div>
+          <div class="layout-toolbar">
+            <button class="ghost" id="btnOrganizarDiagrama" type="button" title="Reposiciona todos os equipamentos automaticamente">Organizar</button>
+            <select id="direcao" title="Sentido do layout" aria-label="Sentido do layout">
+              <option value="LR">Esquerda → Direita</option>
+              <option value="TB">Cima → Baixo</option>
+            </select>
+            <button class="ghost" id="btnCaminho" type="button" aria-expanded="false" aria-controls="caminhoBar">Rastrear caminho</button>
+          </div>
+          <div class="caminho-bar hidden" id="caminhoBar">
+            <label>De <select id="caminhoDe"></select></label>
+            <label>até <select id="caminhoPara"></select></label>
+            <span id="caminhoResultado" aria-live="polite"></span>
+            <button class="ghost small" id="btnFecharCaminho" type="button">Fechar</button>
+          </div>
           <div class="canvas-wrap vazio" id="canvas"></div>
           <div class="legenda" id="legenda"></div>
         </section>
@@ -361,6 +370,11 @@
 
 <datalist id="tipos-sugeridos"></datalist>
 <datalist id="grupos-sugeridos"></datalist>
+<datalist id="capacidades-sugeridas">
+  <option value="100M"></option><option value="1G"></option><option value="2.5G"></option><option value="10G"></option>
+  <option value="25G"></option><option value="40G"></option><option value="100G"></option><option value="400G"></option>
+  <option value="GPON"></option><option value="XGS-PON"></option>
+</datalist>
 
 <script src="./assets/js/app.js"></script>
 </body>
