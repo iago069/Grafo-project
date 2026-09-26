@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Grafo - Gerador Rápido Automatizado de Fluxos Organizados</title>
+<meta name="description" content="Monte diagramas de topologia de rede (OLTs, switches, roteadores, nobreaks) direto no navegador e exporte em PNG ou SVG.">
+<meta name="theme-color" content="#091722">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Grafo - diagramas de topologia de rede">
+<meta property="og:description" content="Monte diagramas de topologia de rede (OLTs, switches, roteadores, nobreaks) direto no navegador e exporte em PNG ou SVG.">
+<link rel="icon" type="image/png" href="./assets/images/favicon-64.png">
+<link rel="apple-touch-icon" href="./assets/images/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -30,6 +37,62 @@
       </div>
     </div>
 
+    <!-- Editor aberto com duplo clique (ou Enter) num equipamento ou cabo do diagrama. -->
+    <div id="editorModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="editorTitulo">
+      <div class="modal-box">
+        <div class="modal-header">
+          <h3 id="editorTitulo">Editar</h3>
+          <button type="button" class="ghost small" data-editor-fechar aria-label="Fechar">×</button>
+        </div>
+        <form class="nav-form hidden" id="editorEquipForm">
+          <label class="full">Nome<input id="editEquipNome" required></label>
+          <div class="nav-form-grid">
+            <label>Tipo<input id="editEquipTipo" list="tipos-sugeridos"></label>
+            <label>Modelo<input id="editEquipModelo"></label>
+          </div>
+          <div class="nav-form-grid">
+            <label>IP<input id="editEquipIp" inputmode="decimal" autocomplete="off" spellcheck="false"></label>
+            <label>Grupo / rack / sala<input id="editEquipGrupo" list="grupos-sugeridos" autocomplete="off"></label>
+          </div>
+          <div class="nav-form-grid">
+            <label>Status<select id="editEquipStatus"><option value="ativo">Ativo</option><option value="manutencao">Manutenção</option><option value="offline">Offline</option></select></label>
+            <label>Ícone<select id="editEquipIcone"></select></label>
+          </div>
+          <label>Cor da fonte<input id="editEquipCor" type="color"></label>
+          <div class="nav-form-actions">
+            <button class="ghost" type="button" data-editor-excluir>Excluir</button>
+            <button class="ghost" type="button" data-editor-fechar>Cancelar</button>
+            <button class="primary" type="submit">Salvar</button>
+          </div>
+        </form>
+        <form class="nav-form hidden" id="editorCaboForm">
+          <div class="nav-form-grid">
+            <label>Origem<select id="editCaboDe" required></select></label>
+            <label>Destino<select id="editCaboPara" required></select></label>
+          </div>
+          <div class="nav-form-grid">
+            <label>Porta origem<input id="editCaboSaida"></label>
+            <label>Porta destino<input id="editCaboChegada"></label>
+          </div>
+          <div class="nav-form-grid">
+            <label>Tipo de enlace<input id="editCaboTipo"></label>
+            <label>Capacidade<select id="editCaboPotencia"><option value="1G">1G</option><option value="10G">10G</option><option value="25G">25G</option><option value="40G">40G</option><option value="100G">100G</option><option value="GPON">GPON</option></select></label>
+          </div>
+          <div class="nav-form-grid">
+            <label>Cor<input id="editCaboCor" type="color"></label>
+            <label>Espessura<input id="editCaboGrossura" type="number" min="1" max="10"></label>
+          </div>
+          <label>Estilo<select id="editCaboEstilo"><option value="solid">Contínuo</option><option value="dashed">Tracejado</option><option value="dotted">Pontilhado</option></select></label>
+          <div class="nav-panel-message" id="editCaboMensagem"></div>
+          <div class="nav-form-actions">
+            <button class="ghost" type="button" data-editor-excluir>Excluir</button>
+            <button class="ghost" type="button" data-editor-fechar>Cancelar</button>
+            <button class="primary" type="submit">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <aside class="sidebar" aria-label="Navegação lateral">
       <button class="sidebar-collapse" id="btnSidebarCollapse" type="button" aria-label="Recolher barra lateral" title="Recolher barra lateral">‹</button>
       <div class="brand">
@@ -50,14 +113,16 @@
               </div>
               <label class="full">IP<input id="navEquipIp" placeholder="Ex.: 10.0.0.1" inputmode="decimal" autocomplete="off" spellcheck="false"></label>
               <div class="nav-form-grid">
+                <label>Grupo / rack / sala<input id="navEquipGrupo" list="grupos-sugeridos" placeholder="Ex.: Rack 01" autocomplete="off"></label>
+                <label>Status<select id="navEquipStatus"><option value="ativo">Ativo</option><option value="manutencao">Manutenção</option><option value="offline">Offline</option></select></label>
+              </div>
+              <div class="nav-form-grid">
                 <label>Ícone / emoji<input id="navEquipIcone" placeholder="Ex.: 📡"></label>
                 <label>Imagem<input id="navEquipImagem" type="file" accept="image/*"></label>
               </div>
               <div class="nav-form-actions"><button class="primary" type="submit">Adicionar</button><button class="ghost" type="button" data-nav-close>Cancelar</button></div>
             </form>
           </div>
-          <button class="nav-item" type="button" data-nav-panel="navRemoveEquip">Excluir equipamento</button>
-          <div class="nav-panel" id="navRemoveEquip"><div class="nav-list" id="navEquipList"></div></div>
         </div>
 
         <div class="nav-section">
@@ -84,15 +149,13 @@
               <div class="nav-panel-message" id="navCableMessage"></div>
             </form>
           </div>
-          <button class="nav-item" type="button" data-nav-panel="navRemoveCable">Excluir cabeamento</button>
-          <div class="nav-panel" id="navRemoveCable"><div class="nav-list" id="navCableList"></div></div>
+          
         </div>
 
         <div class="nav-section">
           <div class="nav-label">Diagrama</div>
           <button class="nav-item" id="btnModoAvancado" type="button">Modo avançado</button>
-          <button class="nav-item" type="button" data-nav-action="export-diagram">Exportar Diagrama</button>
-          <button class="nav-item" type="button" data-nav-action="generate-diagram">Gerar Diagrama</button>
+          <button class="nav-item" type="button" data-nav-action="export-diagram">Exportar diagrama</button>
         </div>
 
         <div class="nav-section">
@@ -115,7 +178,7 @@
               <button class="ghost" id="btnNovoProjeto" type="button" title="Novo projeto" aria-label="Novo projeto">+</button>
               <button class="ghost" id="btnExcluirProjeto" type="button" title="Excluir projeto atual" aria-label="Excluir projeto atual">×</button>
             </div>
-            <button class="theme-toggle" id="btnTema" type="button">modo: automático</button>
+            <button class="theme-toggle" id="btnTema" type="button">Tema: Automático</button>
             <select class="theme-select" id="temaSelect" aria-label="Selecionar tema">
               <option value="auto">Automático</option>
               <optgroup label="Escuro">
@@ -255,6 +318,14 @@
               <button class="ghost" id="btnModeloCsv" type="button">Baixar modelo CSV</button>
             </div>
           </details>
+
+          <details id="dot-src">
+            <summary>Avançado: código DOT (Graphviz)</summary>
+            <pre id="dot-code"></pre>
+            <div class="controls-row">
+              <button class="ghost" id="btnCopiarDot" type="button" disabled>Copiar DOT</button>
+            </div>
+          </details>
         </section>
 
         <section class="panel render-panel" aria-label="Diagrama gerado">
@@ -262,6 +333,10 @@
           <h2>02 — DIAGRAMA</h2>
           <div class="render-toolbar">
             <div class="panel-title panel-title-inline">Topologia</div>
+            <div class="busca-diagrama">
+              <input id="buscaEquip" type="search" placeholder="Buscar nome ou IP" aria-label="Buscar equipamento por nome, IP ou modelo" title="Enter: próximo · Shift+Enter: anterior · Esc: limpar" autocomplete="off" spellcheck="false">
+              <span id="buscaResultado" aria-live="polite"></span>
+            </div>
             <div class="render-actions">
               <div class="canvas-tools" aria-label="Controles de zoom">
                 <button class="ghost" id="btnDesfazer" type="button" title="Desfazer" aria-label="Desfazer" disabled>↶</button>
@@ -271,23 +346,19 @@
                 <button class="ghost" id="btnZoomIn" type="button" title="Aumentar zoom" aria-label="Aumentar zoom">+</button>
                 <button class="ghost" id="btnZoomReset" type="button" title="Ajustar à tela" aria-label="Ajustar à tela">↺</button>
               </div>
-              <button class="ghost" id="btnCopiarDot" type="button" disabled>Copiar DOT</button>
               <button class="ghost" id="btnBaixar" type="button" disabled>Baixar SVG</button>
               <button class="ghost" id="btnBaixarPng" type="button" disabled>Baixar PNG</button>
             </div>
           </div>
-          <div class="canvas-wrap vazio" id="canvas">Clique em "Gerar diagrama" para desenhar a topologia.</div>
+          <div class="canvas-wrap vazio" id="canvas"></div>
           <div class="legenda" id="legenda"></div>
-          <details id="dot-src">
-            <summary>Ver código DOT gerado</summary>
-            <pre id="dot-code"></pre>
-          </details>
         </section>
       </main>
     </div>
   </div>
 
 <datalist id="tipos-sugeridos"></datalist>
+<datalist id="grupos-sugeridos"></datalist>
 
 <script src="./assets/js/app.js"></script>
 </body>
