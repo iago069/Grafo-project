@@ -31,14 +31,23 @@
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
+  /* Claro: vale no modo automático com o sistema claro e sempre que "Claro" é
+     escolhido (mesmo com o sistema escuro). Os dois blocos precisam ficar iguais. */
   @media (prefers-color-scheme: light) {
-    :root:not([data-theme="dark"]) {
+    :root:not([data-theme]) {
       --bg: #edf3f8; --bg-panel: rgba(255, 255, 255, 0.9); --bg-panel-2: #f7fafc;
       --line: rgba(96, 122, 146, 0.18); --line-soft: rgba(159, 178, 196, 0.22); --text: #183147;
-      --text-dim: #587389; --accent: #d78a2b; --accent-ink: #ffffff; --teal: #1f9d8d;
-      --paper: #ffffff; --paper-line: #e5edf5; --ink: #16323D; --shadow-soft: 0 18px 36px rgba(16, 33, 46, 0.12);
+      --text-dim: #587389; --accent: #d78a2b; --accent-ink: #1b2733; --teal: #1f9d8d;
+      --paper: #ffffff; --paper-line: #e5edf5; --ink: #16323D; --danger: #c93c2c; --shadow-soft: 0 18px 36px rgba(16, 33, 46, 0.12);
       --shadow-card: 0 12px 24px rgba(16, 33, 46, 0.08);
     }
+  }
+  :root[data-theme="light"] {
+    --bg: #edf3f8; --bg-panel: rgba(255, 255, 255, 0.9); --bg-panel-2: #f7fafc;
+    --line: rgba(96, 122, 146, 0.18); --line-soft: rgba(159, 178, 196, 0.22); --text: #183147;
+    --text-dim: #587389; --accent: #d78a2b; --accent-ink: #1b2733; --teal: #1f9d8d;
+    --paper: #ffffff; --paper-line: #e5edf5; --ink: #16323D; --danger: #c93c2c; --shadow-soft: 0 18px 36px rgba(16, 33, 46, 0.12);
+    --shadow-card: 0 12px 24px rgba(16, 33, 46, 0.08);
   }
   :root[data-theme="dark"] {
     --bg: #091722; --bg-panel: rgba(15, 28, 40, 0.88); --bg-panel-2: #112838;
@@ -89,10 +98,18 @@
   .theme-toolbar .theme-toggle:first-child { display: none; }
   .theme-toolbar .theme-select {
     width: 46px; height: 42px; min-width: 46px; padding: 0; color: transparent; font-size: 0;
-    border-radius: 12px; background-color: var(--bg-panel-2);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23edf6ff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3a9 9 0 1 0 0 18h1.4a2 2 0 0 0 0-4H12a2 2 0 0 1 0-4h3a6 6 0 0 0 0-12H12Z'/%3E%3Ccircle cx='7.5' cy='10' r='1' fill='%23edf6ff'/%3E%3Ccircle cx='10' cy='6.8' r='1' fill='%23edf6ff'/%3E%3Ccircle cx='15' cy='6.8' r='1' fill='%23edf6ff'/%3E%3C/svg%3E");
-    background-position: center; background-repeat: no-repeat; background-size: 22px 22px;
+    border-radius: 12px; background-color: var(--bg-panel-2); background-image: none;
   }
+  /* Ícone de paleta desenhado por máscara: pega a cor de --text em qualquer tema
+     (antes era um SVG branco fixo, invisível nos temas claros). */
+  .theme-select-wrap { position: relative; display: inline-flex; }
+  .theme-select-wrap::after {
+    content: ""; position: absolute; inset: 0; margin: auto; width: 22px; height: 22px; pointer-events: none;
+    background-color: var(--text);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3a9 9 0 1 0 0 18h1.4a2 2 0 0 0 0-4H12a2 2 0 0 1 0-4h3a6 6 0 0 0 0-12H12Z'/%3E%3Ccircle cx='7.5' cy='10' r='1' fill='%23000'/%3E%3Ccircle cx='10' cy='6.8' r='1' fill='%23000'/%3E%3Ccircle cx='15' cy='6.8' r='1' fill='%23000'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3a9 9 0 1 0 0 18h1.4a2 2 0 0 0 0-4H12a2 2 0 0 1 0-4h3a6 6 0 0 0 0-12H12Z'/%3E%3Ccircle cx='7.5' cy='10' r='1' fill='%23000'/%3E%3Ccircle cx='10' cy='6.8' r='1' fill='%23000'/%3E%3Ccircle cx='15' cy='6.8' r='1' fill='%23000'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+  .theme-select-wrap:focus-within::after { display: none; }
   .theme-toolbar .theme-select:focus { color: var(--text); font-size: 0.77rem; padding: 9px 34px 9px 12px; background-image: linear-gradient(45deg, transparent 50%, var(--text-dim) 50%), linear-gradient(135deg, var(--text-dim) 50%, transparent 50%); background-position: calc(100% - 18px) calc(50% - 2px), calc(100% - 13px) calc(50% - 2px); background-size: 5px 5px, 5px 5px; }
   .theme-select option, .theme-select optgroup {
     color: var(--option-text);
