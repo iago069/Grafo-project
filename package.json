@@ -3,10 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "description": "Grafo - gerador de diagramas com API de equipamentos",
-  "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js",
+    "start": "node servidor-local.js",
+    "dev": "node --watch servidor-local.js",
     "icones": "node scripts/gerar-icones-embutidos.js"
   },
   "dependencies": {

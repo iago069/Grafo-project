@@ -1,4 +1,4 @@
-// Fonte única do catálogo: o mesmo JSON servido pelo server.js.
+// Fonte única do catálogo: o mesmo JSON servido pelo servidor-local.js.
 // Fica fora de api/ porque a Vercel trata cada arquivo ali como rota, e
 // equipamentos.js + equipamentos.json colidiriam em /api/equipamentos.
 const catalogo = require('../data/equipamentos.json');
