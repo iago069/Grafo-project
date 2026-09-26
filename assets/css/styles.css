@@ -174,6 +174,7 @@
   .nav-list-item span { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .nav-list-item button { display: inline-flex; flex: 0 0 24px; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border-radius: 4px; font-size: 0.85rem; color: var(--danger); }
   .nav-empty { color: var(--text-dim); font: 0.7rem var(--mono); line-height: 1.4; }
+  .nav-dica { margin: 6px 12px 2px; color: var(--text-dim); font-size: 0.7rem; line-height: 1.45; }
   .nav-panel-message { color: var(--danger); font: 0.68rem var(--mono); line-height: 1.4; }
   .nav-label {
     font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-dim); margin: 0 0 6px;
@@ -308,7 +309,7 @@
     .conex-row select, .conex-row input { flex: 1 1 calc(50% - 8px); }
   }
 
-  input[type="text"], input:not([type]), select, input[type="file"]::file-selector-button {
+  input[type="text"], input[type="search"], input[type="number"], input:not([type]), select, input[type="file"]::file-selector-button {
     background: var(--field-bg); color: var(--field-text); border: 1px solid var(--field-border); border-radius: 10px;
     padding: 8px 10px; font-family: var(--sans); font-size: 0.82rem; transition: border-color 0.2s ease, box-shadow 0.2s ease;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
@@ -388,14 +389,25 @@
   /* transform-origin 0 0: o zoom/pan em app.js calcula a posição a partir do canto superior esquerdo. */
   .canvas-wrap svg { display: block; flex: none; max-width: none; transform-origin: 0 0; overflow: visible; user-select: none; pointer-events: auto; margin: 0; }  .canvas-wrap svg g.node { cursor: grab; }
   .canvas-wrap svg g.node:active, .canvas-wrap svg g.node.selecionado { cursor: grabbing; }
-  .canvas-wrap svg g.edge { cursor: default; }
+  .canvas-wrap svg g.edge { cursor: pointer; }
   .canvas-wrap svg g.edge.selecionado { cursor: default; }
   .canvas-wrap svg g.node:focus { outline: none; }
   .canvas-wrap svg g.node:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
   .canvas-wrap svg g.node.selecionado polygon, .canvas-wrap svg g.node.selecionado ellipse {
     stroke: var(--accent); stroke-width: 2.6px; filter: drop-shadow(0 0 4px color-mix(in srgb, var(--accent) 75%, transparent));
   }
-  .canvas-wrap.vazio { color: var(--ink); opacity: 0.55; font-family: var(--mono); font-size: 0.85rem; }
+  .busca-diagrama { display: flex; align-items: center; gap: 8px; flex: 1 1 200px; max-width: 320px; }
+  .busca-diagrama input { flex: 1; min-width: 0; height: 32px; padding: 4px 10px; font-size: 0.8rem; }
+  #buscaResultado { color: var(--text-dim); font: 0.7rem var(--mono); white-space: nowrap; }
+  #buscaResultado.sem-resultado { color: var(--danger); }
+  .canvas-wrap svg g.apagado { opacity: 0.2; transition: opacity 0.15s; }
+  .canvas-wrap svg g.node.encontrado { filter: drop-shadow(0 0 6px var(--accent)); }
+  .canvas-wrap svg g.node.encontrado-atual { filter: drop-shadow(0 0 4px var(--accent)) drop-shadow(0 0 12px var(--accent)); }
+  .canvas-wrap.vazio { color: var(--ink); font-family: var(--mono); font-size: 0.85rem; align-items: center; justify-content: center; cursor: default; }
+  .estado-vazio { display: grid; justify-items: center; gap: 8px; text-align: center; max-width: 340px; padding: 24px; }
+  .estado-vazio strong { font-family: var(--sans); font-size: 1rem; }
+  .estado-vazio span { opacity: 0.65; font-size: 0.78rem; line-height: 1.5; }
+  .estado-vazio button { margin-top: 8px; }
   .legenda { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px 16px; font-family: var(--mono); font-size: 0.74rem; color: var(--text-dim); }
   .legenda span { display: inline-flex; align-items: center; gap: 6px; }
   .legenda i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }

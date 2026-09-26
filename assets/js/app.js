@@ -235,8 +235,6 @@
   var elListaConex = document.getElementById("listaConex");
   var elFormEquip = document.getElementById("formEquipamento");
   var elFormCab = document.getElementById("formCabemamento");
-  var elNavEquipList = document.getElementById("navEquipList");
-  var elNavCableList = document.getElementById("navCableList");
   var elErro = document.getElementById("erro");
   var elCanvas = document.getElementById("canvas");
   var elZoomValue = document.getElementById("zoomValue");
@@ -775,25 +773,14 @@
       });
       node.addEventListener("dblclick", function (event) {
         event.stopPropagation();
-        abrirModal({
-          title: "Renomear equipamento",
-          message: "Digite o novo nome do equipamento:",
-          defaultValue: equipamento.nome || equipamento.id,
-          confirmText: "Salvar",
-          cancelText: "Cancelar",
-          kind: "prompt"
-        }).then(function (valor) {
-          if (!valor || !String(valor).trim()) return;
-          equipamento.nome = String(valor).trim();
-          renderTudo();
-        });
+        abrirEditorEquipamento(equipamento);
       });
 
       // Teclado: Tab foca o equipamento, setas movem (Shift = passo maior),
-      // Enter/F2 renomeia.
+      // Enter/F2 abre o editor.
       node.setAttribute("tabindex", "0");
       node.setAttribute("role", "button");
-      node.setAttribute("aria-label", "Equipamento " + (equipamento.nome || equipamento.id) + ". Use as setas para mover e Enter para renomear.");
+      node.setAttribute("aria-label", "Equipamento " + (equipamento.nome || equipamento.id) + ". Use as setas para mover e Enter para editar.");
       node.addEventListener("focus", function () {
         svg.querySelectorAll("g.node.selecionado").forEach(function (item) { item.classList.remove("selecionado"); });
         node.classList.add("selecionado");
@@ -863,6 +850,96 @@
         aresta.addEventListener("pointermove", mover);
         aresta.addEventListener("pointerup", soltar);
         aresta.addEventListener("pointercancel", soltar);
+      });
+    });
+  }
+
+  // Busca por nome, IP ou modelo: destaca quem bate, apaga o resto.
+  // Reaplicada a cada renderização, porque o SVG é recriado.
+  var elBusca = document.getElementById("buscaEquip");
+  var elBuscaResultado = document.getElementById("buscaResultado");
+  var busca = { encontrados: [], atual: -1 };
+
+  function equipamentoBateComBusca(eq, termo) {
+    return [eq.nome, eq.ip, eq.modelo].some(function (valor) {
+      return normalizarTextoEquipamento(valor).indexOf(termo) >= 0;
+    });
+  }
+
+  function aplicarBusca() {
+    var svg = elCanvas.querySelector("svg");
+    var termo = normalizarTextoEquipamento(elBusca.value);
+    busca.encontrados = [];
+    if (svg) {
+      svg.querySelectorAll("g.node, g.edge, g.cluster").forEach(function (el) {
+        el.classList.remove("apagado", "encontrado", "encontrado-atual");
+      });
+    }
+    elBuscaResultado.classList.remove("sem-resultado");
+    if (!termo) { busca.atual = -1; elBuscaResultado.textContent = ""; return; }
+    var ids = {};
+    estado.equipamentos.forEach(function (eq) { if (equipamentoBateComBusca(eq, termo)) ids[eq.id] = true; });
+    if (svg) {
+      svg.querySelectorAll("g.node").forEach(function (node) {
+        var id = idEquipamentoDoNode(node);
+        if (!id) return;
+        if (ids[id]) { node.classList.add("encontrado"); busca.encontrados.push(node); }
+        else node.classList.add("apagado");
+      });
+      svg.querySelectorAll("g.edge").forEach(function (aresta) {
+        var c = conexaoDaAresta(aresta);
+        if (!c || !(ids[c.de] || ids[c.para])) aresta.classList.add("apagado");
+      });
+    }
+    if (busca.atual >= busca.encontrados.length) busca.atual = -1;
+    if (busca.atual >= 0) busca.encontrados[busca.atual].classList.add("encontrado-atual");
+    if (!busca.encontrados.length) {
+      elBuscaResultado.textContent = "nada encontrado";
+      elBuscaResultado.classList.add("sem-resultado");
+    } else {
+      elBuscaResultado.textContent = (busca.atual >= 0 ? (busca.atual + 1) + " de " : "") + busca.encontrados.length + (busca.atual >= 0 ? "" : busca.encontrados.length === 1 ? " encontrado" : " encontrados");
+    }
+  }
+
+  // Centraliza o resultado seguinte (passo 1) ou anterior (passo -1).
+  function irParaResultado(passo) {
+    if (!busca.encontrados.length) return;
+    busca.atual = (busca.atual + passo + busca.encontrados.length) % busca.encontrados.length;
+    aplicarBusca();
+    if (canvasView.scale < 0.8) { canvasView.scale = 1; aplicarCanvasView(); }
+    var alvo = busca.encontrados[busca.atual].getBoundingClientRect();
+    var area = elCanvas.getBoundingClientRect();
+    canvasView.x += (area.left + area.width / 2) - (alvo.left + alvo.width / 2);
+    canvasView.y += (area.top + area.height / 2) - (alvo.top + alvo.height / 2);
+    aplicarCanvasView();
+  }
+
+  elBusca.addEventListener("input", function () { busca.atual = -1; aplicarBusca(); });
+  elBusca.addEventListener("keydown", function (event) {
+    if (event.key === "Enter") { event.preventDefault(); irParaResultado(event.shiftKey ? -1 : 1); }
+    if (event.key === "Escape") { elBusca.value = ""; busca.atual = -1; aplicarBusca(); }
+  });
+
+  // Duplo clique (ou Enter com o cabo focado) abre o editor do cabo.
+  function ativarEdicaoDosCabos() {
+    var svg = elCanvas.querySelector("svg");
+    if (!svg) return;
+    svg.querySelectorAll("g.edge").forEach(function (aresta) {
+      var conexao = conexaoDaAresta(aresta);
+      if (!conexao) return;
+      aresta.setAttribute("tabindex", "0");
+      aresta.setAttribute("role", "button");
+      aresta.setAttribute("aria-label", "Cabo " + (conexao.tipo || "") + ". Enter para editar.");
+      // Sem isto o canvas captura o ponteiro para o pan e o dblclick vai para ele.
+      aresta.addEventListener("pointerdown", function (event) { event.stopPropagation(); });
+      aresta.addEventListener("dblclick", function (event) {
+        event.stopPropagation();
+        abrirEditorCabo(conexao);
+      });
+      aresta.addEventListener("keydown", function (event) {
+        if (event.key !== "Enter" && event.key !== "F2") return;
+        event.preventDefault();
+        abrirEditorCabo(conexao);
       });
     });
   }
@@ -1010,6 +1087,167 @@
     }
   });
 
+  // Editor de equipamento/cabo aberto pelo diagrama (duplo clique ou Enter).
+  var editor = {
+    backdrop: document.getElementById("editorModal"),
+    titulo: document.getElementById("editorTitulo"),
+    formEquip: document.getElementById("editorEquipForm"),
+    formCabo: document.getElementById("editorCaboForm"),
+    equipamento: null,
+    conexao: null
+  };
+
+  function campoEditor(id) { return document.getElementById(id); }
+
+  // Garante que o select tenha a opção (ex.: capacidade "2.5G" vinda de CSV),
+  // senão o valor some ao salvar.
+  function selecionarOpcao(select, valor) {
+    if (valor && !Array.prototype.some.call(select.options, function (o) { return o.value === valor; })) {
+      select.appendChild(new Option(valor, valor));
+    }
+    select.value = valor || select.options[0].value;
+  }
+
+  function mostrarEditor(titulo, form) {
+    editor.titulo.textContent = titulo;
+    editor.formEquip.classList.toggle("hidden", form !== editor.formEquip);
+    editor.formCabo.classList.toggle("hidden", form !== editor.formCabo);
+    editor.backdrop.classList.remove("hidden");
+    var primeiro = form.querySelector("input, select");
+    if (primeiro) { primeiro.focus(); if (primeiro.select) primeiro.select(); }
+  }
+
+  function fecharEditor() {
+    editor.backdrop.classList.add("hidden");
+    editor.equipamento = null;
+    editor.conexao = null;
+  }
+
+  function abrirEditorEquipamento(eq) {
+    editor.equipamento = eq;
+    editor.conexao = null;
+    campoEditor("editEquipNome").value = eq.nome || "";
+    campoEditor("editEquipTipo").value = eq.tipo || "";
+    campoEditor("editEquipModelo").value = eq.modelo || "";
+    campoEditor("editEquipIp").value = eq.ip || "";
+    campoEditor("editEquipIp").setCustomValidity("");
+    campoEditor("editEquipGrupo").value = eq.grupo || "";
+    selecionarOpcao(campoEditor("editEquipStatus"), eq.status || "ativo");
+    campoEditor("editEquipIcone").innerHTML = '<option value="">— sem ícone —</option>' + CATALOGO_ICONES.map(function (icone) {
+      return '<option value="' + escaparHtml(icone.valor) + '">' + escaparHtml(icone.nome) + '</option>';
+    }).join("");
+    selecionarOpcao(campoEditor("editEquipIcone"), eq.icone || "");
+    campoEditor("editEquipCor").value = corValida(eq.corFonte, "#16323D");
+    mostrarEditor("Editar equipamento", editor.formEquip);
+  }
+
+  function abrirEditorCabo(c) {
+    editor.conexao = c;
+    editor.equipamento = null;
+    var options = estado.equipamentos.map(function (eq) {
+      return '<option value="' + escaparHtml(eq.id) + '">' + escaparHtml(eq.nome || eq.id) + '</option>';
+    }).join("");
+    campoEditor("editCaboDe").innerHTML = options;
+    campoEditor("editCaboPara").innerHTML = options;
+    campoEditor("editCaboDe").value = c.de;
+    campoEditor("editCaboPara").value = c.para;
+    campoEditor("editCaboSaida").value = c.saida || "";
+    campoEditor("editCaboChegada").value = c.chegada || "";
+    campoEditor("editCaboTipo").value = c.tipo || "";
+    selecionarOpcao(campoEditor("editCaboPotencia"), c.potencia || "1G");
+    campoEditor("editCaboCor").value = corValida(c.cor, "#5A7284");
+    campoEditor("editCaboGrossura").value = Number(c.grossura) || 2;
+    selecionarOpcao(campoEditor("editCaboEstilo"), c.estilo || "solid");
+    campoEditor("editCaboMensagem").textContent = "";
+    var de = estado.equipamentos.find(function (eq) { return eq.id === c.de; });
+    var para = estado.equipamentos.find(function (eq) { return eq.id === c.para; });
+    mostrarEditor("Editar cabo" + (de && para ? ": " + (de.nome || de.id) + " → " + (para.nome || para.id) : ""), editor.formCabo);
+  }
+
+  campoEditor("editEquipIp").addEventListener("input", function (event) { event.target.setCustomValidity(""); });
+
+  editor.formEquip.addEventListener("submit", function (event) {
+    event.preventDefault();
+    var eq = editor.equipamento;
+    if (!eq) return;
+    var nome = campoEditor("editEquipNome").value.trim();
+    var campoIp = campoEditor("editEquipIp");
+    var ip = campoIp.value.trim();
+    if (!ipValido(ip)) {
+      campoIp.setCustomValidity("IP inválido. Ex.: 10.0.0.1, 10.0.0.0/24 ou 2001:db8::1");
+      campoIp.reportValidity();
+      return;
+    }
+    var tipo = campoEditor("editEquipTipo").value.trim();
+    eq.nome = nome || eq.nome;
+    // Tipo trocado com o ícone ainda no padrão do tipo antigo: segue o novo tipo.
+    var icone = campoEditor("editEquipIcone").value;
+    if (tipo !== (eq.tipo || "") && icone === (eq.icone || "") && icone === iconePorTipo(eq.tipo)) icone = iconePorTipo(tipo);
+    eq.icone = icone;
+    eq.tipo = tipo;
+    eq.modelo = campoEditor("editEquipModelo").value.trim();
+    eq.ip = ip;
+    eq.grupo = campoEditor("editEquipGrupo").value.trim();
+    eq.status = campoEditor("editEquipStatus").value;
+    eq.corFonte = campoEditor("editEquipCor").value;
+    fecharEditor();
+    renderTudo();
+  });
+
+  editor.formCabo.addEventListener("submit", function (event) {
+    event.preventDefault();
+    var c = editor.conexao;
+    if (!c) return;
+    var de = campoEditor("editCaboDe").value;
+    var para = campoEditor("editCaboPara").value;
+    if (de === para) { campoEditor("editCaboMensagem").textContent = "Origem e destino precisam ser diferentes."; return; }
+    // Trocou as pontas: o arraste manual do cabo antigo não vale mais.
+    if (de !== c.de || para !== c.para) delete c.deslocamento;
+    c.de = de;
+    c.para = para;
+    c.saida = campoEditor("editCaboSaida").value.trim();
+    c.chegada = campoEditor("editCaboChegada").value.trim();
+    c.tipo = campoEditor("editCaboTipo").value.trim();
+    c.potencia = campoEditor("editCaboPotencia").value;
+    c.cor = campoEditor("editCaboCor").value;
+    c.grossura = Math.min(10, Math.max(1, Number(campoEditor("editCaboGrossura").value) || 2));
+    c.estilo = campoEditor("editCaboEstilo").value;
+    fecharEditor();
+    renderTudo();
+  });
+
+  editor.backdrop.querySelectorAll("[data-editor-fechar]").forEach(function (botao) {
+    botao.addEventListener("click", fecharEditor);
+  });
+  editor.backdrop.querySelectorAll("[data-editor-excluir]").forEach(function (botao) {
+    botao.addEventListener("click", function () {
+      var eq = editor.equipamento;
+      var c = editor.conexao;
+      var nome = eq ? (eq.nome || eq.id) : "este cabo";
+      fecharEditor();
+      abrirModal({
+        title: eq ? "Excluir equipamento" : "Excluir cabo",
+        message: eq ? "Excluir " + nome + " e os cabos ligados a ele?" : "Excluir este cabo?",
+        confirmText: "Excluir"
+      }).then(function (confirmou) {
+        if (!confirmou) return;
+        if (eq) {
+          estado.equipamentos = estado.equipamentos.filter(function (item) { return item !== eq; });
+          estado.conexoes = estado.conexoes.filter(function (item) { return item.de !== eq.id && item.para !== eq.id; });
+        } else if (c) {
+          estado.conexoes = estado.conexoes.filter(function (item) { return item !== c; });
+        }
+        renderTudo();
+      });
+    });
+  });
+  editor.backdrop.addEventListener("click", function (event) {
+    if (event.target === editor.backdrop) fecharEditor();
+  });
+  editor.backdrop.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") { event.preventDefault(); fecharEditor(); }
+  });
+
   function clonarDados(dados) { return JSON.parse(JSON.stringify(dados)); }
   function projetoVazio() { return { equipamentos: [], conexoes: [] }; }
 
@@ -1083,10 +1321,48 @@
     }).join("");
   }
 
+  // Projeto de exemplo da tela vazia: um POP pequeno com as situações mais comuns.
+  var PROJETO_EXEMPLO = {
+    equipamentos: [
+      { id: "ex_borda", nome: "RB-BORDA", tipo: "Roteador", modelo: "CCR2004", ip: "10.0.0.1", grupo: "POP Centro" },
+      { id: "ex_core", nome: "SW-CORE", tipo: "Switch", modelo: "CRS326", ip: "10.0.0.2", grupo: "POP Centro" },
+      { id: "ex_olt", nome: "OLT-01", tipo: "OLT", modelo: "DM4610", ip: "10.0.0.10", grupo: "POP Centro" },
+      { id: "ex_nobreak", nome: "NOBREAK-01", tipo: "Nobreak", grupo: "POP Centro" },
+      { id: "ex_acesso", nome: "SW-BAIRRO", tipo: "Switch", ip: "10.0.1.2", grupo: "Armário Bairro", status: "manutencao" }
+    ],
+    conexoes: [
+      { de: "ex_borda", para: "ex_core", tipo: "Fibra", potencia: "10G", saida: "sfp+1", chegada: "sfp1" },
+      { de: "ex_core", para: "ex_olt", tipo: "Fibra", potencia: "10G", saida: "sfp2", chegada: "xe1/1/1" },
+      { de: "ex_core", para: "ex_acesso", tipo: "Fibra", potencia: "1G", saida: "sfp3", chegada: "ge1" },
+      { de: "ex_nobreak", para: "ex_core", tipo: "Energia", estilo: "dashed", cor: "#D99A22" }
+    ]
+  };
+
+  function carregarExemplo() {
+    var exemplo = clonarDados(PROJETO_EXEMPLO);
+    exemplo.equipamentos.forEach(function (eq) { eq.icone = iconePorTipo(eq.tipo); eq.imagem = ""; eq.status = eq.status || "ativo"; });
+    estado = exemplo;
+    ajustarNaProximaRenderizacao = true;
+    renderTudo();
+  }
+
+  function mostrarEstadoVazio() {
+    elCanvas.innerHTML =
+      '<div class="estado-vazio">' +
+        '<strong>Nenhum equipamento ainda</strong>' +
+        '<span>Adicione equipamentos pela barra lateral ou veja um exemplo pronto.</span>' +
+        '<button type="button" class="primary" data-carregar-exemplo>Carregar exemplo</button>' +
+      '</div>';
+    var botao = elCanvas.querySelector("[data-carregar-exemplo]");
+    // O canvas captura o ponteiro para o pan; sem isto o clique não chega ao botão.
+    botao.addEventListener("pointerdown", function (event) { event.stopPropagation(); });
+    botao.addEventListener("click", carregarExemplo);
+  }
+
   function limparDiagrama() {
     ultimoDot = "";
     elCanvas.classList.add("vazio");
-    elCanvas.textContent = "Adicione equipamentos e gere o diagrama.";
+    mostrarEstadoVazio();
     elLegenda.innerHTML = "";
     elDotCode.textContent = "";
     btnCopiar.disabled = true;
@@ -1240,7 +1516,7 @@
     if (valor === "auto") {
       document.documentElement.removeAttribute("data-theme");
       removerTemaCustomizado();
-      btnTema.textContent = "modo: automático";
+      btnTema.textContent = "Tema: Automático";
       salvarTema("");
       return;
     }
@@ -1248,13 +1524,13 @@
     if (valor === "light" || valor === "dark") {
       document.documentElement.setAttribute("data-theme", valor);
       removerTemaCustomizado();
-      btnTema.textContent = "modo: " + (valor === "dark" ? "escuro" : "claro");
+      btnTema.textContent = "Tema: " + (valor === "dark" ? "Escuro" : "Claro");
       salvarTema(valor);
       return;
     }
 
     aplicarTemaPersonalizado(valor);
-    btnTema.textContent = "modo: personalizado";
+    btnTema.textContent = "Tema: Personalizado";
     salvarTema(valor);
   }
 
@@ -1265,10 +1541,10 @@
   } else if (temaSalvo === "dark" || temaSalvo === "light") {
     temaSelect.value = temaSalvo;
     document.documentElement.setAttribute("data-theme", temaSalvo);
-    btnTema.textContent = "modo: " + (temaSalvo === "dark" ? "escuro" : "claro");
+    btnTema.textContent = "Tema: " + (temaSalvo === "dark" ? "Escuro" : "Claro");
   } else {
     temaSelect.value = "auto";
-    btnTema.textContent = "modo: automático";
+    btnTema.textContent = "Tema: Automático";
   }
 
   btnTema.addEventListener("click", function () {
@@ -1283,17 +1559,17 @@
     if (atual === "dark") {
       document.documentElement.setAttribute("data-theme", "light");
       temaSelect.value = "light";
-      btnTema.textContent = "modo: claro";
+      btnTema.textContent = "Tema: Claro";
       salvarTema("light");
     } else if (atual === "light") {
       document.documentElement.setAttribute("data-theme", "dark");
       temaSelect.value = "dark";
-      btnTema.textContent = "modo: escuro";
+      btnTema.textContent = "Tema: Escuro";
       salvarTema("dark");
     } else {
       document.documentElement.setAttribute("data-theme", "dark");
       temaSelect.value = "dark";
-      btnTema.textContent = "modo: escuro";
+      btnTema.textContent = "Tema: Escuro";
       salvarTema("dark");
     }
   });
@@ -1328,6 +1604,8 @@
   }
   function corPorStatus(status) { return status === "manutencao" ? "#D99A22" : status === "offline" ? "#D94B5B" : "#2EAD68"; }
   function marcadorStatus(status) { return status === "manutencao" ? "⚙" : status === "offline" ? "×" : "●"; }
+  // Rótulo exibido no diagrama; o valor salvo continua sem acento ("manutencao").
+  function rotuloStatus(status) { return status === "manutencao" ? "MANUTENÇÃO" : status === "offline" ? "OFFLINE" : "ATIVO"; }
 
   function renderEquipamentos() {
     elListaEquip.innerHTML = estado.equipamentos.map(function (eq, i) {
@@ -1393,17 +1671,6 @@
   }
 
   function renderSidebarPanels() {
-    elNavEquipList.innerHTML = estado.equipamentos.length ? estado.equipamentos.map(function (eq, i) {
-      return '<div class="nav-list-item"><span>' + escaparHtml((eq.icone ? eq.icone + " " : "") + (eq.nome || eq.id)) + '</span><button class="ghost small" type="button" data-sidebar-action="remove-equip" data-index="' + i + '">Remover</button></div>';
-    }).join("") : '<div class="nav-empty">Nenhum equipamento cadastrado.</div>';
-
-    elNavCableList.innerHTML = estado.conexoes.length ? estado.conexoes.map(function (c, i) {
-      var de = estado.equipamentos.find(function (eq) { return eq.id === c.de; });
-      var para = estado.equipamentos.find(function (eq) { return eq.id === c.para; });
-      var texto = (c.tipo || "Cabeamento") + " · " + (c.potencia || "1G") + " · " + (de ? de.nome : c.de) + (c.saida ? " [" + c.saida + "]" : "") + " → " + (para ? para.nome : c.para) + (c.chegada ? " [" + c.chegada + "]" : "");
-      return '<div class="nav-list-item"><span title="' + escaparHtml(texto) + '">' + escaparHtml(texto) + '</span><button class="ghost small" type="button" title="Excluir cabeamento" aria-label="Excluir cabeamento" data-sidebar-action="remove-cable" data-index="' + i + '">×</button></div>';
-    }).join("") : '<div class="nav-empty">Nenhum cabeamento cadastrado.</div>';
-
     var options = estado.equipamentos.map(function (eq) {
       return '<option value="' + escaparHtml(eq.id) + '">' + escaparHtml(eq.nome || eq.id) + '</option>';
     }).join("");
@@ -1416,6 +1683,13 @@
     if (estado.equipamentos.some(function (eq) { return eq.id === deAtual; })) de.value = deAtual;
     if (estado.equipamentos.some(function (eq) { return eq.id === paraAtual; })) para.value = paraAtual;
     if (estado.equipamentos.length > 1 && de.value === para.value) para.value = estado.equipamentos[1].id;
+
+    // Sugere os grupos já usados, para não criar "Rack 01" e "rack 01" separados.
+    var gruposUsados = {};
+    estado.equipamentos.forEach(function (eq) { var g = String(eq.grupo || "").trim(); if (g) gruposUsados[g] = true; });
+    document.getElementById("grupos-sugeridos").innerHTML = Object.keys(gruposUsados).sort().map(function (g) {
+      return '<option value="' + escaparHtml(g) + '"></option>';
+    }).join("");
   }
 
   function solicitarAtualizacaoDiagrama() {
@@ -1626,7 +1900,8 @@
       campoIp.reportValidity();
       return;
     }
-    var novoEquipamento = { id: novoId(), nome: nome, modelo: document.getElementById("navEquipModelo").value.trim(), ip: ip, tipo: tipo, icone: iconeInformado || iconePorTipo(tipo), imagem: "", corFonte: "#16323D" };
+    var novoEquipamento = { id: novoId(), nome: nome, modelo: document.getElementById("navEquipModelo").value.trim(), ip: ip, tipo: tipo, icone: iconeInformado || iconePorTipo(tipo), imagem: "", corFonte: "#16323D",
+      grupo: document.getElementById("navEquipGrupo").value.trim(), status: document.getElementById("navEquipStatus").value };
     function concluir(imagem) {
       novoEquipamento.imagem = imagem || "";
       estado.equipamentos.push(novoEquipamento);
@@ -1662,20 +1937,7 @@
   });
 
   document.addEventListener("click", function (event) {
-    var action = event.target.getAttribute("data-sidebar-action");
-    if (action === "remove-equip") {
-      var equipIndex = Number(event.target.getAttribute("data-index"));
-      var idRemovido = estado.equipamentos[equipIndex].id;
-      estado.equipamentos.splice(equipIndex, 1);
-      estado.conexoes = estado.conexoes.filter(function (c) { return c.de !== idRemovido && c.para !== idRemovido; });
-      renderTudo();
-    }
-    if (action === "remove-cable") {
-      estado.conexoes.splice(Number(event.target.getAttribute("data-index")), 1);
-      renderTudo();
-    }
     var navAction = event.target.getAttribute("data-nav-action");
-    if (navAction === "generate-diagram") btnGerar.click();
     if (navAction === "export-diagram") btnBaixar.click();
   });
 
@@ -1924,7 +2186,8 @@
       validarDados(novo);
       novo.equipamentos.forEach(function (eq) { if (!eq.icone) eq.icone = ""; if (!eq.imagem) eq.imagem = ""; migrarImagensAntigas(eq); });
       estado = novo;
-      renderEquipamentos(); renderConexoes(); salvarLocal();
+      ajustarNaProximaRenderizacao = true;
+      renderTudo();
       esconderErro();
     } catch (e) { mostrarErro("Não foi possível aplicar o JSON.\nDetalhe: " + e.message); }
   });
@@ -2081,7 +2344,7 @@
         '<TR>' + colunaPortas(portas.esquerda) +
         '<TD BORDER="0" CELLPADDING="0" WIDTH="120" HEIGHT="' + alturaMeio + '"></TD>' +
         colunaPortas(portas.direita) + '</TR>' +
-        '<TR><TD COLSPAN="3" CELLPADDING="4" ALIGN="CENTER"><FONT FACE="Helvetica" POINT-SIZE="9" COLOR="' + corStatus + '"><B>' + escaparHtmlDot(marcadorStatus(status) + " " + status.toUpperCase()) + '</B></FONT></TD></TR>' +
+        '<TR><TD COLSPAN="3" CELLPADDING="4" ALIGN="CENTER"><FONT FACE="Helvetica" POINT-SIZE="9" COLOR="' + corStatus + '"><B>' + escaparHtmlDot(marcadorStatus(status) + " " + rotuloStatus(status)) + '</B></FONT></TD></TR>' +
         linhaPortas(portas.baixo) +
         '</TABLE>>';
       return '    "' + escapar(eq.id) + '" [id="equip_' + dados.equipamentos.indexOf(eq) + '", label=' + rotulo + ', shape=plain, color="transparent", fontcolor="' + corFonte + '"];';
@@ -2093,9 +2356,10 @@
       if (!grupos[grupo]) grupos[grupo] = [];
       grupos[grupo].push(eq);
     });
-    Object.keys(grupos).forEach(function (grupo) {
-      var grupoId = grupo.replace(/[^a-zA-Z0-9_]/g, "_");
-      linhas.push('  subgraph "cluster_' + grupoId + '" {');
+    // O id do cluster usa o índice: derivar do nome fazia "Sala 1" e "Sala-1"
+    // (ou "Rack Á" e "Rack É") virarem o mesmo cluster.
+    Object.keys(grupos).forEach(function (grupo, indiceGrupo) {
+      linhas.push('  subgraph "cluster_' + indiceGrupo + '" {');
       linhas.push('    label="' + escapar(grupo) + '";');
       linhas.push('    color="#6C8292"; style="rounded,dashed"; penwidth=1.0; fontname="Helvetica"; fontsize=9;');
       grupos[grupo].forEach(function (eq) { linhas.push(linhaEquipamento(eq)); });
@@ -2401,6 +2665,8 @@
         aplicarCanvasView();
       }
       ativarArrasteDosEquipamentos();
+      ativarEdicaoDosCabos();
+      aplicarBusca();
       aplicarImagensNoSvg(estado);
       atualizarLegenda(estado);
       btnCopiar.disabled = false;
@@ -2573,6 +2839,75 @@
     return copia;
   }
 
+  // Nome do arquivo exportado: projeto + data, ex.: "projeto-principal-2026-09-26.png".
+  function nomeArquivoExportacao(extensao) {
+    var base = normalizarTextoEquipamento(projetoAtual).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "diagrama";
+    var hoje = new Date();
+    var data = hoje.getFullYear() + "-" + String(hoje.getMonth() + 1).padStart(2, "0") + "-" + String(hoje.getDate()).padStart(2, "0");
+    return base + "-" + data + "." + extensao;
+  }
+
+  // Emoldura a cópia exportada: cabeçalho (projeto, data, totais), rodapé com a
+  // legenda de tipos e fundo sólido. Aumenta o viewBox em volta do desenho.
+  function adicionarMolduraDeExportacao(svg) {
+    var vb = String(svg.getAttribute("viewBox") || "").trim().split(/[\s,]+/).map(Number);
+    if (vb.length !== 4 || vb.some(function (n) { return !Number.isFinite(n); }) || !vb[2] || !vb[3]) return;
+    var NS = "http://www.w3.org/2000/svg";
+    var MARGEM = 24, TOPO = 62, RODAPE = 42;
+    var larguraNova = Math.max(vb[2] + 2 * MARGEM, 440);
+    var alturaNova = vb[3] + TOPO + RODAPE;
+    var x0 = vb[0] - (larguraNova - vb[2]) / 2;
+    var y0 = vb[1] - TOPO;
+    var baseRodape = vb[1] + vb[3];
+
+    var estilo = getComputedStyle(elCanvas);
+    var fundo = estilo.backgroundColor || "#ffffff";
+    var tinta = estilo.getPropertyValue("--ink").trim() || "#16323D";
+
+    function el(tag, atributos, texto) {
+      var no = document.createElementNS(NS, tag);
+      Object.keys(atributos).forEach(function (k) { no.setAttribute(k, atributos[k]); });
+      if (texto != null) no.textContent = texto;
+      return no;
+    }
+    function plural(n, singular, pluralTexto) { return n + " " + (n === 1 ? singular : pluralTexto); }
+
+    var fonte = "Helvetica, Arial, sans-serif";
+    var data = new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+    var moldura = el("g", { "class": "moldura-exportacao", "font-family": fonte, fill: tinta });
+    moldura.appendChild(el("text", { x: x0 + MARGEM, y: y0 + 28, "font-size": 16, "font-weight": "bold" }, projetoAtual));
+    moldura.appendChild(el("text", { x: x0 + MARGEM, y: y0 + 45, "font-size": 9.5, "fill-opacity": 0.65 },
+      "Topologia de rede · " + data + " · " + plural(estado.equipamentos.length, "equipamento", "equipamentos") + " · " + plural(estado.conexoes.length, "cabo", "cabos")));
+    moldura.appendChild(el("line", { x1: x0 + MARGEM, x2: x0 + larguraNova - MARGEM, y1: y0 + TOPO - 8, y2: y0 + TOPO - 8, stroke: tinta, "stroke-opacity": 0.15 }));
+    moldura.appendChild(el("line", { x1: x0 + MARGEM, x2: x0 + larguraNova - MARGEM, y1: baseRodape + 12, y2: baseRodape + 12, stroke: tinta, "stroke-opacity": 0.15 }));
+
+    // Legenda: um quadrado colorido por tipo, como a legenda da tela.
+    var tipos = [];
+    estado.equipamentos.forEach(function (eq) { var t = eq.tipo || "outro"; if (tipos.indexOf(t) < 0) tipos.push(t); });
+    var xLegenda = x0 + MARGEM;
+    var yLegenda = baseRodape + 30;
+    tipos.forEach(function (tipo) {
+      moldura.appendChild(el("rect", { x: xLegenda, y: yLegenda - 7.5, width: 8, height: 8, rx: 1.5, fill: corPorTipo(tipo) }));
+      var rotulo = el("text", { x: xLegenda + 12, y: yLegenda, "font-size": 9, "fill-opacity": 0.8 }, tipo);
+      moldura.appendChild(rotulo);
+      xLegenda += 12 + tipo.length * 5.2 + 16;
+    });
+    moldura.appendChild(el("text", { x: x0 + larguraNova - MARGEM, y: yLegenda, "font-size": 8.5, "fill-opacity": 0.5, "text-anchor": "end" }, "Gerado com Grafo"));
+
+    svg.insertBefore(el("rect", { x: x0, y: y0, width: larguraNova, height: alturaNova, fill: fundo }), svg.firstChild);
+    svg.appendChild(moldura);
+
+    // width/height acompanham o viewBox, mantendo a unidade original (pt/px).
+    ["width", "height"].forEach(function (attr, i) {
+      var valor = String(svg.getAttribute(attr) || "");
+      var numero = parseFloat(valor);
+      if (!numero) return;
+      var unidade = valor.replace(/^[\d.\s-]+/, "");
+      svg.setAttribute(attr, (numero * (i === 0 ? larguraNova / vb[2] : alturaNova / vb[3])).toFixed(2) + unidade);
+    });
+    svg.setAttribute("viewBox", [x0, y0, larguraNova, alturaNova].map(function (n) { return n.toFixed(2); }).join(" "));
+  }
+
   function baixarBlob(blob, nome) {
     if (window.navigator && typeof window.navigator.msSaveOrOpenBlob === "function") {
       window.navigator.msSaveOrOpenBlob(blob, nome);
@@ -2663,16 +2998,18 @@
 
     try {
       var svgExportavel = await prepararSvgParaExportacao(svgEl, false);
+      adicionarMolduraDeExportacao(svgExportavel);
       var svgText = new XMLSerializer().serializeToString(svgExportavel);
+      var nomeSvg = nomeArquivoExportacao("svg");
 
       if (downloadsCap) {
         try {
-          await downloadsCap.save({ filename: "diagrama-interligacao.svg", data: svgText });
+          await downloadsCap.save({ filename: nomeSvg, data: svgText });
           return;
         } catch (e) {}
       }
 
-      baixarBlob(new Blob([svgText], { type: "image/svg+xml;charset=utf-8" }), "diagrama-interligacao.svg");
+      baixarBlob(new Blob([svgText], { type: "image/svg+xml;charset=utf-8" }), nomeSvg);
     } catch (e) {
       mostrarErro("Não foi possível exportar o SVG.\nDetalhe: " + e.message);
     }
@@ -2767,10 +3104,12 @@
 
     try {
       var preparado = await prepararSvgSeguroParaPng(svgEl);
+      adicionarMolduraDeExportacao(preparado.svg);
       var svgText = new XMLSerializer().serializeToString(preparado.svg);
       carregado = await carregarSvgSerializadoComoImagem(svgText);
 
-      var vb = svgEl.viewBox && svgEl.viewBox.baseVal;
+      // Tamanho da cópia emoldurada, não do SVG da tela.
+      var vb = preparado.svg.viewBox && preparado.svg.viewBox.baseVal;
       var largura = vb && vb.width ? vb.width : (parseFloat(svgEl.getAttribute("width")) || carregado.imagem.naturalWidth || carregado.imagem.width);
       var altura = vb && vb.height ? vb.height : (parseFloat(svgEl.getAttribute("height")) || carregado.imagem.naturalHeight || carregado.imagem.height);
 
@@ -2793,7 +3132,7 @@
       contexto.drawImage(carregado.imagem, 0, 0, canvasPng.width, canvasPng.height);
 
       var pngBlob = await canvasParaPngBlob(canvasPng);
-      baixarBlob(pngBlob, "diagrama-grafo.png");
+      baixarBlob(pngBlob, nomeArquivoExportacao("png"));
 
       if (preparado.imagensIgnoradas > 0) {
         mostrarErro("PNG baixado, mas " + preparado.imagensIgnoradas + " imagem(ns) não puderam ser incluídas.\n" +

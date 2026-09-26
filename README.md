@@ -2,6 +2,18 @@
 
 **G**erador **R**ápido **A**utomatizado de **F**luxos **O**rganizados: monta diagramas de topologia de rede (OLTs, switches, roteadores, nobreaks…) a partir de equipamentos e cabeamentos cadastrados no navegador.
 
+![Diagrama de exemplo no Grafo](docs/captura.png)
+
+## Recursos
+
+- **Diagrama automático**: o layout é recalculado a cada mudança, com cabos roteados em ângulo reto e portas no lado voltado para o vizinho.
+- **Edição direta**: duplo clique (ou Enter) num equipamento ou cabo abre o editor, com a opção de excluir.
+- **Grupos e status**: equipamentos agrupados por rack/sala/POP e marcados como ativo, em manutenção ou offline.
+- **Busca** por nome, IP ou modelo, com destaque no diagrama (Enter vai para o próximo resultado).
+- **Exportação em PNG e SVG** com cabeçalho (projeto, data, totais) e legenda.
+- **Vários projetos**, desfazer/refazer, importação de CSV e backup em JSON.
+- Botão **Carregar exemplo** na tela vazia para ver a ferramenta funcionando.
+
 ## Rodando localmente
 
 Requer Node.js 18+.
@@ -30,6 +42,7 @@ O projeto já está pronto para a Vercel: o `index.html` e os `assets/` são ser
 | `scripts/gerar-icones-embutidos.js` | Gera o arquivo acima (`npm run icones`) |
 | `data/equipamentos.json` | Catálogo de tipos de equipamento — **edite aqui** (fica fora de `api/` para não colidir com `api/equipamentos.js` na Vercel) |
 | `api/equipamentos.js` | Função da Vercel que serve o catálogo |
+| `docs/captura.png` | Imagem usada neste README |
 | `servidor-local.js` | Servidor Express só para rodar localmente (não se chama `server.js` para a Vercel não tratar o projeto como app Express) |
 
 ## Onde ficam os dados
