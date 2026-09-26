@@ -28,7 +28,7 @@ O projeto já está pronto para a Vercel: o `index.html` e os `assets/` são ser
 | `assets/images/` | Ícones dos equipamentos |
 | `assets/js/icones-embutidos.js` | Cópia dos ícones em base64 para a exportação PNG/SVG — **gerado**, veja abaixo |
 | `scripts/gerar-icones-embutidos.js` | Gera o arquivo acima (`npm run icones`) |
-| `api/equipamentos.json` | Catálogo de tipos de equipamento — **edite aqui** |
+| `data/equipamentos.json` | Catálogo de tipos de equipamento — **edite aqui** (fica fora de `api/` para não colidir com `api/equipamentos.js` na Vercel) |
 | `api/equipamentos.js` | Função da Vercel que serve o catálogo |
 | `server.js` | Servidor Express para rodar localmente |
 

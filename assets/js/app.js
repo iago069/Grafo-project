@@ -2,7 +2,7 @@
   "use strict";
 
   var ICONES = [""];
-  var EQUIPAMENTOS_API_URL = (window.EQUIPAMENTOS_API_URL && window.EQUIPAMENTOS_API_URL.trim()) || "/api/equipamentos.json";
+  var EQUIPAMENTOS_API_URL = (window.EQUIPAMENTOS_API_URL && window.EQUIPAMENTOS_API_URL.trim()) || "/api/equipamentos";
 
   function resolverUrlRelativa(origem) {
     if (!origem) return origem;
@@ -169,7 +169,7 @@
   }
 
   function carregarTiposDeEquipamento() {
-    var urls = [EQUIPAMENTOS_API_URL, "/api/equipamentos", "./api/equipamentos.json", "/api/equipamentos.json"]; 
+    var urls = [EQUIPAMENTOS_API_URL, "/api/equipamentos", "./data/equipamentos.json", "/data/equipamentos.json"];
     var indiceAtual = 0;
 
     function tentarProximo() {
