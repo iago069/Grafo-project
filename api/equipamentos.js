@@ -1,5 +1,7 @@
 // Fonte única do catálogo: o mesmo JSON servido pelo server.js.
-const catalogo = require('./equipamentos.json');
+// Fica fora de api/ porque a Vercel trata cada arquivo ali como rota, e
+// equipamentos.js + equipamentos.json colidiriam em /api/equipamentos.
+const catalogo = require('../data/equipamentos.json');
 
 module.exports = function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');

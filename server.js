@@ -5,7 +5,7 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const rootDir = __dirname;
-const apiPath = path.join(rootDir, 'api', 'equipamentos.json');
+const apiPath = path.join(rootDir, 'data', 'equipamentos.json');
 
 app.disable('x-powered-by');
 
