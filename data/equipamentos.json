@@ -4,10 +4,11 @@
     { "nome": "Switch", "icone": "SWITCH.jpeg" },
     { "nome": "MikroTik", "icone": "MIKROTIK.png" },
     { "nome": "ONU", "icone": "ONU.png" },
-    { "nome": "Firewall", "icone": "FIREWALL.png" },
+    { "nome": "RPS", "icone": "RETIFICADOR.jpeg" },
     { "nome": "Servidor", "icone": "SERVIDOR.png" },
     { "nome": "UPS", "icone": "NOBREAK.jpeg" },
     { "nome": "HVAC", "icone": "AR.png" },
+    { "nome": "VOLT", "icone": "VOLT.jpeg" },
     { "nome": "Camera IP", "icone": "CAMERA.png" },
   ]
 }
