@@ -1,30 +1,31 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
   <defs>
-    <linearGradient id="corpo" x1="0" y1="0" x2="0" y2="1">
+    <linearGradient id="topo" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#fbfcfd"/>
-      <stop offset="1" stop-color="#d9e1e8"/>
+      <stop offset="1" stop-color="#e3e9ee"/>
     </linearGradient>
     <linearGradient id="frente" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#e6ecf1"/>
+      <stop offset="0" stop-color="#eef2f5"/>
       <stop offset="1" stop-color="#c3cdd6"/>
     </linearGradient>
   </defs>
   <!-- antenas -->
-  <rect x="28" y="16" width="7" height="44" rx="3.5" fill="#2b3a47"/>
-  <rect x="93" y="16" width="7" height="44" rx="3.5" fill="#2b3a47"/>
+  <rect x="22" y="6" width="9" height="46" rx="4.5" fill="#2b3a47"/>
+  <rect x="97" y="6" width="9" height="46" rx="4.5" fill="#2b3a47"/>
   <!-- corpo -->
-  <path d="M14 62 L24 50 H104 L114 62 Z" fill="url(#corpo)" stroke="#8a9aa8" stroke-width="1.5" stroke-linejoin="round"/>
-  <rect x="14" y="62" width="100" height="30" rx="4" fill="url(#frente)" stroke="#8a9aa8" stroke-width="1.5"/>
+  <path d="M6 58 L18 44 H110 L122 58 Z" fill="url(#topo)" stroke="#8a9aa8" stroke-width="2" stroke-linejoin="round"/>
+  <rect x="6" y="58" width="116" height="54" rx="6" fill="url(#frente)" stroke="#8a9aa8" stroke-width="2"/>
   <!-- LEDs de status -->
-  <circle cx="30" cy="77" r="3.2" fill="#35c759"/>
-  <circle cx="42" cy="77" r="3.2" fill="#35c759"/>
-  <circle cx="54" cy="77" r="3.2" fill="#f2b84b"/>
-  <circle cx="66" cy="77" r="3.2" fill="#35c759"/>
+  <circle cx="24" cy="76" r="4.5" fill="#35c759"/>
+  <circle cx="40" cy="76" r="4.5" fill="#35c759"/>
+  <circle cx="56" cy="76" r="4.5" fill="#f2b84b"/>
+  <circle cx="72" cy="76" r="4.5" fill="#35c759"/>
+  <!-- porta de fibra -->
+  <rect x="88" y="70" width="22" height="12" rx="2" fill="#4a5b69"/>
+  <rect x="92" y="73" width="14" height="6" rx="1" fill="#f2b84b"/>
   <!-- rótulo -->
-  <text x="100" y="81.5" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700" fill="#4a5b69">ONU</text>
+  <text x="64" y="102" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#4a5b69">ONU</text>
   <!-- pés -->
-  <rect x="22" y="92" width="14" height="5" rx="2" fill="#6d7d8a"/>
-  <rect x="92" y="92" width="14" height="5" rx="2" fill="#6d7d8a"/>
-  <!-- fibra -->
-  <path d="M64 97 C64 108 76 110 88 112" fill="none" stroke="#f2b84b" stroke-width="3" stroke-linecap="round"/>
+  <rect x="16" y="112" width="18" height="7" rx="2.5" fill="#6d7d8a"/>
+  <rect x="94" y="112" width="18" height="7" rx="2.5" fill="#6d7d8a"/>
 </svg>

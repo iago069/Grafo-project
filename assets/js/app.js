@@ -603,12 +603,26 @@
     return Math.max(a1, a2) > Math.min(b1, b2) + 0.5 && Math.max(b1, b2) > Math.min(a1, a2) + 0.5;
   }
 
+  // Trecho reto (horizontal ou vertical) passando por dentro do retângulo.
+  function segmentoAtravessaRetangulo(seg, r) {
+    if (seg.horizontal) {
+      return seg.y1 > r.y1 && seg.y1 < r.y2 && Math.max(seg.x1, seg.x2) > r.x1 && Math.min(seg.x1, seg.x2) < r.x2;
+    }
+    return seg.x1 > r.x1 && seg.x1 < r.x2 && Math.max(seg.y1, seg.y2) > r.y1 && Math.min(seg.y1, seg.y2) < r.y2;
+  }
+
   // Custo de uma rota contra os cabos já desenhados: cabo colado/por cima de
-  // outro é o pior caso, cruzamento vem logo depois.
-  function custoDaRota(pontos, existentes) {
+  // outro é o pior caso, cruzamento vem logo depois. Obstáculos (equipamentos
+  // e caixas de outros grupos, de rotearCabosOrtogonalmente): passar por cima
+  // de um equipamento é pior que tudo; atravessar um grupo alheio, quase.
+  function custoDaRota(pontos, existentes, obstaculos) {
     var espaco = CONFIG_ROTEAMENTO_CABOS.espaco;
     var custo = 0;
-    segmentosDaRota(pontos).forEach(function (a) {
+    var segmentos = segmentosDaRota(pontos);
+    (obstaculos || []).forEach(function (r) {
+      segmentos.forEach(function (seg) { if (segmentoAtravessaRetangulo(seg, r)) custo += r.custo; });
+    });
+    segmentos.forEach(function (a) {
       existentes.forEach(function (b) {
         if (a.horizontal !== b.horizontal) {
           var h = a.horizontal ? a : b, v = a.horizontal ? b : a;
@@ -628,7 +642,7 @@
   // Testa a trilha do meio da rota (x de um trecho vertical ou y de um
   // horizontal) em passos de "espaco" ao redor de "preferido" e fica com a de
   // menor custo. Afastar-se do ideal custa pouco perto de evitar um cruzamento.
-  function melhorVariante(construir, preferido, existentes, limite1, limite2) {
+  function melhorVariante(construir, preferido, existentes, obstaculos, limite1, limite2) {
     var espaco = CONFIG_ROTEAMENTO_CABOS.espaco;
     var temLimite = limite1 != null && limite2 != null;
     var limMin = temLimite ? Math.min(limite1, limite2) : -Infinity;
@@ -638,7 +652,7 @@
       var v = preferido + Math.ceil(i / 2) * espaco * (i % 2 ? 1 : -1);
       if (v < limMin || v > limMax) continue;
       var pontos = construir(v);
-      var custo = custoDaRota(pontos, existentes) + Math.abs(v - preferido) * 0.5;
+      var custo = custoDaRota(pontos, existentes, obstaculos) + Math.abs(v - preferido) * 0.5;
       if (custo < melhorCusto) { melhor = pontos; melhorCusto = custo; }
       if (melhorCusto < 1) break;
     }
@@ -646,7 +660,7 @@
   }
 
   // Pontos de um cabo ortogonal de s até e (cada um com a direção de saída da porta).
-  function tracarRota(s, e, existentes) {
+  function tracarRota(s, e, existentes, obstaculos) {
     var saida = CONFIG_ROTEAMENTO_CABOS.saida;
     var a = { x: s.x + s.dx * saida, y: s.y + s.dy * saida };
     var b = { x: e.x + e.dx * saida, y: e.y + e.dy * saida };
@@ -654,41 +668,99 @@
 
     function trechoVertical(x) { return [s, { x: x, y: s.y }, { x: x, y: e.y }, e]; }
     function trechoHorizontal(y) { return [s, { x: s.x, y: y }, { x: e.x, y: y }, e]; }
+    // Contornos com um trecho a mais: sai da porta, desce/sobe (ou vai para o
+    // lado) até uma trilha livre, atravessa e entra na outra porta.
+    function contornoHorizontal(y) { return [s, a, { x: a.x, y: y }, { x: b.x, y: y }, b, e]; }
+    function contornoVertical(x) { return [s, a, { x: x, y: a.y }, { x: x, y: b.y }, b, e]; }
+
+    // Fica com a rota mais barata entre as candidatas (a primeira ganha empates).
+    function maisBarata() {
+      var melhor = null, melhorCusto = Infinity;
+      Array.prototype.forEach.call(arguments, function (pts) {
+        var c = custoDaRota(pts, existentes, obstaculos) + pts.length;
+        if (c < melhorCusto) { melhor = pts; melhorCusto = c; }
+      });
+      return melhor;
+    }
 
     if (horizS && horizE) {
       if (s.dx === -e.dx && (b.x - a.x) * s.dx >= 0) {
         // "Z": portas uma de frente para a outra, trecho vertical no meio.
-        return melhorVariante(trechoVertical, (a.x + b.x) / 2, existentes, a.x, b.x);
+        // Se o Z bater num equipamento/grupo, tenta contornar por cima ou por baixo.
+        return maisBarata(
+          melhorVariante(trechoVertical, (a.x + b.x) / 2, existentes, obstaculos, a.x, b.x),
+          melhorVariante(contornoHorizontal, (s.y + e.y) / 2, existentes, obstaculos)
+        );
       }
       if (s.dx === e.dx) {
         // "U": as duas portas do mesmo lado; contorna por fora.
-        return melhorVariante(trechoVertical, s.dx > 0 ? Math.max(a.x, b.x) : Math.min(a.x, b.x), existentes);
+        return melhorVariante(trechoVertical, s.dx > 0 ? Math.max(a.x, b.x) : Math.min(a.x, b.x), existentes, obstaculos);
       }
       // Portas de costas uma para a outra: sai, cruza pelo meio na horizontal e volta.
-      return melhorVariante(function (y) {
-        return [s, a, { x: a.x, y: y }, { x: b.x, y: y }, b, e];
-      }, (s.y + e.y) / 2, existentes);
+      return melhorVariante(contornoHorizontal, (s.y + e.y) / 2, existentes, obstaculos);
     }
 
     if (!horizS && !horizE) {
       if (s.dy === -e.dy && (b.y - a.y) * s.dy >= 0) {
-        return melhorVariante(trechoHorizontal, (a.y + b.y) / 2, existentes, a.y, b.y);
+        return maisBarata(
+          melhorVariante(trechoHorizontal, (a.y + b.y) / 2, existentes, obstaculos, a.y, b.y),
+          melhorVariante(contornoVertical, (s.x + e.x) / 2, existentes, obstaculos)
+        );
       }
       if (s.dy === e.dy) {
-        return melhorVariante(trechoHorizontal, s.dy > 0 ? Math.max(a.y, b.y) : Math.min(a.y, b.y), existentes);
+        return melhorVariante(trechoHorizontal, s.dy > 0 ? Math.max(a.y, b.y) : Math.min(a.y, b.y), existentes, obstaculos);
       }
-      return melhorVariante(function (x) {
-        return [s, a, { x: x, y: a.y }, { x: x, y: b.y }, b, e];
-      }, (s.x + e.x) / 2, existentes);
+      return melhorVariante(contornoVertical, (s.x + e.x) / 2, existentes, obstaculos);
     }
 
     // Uma porta na lateral e a outra em cima/embaixo: um "L" quando dá.
     if (horizS) {
-      if ((e.x - s.x) * s.dx > 0 && (s.y - e.y) * e.dy > 0) return [s, { x: e.x, y: s.y }, e];
+      if ((e.x - s.x) * s.dx > 0 && (s.y - e.y) * e.dy > 0) return maisBarata([s, { x: e.x, y: s.y }, e], [s, a, { x: a.x, y: b.y }, b, e]);
       return [s, a, { x: a.x, y: b.y }, b, e];
     }
-    if ((e.y - s.y) * s.dy > 0 && (s.x - e.x) * e.dx > 0) return [s, { x: s.x, y: e.y }, e];
+    if ((e.y - s.y) * s.dy > 0 && (s.x - e.x) * e.dx > 0) return maisBarata([s, { x: s.x, y: e.y }, e], [s, a, { x: b.x, y: a.y }, b, e]);
     return [s, a, { x: b.x, y: a.y }, b, e];
+  }
+
+  // Retângulos que os cabos devem evitar: todos os equipamentos e as caixas
+  // dos grupos. Cada rota ignora os próprios equipamentos e os grupos deles
+  // (o cabo precisa sair/entrar ali).
+  var FOLGA_OBSTACULO = 6;
+  function coletarObstaculos(svg) {
+    var lista = [];
+    svg.querySelectorAll("g.node").forEach(function (node) {
+      var id = idEquipamentoDoNode(node);
+      var b, t = translateDoElemento(node);
+      try { b = node.getBBox(); } catch (e) { return; }
+      if (!id || !b || !b.width) return;
+      lista.push({ equipamento: id, custo: 5000,
+        x1: b.x + t.x - FOLGA_OBSTACULO, y1: b.y + t.y - FOLGA_OBSTACULO,
+        x2: b.x + t.x + b.width + FOLGA_OBSTACULO, y2: b.y + t.y + b.height + FOLGA_OBSTACULO });
+    });
+    nomesDosGrupos(estado).forEach(function (nome, indice) {
+      var forma = svg.querySelector('g.cluster[id="grupo_' + indice + '"] path, g.cluster[id="grupo_' + indice + '"] polygon');
+      var b;
+      try { b = forma && forma.getBBox(); } catch (e) { b = null; }
+      if (!b || !b.width) return;
+      lista.push({ grupo: nome, custo: 1500, x1: b.x, y1: b.y, x2: b.x + b.width, y2: b.y + b.height });
+    });
+    return lista;
+  }
+
+  // Só os obstáculos ao alcance das variantes de rota (melhorVariante testa
+  // até ~480 px para cada lado); o resto nem entra na conta.
+  var ALCANCE_DESVIO = 520;
+  function obstaculosDoCabo(todos, conexao, s, e) {
+    var ids = [conexao.de, conexao.para];
+    var grupos = estado.equipamentos.filter(function (eq) { return ids.indexOf(eq.id) >= 0; })
+      .map(function (eq) { return String(eq.grupo || "").trim(); }).filter(Boolean);
+    var x1 = Math.min(s.x, e.x) - ALCANCE_DESVIO, x2 = Math.max(s.x, e.x) + ALCANCE_DESVIO;
+    var y1 = Math.min(s.y, e.y) - ALCANCE_DESVIO, y2 = Math.max(s.y, e.y) + ALCANCE_DESVIO;
+    return todos.filter(function (o) {
+      if (o.x2 < x1 || o.x1 > x2 || o.y2 < y1 || o.y1 > y2) return false;
+      if (o.equipamento) return ids.indexOf(o.equipamento) < 0;
+      return grupos.indexOf(o.grupo) < 0;
+    });
   }
 
   // Rótulo do cabo no meio do trecho mais longo (acima, se horizontal; ao lado, se vertical).
@@ -725,14 +797,15 @@
       var s = pontos[indice + ":inicio"], e = pontos[indice + ":fim"];
       if (!path || !s || !e) return;
       aresta.removeAttribute("transform");
-      rotas.push({ aresta: aresta, path: path, s: s, e: e });
+      rotas.push({ aresta: aresta, path: path, s: s, e: e, conexao: conexao });
     });
+    var obstaculos = coletarObstaculos(svg);
     // Cabos curtos primeiro ficam com a trilha ideal; os longos desviam deles.
     function comprimento(r) { return Math.abs(r.s.x - r.e.x) + Math.abs(r.s.y - r.e.y); }
     rotas.sort(function (a, b) { return comprimento(a) - comprimento(b); });
     var existentes = [];
     rotas.forEach(function (rota) {
-      var pts = tracarRota(rota.s, rota.e, existentes);
+      var pts = tracarRota(rota.s, rota.e, existentes, obstaculosDoCabo(obstaculos, rota.conexao, rota.s, rota.e));
       existentes.push.apply(existentes, segmentosDaRota(pts));
       rota.path.setAttribute("d", caminhoOrtogonalArredondado(pts));
       posicionarRotuloDaAresta(rota.aresta, pts);
