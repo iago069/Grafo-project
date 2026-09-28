@@ -2,7 +2,7 @@
 
 **G**erador **R**ápido **A**utomatizado de **F**luxos **O**rganizados: monta diagramas de topologia de rede (OLTs, switches, roteadores, nobreaks…) a partir de equipamentos e cabeamentos cadastrados no navegador.
 
-![Diagrama de exemplo no Grafo](docs/captura.png)
+![Diagrama de exemplo no Grafo](docs/captura2.png)
 
 ## Recursos
 
