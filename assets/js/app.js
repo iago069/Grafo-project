@@ -1696,7 +1696,7 @@
   function carregarProjetos() {
     ajustesAoCarregar = [];
     try {
-      var salvo = JSON.parse(localStorage.getItem("grafo-projetos") || "null");
+      var salvo = JSON.parse(localStorage.getItem(window.GrafoAuth.storageKey("grafo-projetos")) || "null");
       if (salvo && typeof salvo === "object" && !Array.isArray(salvo) && Object.keys(salvo).length) {
         var projetosSanitizados = {};
         var nomes = Object.keys(salvo);
@@ -1721,7 +1721,7 @@
         if (Object.keys(projetosSanitizados).length) {
           // "diagrama-estado" é o formato antigo (um projeto só), já migrado para
           // "grafo-projetos"; apagar libera espaço no localStorage.
-          localStorage.removeItem("diagrama-estado");
+          localStorage.removeItem(window.GrafoAuth.storageKey("diagrama-estado"));
           return projetosSanitizados;
         }
       }
@@ -1754,15 +1754,16 @@
       btnDesfazer.disabled = historicoDesfazer.length === 0;
       btnRefazer.disabled = historicoRefazer.length === 0;
       projetos[projetoAtual] = clonarDados(estado);
-      localStorage.setItem("grafo-projetos", JSON.stringify(projetos));
-      localStorage.setItem("grafo-projeto-atual", projetoAtual);
+      localStorage.setItem(window.GrafoAuth.storageKey("grafo-projetos"), JSON.stringify(projetos));
+      localStorage.setItem(window.GrafoAuth.storageKey("grafo-projeto-atual"), projetoAtual);
     } catch (e) {
       var cheio = e && (e.name === "QuotaExceededError" || e.name === "NS_ERROR_DOM_QUOTA_REACHED" || e.code === 22);
       if (cheio) {
         mostrarErro("Não foi possível salvar: o espaço do navegador para projetos está cheio.\n" +
-          "Remova imagens enviadas ou projetos antigos e use \"Exportar projeto (.json)\" para guardar uma cópia.");
+          "Remova imagens enviadas ou projetos antigos e use \"Exportar projeto (.json)\" para guardar uma cópia local.");
       }
     }
+    window.GrafoAuth.scheduleSave(projetos, projetoAtual);
   }
   // Projetos salvos antes da correção dos nomes das imagens (MIROTIK/RTIFICADOR).
   function migrarImagensAntigas(eq) {
@@ -1773,7 +1774,7 @@
     });
     return eq;
   }
-  function carregarLocal() { try { var s = localStorage.getItem("diagrama-estado"); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
+  function carregarLocal() { try { var s = localStorage.getItem(window.GrafoAuth.storageKey("diagrama-estado")); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
   function salvarTema(t) { try { localStorage.setItem("diagrama-tema", t); } catch (e) {} }
   function carregarTema() { try { return localStorage.getItem("diagrama-tema"); } catch (e) { return null; } }
 
@@ -1941,18 +1942,18 @@
   });
 
   // ---- Lembrete de backup ---------------------------------------------------
-  // Os projetos só existem neste navegador. Por projeto, guarda quando foi o
-  // último backup (exportação/importação) e desde quando há mudanças fora dele.
+  // A conta sincroniza os projetos. Esta informação local registra quando foi
+  // feita uma exportação de backup independente da sincronização.
   var LEMBRETE_DIAS_ENTRE_BACKUPS = 7;
   var LEMBRETE_DIAS_SEM_BACKUP = 1;
   var DIA_MS = 24 * 60 * 60 * 1000;
   var elLembrete = document.getElementById("lembreteBackup");
 
   function lerInfoBackup() {
-    try { return JSON.parse(localStorage.getItem("grafo-backup") || "{}") || {}; } catch (e) { return {}; }
+    try { return JSON.parse(localStorage.getItem(window.GrafoAuth.storageKey("grafo-backup")) || "{}") || {}; } catch (e) { return {}; }
   }
   function gravarInfoBackup(info) {
-    try { localStorage.setItem("grafo-backup", JSON.stringify(info)); } catch (e) {}
+    try { localStorage.setItem(window.GrafoAuth.storageKey("grafo-backup"), JSON.stringify(info)); } catch (e) {}
   }
 
   function registrarBackup(nome) {
@@ -3809,7 +3810,7 @@
 
   aplicarLimitesNosCampos(document);
   projetos = carregarProjetos();
-  projetoAtual = localStorage.getItem("grafo-projeto-atual") || Object.keys(projetos)[0] || "Projeto principal";
+  projetoAtual = localStorage.getItem(window.GrafoAuth.storageKey("grafo-projeto-atual")) || Object.keys(projetos)[0] || "Projeto principal";
   if (!projetos[projetoAtual]) projetoAtual = Object.keys(projetos)[0] || "Projeto principal";
   if (!projetos[projetoAtual]) projetos[projetoAtual] = projetoVazio();
   estado = clonarDados(projetos[projetoAtual]);

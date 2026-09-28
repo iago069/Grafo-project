@@ -7,6 +7,7 @@
 ## Sumário
 
 - [Recursos](#recursos)
+- [Configurar login e projetos por usuário](#configurar-login-e-projetos-por-usuário)
 - [Rodando localmente](#rodando-localmente)
 - [Deploy na Vercel](#deploy-na-vercel)
 - [Como usar](#como-usar)
@@ -16,6 +17,54 @@
 - [Ícones dos equipamentos](#ícones-dos-equipamentos)
 - [Estrutura do projeto](#estrutura-do-projeto)
 - [Tecnologias](#tecnologias)
+
+## Configurar login e projetos por usuário
+
+O login usa **Supabase Auth** com e-mail e senha. Os projetos ficam na tabela
+`grafo_user_data`, protegida por Row Level Security (RLS). O app não abre o
+editor antes de confirmar a sessão e carregar os projetos da conta.
+
+1. Crie um projeto no [Supabase](https://supabase.com/dashboard). No SQL Editor,
+   execute `supabase/schema.sql` uma vez. A tabela guarda todos os projetos de
+   cada pessoa em uma linha e as regras permitem ler/escrever somente a própria
+   linha.
+2. Em Authentication, habilite **Email**. Configure a URL do site
+   `https://thegrafo.vercel.app` e acrescente a mesma URL às URLs de
+   redirecionamento de autenticação, para confirmação de e-mail e recuperação
+   de senha. Se for usar um domínio próprio, inclua-o também.
+3. Na Vercel, em **Settings → Environment Variables**, crie:
+
+   | Variável | Valor |
+   | --- | --- |
+   | `SUPABASE_URL` | URL do projeto Supabase |
+   | `SUPABASE_PUBLISHABLE_KEY` | Chave **publishable** do projeto |
+
+   Configure Production, Preview e Development conforme os ambientes usados e
+   faça novo deploy. A rota `/api/auth-config` retorna somente esses valores
+   públicos. **Nunca** coloque uma chave `secret` ou `service_role` no front-end
+   ou nessa rota.
+4. Para rodar localmente, copie `.env.example` para `.env`, preencha as duas
+   variáveis e rode `npm start` — o `servidor-local.js` lê o `.env` sozinho
+   (funciona igual no Windows, Mac e Linux). Adicione também
+   `http://localhost:3000` às URLs de redirecionamento permitidas no Supabase.
+
+   ```bash
+   copy .env.example .env    # Windows (no Mac/Linux: cp .env.example .env)
+   npm start
+   ```
+
+Ao entrar pela primeira vez em um navegador com projetos anteriores, o app
+pergunta se deve copiá-los para a conta. A cópia antiga é removida somente
+depois que a gravação no Supabase dá certo. Se a pessoa recusar, a cópia local
+antiga continua intocada. As alterações novas sincronizam automaticamente;
+o indicador no cabeçalho mostra `Salvo na nuvem` ou um erro com opção de
+tentar novamente. Mantenha exportações JSON como backup independente.
+
+O salvamento atual usa o último estado gravado quando duas abas editam a mesma
+conta ao mesmo tempo. Evite edição simultânea do mesmo projeto até que haja
+controle de versões. A autenticação real depende de configurar o projeto
+Supabase e as variáveis antes de publicar; sem elas, o app mostra o erro de
+configuração e mantém o editor fechado.
 
 ## Recursos
 
@@ -41,7 +90,7 @@
 - Zoom animado (botões, roda do mouse) e arrastar para mover a área.
 
 **Projetos e interface**
-- Vários projetos no mesmo navegador, com backup em JSON e importação de CSV.
+- Vários projetos por conta, com backup em JSON e importação de CSV.
 - Exportação em **PNG** e **SVG** com cabeçalho (projeto, data, totais) e legenda.
 - Temas claros, escuros e de alto contraste; barra lateral recolhível.
 - Avisos rápidos no canto da tela ao exportar, importar ou copiar.
@@ -70,7 +119,7 @@ A porta pode ser trocada com a variável de ambiente `PORT`.
 
 ## Deploy na Vercel
 
-O projeto já está pronto: o `index.html` e os `assets/` são servidos como arquivos estáticos, e `api/equipamentos.js` vira uma função serverless em `/api/equipamentos`. O `vercel.json` redireciona as demais rotas para o `index.html`.
+O `index.html` e os `assets/` são arquivos estáticos; `api/equipamentos.js` e `api/auth-config.js` viram funções serverless. Configure o Supabase e as variáveis acima antes do deploy. O `vercel.json` redireciona as demais rotas para o `index.html`.
 
 ## Como usar
 
@@ -149,7 +198,7 @@ Separador `;`, `,` ou tab. O arquivo pode estar em UTF-8 ou no formato padrão d
 
 ## Onde ficam os dados
 
-Os projetos são salvos no `localStorage` do navegador. **Limpar os dados do site ou trocar de navegador apaga tudo**, então use **Exportar projeto (.json)** (ou `Ctrl+S`) para guardar uma cópia e **Importar projeto (.json)** para restaurar.
+Os projetos são salvos na conta, no Supabase. O navegador mantém uma cópia local separada por usuário enquanto a sessão está aberta. Ao sair, essa cópia local é apagada; os projetos continuam na conta. Use **Exportar projeto (.json)** (ou `Ctrl+S`) para guardar também um backup independente.
 
 Um aviso no topo lembra de fazer backup quando o projeto aberto tem mudanças e o último backup tem 7 dias ou mais (ou quando nunca houve backup e a primeira mudança tem mais de 1 dia). "Depois" adia o aviso por um dia.
 
@@ -186,6 +235,7 @@ Isso atualiza `assets/js/icones-embutidos.js`, que a exportação usa para coloc
 |---|---|
 | `index.html` | Página única da aplicação |
 | `assets/js/app.js` | Lógica do front-end: estado, formulários, geração do DOT, roteamento dos cabos, exportação |
+| `assets/js/auth.js` | Login, cadastro, recuperação de senha e sincronização por conta |
 | `assets/js/esquema.js` | Validação dos dados (formulários, JSON, CSV e o que está salvo) |
 | `assets/js/icones-embutidos.js` | Ícones em base64 para a exportação — **gerado** por `npm run icones` |
 | `assets/css/styles.css` | Estilos, temas e animações |
@@ -193,6 +243,8 @@ Isso atualiza `assets/js/icones-embutidos.js`, que a exportação usa para coloc
 | `assets/vendor/` | Zod (validação), servido localmente |
 | `data/equipamentos.json` | Catálogo de tipos de equipamento |
 | `api/equipamentos.js` | Função da Vercel que serve o catálogo |
+| `api/auth-config.js` | Expõe URL e chave pública do Supabase para o navegador |
+| `supabase/schema.sql` | Tabela de projetos e regras de acesso por usuário |
 | `servidor-local.js` | Servidor Express para rodar localmente (não se chama `server.js` para a Vercel não tratar o projeto como app Express) |
 | `scripts/gerar-icones-embutidos.js` | Gera o `icones-embutidos.js` |
 | `docs/` | Imagens deste README |
