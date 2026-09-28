@@ -550,3 +550,26 @@
       transition-duration: 0.01ms !important; scroll-behavior: auto !important;
     }
   }
+/* A aplicação só aparece depois de carregar a sessão e os projetos da conta. */
+body.auth-locked .app-shell { display: none !important; }
+.auth-screen { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #0f2536; font-family: 'IBM Plex Sans', sans-serif; }
+body:not(.auth-locked) .auth-screen { display: none; }
+.auth-card { width: min(100%, 410px); padding: 32px; border-radius: 18px; background: #fff; color: #0f2536; box-shadow: 0 16px 56px rgba(0,0,0,.24); animation: modalEntrar var(--dur-media) var(--ease-out); }
+/* O display: block abaixo venceria o atributo hidden (usado ao trocar de modo). */
+.auth-card [hidden] { display: none !important; }
+.auth-logo { width: 54px; height: 54px; object-fit: contain; margin-bottom: 10px; }
+.auth-card h1 { margin: 0 0 8px; font-size: 25px; }
+.auth-card p { margin: 0 0 20px; color: #526575; }
+.auth-card label { display: block; margin: 14px 0 5px; font-size: 14px; font-weight: 600; }
+.auth-card input { width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1px solid #b7c5ce; border-radius: 8px; font: inherit; color: #0f2536; background: #fff; }
+.auth-card input:focus { outline: 2px solid #5fd4c4; outline-offset: 1px; }
+.auth-submit { width: 100%; margin-top: 20px; min-height: 43px; }
+.auth-message { min-height: 18px; margin: 14px 0 0 !important; font-size: 13px; white-space: pre-line; }
+.auth-message.error { color: #a32e2e; }
+.auth-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 16px; margin-top: 12px; }
+.auth-links button { border: 0; background: transparent; color: #205b6a; cursor: pointer; text-decoration: underline; font: inherit; font-size: 13px; }
+.account-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 12px; }
+.account-tools[hidden] { display: none; }
+#accountEmail { max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#cloudStatus { min-width: 105px; color: var(--text-dim); }
+@media (max-width: 650px) { .auth-card { padding: 24px; } .account-tools { order: 3; width: 100%; } }

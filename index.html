@@ -17,7 +17,27 @@
 <script src="https://cdn.jsdelivr.net/npm/@viz-js/viz@3.30.0/dist/viz-global.js"></script>
 <link rel="stylesheet" href="./assets/css/styles.css">
 </head>
-<body>
+<body class="auth-locked">
+  <section id="authScreen" class="auth-screen" aria-labelledby="authTitle">
+    <div class="auth-card">
+      <img src="./assets/images/grafo.png" alt="" class="auth-logo">
+      <h1 id="authTitle">Entre no Grafo</h1>
+      <p id="authIntro">Acesse seus diagramas com sua conta.</p>
+      <form id="authForm">
+        <label for="authEmail">E-mail</label>
+        <input id="authEmail" type="email" autocomplete="email" required>
+        <label for="authPassword" id="authPasswordLabel">Senha</label>
+        <input id="authPassword" type="password" autocomplete="current-password" minlength="6" required>
+        <button class="primary auth-submit" id="authSubmit" type="submit">Entrar</button>
+      </form>
+      <p id="authMessage" class="auth-message" role="status" aria-live="polite"></p>
+      <div class="auth-links">
+        <button type="button" id="authToggle">Criar conta</button>
+        <button type="button" id="authRecover">Esqueci minha senha</button>
+        <button type="button" id="authBack" hidden>Voltar ao login</button>
+      </div>
+    </div>
+  </section>
   <div class="app-shell">
     <div id="appModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
       <div class="modal-box">
@@ -206,6 +226,12 @@
             </div>
           </div>
           <div class="theme-toolbar">
+            <div id="accountTools" class="account-tools" hidden>
+              <span id="accountEmail"></span>
+              <button type="button" class="ghost small" id="accountLogout">Sair</button>
+              <span id="cloudStatus" role="status" aria-live="polite"></span>
+              <button type="button" class="ghost small" id="cloudRetry" hidden>Tentar novamente</button>
+            </div>
             <div class="project-tools" aria-label="Projetos salvos">
               <select id="projetoSelect" title="Trocar projeto" aria-label="Trocar projeto"></select>
               <button class="ghost" id="btnNovoProjeto" type="button" title="Novo projeto" aria-label="Novo projeto">+</button>
@@ -418,6 +444,7 @@
 
 <script src="./assets/vendor/zod-3.25.76.min.js"></script>
 <script src="./assets/js/esquema.js"></script>
-<script src="./assets/js/app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./assets/js/auth.js"></script>
 </body>
 </html>
