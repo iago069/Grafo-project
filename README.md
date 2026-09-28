@@ -21,6 +21,7 @@
   - [Problemas comuns](#problemas-comuns)
 - [Estrutura do projeto](#estrutura-do-projeto)
 - [Tecnologias](#tecnologias)
+- [Licença e direitos autorais](#licença-e-direitos-autorais)
 
 ## Recursos
 
@@ -280,3 +281,9 @@ Também é possível publicar direto do computador com a Vercel CLI: `npx vercel
 - [Zod](https://zod.dev) — validação dos dados.
 - [Express](https://expressjs.com) — servidor local.
 - HTML, CSS e JavaScript puros, sem etapa de build.
+
+## Licença e direitos autorais
+
+Copyright © 2026 iago069. **Todos os direitos reservados.**
+
+O Grafo é software proprietário, protegido pela Lei nº 9.609/1998 (Lei do Software) e pela Lei nº 9.610/1998 (Direitos Autorais). **Não é código aberto**: é proibido copiar, modificar, distribuir, hospedar ou criar obras derivadas sem autorização prévia e por escrito do autor. Veja os termos completos em [LICENSE](LICENSE).
