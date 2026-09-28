@@ -13,7 +13,7 @@
   var LIMITES = {
     projetos: 100,
     nomeProjeto: 60,
-    equipamentos: 500,
+    equipamentos: 35, // por diagrama; o app mostra o contador "n/35"
     conexoes: 2000,
     id: 60,
     nome: 60,
@@ -226,10 +226,16 @@
     if (!Array.isArray(equipamentosBrutos)) { falha("equipamentos", "precisa ser uma lista"); equipamentosBrutos = []; }
     if (!Array.isArray(conexoesBrutas)) { falha("conexoes", "precisa ser uma lista (pode ser vazia: [])"); conexoesBrutas = []; }
 
+    // Importação acima do limite é recusada. Projeto já salvo (reparar) não perde
+    // equipamentos ao abrir: só avisa, e o app bloqueia novas inclusões.
     if (equipamentosBrutos.length > LIMITES.equipamentos) {
-      falha("equipamentos", "máximo de " + LIMITES.equipamentos + " equipamentos (foram encontrados" + equipamentosBrutos.length + ")" +
-        (modo === "reparar" ? " — os excedentes foram descartados" : ""));
-      equipamentosBrutos = equipamentosBrutos.slice(0, LIMITES.equipamentos);
+      if (modo === "reparar") {
+        relatorio.ajustes.push({ onde: "equipamentos", mensagem: "o diagrama tem " + equipamentosBrutos.length + " equipamentos, acima do limite de " +
+          LIMITES.equipamentos + " — nada foi apagado, mas não é possível adicionar mais" });
+      } else {
+        falha("equipamentos", "máximo de " + LIMITES.equipamentos + " equipamentos por diagrama (o arquivo tem " + equipamentosBrutos.length + ")");
+        equipamentosBrutos = equipamentosBrutos.slice(0, LIMITES.equipamentos);
+      }
     }
     if (conexoesBrutas.length > LIMITES.conexoes) {
       falha("conexoes", "máximo de " + LIMITES.conexoes + " cabos (foram encontrados" + conexoesBrutas.length + ")" +
@@ -278,15 +284,17 @@
       if (!ehObjeto(bruto)) { falha(onde, 'precisa ser um objeto { de, para, … }' + (modo === "reparar" ? " — descartado" : "")); return; }
       var c = validarCampos(bruto, CAMPOS_CONEXAO, modo, onde, relatorio);
       if (!c) { if (modo === "reparar") relatorio.ajustes.push({ onde: onde, mensagem: "cabo descartado" }); return; }
-      // Cabo solto: aponta para equipamento que não existe (ou que foi recusado).
+      // Conexão fantasma: aponta para equipamento que não existe (ou que foi
+      // recusado). Uma conexão só existe com as duas pontas no diagrama, então
+      // ela é ignorada e vira aviso — o resto do arquivo é importado normalmente.
       var soltas = [];
       if (!idsValidos[c.de]) soltas.push('origem "' + c.de + '"');
       if (!idsValidos[c.para]) soltas.push('destino "' + c.para + '"');
       if (soltas.length) {
-        falha(onde, soltas.join(" e ") + (soltas.length > 1 ? " não existem" : " não existe") + " entre os equipamentos" + (modo === "reparar" ? " — cabo descartado" : ""));
+        relatorio.ajustes.push({ onde: onde, mensagem: soltas.join(" e ") + (soltas.length > 1 ? " não existem" : " não existe") + " no diagrama — conexão ignorada" });
         return;
       }
-      if (c.de === c.para) { falha(onde, "origem e destino são o mesmo equipamento" + (modo === "reparar" ? " — cabo descartado" : "")); return; }
+      if (c.de === c.para) { relatorio.ajustes.push({ onde: onde, mensagem: "origem e destino são o mesmo equipamento — conexão ignorada" }); return; }
       conexoes.push(c);
     });
 

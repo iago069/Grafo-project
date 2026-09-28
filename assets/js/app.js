@@ -565,6 +565,7 @@
     raioCurva: 10
   };
   var roteamentoCabosFrame = null;
+  var arrastandoEquipamento = false;
 
   // Caminho ortogonal com as quinas arredondadas (curva quadrática em cada canto).
   // O raio encolhe em trechos curtos para a curva não passar do segmento.
@@ -649,7 +650,10 @@
     var limMin = temLimite ? Math.min(limite1, limite2) : -Infinity;
     var limMax = temLimite ? Math.max(limite1, limite2) : Infinity;
     var melhor = null, melhorCusto = Infinity;
-    for (var i = 0; i < 81; i++) {
+    // Arrastando: roteia a cada quadro, então testa menos trilhas (±12 em vez
+    // de ±40). Ao soltar, gerar() refaz tudo com a busca completa.
+    var tentativas = arrastandoEquipamento ? 25 : 81;
+    for (var i = 0; i < tentativas; i++) {
       var v = preferido + Math.ceil(i / 2) * espaco * (i % 2 ? 1 : -1);
       if (v < limMin || v > limMax) continue;
       var pontos = construir(v);
@@ -890,6 +894,34 @@
   // sobreposição. O grupo do equipamento recém-arrastado (fixoId) fica parado.
   // Retorna true se moveu algo (aí as caixas precisam ser redesenhadas).
   var ESPACO_ENTRE_GRUPOS = 24;
+
+  // Para onde empurrar "movel" para sair de cima de "outro": testa as 4 direções
+  // e fica com a que menos sobrepõe os demais grupos; empate vai para a menor
+  // distância. Só olhar o eixo de menor sobreposição deixava um grupo espremido
+  // entre dois vizinhos indo e voltando entre eles.
+  function melhorEmpurrao(movel, outro, grupos) {
+    var e = ESPACO_ENTRE_GRUPOS;
+    var candidatos = [
+      { dx: outro.x2 + e - movel.x1, dy: 0 },
+      { dx: outro.x1 - e - movel.x2, dy: 0 },
+      { dx: 0, dy: outro.y2 + e - movel.y1 },
+      { dx: 0, dy: outro.y1 - e - movel.y2 }
+    ];
+    var melhor = null;
+    candidatos.forEach(function (c) {
+      var area = 0;
+      grupos.forEach(function (g) {
+        if (g === movel || g === outro) return;
+        var ox = Math.min(movel.x2 + c.dx, g.x2) - Math.max(movel.x1 + c.dx, g.x1) + e;
+        var oy = Math.min(movel.y2 + c.dy, g.y2) - Math.max(movel.y1 + c.dy, g.y1) + e;
+        if (ox > 0 && oy > 0) area += ox * oy;
+      });
+      var custo = area * 1000 + Math.abs(c.dx) + Math.abs(c.dy);
+      if (!melhor || custo < melhor.custo) melhor = { dx: c.dx, dy: c.dy, custo: custo };
+    });
+    return melhor;
+  }
+
   function separarGruposSobrepostos(fixoId) {
     var svg = elCanvas.querySelector("svg");
     if (!svg) return false;
@@ -935,13 +967,8 @@
           houveSobreposicao = true;
           // Move quem não está fixo; se nenhum estiver, o segundo.
           var movel = b.fixo && !a.fixo ? a : b, outro = movel === a ? b : a;
-          if (sobreX < sobreY) {
-            var sentidoX = (movel.x1 + movel.x2) >= (outro.x1 + outro.x2) ? 1 : -1;
-            mover(movel, sentidoX * sobreX, 0);
-          } else {
-            var sentidoY = (movel.y1 + movel.y2) >= (outro.y1 + outro.y2) ? 1 : -1;
-            mover(movel, 0, sentidoY * sobreY);
-          }
+          var passo = melhorEmpurrao(movel, outro, grupos);
+          mover(movel, passo.dx, passo.dy);
           moveu = true;
         }
       }
@@ -974,15 +1001,19 @@
         var inicioY = event.clientY;
         var originalX = deslocamento.x;
         var originalY = deslocamento.y;
+        arrastandoEquipamento = true;
+        node.classList.add("arrastando");
         function mover(movimento) {
-          deslocamento.x = originalX + (movimento.clientX - inicioX) * escalaX;
-          deslocamento.y = originalY + (movimento.clientY - inicioY) * escalaY;
+          // Limita já durante o arraste: o nó para na borda da área de desenho
+          // em vez de "pular" de volta ao soltar.
+          deslocamento.x = limitarPosicaoNoCanvas(originalX + (movimento.clientX - inicioX) * escalaX, LIMITE_CANVAS.minX, LIMITE_CANVAS.maxX);
+          deslocamento.y = limitarPosicaoNoCanvas(originalY + (movimento.clientY - inicioY) * escalaY, LIMITE_CANVAS.minY, LIMITE_CANVAS.maxY);
           node.setAttribute("transform", "translate(" + deslocamento.x + "," + deslocamento.y + ")");
           solicitarRoteamentoCabos();
         }
         function soltar() {
-          deslocamento.x = limitarPosicaoNoCanvas(deslocamento.x, LIMITE_CANVAS.minX, LIMITE_CANVAS.maxX);
-          deslocamento.y = limitarPosicaoNoCanvas(deslocamento.y, LIMITE_CANVAS.minY, LIMITE_CANVAS.maxY);
+          arrastandoEquipamento = false;
+          node.classList.remove("arrastando");
           node.removeEventListener("pointermove", mover);
           node.removeEventListener("pointerup", soltar);
           node.removeEventListener("pointercancel", soltar);
@@ -1404,15 +1435,75 @@
     timerZoomSuave = setTimeout(function () { elCanvas.classList.remove("zoom-suave"); }, 300);
   }
 
+  // Zoom proporcional ao giro: roda do mouse dá passos (~12%) com transição
+  // suave; touchpad e pinça (ctrlKey) mandam deltas pequenos e contínuos, que
+  // seguem o dedo sem transição para não "atrasar".
   elCanvas.addEventListener("wheel", function (event) {
     event.preventDefault();
-    suavizarProximoZoom();
+    var delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 400 : 1);
+    var gestoPinca = event.ctrlKey;
+    var passoDeRoda = !gestoPinca && (event.deltaMode !== 0 || Math.abs(delta) >= 50);
+    if (passoDeRoda) suavizarProximoZoom(); else elCanvas.classList.remove("zoom-suave");
+    var fator = Math.exp(-delta * (gestoPinca ? 0.01 : 0.0012));
+    fator = Math.min(1.5, Math.max(1 / 1.5, fator));
     var rect = elCanvas.getBoundingClientRect();
-    definirZoom(canvasView.scale * (event.deltaY < 0 ? 1.1 : 0.9), event.clientX - rect.left, event.clientY - rect.top);
+    definirZoom(canvasView.scale * fator, event.clientX - rect.left, event.clientY - rect.top);
   }, { passive: false });
+
+  // Pinça com dois dedos (tela de toque): zoom no ponto médio + arrasto.
+  var toques = {};
+  var pinca = null;
+  function pontoMedio() {
+    var ids = Object.keys(toques);
+    var a = toques[ids[0]], b = toques[ids[1]];
+    return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, dist: Math.hypot(a.x - b.x, a.y - b.y) };
+  }
+  elCanvas.addEventListener("pointerdown", function (event) {
+    if (event.pointerType !== "touch") return;
+    toques[event.pointerId] = { x: event.clientX, y: event.clientY };
+    if (Object.keys(toques).length === 2) {
+      canvasView.dragging = false; // a pinça assume no lugar do pan de um dedo
+      elCanvas.classList.remove("panning", "zoom-suave");
+      pinca = pontoMedio();
+    }
+  }, true);
+  elCanvas.addEventListener("pointermove", function (event) {
+    if (!toques[event.pointerId]) return;
+    toques[event.pointerId] = { x: event.clientX, y: event.clientY };
+    if (!pinca || Object.keys(toques).length !== 2) return;
+    var atual = pontoMedio();
+    var rect = elCanvas.getBoundingClientRect();
+    canvasView.x += atual.x - pinca.x;
+    canvasView.y += atual.y - pinca.y;
+    if (pinca.dist > 0) definirZoom(canvasView.scale * atual.dist / pinca.dist, atual.x - rect.left, atual.y - rect.top);
+    aplicarCanvasView(); // o arrasto vale mesmo quando o zoom já está no limite
+    pinca = atual;
+  }, true);
+  function fimDoToque(event) {
+    delete toques[event.pointerId];
+    if (Object.keys(toques).length < 2) pinca = null;
+  }
+  elCanvas.addEventListener("pointerup", fimDoToque, true);
+  elCanvas.addEventListener("pointercancel", fimDoToque, true);
+
+  // Área do canvas mudou de tamanho (painel da direita, lista, janela): mantém
+  // o centro do diagrama no centro da área, em vez de ele escapar pela borda.
+  if (window.ResizeObserver) {
+    var tamanhoCanvasAnterior = null;
+    new ResizeObserver(function () {
+      var w = elCanvas.clientWidth, h = elCanvas.clientHeight;
+      if (tamanhoCanvasAnterior && elCanvas.querySelector("svg") && (w !== tamanhoCanvasAnterior.w || h !== tamanhoCanvasAnterior.h)) {
+        canvasView.x += (w - tamanhoCanvasAnterior.w) / 2;
+        canvasView.y += (h - tamanhoCanvasAnterior.h) / 2;
+        aplicarCanvasView();
+      }
+      tamanhoCanvasAnterior = { w: w, h: h };
+    }).observe(elCanvas);
+  }
 
   elCanvas.addEventListener("pointerdown", function (event) {
     if (event.button !== 0) return;
+    if (Object.keys(toques).length >= 2) return; // segundo dedo: é pinça, não pan
     canvasView.dragging = true;
     canvasView.startX = event.clientX;
     canvasView.startY = event.clientY;
@@ -1833,6 +1924,7 @@
     btnCopiar.disabled = true;
     btnBaixar.disabled = true;
     btnBaixarPng.disabled = true;
+    solicitarPrevia();
   }
 
   function atualizarBotoesHistorico() {
@@ -1858,6 +1950,7 @@
     if (!projetos[nome]) return;
     salvarLocal();
     projetoAtual = nome;
+    contagemAnterior = null; // trocar de projeto não é "chegar ao limite"
     estado = clonarDados(projetos[nome]);
     historicoDesfazer = [];
     historicoRefazer = [];
@@ -2034,7 +2127,7 @@
       salvarLocal();
       // Veio de um arquivo: esse arquivo já é um backup do projeto.
       registrarBackup(nome);
-      esconderErro();
+      mostrarAvisosDaImportacao('"' + arquivo.name + '"', resultado);
       avisar("Projeto \"" + nome + "\" importado.");
     };
     leitor.readAsText(arquivo, "UTF-8");
@@ -2297,7 +2390,29 @@
     }, 120);
   }
 
-  function renderTudo() { renderEquipamentos(); renderConexoes(); renderSidebarPanels(); atualizarJsonAvancado(); salvarLocal(); solicitarAtualizacaoDiagrama(); }
+  function renderTudo() { renderEquipamentos(); renderConexoes(); renderSidebarPanels(); atualizarJsonAvancado(); atualizarContadorEquipamentos(); salvarLocal(); solicitarAtualizacaoDiagrama(); }
+
+  // Contador "n/35" na barra do diagrama. Perto do limite fica em alerta; no
+  // limite, os botões de adicionar são bloqueados e aparece um aviso (uma vez).
+  var elContadorEquip = document.getElementById("contadorEquip");
+  var contagemAnterior = null;
+  function atualizarContadorEquipamentos() {
+    var n = estado.equipamentos.length, max = LIMITES.equipamentos;
+    var cheio = n >= max;
+    elContadorEquip.textContent = n + "/" + max;
+    elContadorEquip.classList.toggle("perto", !cheio && n >= max - 5);
+    elContadorEquip.classList.toggle("cheio", cheio);
+    elContadorEquip.title = cheio ? "Limite de " + max + " equipamentos atingido. Exclua algum para adicionar outro."
+      : "Equipamentos no diagrama: " + n + " de " + max;
+    ["btnAddEquip"].forEach(function (id) { var b = document.getElementById(id); if (b) b.disabled = cheio; });
+    var navAdd = document.querySelector('.nav-item[data-nav-panel="navAddEquip"]');
+    if (navAdd) navAdd.classList.toggle("no-limite", cheio);
+    // Aviso só quando a contagem sobe até o limite (não ao abrir um projeto já cheio).
+    if (cheio && contagemAnterior !== null && contagemAnterior < max && n > contagemAnterior) {
+      avisar("Limite de " + max + " equipamentos atingido neste diagrama.");
+    }
+    contagemAnterior = n;
+  }
 
   function atualizarJsonAvancado() {
     elJsonAvancado.value = JSON.stringify(estado, null, 2);
@@ -2812,7 +2927,7 @@
       if (!resultado.ok) { mostrarErrosDeValidacao('"' + arquivo.name + '"', resultado); return; }
       estado = resultado.dados;
       ajustarNaProximaRenderizacao = true;
-      esconderErro();
+      mostrarAvisosDaImportacao('"' + arquivo.name + '"', resultado);
       renderTudo();
       avisar("CSV importado: " + plural(estado.equipamentos.length, "equipamento", "equipamentos") + ", " + plural(estado.conexoes.length, "cabo", "cabos") + ".");
     };
@@ -2833,10 +2948,18 @@
     if (!resultado.ok) { mostrarErrosDeValidacao("o JSON", resultado); return; }
     estado = resultado.dados;
     ajustarNaProximaRenderizacao = true;
-    esconderErro();
+    mostrarAvisosDaImportacao("o JSON", resultado);
     renderTudo();
     avisar("JSON aplicado.");
   });
+
+  // Importação aceita, mas com itens ignorados (ex.: conexão para um equipamento
+  // que não existe): lista cada um num aviso que fica até a pessoa fechar.
+  function mostrarAvisosDaImportacao(origem, resultado) {
+    if (!resultado.ajustes || !resultado.ajustes.length) { esconderErro(); return; }
+    mostrarErro("Importado " + origem + ", com " + plural(resultado.ajustes.length, "item ignorado", "itens ignorados") +
+      ". O restante entrou normalmente.", resultado.ajustes, { aviso: true });
+  }
   document.getElementById("btnAtualizarJson").addEventListener("click", atualizarJsonAvancado);
 
   function esconderErro() { elErro.style.display = "none"; elErro.textContent = ""; elErro.classList.remove("aviso"); }
@@ -3263,6 +3386,7 @@
     if (!vizInstancia) { gerarPendente = true; return; }
     // Erros de uma ação anterior somem ao redesenhar; avisos ficam até a pessoa fechar.
     if (!elErro.classList.contains("aviso")) esconderErro();
+    removerConexoesOrfas();
     try { validarDados(estado); } catch (e) { mostrarErro(e.message); return; }
 
     // Se o estado já está registrado no histórico, o que mudar aqui é só o que
@@ -3283,8 +3407,10 @@
       ajustarCaixasDosGrupos();
       var fixo = equipamentoFixoNaSeparacao;
       equipamentoFixoNaSeparacao = null;
-      if (separarGruposSobrepostos(fixo)) {
-        // Grupos mudaram de lugar: renderiza de novo para as portas acompanharem.
+      // Grupos mudaram de lugar: renderiza de novo para as portas acompanharem.
+      // As portas podem trocar de lado e mudar o tamanho das caixas, então
+      // confere de novo (até 3 rodadas) até nenhuma caixa encostar em outra.
+      for (var rodada = 0; rodada < 3 && separarGruposSobrepostos(fixo); rodada++) {
         renderizarSvg();
         sincronizarPosicoes();
         aplicarPosicoesEquipamentos();
@@ -3319,9 +3445,19 @@
         if (noFocado) noFocado.focus({ preventScroll: true });
       }
       salvarLocal(jaRegistrado);
+      solicitarPrevia();
     } catch (e) {
       mostrarErro("Não foi possível desenhar o diagrama.\nDetalhe: " + e.message);
     }
+  }
+
+  // Uma conexão só existe com os dois equipamentos no diagrama. As exclusões já
+  // levam os cabos junto; isto é a rede de segurança para qualquer outro caminho.
+  function removerConexoesOrfas() {
+    var ids = {};
+    estado.equipamentos.forEach(function (eq) { ids[eq.id] = true; });
+    var validas = estado.conexoes.filter(function (c) { return ids[c.de] && ids[c.para] && c.de !== c.para; });
+    if (validas.length !== estado.conexoes.length) estado.conexoes = validas;
   }
 
   function renderizarSvg() {
@@ -3408,15 +3544,24 @@
 
   // Imagem como data: URL para ir dentro do arquivo exportado: lê o arquivo
   // e, se o navegador bloquear (file://), usa a cópia embutida. "" se nenhum der.
-  async function imagemParaExportacao(origem) {
-    if (!origem) return "";
-    if (/^data:/i.test(origem)) return origem;
-    try {
-      var resposta = await fetch(resolverUrlRelativa(origem), { cache: "force-cache" });
-      if (!resposta.ok && resposta.status !== 0) throw new Error("HTTP " + resposta.status);
-      return await blobParaDataUrl(await resposta.blob());
-    } catch (erroFetch) {}
-    return await iconeEmbutido(origem);
+  // Cache por origem: a prévia do PDF rasteriza várias vezes seguidas.
+  var cacheImagensExportacao = {};
+  function imagemParaExportacao(origem) {
+    if (!origem) return Promise.resolve("");
+    if (/^data:/i.test(origem)) return Promise.resolve(origem);
+    if (!cacheImagensExportacao[origem]) {
+      cacheImagensExportacao[origem] = (async function () {
+        try {
+          var resposta = await fetch(resolverUrlRelativa(origem), { cache: "force-cache" });
+          if (!resposta.ok && resposta.status !== 0) throw new Error("HTTP " + resposta.status);
+          return await blobParaDataUrl(await resposta.blob());
+        } catch (erroFetch) {}
+        return await iconeEmbutido(origem);
+      })();
+      // Falha não fica em cache: a próxima tentativa busca de novo.
+      cacheImagensExportacao[origem].then(function (v) { if (!v) delete cacheImagensExportacao[origem]; });
+    }
+    return cacheImagensExportacao[origem];
   }
 
   async function fonteImagemComoDataUrl(origem, imagemViva) {
@@ -3742,65 +3887,371 @@
     });
   }
 
-  btnBaixarPng.addEventListener("click", async function () {
+  // Canvas grande demais trava ou sai em branco (Safari: ~16 MP). Acima disso a
+  // resolução é reduzida, mantendo o desenho inteiro.
+  var MAX_PIXELS_RASTER = 16e6;
+  var MAX_LADO_RASTER = 12000;
+
+  // Desenha o diagrama num canvas, com as imagens embutidas (PNG e PDF usam isto).
+  // opcoes.moldura: cabeçalho + legenda. opcoes.pixelsPorUnidade(larguraVb, alturaVb):
+  // quantos pixels por unidade do viewBox (pt do Graphviz); padrão 2.
+  async function rasterizarDiagrama(opcoes) {
+    opcoes = opcoes || {};
     var svgEl = elCanvas.querySelector("svg");
-    if (!svgEl) {
-      mostrarErro("Gere o diagrama antes de baixar o PNG.");
-      return;
-    }
-
-    var carregado = null;
-    var textoOriginalBotao = btnBaixarPng.textContent;
-    btnBaixarPng.disabled = true;
-    btnBaixarPng.textContent = "Gerando PNG...";
-
+    if (!svgEl) throw new Error("Gere o diagrama antes de exportar.");
+    var preparado = await prepararSvgSeguroParaPng(svgEl);
+    if (opcoes.moldura !== false) adicionarMolduraDeExportacao(preparado.svg);
+    var svgText = new XMLSerializer().serializeToString(preparado.svg);
+    var carregado = await carregarSvgSerializadoComoImagem(svgText);
     try {
-      var preparado = await prepararSvgSeguroParaPng(svgEl);
-      adicionarMolduraDeExportacao(preparado.svg);
-      var svgText = new XMLSerializer().serializeToString(preparado.svg);
-      carregado = await carregarSvgSerializadoComoImagem(svgText);
-
-      // Tamanho da cópia emoldurada, não do SVG da tela.
+      // Tamanho da cópia (emoldurada ou não), não do SVG da tela.
       var vb = preparado.svg.viewBox && preparado.svg.viewBox.baseVal;
       var largura = vb && vb.width ? vb.width : (parseFloat(svgEl.getAttribute("width")) || carregado.imagem.naturalWidth || carregado.imagem.width);
       var altura = vb && vb.height ? vb.height : (parseFloat(svgEl.getAttribute("height")) || carregado.imagem.naturalHeight || carregado.imagem.height);
-
       if (!largura || !altura) throw new Error("Não foi possível determinar o tamanho do diagrama.");
 
-      var escala = 2;
-      var canvasPng = document.createElement("canvas");
-      canvasPng.width = Math.max(1, Math.ceil(largura * escala));
-      canvasPng.height = Math.max(1, Math.ceil(altura * escala));
+      var escala = opcoes.pixelsPorUnidade ? opcoes.pixelsPorUnidade(largura, altura) : 2;
+      escala = Math.min(escala, Math.sqrt(MAX_PIXELS_RASTER / (largura * altura)), MAX_LADO_RASTER / Math.max(largura, altura));
+      escala = Math.max(escala, 0.05);
 
-      var contexto = canvasPng.getContext("2d");
+      var canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.ceil(largura * escala));
+      canvas.height = Math.max(1, Math.ceil(altura * escala));
+      var contexto = canvas.getContext("2d");
       if (!contexto) throw new Error("Canvas 2D não está disponível neste navegador.");
+      contexto.fillStyle = opcoes.fundo || getComputedStyle(elCanvas).backgroundColor || "#ffffff";
+      contexto.fillRect(0, 0, canvas.width, canvas.height);
+      contexto.imageSmoothingQuality = "high";
+      contexto.drawImage(carregado.imagem, 0, 0, canvas.width, canvas.height);
+      return { canvas: canvas, larguraVb: largura, alturaVb: altura, imagensIgnoradas: preparado.imagensIgnoradas };
+    } finally {
+      URL.revokeObjectURL(carregado.url);
+    }
+  }
 
-      contexto.save();
-      contexto.setTransform(1, 0, 0, 1, 0, 0);
-      contexto.fillStyle = getComputedStyle(elCanvas).backgroundColor || "#ffffff";
-      contexto.fillRect(0, 0, canvasPng.width, canvasPng.height);
-      contexto.restore();
+  function avisarImagensIgnoradas(formato, quantidade) {
+    mostrarErro(formato + " baixado, mas " + quantidade + " imagem(ns) não puderam ser incluídas.\n" +
+      "Se forem imagens novas em assets/images, rode \"npm run icones\"; se vierem de outro site, envie o arquivo pelo campo Imagem do equipamento.", null, { aviso: true });
+  }
 
-      contexto.drawImage(carregado.imagem, 0, 0, canvasPng.width, canvasPng.height);
-
-      var pngBlob = await canvasParaPngBlob(canvasPng);
-      baixarBlob(pngBlob, nomeArquivoExportacao("png"));
-
-      if (preparado.imagensIgnoradas > 0) {
-        mostrarErro("PNG baixado, mas " + preparado.imagensIgnoradas + " imagem(ns) não puderam ser incluídas.\n" +
-          "Se forem imagens novas em assets/images, rode \"npm run icones\"; se vierem de outro site, envie o arquivo pelo campo Imagem do equipamento.");
-      } else {
-        esconderErro();
-        avisar("PNG baixado.");
-      }
+  btnBaixarPng.addEventListener("click", async function () {
+    if (!elCanvas.querySelector("svg")) {
+      mostrarErro("Gere o diagrama antes de baixar o PNG.");
+      return;
+    }
+    var textoOriginalBotao = btnBaixarPng.textContent;
+    btnBaixarPng.disabled = true;
+    btnBaixarPng.textContent = "Gerando PNG...";
+    try {
+      var r = await rasterizarDiagrama({ moldura: true });
+      baixarBlob(await canvasParaPngBlob(r.canvas), nomeArquivoExportacao("png"));
+      if (r.imagensIgnoradas > 0) avisarImagensIgnoradas("PNG", r.imagensIgnoradas);
+      else { esconderErro(); avisar("PNG baixado."); }
     } catch (e) {
       mostrarErro("Não foi possível exportar o diagrama como PNG.\nDetalhe: " + e.message);
     } finally {
-      if (carregado && carregado.url) URL.revokeObjectURL(carregado.url);
       btnBaixarPng.disabled = false;
       btnBaixarPng.textContent = textoOriginalBotao;
     }
   });
+
+  // ---- Página, área de desenho e PDF ------------------------------------------
+  // Barra lateral direita. A configuração vale para a conta neste navegador.
+  var FORMATOS_PAGINA = { A0: [841, 1189], A1: [594, 841], A2: [420, 594], A3: [297, 420], A4: [210, 297], A5: [148, 210] };
+  var ESCALAS_PAGINA = ["ajustar", "25", "50", "75", "100", "150", "200"];
+  var PAGINA_PADRAO = { formato: "A4", orientacao: "paisagem", escala: "ajustar", margem: 10, moldura: true,
+    areaLargura: LIMITE_CANVAS.maxX - LIMITE_CANVAS.minX, areaAltura: LIMITE_CANVAS.maxY - LIMITE_CANVAS.minY };
+  var MM_POR_PT = 25.4 / 72;   // o viewBox do Graphviz é em pt
+  var DPI_PDF = 200;           // resolução alvo das imagens no PDF
+  var MAX_PAGINAS_PDF = 60;
+  var elPainelPagina = document.getElementById("painelPagina");
+  var btnPaginaPdf = document.getElementById("btnPaginaPdf");
+  var btnExportarPdf = document.getElementById("btnExportarPdf");
+  var elPrevia = document.getElementById("previaPagina");
+  var elPreviaResumo = document.getElementById("previaResumo");
+  var campoPagina = {
+    areaLargura: document.getElementById("areaLargura"),
+    areaAltura: document.getElementById("areaAltura"),
+    formato: document.getElementById("paginaFormato"),
+    escala: document.getElementById("paginaEscala"),
+    margem: document.getElementById("paginaMargem"),
+    moldura: document.getElementById("paginaMoldura")
+  };
+
+  function limitarNumero(valor, min, max, padrao) {
+    var n = Math.round(Number(valor));
+    return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : padrao;
+  }
+
+  function normalizarConfigPagina(bruto) {
+    var c = Object.assign({}, PAGINA_PADRAO, bruto && typeof bruto === "object" ? bruto : {});
+    if (!FORMATOS_PAGINA[c.formato]) c.formato = PAGINA_PADRAO.formato;
+    if (c.orientacao !== "retrato" && c.orientacao !== "paisagem") c.orientacao = PAGINA_PADRAO.orientacao;
+    if (ESCALAS_PAGINA.indexOf(String(c.escala)) < 0) c.escala = PAGINA_PADRAO.escala;
+    c.escala = String(c.escala);
+    c.margem = limitarNumero(c.margem, 0, 40, PAGINA_PADRAO.margem);
+    c.moldura = c.moldura !== false;
+    c.areaLargura = limitarNumero(c.areaLargura, 1000, 20000, PAGINA_PADRAO.areaLargura);
+    c.areaAltura = limitarNumero(c.areaAltura, 1000, 20000, PAGINA_PADRAO.areaAltura);
+    return c;
+  }
+
+  var configPagina = (function () {
+    try { return normalizarConfigPagina(JSON.parse(localStorage.getItem(window.GrafoAuth.storageKey("grafo-pagina")) || "null")); }
+    catch (e) { return normalizarConfigPagina(null); }
+  })();
+
+  function salvarConfigPagina() {
+    try { localStorage.setItem(window.GrafoAuth.storageKey("grafo-pagina"), JSON.stringify(configPagina)); } catch (e) {}
+  }
+
+  // Área de desenho centrada na origem: limita o deslocamento dos equipamentos.
+  function aplicarAreaDeDesenho() {
+    LIMITE_CANVAS.minX = -configPagina.areaLargura / 2;
+    LIMITE_CANVAS.maxX = configPagina.areaLargura / 2;
+    LIMITE_CANVAS.minY = -configPagina.areaAltura / 2;
+    LIMITE_CANVAS.maxY = configPagina.areaAltura / 2;
+  }
+
+  function preencherFormPagina() {
+    campoPagina.areaLargura.value = configPagina.areaLargura;
+    campoPagina.areaAltura.value = configPagina.areaAltura;
+    campoPagina.formato.value = configPagina.formato;
+    campoPagina.escala.value = configPagina.escala;
+    campoPagina.margem.value = configPagina.margem;
+    campoPagina.moldura.checked = configPagina.moldura;
+    document.querySelectorAll('input[name="paginaOrientacao"]').forEach(function (r) { r.checked = r.value === configPagina.orientacao; });
+  }
+
+  function tamanhoPaginaMm() {
+    var f = FORMATOS_PAGINA[configPagina.formato];
+    return configPagina.orientacao === "retrato" ? { w: f[0], h: f[1] } : { w: f[1], h: f[0] };
+  }
+
+  // Como o desenho (larguraVb × alturaVb, em pt) cabe no papel. "Ajustar" põe
+  // tudo numa página; escala fixa divide em várias páginas, sem cortar nada.
+  function planoDeImpressao(larguraVb, alturaVb) {
+    var pg = tamanhoPaginaMm();
+    var m = Math.min(configPagina.margem, pg.w / 4, pg.h / 4);
+    var areaW = pg.w - 2 * m, areaH = pg.h - 2 * m;
+    var baseW = larguraVb * MM_POR_PT, baseH = alturaVb * MM_POR_PT;
+    var ajustar = configPagina.escala === "ajustar";
+    var escala = ajustar ? Math.min(areaW / baseW, areaH / baseH) : Number(configPagina.escala) / 100;
+    var larguraMm = baseW * escala, alturaMm = baseH * escala;
+    var colunas = ajustar ? 1 : Math.max(1, Math.ceil(larguraMm / areaW - 1e-6));
+    var linhas = ajustar ? 1 : Math.max(1, Math.ceil(alturaMm / areaH - 1e-6));
+    return { pagina: pg, margem: m, areaW: areaW, areaH: areaH, escala: escala, larguraMm: larguraMm, alturaMm: alturaMm,
+      colunas: colunas, linhas: linhas, total: colunas * linhas };
+  }
+
+  // Recorta o desenho rasterizado em páginas: [{ canvas, x, y, w, h }] em mm na folha.
+  function paginasDoPlano(canvas, plano) {
+    var paginas = [];
+    var pxPorMm = canvas.width / plano.larguraMm;
+    for (var lin = 0; lin < plano.linhas; lin++) {
+      for (var col = 0; col < plano.colunas; col++) {
+        var xMm = col * plano.areaW, yMm = lin * plano.areaH;
+        var wMm = Math.min(plano.areaW, plano.larguraMm - xMm), hMm = Math.min(plano.areaH, plano.alturaMm - yMm);
+        var pedaco = canvas;
+        if (plano.total > 1) {
+          pedaco = document.createElement("canvas");
+          pedaco.width = Math.max(1, Math.round(wMm * pxPorMm));
+          pedaco.height = Math.max(1, Math.round(hMm * pxPorMm));
+          pedaco.getContext("2d").drawImage(canvas, Math.round(xMm * pxPorMm), Math.round(yMm * pxPorMm), pedaco.width, pedaco.height, 0, 0, pedaco.width, pedaco.height);
+        }
+        // Uma página só: centraliza na área útil.
+        var x = plano.margem + (plano.total === 1 ? (plano.areaW - wMm) / 2 : 0);
+        var y = plano.margem + (plano.total === 1 ? (plano.areaH - hMm) / 2 : 0);
+        paginas.push({ canvas: pedaco, x: x, y: y, w: wMm, h: hMm });
+      }
+    }
+    return paginas;
+  }
+
+  function descreverPlano(plano) {
+    var pg = plano.pagina;
+    var partes = [configPagina.formato + " " + configPagina.orientacao + " · " + Math.round(pg.w) + " × " + Math.round(pg.h) + " mm",
+      "escala " + Math.round(plano.escala * 100) + "%", plural(plano.total, "página", "páginas")];
+    return partes.join(" · ");
+  }
+
+  // ---- Prévia -----------------------------------------------------------------
+  var LARGURA_PREVIA = 236;  // px da miniatura de uma página
+  var timerPrevia = null;
+  var geracaoPrevia = 0;
+
+  function painelPaginaAberto() { return !elPainelPagina.hidden; }
+
+  function solicitarPrevia() {
+    // Pode ser chamada por gerar() antes deste trecho inicializar.
+    if (!elPainelPagina || !painelPaginaAberto()) return;
+    clearTimeout(timerPrevia);
+    timerPrevia = setTimeout(atualizarPrevia, 220);
+  }
+
+  async function atualizarPrevia() {
+    var minha = ++geracaoPrevia;
+    var temDiagrama = !!elCanvas.querySelector("svg");
+    btnExportarPdf.disabled = !temDiagrama;
+    if (!temDiagrama) {
+      elPrevia.innerHTML = '<div class="previa-vazia">Adicione equipamentos para ver a prévia.</div>';
+      elPreviaResumo.textContent = "";
+      return;
+    }
+    elPrevia.classList.add("carregando");
+    try {
+      var pg = tamanhoPaginaMm();
+      var escalaMiniatura = LARGURA_PREVIA / Math.max(pg.w, pg.h * 0.8); // px por mm na miniatura
+      var plano = null;
+      var r = await rasterizarDiagrama({ moldura: configPagina.moldura, fundo: "#ffffff", pixelsPorUnidade: function (w, h) {
+        plano = planoDeImpressao(w, h);
+        return (plano.larguraMm * escalaMiniatura / w) * (window.devicePixelRatio || 1);
+      } });
+      if (minha !== geracaoPrevia) return; // já há uma prévia mais nova
+      var paginas = paginasDoPlano(r.canvas, plano);
+      // Várias páginas: grade com até 3 folhas por linha, na ordem de montagem.
+      var colunasGrade = paginas.length > 1 ? Math.min(3, Math.max(2, plano.colunas)) : 1;
+      var MOSTRAR = colunasGrade * 3;
+      elPrevia.innerHTML = "";
+      elPrevia.classList.toggle("varias", paginas.length > 1);
+      paginas.slice(0, MOSTRAR).forEach(function (p, i) {
+        var folha = document.createElement("canvas");
+        var dpr = window.devicePixelRatio || 1;
+        var escalaFolha = escalaMiniatura / colunasGrade * (colunasGrade > 1 ? 0.9 : 1);
+        folha.width = Math.round(pg.w * escalaFolha * dpr);
+        folha.height = Math.round(pg.h * escalaFolha * dpr);
+        folha.style.width = Math.round(pg.w * escalaFolha) + "px";
+        folha.style.height = Math.round(pg.h * escalaFolha) + "px";
+        var ctx = folha.getContext("2d");
+        var k = escalaFolha * dpr;
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, folha.width, folha.height);
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(p.canvas, p.x * k, p.y * k, p.w * k, p.h * k);
+        // Margem tracejada: mostra a área útil da folha.
+        ctx.setLineDash([3 * dpr, 3 * dpr]);
+        ctx.strokeStyle = "rgba(20, 44, 60, 0.25)";
+        ctx.lineWidth = dpr;
+        ctx.strokeRect(plano.margem * k, plano.margem * k, plano.areaW * k, plano.areaH * k);
+        folha.className = "previa-folha";
+        folha.setAttribute("role", "img");
+        folha.setAttribute("aria-label", "Página " + (i + 1) + " de " + paginas.length);
+        elPrevia.appendChild(folha);
+      });
+      if (paginas.length > MOSTRAR) {
+        var mais = document.createElement("div");
+        mais.className = "previa-mais";
+        mais.textContent = "+ " + (paginas.length - MOSTRAR) + " página(s)";
+        elPrevia.appendChild(mais);
+      }
+      var resumo = descreverPlano(plano);
+      if (plano.total > MAX_PAGINAS_PDF) resumo += " — acima do máximo de " + MAX_PAGINAS_PDF + "; use uma escala menor.";
+      else if (configPagina.escala === "ajustar" && plano.escala < 0.3) resumo += " — o texto pode ficar pequeno; considere um formato maior.";
+      elPreviaResumo.textContent = resumo;
+      btnExportarPdf.disabled = plano.total > MAX_PAGINAS_PDF;
+    } catch (e) {
+      if (minha !== geracaoPrevia) return;
+      elPrevia.innerHTML = '<div class="previa-vazia">Não foi possível gerar a prévia.</div>';
+      elPreviaResumo.textContent = e.message;
+    } finally {
+      if (minha === geracaoPrevia) elPrevia.classList.remove("carregando");
+    }
+  }
+
+  // ---- PDF --------------------------------------------------------------------
+  var promessaJsPdf = null;
+  function carregarJsPdf() {
+    if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
+    if (!promessaJsPdf) {
+      promessaJsPdf = new Promise(function (resolver, rejeitar) {
+        var script = document.createElement("script");
+        script.src = "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js";
+        script.onload = function () { window.jspdf && window.jspdf.jsPDF ? resolver(window.jspdf.jsPDF) : rejeitar(new Error("jsPDF indisponível.")); };
+        script.onerror = function () { promessaJsPdf = null; rejeitar(new Error("Não foi possível carregar o gerador de PDF. Verifique a conexão.")); };
+        document.head.appendChild(script);
+      });
+    }
+    return promessaJsPdf;
+  }
+
+  async function exportarPdf() {
+    if (!elCanvas.querySelector("svg")) { mostrarErro("Gere o diagrama antes de exportar o PDF."); return; }
+    var textoOriginal = btnExportarPdf.textContent;
+    btnExportarPdf.disabled = true;
+    btnExportarPdf.textContent = "Gerando PDF...";
+    try {
+      var JsPdf = await carregarJsPdf();
+      var plano = null;
+      // Resolução pelo tamanho impresso (DPI_PDF), limitada pelo máximo seguro do canvas.
+      var r = await rasterizarDiagrama({ moldura: configPagina.moldura, fundo: "#ffffff", pixelsPorUnidade: function (w, h) {
+        plano = planoDeImpressao(w, h);
+        return (plano.larguraMm / 25.4 * DPI_PDF) / w;
+      } });
+      if (plano.total > MAX_PAGINAS_PDF) throw new Error("O PDF teria " + plano.total + " páginas (máximo " + MAX_PAGINAS_PDF + "). Use uma escala menor ou um formato maior.");
+      var paginas = paginasDoPlano(r.canvas, plano);
+      var doc = new JsPdf({ orientation: configPagina.orientacao === "retrato" ? "portrait" : "landscape", unit: "mm", format: configPagina.formato.toLowerCase(), compress: true });
+      doc.setProperties({ title: projetoAtual, subject: "Topologia de rede", creator: "Grafo" });
+      paginas.forEach(function (p, i) {
+        if (i > 0) doc.addPage();
+        doc.addImage(p.canvas, "PNG", p.x, p.y, p.w, p.h, undefined, "FAST");
+        if (paginas.length > 1) {
+          doc.setFontSize(7);
+          doc.setTextColor(120);
+          doc.text("Página " + (i + 1) + " de " + paginas.length + " · linha " + (Math.floor(i / plano.colunas) + 1) + ", coluna " + (i % plano.colunas + 1),
+            plano.pagina.w - plano.margem, plano.pagina.h - Math.max(2, plano.margem / 2), { align: "right" });
+        }
+      });
+      var nome = nomeArquivoExportacao("pdf");
+      baixarBlob(doc.output("blob"), nome);
+      if (r.imagensIgnoradas > 0) avisarImagensIgnoradas("PDF", r.imagensIgnoradas);
+      else { esconderErro(); avisar("PDF baixado: " + nome); }
+    } catch (e) {
+      mostrarErro("Não foi possível exportar o PDF.\nDetalhe: " + e.message);
+    } finally {
+      btnExportarPdf.textContent = textoOriginal;
+      btnExportarPdf.disabled = !elCanvas.querySelector("svg");
+    }
+  }
+
+  function abrirPainelPagina(abrir) {
+    elPainelPagina.hidden = !abrir;
+    btnPaginaPdf.setAttribute("aria-expanded", abrir ? "true" : "false");
+    btnPaginaPdf.classList.toggle("active", abrir);
+    document.body.classList.toggle("com-painel-pagina", abrir);
+    try { localStorage.setItem("grafo-painel-pagina", abrir ? "1" : "0"); } catch (e) {}
+    if (abrir) atualizarPrevia();
+  }
+
+  btnPaginaPdf.addEventListener("click", function () { abrirPainelPagina(!painelPaginaAberto()); });
+  document.getElementById("btnFecharPagina").addEventListener("click", function () { abrirPainelPagina(false); });
+  btnExportarPdf.addEventListener("click", exportarPdf);
+
+  var timerAreaDesenho = null;
+  document.getElementById("formPagina").addEventListener("input", function (event) {
+    var alvo = event.target;
+    var antes = { w: configPagina.areaLargura, h: configPagina.areaAltura };
+    var orientacao = document.querySelector('input[name="paginaOrientacao"]:checked');
+    // Campos numéricos: só aplica valor completo; o blur/change normaliza o que ficou fora da faixa.
+    configPagina = normalizarConfigPagina({
+      formato: campoPagina.formato.value, orientacao: orientacao ? orientacao.value : configPagina.orientacao,
+      escala: campoPagina.escala.value, margem: campoPagina.margem.value === "" ? configPagina.margem : campoPagina.margem.value,
+      moldura: campoPagina.moldura.checked,
+      areaLargura: campoPagina.areaLargura.value === "" ? configPagina.areaLargura : campoPagina.areaLargura.value,
+      areaAltura: campoPagina.areaAltura.value === "" ? configPagina.areaAltura : campoPagina.areaAltura.value
+    });
+    salvarConfigPagina();
+    if (antes.w !== configPagina.areaLargura || antes.h !== configPagina.areaAltura) {
+      aplicarAreaDeDesenho();
+      // Área menor puxa para dentro quem ficou fora; redesenha quando parar de digitar.
+      clearTimeout(timerAreaDesenho);
+      timerAreaDesenho = setTimeout(function () { if (estado.equipamentos.length) gerar(); }, 500);
+    }
+    if (alvo !== campoPagina.areaLargura && alvo !== campoPagina.areaAltura) solicitarPrevia();
+  });
+  document.getElementById("formPagina").addEventListener("change", preencherFormPagina);
+
+  aplicarAreaDeDesenho();
+  preencherFormPagina();
 
   (async function initDownloads() {
     try {
@@ -3820,6 +4271,7 @@
   renderProjetos();
   renderTudo();
   if (estado.equipamentos.length) gerar(); else limparDiagrama();
+  try { if (localStorage.getItem("grafo-painel-pagina") === "1") abrirPainelPagina(true); } catch (e) {}
   if (ajustesAoCarregar.length) {
     mostrarErro("Alguns dados salvos neste navegador estavam inválidos e foram corrigidos ao carregar (" +
       plural(ajustesAoCarregar.length, "ajuste", "ajustes") + "):", ajustesAoCarregar, { aviso: true });

@@ -50,11 +50,12 @@
 - **Busca** por nome, IP ou modelo, com destaque no diagrama.
 - **Rastrear caminho**: escolha dois equipamentos e o menor caminho de cabos entre eles é destacado.
 - **Organizar** refaz o layout respeitando os grupos, na direção escolhida (esquerda → direita ou cima → baixo).
-- Zoom animado (botões, roda do mouse) e arrastar para mover a área.
+- Zoom proporcional na roda do mouse e no touchpad, pinça com dois dedos na tela de toque, e arrastar para mover a área. O diagrama continua centralizado quando os painéis abrem ou fecham.
 
 **Projetos e interface**
 - Vários projetos por conta, com backup em JSON e importação de CSV.
-- Exportação em **PNG** e **SVG** com cabeçalho (projeto, data, totais) e legenda.
+- Até **35 equipamentos por diagrama**, com contador visível (`n/35`) e aviso ao atingir o limite.
+- Exportação em **PDF** (A0 a A5, retrato ou paisagem, escala ajustável, com prévia), **PNG** e **SVG**, com cabeçalho (projeto, data, totais) e legenda.
 - Temas claros, escuros e de alto contraste; barra lateral recolhível.
 - Avisos rápidos no canto da tela ao exportar, importar ou copiar.
 - Respeita a opção "reduzir movimento" do sistema.
@@ -115,7 +116,9 @@ Formato:
 
 Se algo estiver errado, **nada é alterado** e o app lista cada problema com o item e o campo.
 
-Limites: 500 equipamentos, 2000 cabos e 100 projetos.
+**Conexões para equipamentos que não existem** (ex.: um cabo de `EQ-100` para `EQ-999`, sem `EQ-999` no arquivo) **são ignoradas** e aparecem num aviso; o restante do arquivo é importado normalmente. O mesmo vale para cabos com origem e destino iguais. Equipamentos sem nenhuma conexão são permitidos.
+
+Limites: **35 equipamentos por diagrama**, 2000 cabos e 100 projetos. Um arquivo com mais de 35 equipamentos é recusado.
 
 ### CSV
 
@@ -137,6 +140,21 @@ Separador `;`, `,` ou tab. O arquivo pode estar em UTF-8 ou no formato padrão d
 ### Imagem do diagrama
 
 **Baixar PNG** e **Baixar SVG** (acima do diagrama) ou **Exportar diagrama** na barra lateral. O arquivo sai com cabeçalho (projeto, data, totais) e legenda.
+
+### PDF
+
+O botão **PDF…** (acima do diagrama) abre a barra lateral direita **Página e PDF**:
+
+| Opção | O que faz |
+|---|---|
+| Área de desenho (largura × altura) | Limite até onde os equipamentos podem ser arrastados (1000 a 20000 px) |
+| Formato | A0, A1, A2, A3, A4 ou A5 |
+| Orientação | Retrato ou paisagem |
+| Escala | **Ajustar à página** (tudo numa folha) ou 25% a 200% — com escala fixa, o desenho é dividido em várias páginas, sem cortar nada |
+| Margem | 0 a 40 mm |
+| Cabeçalho e legenda | Inclui ou não o título, a data, os totais e a legenda |
+
+A **prévia** mostra as folhas como vão sair (a linha tracejada é a margem) e avisa quando o texto vai ficar pequeno demais para o formato escolhido. **Baixar PDF** gera o arquivo com equipamentos, ícones, nomes e cabos em ~200 DPI.
 
 ## Onde ficam os dados
 
