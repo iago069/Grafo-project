@@ -1,4 +1,4 @@
-/*! Grafo — Copyright (c) 2026 iago069. Todos os direitos reservados. Proibido copiar, modificar ou distribuir sem autorização. */
+/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Todos os direitos reservados. Proibido copiar, modificar ou distribuir sem autorização. */
 (function () {
   "use strict";
 
@@ -240,6 +240,7 @@
   renderizarTiposSugeridos();
   carregarTiposDeEquipamento();
 
+  // ==== 01-estado-e-vista.js: estado do editor, elementos da página, zoom/arraste da vista e viewBox (parte de assets/js/app.js; npm run montar) ====
   var contadorId = 1;
   function novoId() { return "eq" + (contadorId++) + "_" + Math.random().toString(36).slice(2, 6); }
 
@@ -458,6 +459,7 @@
     return encontrado;
   }
 
+  // ==== 02-posicoes-e-portas.js: posições absolutas dos equipamentos e lado das portas (parte de assets/js/app.js; npm run montar) ====
   // ---- Posições absolutas ---------------------------------------------------
   // eq.posicao guarda o centro do equipamento nas coordenadas do grupo g.graph,
   // que não dependem do layout do Graphviz. O transform de cada nó
@@ -516,7 +518,8 @@
     var dx = destino.posicao.x - origem.posicao.x;
     var dy = destino.posicao.y - origem.posicao.y;
     if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return padrao;
-    var horizontal = direcao === "TB"
+    // Na grade não há eixo principal: vale o lado para onde o outro está mais longe.
+    var horizontal = direcao === "GRADE" ? Math.abs(dx) >= Math.abs(dy) : direcao === "TB"
       ? Math.abs(dy) < DISTANCIA_MINIMA_NO_EIXO && Math.abs(dx) > Math.abs(dy)
       : Math.abs(dx) >= DISTANCIA_MINIMA_NO_EIXO || Math.abs(dx) >= Math.abs(dy);
     if (horizontal) return dx > 0 ? "direita" : "esquerda";
@@ -558,6 +561,7 @@
     return pontos;
   }
 
+  // ==== 03-cabos-grupos-e-arraste.js: rota dos cabos, caixas dos grupos e arrastar equipamentos/cabos (parte de assets/js/app.js; npm run montar) ====
   // ---- Cabos ----------------------------------------------------------------
   var CONFIG_ROTEAMENTO_CABOS = {
     espaco: 12,     // distância mínima entre trilhas paralelas
@@ -1114,6 +1118,7 @@
     });
   }
 
+  // ==== 04-busca-caminho-e-limpar.js: busca, rastrear caminho e limpar diagrama (parte de assets/js/app.js; npm run montar) ====
   // Busca por nome, IP ou modelo: destaca quem bate, apaga o resto.
   // Reaplicada a cada renderização, porque o SVG é recriado.
   var elBusca = document.getElementById("buscaEquip");
@@ -1390,6 +1395,7 @@
     if (event.key === "Escape") { elBusca.value = ""; busca.atual = -1; aplicarBusca(); }
   });
 
+  // ==== 05-zoom-modais-e-editor.js: zoom, toque, barra lateral, modais e editor de equipamento/cabo (parte de assets/js/app.js; npm run montar) ====
   // Duplo clique (ou Enter com o cabo focado) abre o editor do cabo.
   function ativarEdicaoDosCabos() {
     var svg = elCanvas.querySelector("svg");
@@ -1534,12 +1540,23 @@
   document.getElementById("btnZoomOut").addEventListener("click", function () { suavizarProximoZoom(); definirZoom(canvasView.scale - 0.1); });
   document.getElementById("btnZoomReset").addEventListener("click", function () { suavizarProximoZoom(); ajustarATela(); });
 
+  // No celular a barra lateral vira um menu no topo: começa recolhida (só a
+  // marca e o botão ☰), para o diagrama aparecer logo na primeira tela.
+  var telaCelular = window.matchMedia("(max-width: 700px)");
+  function definirSidebarRecolhida(recolhida) {
+    elSidebar.classList.toggle("collapsed", recolhida);
+    btnSidebarCollapse.textContent = telaCelular.matches ? (recolhida ? "☰" : "×") : (recolhida ? "›" : "‹");
+    var rotulo = telaCelular.matches ? (recolhida ? "Abrir menu" : "Fechar menu") : (recolhida ? "Expandir barra lateral" : "Recolher barra lateral");
+    btnSidebarCollapse.setAttribute("aria-label", rotulo);
+    btnSidebarCollapse.setAttribute("aria-expanded", recolhida ? "false" : "true");
+    btnSidebarCollapse.title = rotulo;
+  }
   btnSidebarCollapse.addEventListener("click", function () {
-    var recolhida = elSidebar.classList.toggle("collapsed");
-    btnSidebarCollapse.textContent = recolhida ? "›" : "‹";
-    btnSidebarCollapse.setAttribute("aria-label", recolhida ? "Expandir barra lateral" : "Recolher barra lateral");
-    btnSidebarCollapse.title = recolhida ? "Expandir barra lateral" : "Recolher barra lateral";
+    definirSidebarRecolhida(!elSidebar.classList.contains("collapsed"));
   });
+  if (telaCelular.matches) definirSidebarRecolhida(true);
+  var ouvirTela = function () { definirSidebarRecolhida(elSidebar.classList.contains("collapsed")); };
+  if (telaCelular.addEventListener) telaCelular.addEventListener("change", ouvirTela);
 
   btnModoAvancado.addEventListener("click", function () {
     var fechado = elPainelDados.classList.toggle("painel-dados-oculto");
@@ -1779,6 +1796,7 @@
     if (event.key === "Escape") { event.preventDefault(); fecharEditor(); }
   });
 
+  // ==== 06-projetos-historico-e-backup.js: projetos, desfazer/refazer, exportar/importar e lembrete de backup (parte de assets/js/app.js; npm run montar) ====
   function clonarDados(dados) { return JSON.parse(JSON.stringify(dados)); }
   function projetoVazio() { return { equipamentos: [], conexoes: [] }; }
 
@@ -1856,6 +1874,8 @@
       }
     }
     window.GrafoAuth.scheduleSave(projetos, projetoAtual);
+    // Avisa outros módulos (compartilhar.js) que o projeto pode ter mudado.
+    document.dispatchEvent(new CustomEvent("grafo:alterado"));
   }
   // Projetos salvos antes da correção dos nomes das imagens (MIROTIK/RTIFICADOR).
   function migrarImagensAntigas(eq) {
@@ -2028,6 +2048,60 @@
 
   document.getElementById("btnExportarProjeto").addEventListener("click", exportarProjeto);
 
+  // Cópia de todos os projetos da conta num arquivo (LGPD: portabilidade).
+  // "Importar projeto" reconhece o formato e traz todos de volta.
+  var FORMATO_BACKUP = "grafo-backup";
+  function exportarTodosProjetos() {
+    salvarLocal();
+    var hoje = new Date();
+    var data = hoje.getFullYear() + "-" + String(hoje.getMonth() + 1).padStart(2, "0") + "-" + String(hoje.getDate()).padStart(2, "0");
+    var conteudo = JSON.stringify({ formato: FORMATO_BACKUP, versao: 1, exportadoEm: hoje.toISOString(), projetoAtual: projetoAtual, projetos: projetos }, null, 2);
+    var nome = "grafo-todos-os-projetos-" + data + ".json";
+    baixarBlob(new Blob([conteudo], { type: "application/json" }), nome);
+    Object.keys(projetos).forEach(registrarBackup);
+    avisar(plural(Object.keys(projetos).length, "projeto exportado", "projetos exportados") + ": " + nome);
+  }
+  document.getElementById("btnExportarTodos").addEventListener("click", exportarTodosProjetos);
+
+  // Backup completo: valida todos antes de importar qualquer um.
+  function importarBackupCompleto(bruto, nomeArquivo) {
+    var origem = bruto.projetos && typeof bruto.projetos === "object" && !Array.isArray(bruto.projetos) ? bruto.projetos : null;
+    var nomes = origem ? Object.keys(origem) : [];
+    if (!nomes.length) { mostrarErro('Não foi possível importar "' + nomeArquivo + '": o backup não tem projetos.'); return; }
+    var livres = LIMITES.projetos - Object.keys(projetos).length;
+    if (nomes.length > livres) {
+      mostrarErro("Não foi possível importar: o backup tem " + plural(nomes.length, "projeto", "projetos") + " e cabem só mais " + Math.max(0, livres) +
+        " (limite de " + LIMITES.projetos + "). Exclua alguns antes.");
+      return;
+    }
+    var validados = [], erros = [], ajustes = [];
+    nomes.forEach(function (nomeBruto) {
+      var projeto = origem[nomeBruto];
+      if (projeto && Array.isArray(projeto.equipamentos)) projeto.equipamentos.forEach(migrarImagensAntigas);
+      var r = Esquema.validarProjeto(projeto, "estrito");
+      var nomeValido = Esquema.validarNomeProjeto(nomeBruto);
+      var rotulo = nomeValido.ok ? nomeValido.dados : "Projeto importado";
+      r.erros.forEach(function (e) { erros.push({ onde: rotulo + " › " + e.onde, mensagem: e.mensagem }); });
+      r.ajustes.forEach(function (a) { ajustes.push({ onde: rotulo + " › " + a.onde, mensagem: a.mensagem }); });
+      validados.push({ base: rotulo, dados: r.dados });
+    });
+    if (erros.length) { mostrarErrosDeValidacao('"' + nomeArquivo + '"', { ok: false, erros: erros, ajustes: ajustes }); return; }
+
+    salvarLocal();
+    var importados = [];
+    validados.forEach(function (v) {
+      var nome = v.base;
+      for (var i = 2; projetos[nome]; i++) nome = v.base.slice(0, LIMITES.nomeProjeto - 5) + " (" + i + ")";
+      projetos[nome] = v.dados;
+      importados.push(nome);
+    });
+    abrirProjeto(importados[0]);
+    salvarLocal();
+    importados.forEach(registrarBackup);
+    mostrarAvisosDaImportacao('"' + nomeArquivo + '"', { ok: true, erros: [], ajustes: ajustes });
+    avisar(plural(importados.length, "projeto importado", "projetos importados") + ".");
+  }
+
   // Ctrl+S (Cmd+S no Mac) exporta o projeto aberto em vez de "salvar a página".
   document.addEventListener("keydown", function (event) {
     if (!(event.ctrlKey || event.metaKey) || event.altKey || String(event.key).toLowerCase() !== "s") return;
@@ -2107,6 +2181,7 @@
       var bruto;
       try { bruto = JSON.parse(leitor.result); }
       catch (e) { mostrarErro('Não foi possível importar "' + arquivo.name + '": o arquivo não é um JSON válido.', [{ onde: "JSON", mensagem: e.message }]); return; }
+      if (bruto && bruto.formato === FORMATO_BACKUP) { importarBackupCompleto(bruto, arquivo.name); return; }
       if (bruto && Array.isArray(bruto.equipamentos)) bruto.equipamentos.forEach(migrarImagensAntigas);
       var resultado = Esquema.validarProjeto(bruto, "estrito");
       if (!resultado.ok) { mostrarErrosDeValidacao('"' + arquivo.name + '"', resultado); return; }
@@ -2133,6 +2208,7 @@
     leitor.readAsText(arquivo, "UTF-8");
   });
 
+  // ==== 07-temas.js: temas de cores (parte de assets/js/app.js; npm run montar) ====
   var themePresets = { "theme-nord": { bg: "#2E3440", bgPanel: "rgba(32, 38, 48, 0.95)", bgPanel2: "#3B4252", line: "rgba(136, 192, 208, 0.22)", lineSoft: "rgba(129, 161, 193, 0.18)", text: "#ECEFF4", textDim: "#D8DEE9", accent: "#88C0D0", accentInk: "#2E3440", teal: "#8FBCBB", paper: "#F4F6FA", paperLine: "#D8DEE9", ink: "#2E3440", danger: "#FF7D6C", fieldBg: "rgba(236,239,244,0.05)", fieldText: "#ECEFF4", fieldBorder: "rgba(136,192,208,0.22)", ghostBg: "rgba(236,239,244,0.04)", ghostText: "#D8DEE9", ghostBorder: "rgba(136,192,208,0.22)", optionBg: "#F4F6FA", optionText: "#2E3440", optionActiveBg: "#88C0D0", optionActiveText: "#2E3440", shadowSoft: "0 10px 30px rgba(5, 12, 20, 0.25)", shadowCard: "0 12px 28px rgba(6, 15, 22, 0.22)" }, "theme-dark-modern": { bg: "#1F1F1F", bgPanel: "rgba(33, 33, 33, 0.94)", bgPanel2: "#2B2B2B", line: "rgba(124, 124, 124, 0.2)", lineSoft: "rgba(170, 170, 170, 0.14)", text: "#F3F3F3", textDim: "#C9C9C9", accent: "#5AA9FF", accentInk: "#0F172A", teal: "#7CE6D8", paper: "#F8F8F8", paperLine: "#E2E2E2", ink: "#1D1D1D", danger: "#FF7D6C", fieldBg: "rgba(255,255,255,0.03)", fieldText: "#F3F3F3", fieldBorder: "rgba(170,170,170,0.18)", ghostBg: "rgba(255,255,255,0.02)", ghostText: "#C9C9C9", ghostBorder: "rgba(170,170,170,0.18)", optionBg: "#F8F8F8", optionText: "#1D1D1D", optionActiveBg: "#5AA9FF", optionActiveText: "#0F172A", shadowSoft: "0 10px 30px rgba(0, 0, 0, 0.24)", shadowCard: "0 12px 28px rgba(0, 0, 0, 0.18)" }, "theme-dracula": { bg: "#282A36", bgPanel: "rgba(40, 42, 54, 0.95)", bgPanel2: "#1E2029", line: "rgba(255, 121, 198, 0.18)", lineSoft: "rgba(189, 147, 249, 0.18)", text: "#F8F8F2", textDim: "#BD93F9", accent: "#FF79C6", accentInk: "#282A36", teal: "#8BE9FD", paper: "#F7F7F7", paperLine: "#E5E5E5", ink: "#282A36", danger: "#FF5555", fieldBg: "rgba(248,248,242,0.04)", fieldText: "#F8F8F2", fieldBorder: "rgba(255,121,198,0.2)", ghostBg: "rgba(248,248,242,0.03)", ghostText: "#BD93F9", ghostBorder: "rgba(255,121,198,0.2)", optionBg: "#F7F7F7", optionText: "#282A36", optionActiveBg: "#FF79C6", optionActiveText: "#282A36", shadowSoft: "0 10px 30px rgba(0, 0, 0, 0.28)", shadowCard: "0 12px 28px rgba(0, 0, 0, 0.2)" }, "theme-dark-plus": { bg: "#0D1117", bgPanel: "rgba(13, 17, 23, 0.94)", bgPanel2: "#161B22", line: "rgba(110, 118, 129, 0.18)", lineSoft: "rgba(110, 118, 129, 0.14)", text: "#C9D1D9", textDim: "#8B949E", accent: "#58A6FF", accentInk: "#0D1117", teal: "#39D353", paper: "#F6F8FA", paperLine: "#D0D7DE", ink: "#0D1117", danger: "#F85149", fieldBg: "rgba(201,209,217,0.04)", fieldText: "#C9D1D9", fieldBorder: "rgba(110,118,129,0.22)", ghostBg: "rgba(201,209,217,0.03)", ghostText: "#8B949E", ghostBorder: "rgba(110,118,129,0.22)", optionBg: "#F6F8FA", optionText: "#0D1117", optionActiveBg: "#58A6FF", optionActiveText: "#0D1117", shadowSoft: "0 10px 30px rgba(0, 0, 0, 0.3)", shadowCard: "0 12px 28px rgba(0, 0, 0, 0.22)" }, "theme-catppuccin-mocha": { bg: "#1E1E2E", bgPanel: "rgba(30, 30, 46, 0.94)", bgPanel2: "#302D41", line: "rgba(203, 166, 247, 0.18)", lineSoft: "rgba(137, 180, 250, 0.16)", text: "#CDD6F4", textDim: "#BAC2DE", accent: "#F38BA8", accentInk: "#1E1E2E", teal: "#94E2D5", paper: "#F4F3F8", paperLine: "#D9E0EC", ink: "#1E1E2E", danger: "#F38BA8", fieldBg: "rgba(205,214,244,0.05)", fieldText: "#CDD6F4", fieldBorder: "rgba(203,166,247,0.22)", ghostBg: "rgba(205,214,244,0.04)", ghostText: "#BAC2DE", ghostBorder: "rgba(203,166,247,0.22)", optionBg: "#F4F3F8", optionText: "#1E1E2E", optionActiveBg: "#F38BA8", optionActiveText: "#1E1E2E", shadowSoft: "0 10px 30px rgba(0, 0, 0, 0.25)", shadowCard: "0 12px 28px rgba(0, 0, 0, 0.2)" }, "theme-github-light": { bg: "#F6F8FA", bgPanel: "rgba(255, 255, 255, 0.96)", bgPanel2: "#FFFFFF", line: "rgba(208, 215, 222, 0.65)", lineSoft: "rgba(208, 215, 222, 0.8)", text: "#24292F", textDim: "#57606A", accent: "#0969DA", accentInk: "#FFFFFF", teal: "#1A7F37", paper: "#FFFFFF", paperLine: "#D0D7DE", ink: "#24292F", danger: "#CF222E", fieldBg: "rgba(36,41,47,0.03)", fieldText: "#24292F", fieldBorder: "rgba(208,215,222,0.9)", ghostBg: "rgba(36,41,47,0.02)", ghostText: "#57606A", ghostBorder: "rgba(208,215,222,0.9)", optionBg: "#FFFFFF", optionText: "#24292F", optionActiveBg: "#0969DA", optionActiveText: "#FFFFFF", shadowSoft: "0 18px 36px rgba(16, 33, 46, 0.12)", shadowCard: "0 12px 24px rgba(16, 33, 46, 0.08)" }, "theme-solarized-light": { bg: "#FDF6E3", bgPanel: "rgba(255, 250, 240, 0.96)", bgPanel2: "#F5E6C5", line: "rgba(147, 161, 161, 0.4)", lineSoft: "rgba(147, 161, 161, 0.3)", text: "#002B36", textDim: "#586E75", accent: "#B58900", accentInk: "#002B36", teal: "#2AA198", paper: "#FFFDF7", paperLine: "#EEE8D5", ink: "#073642", danger: "#DC322F", fieldBg: "rgba(0,43,54,0.04)", fieldText: "#002B36", fieldBorder: "rgba(147,161,161,0.5)", ghostBg: "rgba(0,43,54,0.03)", ghostText: "#586E75", ghostBorder: "rgba(147,161,161,0.5)", optionBg: "#FFFDF7", optionText: "#073642", optionActiveBg: "#B58900", optionActiveText: "#FDF6E3", shadowSoft: "0 18px 36px rgba(7, 54, 66, 0.12)", shadowCard: "0 12px 24px rgba(7, 54, 66, 0.08)" }, "theme-light-plus": { bg: "#F3F3F3", bgPanel: "rgba(255, 255, 255, 0.96)", bgPanel2: "#F7F7F7", line: "rgba(201, 201, 201, 0.7)", lineSoft: "rgba(201, 201, 201, 0.55)", text: "#1F1F1F", textDim: "#5B5B5B", accent: "#2F80ED", accentInk: "#FFFFFF", teal: "#00A39D", paper: "#FFFFFF", paperLine: "#E5E5E5", ink: "#1F1F1F", danger: "#D64545", fieldBg: "rgba(31,31,31,0.04)", fieldText: "#1F1F1F", fieldBorder: "rgba(201,201,201,0.9)", ghostBg: "rgba(31,31,31,0.03)", ghostText: "#5B5B5B", ghostBorder: "rgba(201,201,201,0.9)", optionBg: "#FFFFFF", optionText: "#1F1F1F", optionActiveBg: "#2F80ED", optionActiveText: "#FFFFFF", shadowSoft: "0 18px 36px rgba(31, 31, 31, 0.08)", shadowCard: "0 12px 24px rgba(31, 31, 31, 0.06)" }, "theme-alto-contraste": { bg: "#000000", bgPanel: "rgba(0, 0, 0, 0.98)", bgPanel2: "#111111", line: "rgba(255, 255, 255, 0.46)", lineSoft: "rgba(255, 255, 255, 0.28)", text: "#FFFFFF", textDim: "#E6E6E6", accent: "#FFFF00", accentInk: "#000000", teal: "#00FFFF", paper: "#FFFFFF", paperLine: "#DADADA", ink: "#000000", danger: "#FF0000", fieldBg: "rgba(255,255,255,0.06)", fieldText: "#FFFFFF", fieldBorder: "rgba(255,255,255,0.5)", ghostBg: "rgba(255,255,255,0.04)", ghostText: "#E6E6E6", ghostBorder: "rgba(255,255,255,0.5)", optionBg: "#FFFFFF", optionText: "#000000", optionActiveBg: "#FFFF00", optionActiveText: "#000000", shadowSoft: "0 0 0 2px rgba(255,255,255,0.25)", shadowCard: "0 0 0 2px rgba(255,255,255,0.22)" } };
 
   var temaSelect = document.getElementById("temaSelect");
@@ -2226,6 +2302,7 @@
     aplicarTemaSelecionado(event.target.value);
   });
 
+  // ==== 08-listas-e-formularios.js: listas de equipamentos/cabos, formulários e painéis da barra lateral (parte de assets/js/app.js; npm run montar) ====
   function escapar(s) { return String(s == null ? "" : s).replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\r?\n/g, "\\n"); }
   function escaparHtml(s) {
     return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -2778,6 +2855,7 @@
     abrirFormularioCabemamento();
   });
 
+  // ==== 09-csv-e-mensagens.js: importação CSV, JSON avançado, avisos e mensagens de erro (parte de assets/js/app.js; npm run montar) ====
   // ---- Importação CSV --------------------------------------------------------
   // Uma linha por cabo; os equipamentos são criados a partir dos nomes em
   // origem/destino. Linha sem destino cadastra só o equipamento. Cada campo
@@ -3043,6 +3121,7 @@
     });
   }
 
+  // ==== 10-diagrama-e-layout.js: geração do DOT, imagens no SVG, organizar/grade e renderização (parte de assets/js/app.js; npm run montar) ====
   function gerarDot(dados, direcao) {
     var contagemPortas = {};
     dados.equipamentos.forEach(function (eq) { contagemPortas[eq.id] = 0; });
@@ -3052,7 +3131,8 @@
     });
     var maiorQtdPortas = Math.max.apply(null, [1].concat(Object.keys(contagemPortas).map(function (id) { return contagemPortas[id]; })));
     var ranksepAuto = Math.max(1.15, Math.min(4.5, 0.95 + maiorQtdPortas * 0.16));
-    var linhas = ["digraph G {", '  rankdir=' + direcao + ';', '  splines=ortho;', '  concentrate=false;', '  overlap=false;', '  nodesep=0.45;', '  ranksep=' + ranksepAuto.toFixed(2) + ';', '  pad=0;', '  margin=0;', '  bgcolor="transparent";',
+    // A grade parte do layout "LR" do Graphviz e depois reposiciona (posicionarEmGrade).
+    var linhas = ["digraph G {", '  rankdir=' + (direcao === "TB" ? "TB" : "LR") + ';', '  splines=ortho;', '  concentrate=false;', '  overlap=false;', '  nodesep=0.45;', '  ranksep=' + ranksepAuto.toFixed(2) + ';', '  pad=0;', '  margin=0;', '  bgcolor="transparent";',
       '  node [shape=box, style="filled", fontname="Helvetica", fontsize=10, margin="0.02,0.02", color="#547184", penwidth=1.1];',
       '  edge [fontname="Helvetica", fontsize=8, color="#263746", fontcolor="#344D61", penwidth=1.5, arrowhead=none, labeldistance=1.25, labelangle=0, labelfontname="Helvetica", labelfontsize=8];'];
     // Cada ponta de cabo vira uma porta no lado do equipamento voltado para o
@@ -3362,9 +3442,128 @@
     if (!estado.equipamentos.length) return;
     estado.equipamentos.forEach(function (eq) { delete eq.posicao; delete eq.deslocamento; });
     gerar();
+    // Grade: o layout do Graphviz acima só serve para medir os equipamentos.
+    if (selDirecao.value === "GRADE" && posicionarEmGrade()) gerar();
+  }
+
+  // Ordem dentro do grupo: começa pelo mais ligado e segue pelos vizinhos
+  // (busca em largura), para equipamentos ligados ficarem lado a lado.
+  function ordenarPorLigacoes(membros) {
+    var noGrupo = {}, vizinhos = {};
+    membros.forEach(function (eq) { noGrupo[eq.id] = eq; vizinhos[eq.id] = []; });
+    estado.conexoes.forEach(function (c) {
+      if (noGrupo[c.de] && noGrupo[c.para]) { vizinhos[c.de].push(c.para); vizinhos[c.para].push(c.de); }
+    });
+    var porGrau = membros.slice().sort(function (a, b) { return vizinhos[b.id].length - vizinhos[a.id].length; });
+    var visitado = {}, ordem = [];
+    porGrau.forEach(function (inicio) {
+      if (visitado[inicio.id]) return;
+      var fila = [inicio.id];
+      visitado[inicio.id] = true;
+      while (fila.length) {
+        var id = fila.shift();
+        ordem.push(noGrupo[id]);
+        vizinhos[id].forEach(function (v) { if (!visitado[v]) { visitado[v] = true; fila.push(v); } });
+      }
+    });
+    return ordem;
+  }
+
+  // "Grade por grupo": cada grupo vira um bloco com os equipamentos em linhas e
+  // colunas, e os blocos são arrumados em prateleiras na proporção da folha do
+  // PDF. Aproveita melhor a página que o layout em camadas, que com muitos
+  // equipamentos fica alto e estreito. Grava eq.posicao; retorna false se não
+  // houver o que medir.
+  function posicionarEmGrade() {
+    var svg = elCanvas.querySelector("svg");
+    if (!svg) return false;
+    var larguraMax = 0, alturaMax = 0, somaX = 0, somaY = 0, n = 0;
+    estado.equipamentos.forEach(function (eq) {
+      var node = obterNodePorId(svg, eq.id);
+      var b;
+      try { b = node && node.getBBox(); } catch (e) { b = null; }
+      if (!b) return;
+      larguraMax = Math.max(larguraMax, b.width);
+      alturaMax = Math.max(alturaMax, b.height);
+      if (centrosBase[eq.id]) { somaX += centrosBase[eq.id].x; somaY += centrosBase[eq.id].y; n++; }
+    });
+    if (!larguraMax || !n) return false;
+
+    var ESPACO = 48, ROTULO = 30, MARGEM = 16, ENTRE_BLOCOS = 48;
+    var celW = larguraMax + ESPACO, celH = alturaMax + ESPACO;
+    var pagina = tamanhoPaginaMm();
+    var proporcao = pagina.w / pagina.h;
+
+    var blocos = [];
+    nomesDosGrupos(estado).forEach(function (nome) {
+      var membros = estado.equipamentos.filter(function (eq) { return String(eq.grupo || "").trim() === nome; });
+      if (membros.length) blocos.push({ membros: membros, grupo: true });
+    });
+    var soltos = estado.equipamentos.filter(function (eq) { return !String(eq.grupo || "").trim(); });
+    if (soltos.length) blocos.push({ membros: soltos, grupo: false });
+    blocos.forEach(function (bl) {
+      bl.membros = ordenarPorLigacoes(bl.membros);
+      var qtd = bl.membros.length;
+      // Colunas para o bloco ficar com a proporção da folha.
+      bl.colunas = Math.max(1, Math.min(qtd, Math.round(Math.sqrt(qtd * celH / celW * proporcao))));
+      bl.linhas = Math.ceil(qtd / bl.colunas);
+      bl.w = bl.colunas * celW + (bl.grupo ? 2 * MARGEM : 0);
+      bl.h = bl.linhas * celH + (bl.grupo ? ROTULO + MARGEM : 0);
+    });
+
+    // Prateleiras: testa larguras máximas e fica com a que deixa o conjunto
+    // maior na folha (menor max(largura / proporção, altura)).
+    function empacotar(limite) {
+      var x = 0, y = 0, alturaLinha = 0, largura = 0;
+      blocos.forEach(function (bl) {
+        if (x > 0 && x + bl.w > limite) { x = 0; y += alturaLinha + ENTRE_BLOCOS; alturaLinha = 0; }
+        bl.x = x; bl.y = y;
+        x += bl.w + ENTRE_BLOCOS;
+        alturaLinha = Math.max(alturaLinha, bl.h);
+        largura = Math.max(largura, x - ENTRE_BLOCOS);
+      });
+      return { w: largura, h: y + alturaLinha };
+    }
+    var maiorBloco = Math.max.apply(null, blocos.map(function (bl) { return bl.w; }));
+    var somaLarguras = blocos.reduce(function (s, bl) { return s + bl.w + ENTRE_BLOCOS; }, 0);
+    var melhor = null;
+    for (var t = 0; t <= 24; t++) {
+      var limite = maiorBloco + (somaLarguras - maiorBloco) * t / 24;
+      var r = empacotar(limite);
+      var custo = Math.max(r.w / proporcao, r.h);
+      if (!melhor || custo < melhor.custo - 1e-6) melhor = { limite: limite, custo: custo };
+    }
+    var total = empacotar(melhor.limite);
+
+    // Centraliza onde o Graphviz tinha posto os equipamentos (dentro da área de desenho).
+    var origemX = somaX / n - total.w / 2, origemY = somaY / n - total.h / 2;
+    blocos.forEach(function (bl) {
+      var x0 = origemX + bl.x + (bl.grupo ? MARGEM : 0);
+      var y0 = origemY + bl.y + (bl.grupo ? ROTULO : 0);
+      bl.membros.forEach(function (eq, i) {
+        eq.posicao = { x: x0 + (i % bl.colunas) * celW + celW / 2, y: y0 + Math.floor(i / bl.colunas) * celH + celH / 2 };
+        delete eq.deslocamento;
+      });
+    });
+    return true;
   }
 
   window.organizarDiagramaAutomaticamente = organizarDiagramaAutomaticamente;
+
+  // O que outros módulos (compartilhar.js) podem ler do editor.
+  window.GrafoApp = {
+    projetoAtual: function () { return projetoAtual; },
+    nomesProjetos: function () { return Object.keys(projetos); },
+    // Desenho atual como SVG completo (moldura e imagens embutidas); "" sem diagrama.
+    svgDoDiagrama: async function () {
+      var svgEl = elCanvas.querySelector("svg");
+      if (!svgEl) return "";
+      var copia = await prepararSvgParaExportacao(svgEl, false);
+      adicionarMolduraDeExportacao(copia);
+      return new XMLSerializer().serializeToString(copia);
+    },
+    avisar: function (texto) { avisar(texto); }
+  };
 
   // O Graphviz (WebAssembly) carrega de forma assíncrona; depois disso a
   // renderização é síncrona. Chamadas a gerar() antes do carregamento ficam pendentes.
@@ -3488,7 +3687,7 @@
 
   // Direção do layout: lembrada neste navegador e aplicada na hora
   // (antes só valia no próximo "Organizar").
-  try { if (/^(LR|TB)$/.test(localStorage.getItem("grafo-direcao"))) selDirecao.value = localStorage.getItem("grafo-direcao"); } catch (e) {}
+  try { if (/^(LR|TB|GRADE)$/.test(localStorage.getItem("grafo-direcao"))) selDirecao.value = localStorage.getItem("grafo-direcao"); } catch (e) {}
   selDirecao.addEventListener("change", function () {
     try { localStorage.setItem("grafo-direcao", selDirecao.value); } catch (e) {}
     if (estado.equipamentos.length) organizarDiagramaAutomaticamente();
@@ -3504,6 +3703,7 @@
     } catch (e) {}
   });
 
+  // ==== 11-exportacao-svg-png.js: imagens embutidas, moldura e exportação SVG/PNG (parte de assets/js/app.js; npm run montar) ====
   function blobParaDataUrl(blob) {
     return new Promise(function (resolver, rejeitar) {
       var leitor = new FileReader();
@@ -3955,6 +4155,7 @@
     }
   });
 
+  // ==== 12-pagina-e-pdf.js: página, prévia e PDF; inicialização do editor (parte de assets/js/app.js; npm run montar) ====
   // ---- Página, área de desenho e PDF ------------------------------------------
   // Barra lateral direita. A configuração vale para a conta neste navegador.
   var FORMATOS_PAGINA = { A0: [841, 1189], A1: [594, 841], A2: [420, 594], A3: [297, 420], A4: [210, 297], A5: [148, 210] };
@@ -4174,6 +4375,146 @@
     return promessaJsPdf;
   }
 
+  // svg2pdf.js acrescenta doc.svg() ao jsPDF: o diagrama entra no PDF como
+  // vetor (texto nítido em qualquer zoom, selecionável e pesquisável).
+  var promessaSvg2Pdf = null;
+  function carregarSvg2Pdf() {
+    if (window.svg2pdf && window.svg2pdf.svg2pdf) return Promise.resolve();
+    if (!promessaSvg2Pdf) {
+      promessaSvg2Pdf = new Promise(function (resolver, rejeitar) {
+        var script = document.createElement("script");
+        script.src = "https://cdn.jsdelivr.net/npm/svg2pdf.js@2.8.1/dist/svg2pdf.umd.min.js";
+        script.onload = function () { window.svg2pdf && window.svg2pdf.svg2pdf ? resolver() : rejeitar(new Error("svg2pdf indisponível.")); };
+        script.onerror = function () { promessaSvg2Pdf = null; rejeitar(new Error("Não foi possível carregar o svg2pdf.")); };
+        document.head.appendChild(script);
+      });
+    }
+    return promessaSvg2Pdf;
+  }
+
+  // As fontes padrão do PDF (Helvetica) só têm os caracteres do Latin-1.
+  function textoCabeNaFontePdf(texto) { return /^[ -~ -ÿ\s]*$/.test(texto); }
+
+  // Textos com emoji, setas etc. viram uma imagem pequena no mesmo lugar;
+  // o resto do diagrama continua vetorial. O SVG precisa estar no documento
+  // (getBBox e estilos calculados).
+  function trocarTextosSemFontePorImagem(svg) {
+    var ESCALA = 6;
+    Array.prototype.slice.call(svg.querySelectorAll("text")).forEach(function (texto) {
+      var conteudo = texto.textContent;
+      if (!conteudo || textoCabeNaFontePdf(conteudo) || texto.querySelector("tspan")) return;
+      var caixa;
+      try { caixa = texto.getBBox(); } catch (e) { return; }
+      if (!caixa || !caixa.width || !caixa.height) return;
+      var estilo = getComputedStyle(texto);
+      var tamanho = parseFloat(estilo.fontSize) || 10;
+      var canvas = document.createElement("canvas");
+      canvas.width = Math.ceil(caixa.width * ESCALA);
+      canvas.height = Math.ceil(caixa.height * ESCALA);
+      var ctx = canvas.getContext("2d");
+      ctx.scale(ESCALA, ESCALA);
+      ctx.font = estilo.fontStyle + " " + estilo.fontWeight + " " + tamanho + "px " + estilo.fontFamily;
+      ctx.fillStyle = estilo.fill && estilo.fill !== "none" ? estilo.fill : "#000";
+      ctx.globalAlpha = Number(estilo.fillOpacity) || 1;
+      var ancora = estilo.textAnchor;
+      ctx.textAlign = ancora === "middle" ? "center" : ancora === "end" ? "right" : "left";
+      ctx.textBaseline = "alphabetic";
+      var x = numeroSvg(texto.getAttribute("x")) - caixa.x;
+      var y = numeroSvg(texto.getAttribute("y")) - caixa.y;
+      ctx.fillText(conteudo, x, y);
+      var imagem = document.createElementNS("http://www.w3.org/2000/svg", "image");
+      imagem.setAttribute("x", caixa.x);
+      imagem.setAttribute("y", caixa.y);
+      imagem.setAttribute("width", caixa.width);
+      imagem.setAttribute("height", caixa.height);
+      var url = canvas.toDataURL("image/png");
+      imagem.setAttribute("href", url);
+      imagem.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", url);
+      if (texto.getAttribute("transform")) imagem.setAttribute("transform", texto.getAttribute("transform"));
+      texto.parentNode.replaceChild(imagem, texto);
+    });
+  }
+
+  // Monta o PDF em vetor. Retorna o jsPDF pronto ou lança erro (o chamador
+  // então usa o modo imagem).
+  async function montarPdfVetorial(JsPdf) {
+    await carregarSvg2Pdf();
+    var svgEl = elCanvas.querySelector("svg");
+    var preparado = await prepararSvgSeguroParaPng(svgEl);
+    var svg = preparado.svg;
+    if (configPagina.moldura) adicionarMolduraDeExportacao(svg);
+    var vb = String(svg.getAttribute("viewBox") || "").trim().split(/[\s,]+/).map(Number);
+    if (vb.length !== 4 || !vb[2] || !vb[3]) throw new Error("Não foi possível determinar o tamanho do diagrama.");
+    var plano = planoDeImpressao(vb[2], vb[3]);
+    if (plano.total > MAX_PAGINAS_PDF) {
+      var erro = new Error("O PDF teria " + plano.total + " páginas (máximo " + MAX_PAGINAS_PDF + "). Use uma escala menor ou um formato maior.");
+      erro.definitivo = true;
+      throw erro;
+    }
+    var suporte = document.createElement("div");
+    suporte.style.cssText = "position:fixed;left:-100000px;top:0;visibility:hidden;pointer-events:none;";
+    suporte.appendChild(svg);
+    document.body.appendChild(suporte);
+    try {
+      trocarTextosSemFontePorImagem(svg);
+      var doc = new JsPdf({ orientation: configPagina.orientacao === "retrato" ? "portrait" : "landscape", unit: "mm", format: configPagina.formato.toLowerCase(), compress: true });
+      doc.setProperties({ title: projetoAtual, subject: "Topologia de rede", creator: "Grafo" });
+      for (var lin = 0, i = 0; lin < plano.linhas; lin++) {
+        for (var col = 0; col < plano.colunas; col++, i++) {
+          if (i > 0) doc.addPage();
+          var xMm = col * plano.areaW, yMm = lin * plano.areaH;
+          var wMm = Math.min(plano.areaW, plano.larguraMm - xMm), hMm = Math.min(plano.areaH, plano.alturaMm - yMm);
+          // Uma página só: centraliza na área útil. Várias: cada folha mostra o
+          // seu pedaço do desenho inteiro, recortado na área útil.
+          var x = plano.margem + (plano.total === 1 ? (plano.areaW - wMm) / 2 : 0);
+          var y = plano.margem + (plano.total === 1 ? (plano.areaH - hMm) / 2 : 0);
+          doc.setFillColor(255, 255, 255);
+          doc.rect(x, y, wMm, hMm, "F");
+          doc.saveGraphicsState();
+          doc.rect(x, y, wMm, hMm, null);
+          doc.clip();
+          doc.discardPath();
+          await doc.svg(svg, { x: x - xMm, y: y - yMm, width: plano.larguraMm, height: plano.alturaMm });
+          doc.restoreGraphicsState();
+          if (plano.total > 1) {
+            doc.setFontSize(7);
+            doc.setTextColor(120);
+            doc.text("Página " + (i + 1) + " de " + plano.total + " · linha " + (lin + 1) + ", coluna " + (col + 1),
+              plano.pagina.w - plano.margem, plano.pagina.h - Math.max(2, plano.margem / 2), { align: "right" });
+          }
+        }
+      }
+      return { doc: doc, imagensIgnoradas: preparado.imagensIgnoradas };
+    } finally {
+      suporte.remove();
+    }
+  }
+
+  // PDF com o diagrama como imagem (~DPI_PDF). Usado se o modo vetorial falhar.
+  async function montarPdfRaster(JsPdf) {
+    var plano = null;
+    // Resolução pelo tamanho impresso (DPI_PDF), limitada pelo máximo seguro do canvas.
+    var r = await rasterizarDiagrama({ moldura: configPagina.moldura, fundo: "#ffffff", pixelsPorUnidade: function (w, h) {
+      plano = planoDeImpressao(w, h);
+      return (plano.larguraMm / 25.4 * DPI_PDF) / w;
+    } });
+    if (plano.total > MAX_PAGINAS_PDF) throw new Error("O PDF teria " + plano.total + " páginas (máximo " + MAX_PAGINAS_PDF + "). Use uma escala menor ou um formato maior.");
+    var paginas = paginasDoPlano(r.canvas, plano);
+    var doc = new JsPdf({ orientation: configPagina.orientacao === "retrato" ? "portrait" : "landscape", unit: "mm", format: configPagina.formato.toLowerCase(), compress: true });
+    doc.setProperties({ title: projetoAtual, subject: "Topologia de rede", creator: "Grafo" });
+    paginas.forEach(function (p, i) {
+      if (i > 0) doc.addPage();
+      doc.addImage(p.canvas, "PNG", p.x, p.y, p.w, p.h, undefined, "FAST");
+      if (paginas.length > 1) {
+        doc.setFontSize(7);
+        doc.setTextColor(120);
+        doc.text("Página " + (i + 1) + " de " + paginas.length + " · linha " + (Math.floor(i / plano.colunas) + 1) + ", coluna " + (i % plano.colunas + 1),
+          plano.pagina.w - plano.margem, plano.pagina.h - Math.max(2, plano.margem / 2), { align: "right" });
+      }
+    });
+    return { doc: doc, imagensIgnoradas: r.imagensIgnoradas };
+  }
+
   async function exportarPdf() {
     if (!elCanvas.querySelector("svg")) { mostrarErro("Gere o diagrama antes de exportar o PDF."); return; }
     var textoOriginal = btnExportarPdf.textContent;
@@ -4181,28 +4522,16 @@
     btnExportarPdf.textContent = "Gerando PDF...";
     try {
       var JsPdf = await carregarJsPdf();
-      var plano = null;
-      // Resolução pelo tamanho impresso (DPI_PDF), limitada pelo máximo seguro do canvas.
-      var r = await rasterizarDiagrama({ moldura: configPagina.moldura, fundo: "#ffffff", pixelsPorUnidade: function (w, h) {
-        plano = planoDeImpressao(w, h);
-        return (plano.larguraMm / 25.4 * DPI_PDF) / w;
-      } });
-      if (plano.total > MAX_PAGINAS_PDF) throw new Error("O PDF teria " + plano.total + " páginas (máximo " + MAX_PAGINAS_PDF + "). Use uma escala menor ou um formato maior.");
-      var paginas = paginasDoPlano(r.canvas, plano);
-      var doc = new JsPdf({ orientation: configPagina.orientacao === "retrato" ? "portrait" : "landscape", unit: "mm", format: configPagina.formato.toLowerCase(), compress: true });
-      doc.setProperties({ title: projetoAtual, subject: "Topologia de rede", creator: "Grafo" });
-      paginas.forEach(function (p, i) {
-        if (i > 0) doc.addPage();
-        doc.addImage(p.canvas, "PNG", p.x, p.y, p.w, p.h, undefined, "FAST");
-        if (paginas.length > 1) {
-          doc.setFontSize(7);
-          doc.setTextColor(120);
-          doc.text("Página " + (i + 1) + " de " + paginas.length + " · linha " + (Math.floor(i / plano.colunas) + 1) + ", coluna " + (i % plano.colunas + 1),
-            plano.pagina.w - plano.margem, plano.pagina.h - Math.max(2, plano.margem / 2), { align: "right" });
-        }
-      });
+      var r;
+      try {
+        r = await montarPdfVetorial(JsPdf);
+      } catch (erroVetor) {
+        if (erroVetor.definitivo) throw erroVetor;
+        console.warn("PDF vetorial falhou; gerando como imagem.", erroVetor);
+        r = await montarPdfRaster(JsPdf);
+      }
       var nome = nomeArquivoExportacao("pdf");
-      baixarBlob(doc.output("blob"), nome);
+      baixarBlob(r.doc.output("blob"), nome);
       if (r.imagensIgnoradas > 0) avisarImagensIgnoradas("PDF", r.imagensIgnoradas);
       else { esconderErro(); avisar("PDF baixado: " + nome); }
     } catch (e) {
@@ -4222,7 +4551,11 @@
     if (abrir) atualizarPrevia();
   }
 
-  btnPaginaPdf.addEventListener("click", function () { abrirPainelPagina(!painelPaginaAberto()); });
+  btnPaginaPdf.addEventListener("click", function () {
+    abrirPainelPagina(!painelPaginaAberto());
+    // No celular o painel fica abaixo do diagrama: leva a tela até ele.
+    if (painelPaginaAberto() && telaCelular.matches) elPainelPagina.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
   document.getElementById("btnFecharPagina").addEventListener("click", function () { abrirPainelPagina(false); });
   btnExportarPdf.addEventListener("click", exportarPdf);
 

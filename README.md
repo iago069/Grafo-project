@@ -50,6 +50,7 @@
 - **Busca** por nome, IP ou modelo, com destaque no diagrama.
 - **Rastrear caminho**: escolha dois equipamentos e o menor caminho de cabos entre eles é destacado.
 - **Organizar** refaz o layout respeitando os grupos, na direção escolhida (esquerda → direita ou cima → baixo).
+- **Grade por grupo** (no mesmo seletor) arruma cada grupo em linhas e colunas, com os equipamentos ligados entre si lado a lado, e distribui os grupos na proporção da folha do PDF. Com muitos equipamentos, aproveita bem melhor a página: com 35 equipamentos em A4, a escala vai de ~16% para ~32%.
 - Zoom proporcional na roda do mouse e no touchpad, pinça com dois dedos na tela de toque, e arrastar para mover a área. O diagrama continua centralizado quando os painéis abrem ou fecham.
 
 **Projetos e interface**
@@ -154,14 +155,17 @@ O botão **PDF…** (acima do diagrama) abre a barra lateral direita **Página e
 | Margem | 0 a 40 mm |
 | Cabeçalho e legenda | Inclui ou não o título, a data, os totais e a legenda |
 
-A **prévia** mostra as folhas como vão sair (a linha tracejada é a margem) e avisa quando o texto vai ficar pequeno demais para o formato escolhido. **Baixar PDF** gera o arquivo com equipamentos, ícones, nomes e cabos em ~200 DPI.
+A **prévia** mostra as folhas como vão sair (a linha tracejada é a margem) e avisa quando o texto vai ficar pequeno demais para o formato escolhido. **Baixar PDF** gera o arquivo em vetor: o texto fica nítido em qualquer zoom e pode ser selecionado e pesquisado. Textos com caracteres que a fonte do PDF não tem (emoji, setas, "●") entram como pequenas imagens no mesmo lugar. Se o gerador vetorial não carregar, o PDF sai como imagem de ~200 DPI.
 
 ## Onde ficam os dados
 
 Os projetos ficam na sua conta, no Supabase, e são salvos automaticamente poucos segundos depois de cada mudança. Enquanto você está logado, o navegador mantém uma cópia local separada por usuário; ao clicar em **Sair**, essa cópia é apagada e os projetos continuam na conta.
 
 - Use **Exportar projeto (.json)** (ou `Ctrl+S`) para guardar também um backup fora da nuvem. Um aviso no topo lembra de fazer isso quando o último backup tem 7 dias ou mais.
-- Evite editar a mesma conta em duas abas ou computadores ao mesmo tempo: vale o último salvamento.
+- **Compartilhar** (barra do diagrama) cria um link só para visualizar o projeto aberto: quem abre vê o desenho (com zoom e download em SVG), sem login, sem poder editar e sem acesso à conta. O link se atualiza sozinho poucos segundos depois de cada alteração. **Desativar link** faz o endereço parar de funcionar na hora, e excluir o projeto também apaga o link.
+- **Baixar todos os projetos** (barra lateral ou botão **Conta**) gera um arquivo só com todos os projetos. **Importar projeto** aceita esse arquivo e traz todos de volta; se algum projeto tiver erro, nada é importado.
+- Em **Conta → Excluir conta**, a pessoa apaga a própria conta e todos os projetos, sem volta. Para confirmar, é preciso digitar o e-mail da conta.
+- Se a mesma conta salvar em outra aba ou computador, o Grafo avisa ("Projeto alterado em outro lugar") em vez de sobrescrever: dá para baixar o projeto aberto, manter a versão desta aba ou carregar a mais recente. O aviso também aparece ao voltar para uma aba que ficou desatualizada.
 
 ## Ícones dos equipamentos
 
@@ -192,6 +196,9 @@ O login usa **Supabase Auth** (e-mail e senha). Os projetos ficam na tabela `gra
 
 1. Crie um projeto em https://supabase.com/dashboard (região sugerida: São Paulo).
 2. **SQL Editor → New query**: cole o conteúdo de [`supabase/schema.sql`](supabase/schema.sql) e clique em **Run**. Deve aparecer "Success. No rows returned".
+   - Projeto criado antes de 28/09/2026: rode também, uma vez cada, os arquivos de [`supabase/migracoes/`](supabase/migracoes/):
+     - `2026-09-28-excluir-conta.sql`: sem ele, **Excluir conta** avisa que a exclusão ainda não está ativada;
+     - `2026-09-28-compartilhar.sql`: sem ele, o botão **Compartilhar** não aparece.
 3. **Authentication → Sign In / Providers**: deixe **Email** ligado. A opção **Confirm email** exige confirmar o e-mail antes do primeiro login — pode desligar para testes, mas mantenha ligada em produção.
 4. **Authentication → URL Configuration**:
    - **Site URL**: `https://thegrafo.vercel.app`
@@ -231,6 +238,12 @@ O `servidor-local.js` lê o `.env` sozinho ao iniciar — se mudar o arquivo, pa
 | `npm start` | Sobe o servidor local (`servidor-local.js`) |
 | `npm run dev` | Igual ao `start`, reiniciando ao salvar o `servidor-local.js` |
 | `npm run icones` | Gera `assets/js/icones-embutidos.js` |
+| `npm test` | Roda os testes da pasta `tests/` (requer Node.js 22+) |
+| `npm run montar` | Monta `assets/js/app.js` a partir das partes em `src/app/` |
+
+**Para mudar o editor, edite os arquivos de `src/app/`**, não o `assets/js/app.js`, e depois rode `npm run montar`. As partes são fatias, em ordem, de um único bloco de código com estado compartilhado (por isso uma parte sozinha não é um arquivo JavaScript completo). O `npm test` avisa se o `app.js` ficou desatualizado.
+
+Os testes também rodam sozinhos no GitHub a cada envio (`.github/workflows/testes.yml`) e na Vercel antes de publicar (`buildCommand` no `vercel.json`): se algum falhar, o deploy é cancelado e o site continua na versão anterior.
 
 A porta pode ser trocada com a variável `PORT`. Depois de atualizar os arquivos, recarregue a página com **Ctrl+F5**.
 
@@ -275,7 +288,11 @@ Também é possível publicar direto do computador com a Vercel CLI: `npx vercel
 |---|---|
 | `index.html` | Página única da aplicação (tela de login + editor) |
 | `assets/js/auth.js` | Login, cadastro, recuperação de senha e sincronização com o Supabase |
-| `assets/js/app.js` | Editor: estado, formulários, geração do DOT, roteamento dos cabos, exportação |
+| `assets/js/app.js` | Editor: estado, formulários, geração do DOT, roteamento dos cabos, exportação. **Gerado** por `npm run montar` |
+| `src/app/` | Partes do editor, uma por assunto (`00-catalogo.js` … `12-pagina-e-pdf.js`). É aqui que se edita |
+| `scripts/montar-app.js` | Junta as partes de `src/app/` no `assets/js/app.js` |
+| `assets/js/compartilhar.js` | Botão **Compartilhar**: cria, atualiza e desativa os links só para visualizar |
+| `ver.html` | Página aberta pelo link compartilhado (`/ver?t=...`): mostra o desenho, sem login |
 | `assets/js/esquema.js` | Validação dos dados (formulários, JSON, CSV e o que está salvo) |
 | `assets/js/icones-embutidos.js` | Ícones em base64 para a exportação — **gerado** por `npm run icones` |
 | `assets/css/styles.css` | Estilos, temas e animações |
@@ -284,10 +301,12 @@ Também é possível publicar direto do computador com a Vercel CLI: `npx vercel
 | `data/equipamentos.json` | Catálogo de tipos de equipamento |
 | `api/equipamentos.js` | Função da Vercel que serve o catálogo |
 | `api/auth-config.js` | Função da Vercel que entrega a URL e a chave pública do Supabase |
-| `supabase/schema.sql` | Tabela de projetos e regras de acesso por usuário |
+| `supabase/schema.sql` | Tabelas de projetos e de links compartilhados, regras de acesso por usuário e exclusão da própria conta |
+| `supabase/migracoes/` | SQL para atualizar um banco criado com uma versão anterior do `schema.sql` |
 | `servidor-local.js` | Servidor Express para rodar localmente; lê o `.env` |
 | `.env.example` | Modelo do `.env` |
 | `scripts/gerar-icones-embutidos.js` | Gera o `icones-embutidos.js` |
+| `tests/` | Testes automáticos (`npm test`): validação, rotas da API, conflito entre abas, exclusão de conta e montagem do `app.js`. `simulador.js` é o navegador simulado que os testes usam |
 | `docs/` | Imagens deste README |
 
 > O catálogo fica em `data/`, fora de `api/`, porque na Vercel `api/equipamentos.js` e `api/equipamentos.json` colidiriam na mesma rota. O servidor local se chama `servidor-local.js` (e não `server.js`) para a Vercel não tratar o projeto como app Express.
@@ -302,6 +321,6 @@ Também é possível publicar direto do computador com a Vercel CLI: `npx vercel
 
 ## Licença e direitos autorais
 
-Copyright © 2026 iago069. **Todos os direitos reservados.**
+Copyright © 2026 Iago Ariel Gularte Barbosa. **Todos os direitos reservados.**
 
 O Grafo é software proprietário, protegido pela Lei nº 9.609/1998 (Lei do Software) e pela Lei nº 9.610/1998 (Direitos Autorais). **Não é código aberto**: é proibido copiar, modificar, distribuir, hospedar ou criar obras derivadas sem autorização prévia e por escrito do autor. Veja os termos completos em [LICENSE](LICENSE).
