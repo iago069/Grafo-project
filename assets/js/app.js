@@ -61,7 +61,9 @@
     { nome: "UPS", icone: caminhoImagem("NOBREAK.jpeg") },
     { nome: "AR", icone: caminhoImagem("AR.jpeg") },
     { nome: "RPS", icone: caminhoImagem("RETIFICADOR.jpeg") },
-    { nome: "Camera IP", icone: caminhoImagem("CAMERA.jpeg") }
+    { nome: "Camera IP", icone: caminhoImagem("CAMERA.jpeg") },
+    { nome: "ONU", icone: caminhoImagem("ONU.svg") },
+    { nome: "Servidor", icone: caminhoImagem("SERVIDOR.svg") }
   ];
   var CATALOGO_ICONES = [
     { valor: caminhoImagem("MIKROTIK.png"), nome: "MikroTik / RB", arquivo: caminhoImagem("MIKROTIK.png") },
@@ -71,7 +73,9 @@
     { valor: caminhoImagem("NOBREAK.jpeg"), nome: "Nobreak", arquivo: caminhoImagem("NOBREAK.jpeg") },
     { valor: caminhoImagem("AR.jpeg"), nome: "AR", arquivo: caminhoImagem("AR.jpeg") },
     { valor: caminhoImagem("VOLT.jpeg"), nome: "Volt", arquivo: caminhoImagem("VOLT.jpeg") },
-    { valor: caminhoImagem("CAMERA.jpeg"), nome: "Câmera", arquivo: caminhoImagem("CAMERA.jpeg") }
+    { valor: caminhoImagem("CAMERA.jpeg"), nome: "Câmera", arquivo: caminhoImagem("CAMERA.jpeg") },
+    { valor: caminhoImagem("ONU.svg"), nome: "ONU / ONT", arquivo: caminhoImagem("ONU.svg") },
+    { valor: caminhoImagem("SERVIDOR.svg"), nome: "Servidor", arquivo: caminhoImagem("SERVIDOR.svg") }
   ];
   var catalogoTiposEquipamentos = TIPOS_BASE.slice();
 
@@ -104,6 +108,8 @@
     if (valorEmTexto.indexOf("olt") >= 0) return caminhoImagem("OLT.jpeg");
     if (/(^|[^a-z])ar([^a-z]|$)/.test(valorEmTexto) || valorEmTexto.indexOf("hvac") >= 0 || valorEmTexto.indexOf("climatiz") >= 0) return caminhoImagem("AR.jpeg");
     if (/c[aâ]mera/.test(valorEmTexto)) return caminhoImagem("CAMERA.jpeg");
+    if (/(^|[^a-z])on[ut]([^a-z]|$)/.test(valorEmTexto)) return caminhoImagem("ONU.svg");
+    if (valorEmTexto.indexOf("servidor") >= 0 || valorEmTexto.indexOf("server") >= 0) return caminhoImagem("SERVIDOR.svg");
     if (valorEmTexto.indexOf("retificador") >= 0 || valorEmTexto.indexOf("rps") >= 0) return caminhoImagem("RETIFICADOR.jpeg");
     if (valorEmTexto.indexOf("nobreak") >= 0 || valorEmTexto.indexOf("nobreack") >= 0) return caminhoImagem("NOBREAK.jpeg");
     if (valorEmTexto.indexOf("volt") >= 0) return caminhoImagem("VOLT.jpeg");
@@ -801,6 +807,71 @@
     });
   }
 
+  // Caixas de grupos (racks/salas) não podem se sobrepor: quando duas se
+  // encostam, o grupo inteiro é empurrado para fora pelo eixo de menor
+  // sobreposição. O grupo do equipamento recém-arrastado (fixoId) fica parado.
+  // Retorna true se moveu algo (aí as caixas precisam ser redesenhadas).
+  var ESPACO_ENTRE_GRUPOS = 24;
+  function separarGruposSobrepostos(fixoId) {
+    var svg = elCanvas.querySelector("svg");
+    if (!svg) return false;
+    var nosPorId = {};
+    svg.querySelectorAll("g.node").forEach(function (node) { var id = idEquipamentoDoNode(node); if (id) nosPorId[id] = node; });
+    var grupos = [];
+    nomesDosGrupos(estado).forEach(function (nome, indice) {
+      var forma = svg.querySelector('g.cluster[id="grupo_' + indice + '"] path, g.cluster[id="grupo_' + indice + '"] polygon');
+      var b;
+      try { b = forma && forma.getBBox(); } catch (e) { b = null; }
+      if (!b || !b.width) return;
+      var membros = estado.equipamentos.filter(function (eq) { return String(eq.grupo || "").trim() === nome && nosPorId[eq.id]; });
+      if (!membros.length) return;
+      grupos.push({
+        x1: b.x, y1: b.y, x2: b.x + b.width, y2: b.y + b.height, membros: membros,
+        fixo: membros.some(function (eq) { return eq.id === fixoId; })
+      });
+    });
+    if (grupos.length < 2) return false;
+
+    function mover(g, dx, dy) {
+      g.x1 += dx; g.x2 += dx; g.y1 += dy; g.y2 += dy;
+      g.membros.forEach(function (eq) {
+        var d = eq.deslocamento || { x: 0, y: 0 };
+        eq.deslocamento = {
+          x: limitarPosicaoNoCanvas(d.x + dx, LIMITE_CANVAS.minX, LIMITE_CANVAS.maxX),
+          y: limitarPosicaoNoCanvas(d.y + dy, LIMITE_CANVAS.minY, LIMITE_CANVAS.maxY)
+        };
+        atualizarPosicaoAbsoluta(eq);
+        nosPorId[eq.id].setAttribute("transform", "translate(" + eq.deslocamento.x + "," + eq.deslocamento.y + ")");
+      });
+    }
+
+    var moveu = false;
+    for (var passada = 0; passada < 30; passada++) {
+      var houveSobreposicao = false;
+      for (var i = 0; i < grupos.length; i++) {
+        for (var j = i + 1; j < grupos.length; j++) {
+          var a = grupos[i], b = grupos[j];
+          var sobreX = Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1) + ESPACO_ENTRE_GRUPOS;
+          var sobreY = Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1) + ESPACO_ENTRE_GRUPOS;
+          if (sobreX <= 0 || sobreY <= 0) continue;
+          houveSobreposicao = true;
+          // Move quem não está fixo; se nenhum estiver, o segundo.
+          var movel = b.fixo && !a.fixo ? a : b, outro = movel === a ? b : a;
+          if (sobreX < sobreY) {
+            var sentidoX = (movel.x1 + movel.x2) >= (outro.x1 + outro.x2) ? 1 : -1;
+            mover(movel, sentidoX * sobreX, 0);
+          } else {
+            var sentidoY = (movel.y1 + movel.y2) >= (outro.y1 + outro.y2) ? 1 : -1;
+            mover(movel, 0, sentidoY * sobreY);
+          }
+          moveu = true;
+        }
+      }
+      if (!houveSobreposicao) break;
+    }
+    return moveu;
+  }
+
   function ativarArrasteDosEquipamentos() {
     var svg = elCanvas.querySelector("svg");
     if (!svg) return;
@@ -842,6 +913,8 @@
           equipamento.deslocamento = { x: deslocamento.x, y: deslocamento.y };
           atualizarPosicaoAbsoluta(equipamento);
           // Redesenha para as portas irem para o lado voltado aos vizinhos.
+          // O grupo deste equipamento fica parado; os outros é que abrem espaço.
+          equipamentoFixoNaSeparacao = equipamento.id;
           gerar();
           atualizarJsonAvancado();
         }
@@ -1150,12 +1223,29 @@
     preencherSelectLimpar(limpar.tipo, valoresDistintos("tipo", SEM_TIPO));
     preencherSelectLimpar(limpar.grupo, valoresDistintos("grupo", SEM_GRUPO));
     atualizarResumoLimpar();
-    limpar.backdrop.classList.remove("hidden");
+    mostrarModalBackdrop(limpar.backdrop);
     var marcado = limpar.form.querySelector('input[name="limparModo"]:checked');
     if (marcado) marcado.focus();
   }
 
-  function fecharLimpar() { limpar.backdrop.classList.add("hidden"); }
+  // Modais: a saída anima (.saindo) antes de virar .hidden. Se reabrir no
+  // meio da saída, mostrarModalBackdrop cancela e o timer não esconde mais.
+  var reduzirMovimento = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)");
+  function mostrarModalBackdrop(backdrop) {
+    backdrop.classList.remove("saindo", "hidden");
+  }
+  function esconderModal(backdrop) {
+    if (backdrop.classList.contains("hidden")) return;
+    if (reduzirMovimento && reduzirMovimento.matches) { backdrop.classList.add("hidden"); return; }
+    backdrop.classList.add("saindo");
+    setTimeout(function () {
+      if (!backdrop.classList.contains("saindo")) return;
+      backdrop.classList.remove("saindo");
+      backdrop.classList.add("hidden");
+    }, 150);
+  }
+
+  function fecharLimpar() { esconderModal(limpar.backdrop); }
 
   document.getElementById("btnLimpar").addEventListener("click", abrirLimpar);
   limpar.backdrop.querySelectorAll("[data-limpar-fechar]").forEach(function (b) { b.addEventListener("click", fecharLimpar); });
@@ -1227,8 +1317,18 @@
     aplicarCanvasView();
   }
 
+  // Liga a transição do zoom só por um instante; ligada o tempo todo, o
+  // diagrama recém-renderizado "voaria" do canto até a posição.
+  var timerZoomSuave = null;
+  function suavizarProximoZoom() {
+    elCanvas.classList.add("zoom-suave");
+    clearTimeout(timerZoomSuave);
+    timerZoomSuave = setTimeout(function () { elCanvas.classList.remove("zoom-suave"); }, 300);
+  }
+
   elCanvas.addEventListener("wheel", function (event) {
     event.preventDefault();
+    suavizarProximoZoom();
     var rect = elCanvas.getBoundingClientRect();
     definirZoom(canvasView.scale * (event.deltaY < 0 ? 1.1 : 0.9), event.clientX - rect.left, event.clientY - rect.top);
   }, { passive: false });
@@ -1240,6 +1340,7 @@
     canvasView.startY = event.clientY;
     canvasView.originX = canvasView.x;
     canvasView.originY = canvasView.y;
+    elCanvas.classList.remove("zoom-suave");
     elCanvas.classList.add("panning");
     elCanvas.setPointerCapture(event.pointerId);
   });
@@ -1260,9 +1361,9 @@
 
   elCanvas.addEventListener("pointerup", terminarPan);
   elCanvas.addEventListener("pointercancel", terminarPan);
-  document.getElementById("btnZoomIn").addEventListener("click", function () { definirZoom(canvasView.scale + 0.1); });
-  document.getElementById("btnZoomOut").addEventListener("click", function () { definirZoom(canvasView.scale - 0.1); });
-  document.getElementById("btnZoomReset").addEventListener("click", ajustarATela);
+  document.getElementById("btnZoomIn").addEventListener("click", function () { suavizarProximoZoom(); definirZoom(canvasView.scale + 0.1); });
+  document.getElementById("btnZoomOut").addEventListener("click", function () { suavizarProximoZoom(); definirZoom(canvasView.scale - 0.1); });
+  document.getElementById("btnZoomReset").addEventListener("click", function () { suavizarProximoZoom(); ajustarATela(); });
 
   btnSidebarCollapse.addEventListener("click", function () {
     var recolhida = elSidebar.classList.toggle("collapsed");
@@ -1316,7 +1417,7 @@
       modalRef.fieldWrap.classList.add("hidden");
     }
 
-    modalRef.backdrop.classList.remove("hidden");
+    mostrarModalBackdrop(modalRef.backdrop);
 
     return new Promise(function (resolver) {
       modalRef.resolver = resolver;
@@ -1324,7 +1425,7 @@
   }
 
   function fecharModal(valor) {
-    modalRef.backdrop.classList.add("hidden");
+    esconderModal(modalRef.backdrop);
     if (modalRef.resolver) {
       var resposta = valor;
       if (modalRef.mode === "prompt") {
@@ -1383,13 +1484,13 @@
     editor.titulo.textContent = titulo;
     editor.formEquip.classList.toggle("hidden", form !== editor.formEquip);
     editor.formCabo.classList.toggle("hidden", form !== editor.formCabo);
-    editor.backdrop.classList.remove("hidden");
+    mostrarModalBackdrop(editor.backdrop);
     var primeiro = form.querySelector("input, select");
     if (primeiro) { primeiro.focus(); if (primeiro.select) primeiro.select(); }
   }
 
   function fecharEditor() {
-    editor.backdrop.classList.add("hidden");
+    esconderModal(editor.backdrop);
     editor.equipamento = null;
     editor.conexao = null;
   }
@@ -1714,6 +1815,7 @@
       renderProjetos();
       renderTudo();
       limparDiagrama();
+      avisar("Projeto \"" + nome + "\" criado.");
     });
   });
 
@@ -1728,6 +1830,7 @@
       kind: "confirm"
     }).then(function (confirmado) {
       if (!confirmado) return;
+      var excluido = projetoAtual;
       delete projetos[projetoAtual];
       projetoAtual = Object.keys(projetos)[0];
       estado = clonarDados(projetos[projetoAtual]);
@@ -1738,6 +1841,7 @@
       renderProjetos();
       renderTudo();
       if (estado.equipamentos.length) gerar(); else limparDiagrama();
+      avisar("Projeto \"" + excluido + "\" excluído.");
     });
   });
 
@@ -1747,6 +1851,7 @@
     var arquivo = projetoAtual.replace(/[^\wÀ-ſ-]+/g, "-").replace(/^-+|-+$/g, "") || "projeto";
     baixarBlob(new Blob([conteudo], { type: "application/json" }), "grafo-" + arquivo + ".json");
     registrarBackup(projetoAtual);
+    avisar("Projeto exportado: grafo-" + arquivo + ".json");
   }
 
   document.getElementById("btnExportarProjeto").addEventListener("click", exportarProjeto);
@@ -1851,6 +1956,7 @@
       // Veio de um arquivo: esse arquivo já é um backup do projeto.
       registrarBackup(nome);
       esconderErro();
+      avisar("Projeto \"" + nome + "\" importado.");
     };
     leitor.readAsText(arquivo, "UTF-8");
   });
@@ -2629,6 +2735,7 @@
       ajustarNaProximaRenderizacao = true;
       esconderErro();
       renderTudo();
+      avisar("CSV importado: " + plural(estado.equipamentos.length, "equipamento", "equipamentos") + ", " + plural(estado.conexoes.length, "cabo", "cabos") + ".");
     };
     leitor.readAsArrayBuffer(arquivo);
   });
@@ -2649,10 +2756,28 @@
     ajustarNaProximaRenderizacao = true;
     esconderErro();
     renderTudo();
+    avisar("JSON aplicado.");
   });
   document.getElementById("btnAtualizarJson").addEventListener("click", atualizarJsonAvancado);
 
   function esconderErro() { elErro.style.display = "none"; elErro.textContent = ""; elErro.classList.remove("aviso"); }
+
+  // Aviso rápido no canto (sucesso de exportar, importar, copiar…). Some sozinho;
+  // erros continuam no #erro, que fica até a pessoa fechar.
+  var elToasts = document.getElementById("toasts");
+  function avisar(msg) {
+    if (!elToasts) return;
+    var toast = document.createElement("div");
+    toast.className = "toast";
+    toast.setAttribute("role", "status");
+    toast.textContent = msg;
+    elToasts.appendChild(toast);
+    while (elToasts.children.length > 3) elToasts.removeChild(elToasts.firstChild);
+    setTimeout(function () {
+      toast.classList.add("saindo");
+      setTimeout(function () { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 200);
+    }, 2800);
+  }
 
   // msg: texto principal. itens (opcional): [{ onde, mensagem }] da validação,
   // listados um por linha para a pessoa achar o problema no arquivo.
@@ -3046,6 +3171,7 @@
   var gerarPendente;
   // Centraliza/ajusta o zoom na primeira renderização e ao trocar de projeto.
   var ajustarNaProximaRenderizacao = true;
+  var equipamentoFixoNaSeparacao = null;
   Viz.instance().then(function (viz) {
     vizInstancia = viz;
     if (gerarPendente) { gerarPendente = false; gerar(); }
@@ -3076,6 +3202,15 @@
       if (sincronizarPosicoes()) { renderizarSvg(); sincronizarPosicoes(); }
       aplicarPosicoesEquipamentos();
       ajustarCaixasDosGrupos();
+      var fixo = equipamentoFixoNaSeparacao;
+      equipamentoFixoNaSeparacao = null;
+      if (separarGruposSobrepostos(fixo)) {
+        // Grupos mudaram de lugar: renderiza de novo para as portas acompanharem.
+        renderizarSvg();
+        sincronizarPosicoes();
+        aplicarPosicoesEquipamentos();
+        ajustarCaixasDosGrupos();
+      }
       rotearCabosOrtogonalmente();
       ajustarViewBoxAoConteudo(false);
       if (ajustarNaProximaRenderizacao) {
@@ -3147,7 +3282,7 @@
   btnCopiar.addEventListener("click", function () {
     if (!ultimoDot) return;
     try {
-      navigator.clipboard.writeText(ultimoDot);
+      navigator.clipboard.writeText(ultimoDot).then(function () { avisar("Código DOT copiado."); }, function () {});
       var original = btnCopiar.textContent;
       btnCopiar.textContent = "Copiado!";
       setTimeout(function () { btnCopiar.textContent = original; }, 1400);
@@ -3441,11 +3576,13 @@
       if (downloadsCap) {
         try {
           await downloadsCap.save({ filename: nomeSvg, data: svgText });
+          avisar("SVG baixado.");
           return;
         } catch (e) {}
       }
 
       baixarBlob(new Blob([svgText], { type: "image/svg+xml;charset=utf-8" }), nomeSvg);
+      avisar("SVG baixado: " + nomeSvg);
     } catch (e) {
       mostrarErro("Não foi possível exportar o SVG.\nDetalhe: " + e.message);
     }
@@ -3575,6 +3712,7 @@
           "Se forem imagens novas em assets/images, rode \"npm run icones\"; se vierem de outro site, envie o arquivo pelo campo Imagem do equipamento.");
       } else {
         esconderErro();
+        avisar("PNG baixado.");
       }
     } catch (e) {
       mostrarErro("Não foi possível exportar o diagrama como PNG.\nDetalhe: " + e.message);

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="corpo" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbfcfd"/>
+      <stop offset="1" stop-color="#d9e1e8"/>
+    </linearGradient>
+    <linearGradient id="frente" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e6ecf1"/>
+      <stop offset="1" stop-color="#c3cdd6"/>
+    </linearGradient>
+  </defs>
+  <!-- antenas -->
+  <rect x="28" y="16" width="7" height="44" rx="3.5" fill="#2b3a47"/>
+  <rect x="93" y="16" width="7" height="44" rx="3.5" fill="#2b3a47"/>
+  <!-- corpo -->
+  <path d="M14 62 L24 50 H104 L114 62 Z" fill="url(#corpo)" stroke="#8a9aa8" stroke-width="1.5" stroke-linejoin="round"/>
+  <rect x="14" y="62" width="100" height="30" rx="4" fill="url(#frente)" stroke="#8a9aa8" stroke-width="1.5"/>
+  <!-- LEDs de status -->
+  <circle cx="30" cy="77" r="3.2" fill="#35c759"/>
+  <circle cx="42" cy="77" r="3.2" fill="#35c759"/>
+  <circle cx="54" cy="77" r="3.2" fill="#f2b84b"/>
+  <circle cx="66" cy="77" r="3.2" fill="#35c759"/>
+  <!-- rótulo -->
+  <text x="100" y="81.5" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700" fill="#4a5b69">ONU</text>
+  <!-- pés -->
+  <rect x="22" y="92" width="14" height="5" rx="2" fill="#6d7d8a"/>
+  <rect x="92" y="92" width="14" height="5" rx="2" fill="#6d7d8a"/>
+  <!-- fibra -->
+  <path d="M64 97 C64 108 76 110 88 112" fill="none" stroke="#f2b84b" stroke-width="3" stroke-linecap="round"/>
+</svg>

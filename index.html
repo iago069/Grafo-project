@@ -129,7 +129,7 @@
       <nav class="nav" aria-label="Menu principal">
         <div class="nav-section">
           <div class="nav-label">Equipamentos</div>
-          <button class="nav-item" type="button" data-nav-panel="navAddEquip">Adicionar equipamento</button>
+          <button class="nav-item" type="button" data-nav-panel="navAddEquip" data-icon="adicionar" title="Adicionar equipamento">Adicionar equipamento</button>
           <div class="nav-panel" id="navAddEquip">
             <form class="nav-form" id="navEquipForm">
               <label class="full">Nome<input id="navEquipNome" data-limite="nome" required placeholder="Ex.: OLT-01"></label>
@@ -154,7 +154,7 @@
 
         <div class="nav-section">
           <div class="nav-label">Cabeamento</div>
-          <button class="nav-item" type="button" data-nav-panel="navAddCable">Adicionar cabeamento</button>
+          <button class="nav-item" type="button" data-nav-panel="navAddCable" data-icon="cabo" title="Adicionar cabeamento">Adicionar cabeamento</button>
           <div class="nav-panel" id="navAddCable">
             <form class="nav-form" id="navCableForm">
               <div class="nav-form-grid">
@@ -181,14 +181,14 @@
 
         <div class="nav-section">
           <div class="nav-label">Diagrama</div>
-          <button class="nav-item" id="btnModoAvancado" type="button" title="Abre a lista de equipamentos e cabos para editar vários de uma vez">Editar em lista</button>
-          <button class="nav-item" type="button" data-nav-action="export-diagram">Exportar diagrama</button>
+          <button class="nav-item" id="btnModoAvancado" type="button" data-icon="lista" title="Abre a lista de equipamentos e cabos para editar vários de uma vez">Editar em lista</button>
+          <button class="nav-item" type="button" data-nav-action="export-diagram" data-icon="imagem" title="Exportar diagrama">Exportar diagrama</button>
         </div>
 
         <div class="nav-section">
           <div class="nav-label">Projeto</div>
-          <button class="nav-item" id="btnExportarProjeto" type="button" title="Exportar projeto (.json) — atalho: Ctrl+S">Exportar projeto (.json)</button>
-          <label class="nav-item nav-item-file">Importar projeto (.json)<input id="arquivoProjeto" type="file" accept=".json,application/json" hidden></label>
+          <button class="nav-item" id="btnExportarProjeto" type="button" data-icon="baixar" title="Exportar projeto (.json) — atalho: Ctrl+S">Exportar projeto (.json)</button>
+          <label class="nav-item nav-item-file" data-icon="enviar" title="Importar projeto (.json)">Importar projeto (.json)<input id="arquivoProjeto" type="file" accept=".json,application/json" hidden></label>
         </div>
 
         
@@ -240,8 +240,7 @@
 
       <main class="workspace modo-avancado-fechado" id="workspace">
         <section class="panel painel-dados-oculto" id="painelDados" aria-label="Entrada de dados">
-          <span class="corner-br"></span><span class="corner-bl"></span>
-          <h2>01 — DADOS</h2>
+          <h2>Dados</h2>
           <div class="panel-title">Equipamentos e conexões</div>
 
           <details class="secao-lista" id="secaoEquip" open>
@@ -364,8 +363,7 @@
         </section>
 
         <section class="panel render-panel" aria-label="Diagrama gerado">
-          <span class="corner-br"></span><span class="corner-bl"></span>
-          <h2>02 — DIAGRAMA</h2>
+          <h2>Diagrama</h2>
           <div class="render-toolbar">
             <div class="panel-title panel-title-inline">Topologia</div>
             <div class="busca-diagrama">
@@ -407,6 +405,8 @@
       </main>
     </div>
   </div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
 
 <datalist id="tipos-sugeridos"></datalist>
 <datalist id="grupos-sugeridos"></datalist>

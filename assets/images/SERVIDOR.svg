@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="unidade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a4a58"/>
+      <stop offset="1" stop-color="#23303b"/>
+    </linearGradient>
+  </defs>
+  <!-- gabinete -->
+  <rect x="18" y="12" width="92" height="104" rx="6" fill="#1a242d" stroke="#0f161c" stroke-width="2"/>
+  <!-- três unidades de rack -->
+  <g>
+    <rect x="24" y="20" width="80" height="26" rx="3" fill="url(#unidade)" stroke="#52636f" stroke-width="1"/>
+    <rect x="30" y="28" width="38" height="10" rx="1.5" fill="#15202a"/>
+    <path d="M33 31v4M37 31v4M41 31v4M45 31v4M49 31v4M53 31v4M57 31v4M61 31v4M65 31v4" stroke="#3d4d5a" stroke-width="1.6"/>
+    <circle cx="86" cy="33" r="3" fill="#35c759"/>
+    <circle cx="96" cy="33" r="3" fill="#2f9bff"/>
+  </g>
+  <g transform="translate(0 31)">
+    <rect x="24" y="20" width="80" height="26" rx="3" fill="url(#unidade)" stroke="#52636f" stroke-width="1"/>
+    <rect x="30" y="28" width="38" height="10" rx="1.5" fill="#15202a"/>
+    <path d="M33 31v4M37 31v4M41 31v4M45 31v4M49 31v4M53 31v4M57 31v4M61 31v4M65 31v4" stroke="#3d4d5a" stroke-width="1.6"/>
+    <circle cx="86" cy="33" r="3" fill="#35c759"/>
+    <circle cx="96" cy="33" r="3" fill="#2f9bff"/>
+  </g>
+  <g transform="translate(0 62)">
+    <rect x="24" y="20" width="80" height="26" rx="3" fill="url(#unidade)" stroke="#52636f" stroke-width="1"/>
+    <rect x="30" y="28" width="38" height="10" rx="1.5" fill="#15202a"/>
+    <path d="M33 31v4M37 31v4M41 31v4M45 31v4M49 31v4M53 31v4M57 31v4M61 31v4M65 31v4" stroke="#3d4d5a" stroke-width="1.6"/>
+    <circle cx="86" cy="33" r="3" fill="#35c759"/>
+    <circle cx="96" cy="33" r="3" fill="#f2b84b"/>
+  </g>
+</svg>
