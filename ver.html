@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<!--
+  Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Todos os direitos reservados.
+  Proibido copiar, modificar ou distribuir sem autorização. Veja o arquivo LICENSE.
+  Visualização de um link compartilhado (/ver?t=<token>). Sem login: mostra só
+  a cópia do desenho guardada para aquele link.
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Diagrama compartilhado · Grafo</title>
+<link rel="icon" type="image/png" href="./assets/images/favicon-64.png">
+<style>
+  :root {
+    --bg: #eef3f7; --panel: #ffffff; --line: #d3dde6; --text: #16323d; --dim: #56707f;
+    --accent: #0b6e8a; --accent-ink: #ffffff; --danger: #c93c2c; --paper: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1a21; --panel: #17252e; --line: #2a3d49; --text: #e3edf2; --dim: #9db3c0; --accent: #5cc3dd; --accent-ink: #0f1a21; --danger: #ff7d6c; }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex; flex-direction: column;
+  }
+  header {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+    padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line);
+  }
+  .marca { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--text); text-decoration: none; }
+  .marca img { width: 26px; height: 26px; }
+  .titulo { flex: 1 1 200px; min-width: 0; }
+  .titulo h1 { margin: 0; font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .titulo p { margin: 0; font-size: 0.8rem; color: var(--dim); }
+  .acoes { display: flex; gap: 6px; flex-wrap: wrap; }
+  button {
+    font: inherit; font-size: 0.85rem; font-weight: 600; min-height: 36px; min-width: 36px; padding: 6px 12px;
+    border-radius: 9px; border: 1px solid var(--line); background: transparent; color: var(--text); cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.primario { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  main { position: relative; flex: 1; overflow: hidden; touch-action: none; cursor: grab; }
+  main.arrastando { cursor: grabbing; }
+  #quadro { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  #quadro img { display: block; background: var(--paper); border-radius: 6px; box-shadow: 0 8px 30px rgba(10, 30, 40, 0.18); user-select: none; -webkit-user-drag: none; }
+  .estado { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--dim); }
+  .estado.erro { color: var(--danger); }
+  .estado[hidden] { display: none; }
+  footer { padding: 6px 16px; font-size: 0.75rem; color: var(--dim); background: var(--panel); border-top: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<header>
+  <a class="marca" href="/" title="Grafo"><img src="./assets/images/favicon-64.png" alt=""><span>Grafo</span></a>
+  <div class="titulo">
+    <h1 id="titulo">Diagrama compartilhado</h1>
+    <p id="subtitulo">Somente visualização</p>
+  </div>
+  <div class="acoes" id="acoes" hidden>
+    <button type="button" id="menos" aria-label="Diminuir zoom" title="Diminuir zoom">−</button>
+    <button type="button" id="mais" aria-label="Aumentar zoom" title="Aumentar zoom">+</button>
+    <button type="button" id="ajustar" title="Ajustar à tela">Ajustar</button>
+    <button type="button" class="primario" id="baixar">Baixar SVG</button>
+  </div>
+</header>
+<main id="area" aria-label="Diagrama">
+  <div id="quadro"><img id="imagem" alt="" draggable="false"></div>
+  <div class="estado" id="estado" role="status">Carregando o diagrama...</div>
+</main>
+<footer>Visualização somente leitura. Para editar, peça acesso a quem enviou o link.</footer>
+<script>
+(function () {
+  "use strict";
+  var area = document.getElementById("area");
+  var quadro = document.getElementById("quadro");
+  var imagem = document.getElementById("imagem");
+  var estado = document.getElementById("estado");
+  var vista = { escala: 1, x: 0, y: 0 };
+  var tamanho = { w: 0, h: 0 };
+  var svgTexto = "", nomeProjeto = "";
+
+  function mostrarEstado(texto, erro) {
+    estado.textContent = texto;
+    estado.classList.toggle("erro", !!erro);
+    estado.hidden = !texto;
+  }
+
+  function aplicar() {
+    quadro.style.transform = "translate(" + vista.x + "px," + vista.y + "px) scale(" + vista.escala + ")";
+  }
+  function ajustar() {
+    var folga = 24;
+    var w = area.clientWidth, h = area.clientHeight;
+    if (!tamanho.w || !w || !h) return;
+    vista.escala = Math.min(4, (w - folga * 2) / tamanho.w, (h - folga * 2) / tamanho.h);
+    vista.x = (w - tamanho.w * vista.escala) / 2;
+    vista.y = (h - tamanho.h * vista.escala) / 2;
+    aplicar();
+  }
+  // Zoom mantendo fixo o ponto (px, py) da tela.
+  function zoom(fator, px, py) {
+    var nova = Math.min(8, Math.max(0.05, vista.escala * fator));
+    if (px == null) { px = area.clientWidth / 2; py = area.clientHeight / 2; }
+    vista.x = px - (px - vista.x) * (nova / vista.escala);
+    vista.y = py - (py - vista.y) * (nova / vista.escala);
+    vista.escala = nova;
+    aplicar();
+  }
+
+  document.getElementById("mais").addEventListener("click", function () { zoom(1.25); });
+  document.getElementById("menos").addEventListener("click", function () { zoom(0.8); });
+  document.getElementById("ajustar").addEventListener("click", ajustar);
+  document.getElementById("baixar").addEventListener("click", function () {
+    var url = URL.createObjectURL(new Blob([svgTexto], { type: "image/svg+xml;charset=utf-8" }));
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = (nomeProjeto.replace(/[^\wÀ-ſ-]+/g, "-").replace(/^-+|-+$/g, "") || "diagrama") + ".svg";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+  });
+  area.addEventListener("wheel", function (e) {
+    e.preventDefault();
+    var r = area.getBoundingClientRect();
+    zoom(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX - r.left, e.clientY - r.top);
+  }, { passive: false });
+
+  // Arrastar com um dedo/mouse; pinça com dois dedos.
+  var ponteiros = {}, pinca = null;
+  area.addEventListener("pointerdown", function (e) {
+    area.setPointerCapture(e.pointerId);
+    ponteiros[e.pointerId] = { x: e.clientX, y: e.clientY };
+    area.classList.add("arrastando");
+  });
+  area.addEventListener("pointermove", function (e) {
+    var antes = ponteiros[e.pointerId];
+    if (!antes) return;
+    var ids = Object.keys(ponteiros);
+    if (ids.length === 2) {
+      var outro = ponteiros[ids[0] == e.pointerId ? ids[1] : ids[0]];
+      var dist = Math.hypot(e.clientX - outro.x, e.clientY - outro.y);
+      if (pinca) {
+        var r = area.getBoundingClientRect();
+        zoom(dist / pinca, (e.clientX + outro.x) / 2 - r.left, (e.clientY + outro.y) / 2 - r.top);
+      }
+      pinca = dist;
+    } else {
+      vista.x += e.clientX - antes.x;
+      vista.y += e.clientY - antes.y;
+      aplicar();
+    }
+    ponteiros[e.pointerId] = { x: e.clientX, y: e.clientY };
+  });
+  function soltar(e) {
+    delete ponteiros[e.pointerId];
+    pinca = null;
+    if (!Object.keys(ponteiros).length) area.classList.remove("arrastando");
+  }
+  area.addEventListener("pointerup", soltar);
+  area.addEventListener("pointercancel", soltar);
+  window.addEventListener("resize", ajustar);
+
+  function tamanhoDoSvg(texto) {
+    var doc = new DOMParser().parseFromString(texto, "image/svg+xml");
+    var svg = doc.documentElement;
+    var vb = String(svg.getAttribute("viewBox") || "").trim().split(/[\s,]+/).map(Number);
+    var w = parseFloat(svg.getAttribute("width")), h = parseFloat(svg.getAttribute("height"));
+    if (/pt$/i.test(svg.getAttribute("width") || "")) { w *= 4 / 3; h *= 4 / 3; }
+    if (!(w > 0 && h > 0) && vb.length === 4) { w = vb[2]; h = vb[3]; }
+    return { w: w || 800, h: h || 600 };
+  }
+
+  (async function carregar() {
+    var token = new URLSearchParams(location.search).get("t") || "";
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
+      mostrarEstado("Link inválido. Confira se o endereço foi copiado inteiro.", true);
+      return;
+    }
+    try {
+      var config = await (await fetch("/api/auth-config", { cache: "no-store" })).json();
+      if (!config.url || !config.key) throw new Error("configuração");
+      var resposta = await fetch(config.url.replace(/\/+$/, "") + "/rest/v1/rpc/ver_compartilhamento", {
+        method: "POST",
+        headers: { apikey: config.key, "Content-Type": "application/json" },
+        body: JSON.stringify({ p_token: token })
+      });
+      if (!resposta.ok) throw new Error("HTTP " + resposta.status);
+      var linhas = await resposta.json();
+      if (!linhas.length) {
+        mostrarEstado("Este link foi desativado ou não existe. Peça um link novo a quem enviou.", true);
+        return;
+      }
+      svgTexto = linhas[0].svg;
+      nomeProjeto = linhas[0].projeto;
+      document.title = nomeProjeto + " · Grafo";
+      document.getElementById("titulo").textContent = nomeProjeto;
+      document.getElementById("subtitulo").textContent = "Somente visualização · atualizado em " +
+        new Date(linhas[0].atualizado_em).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+      imagem.alt = "Diagrama de rede: " + nomeProjeto;
+      tamanho = tamanhoDoSvg(svgTexto);
+      imagem.width = tamanho.w;
+      imagem.height = tamanho.h;
+      // <img> não executa scripts do SVG: o desenho só é exibido.
+      imagem.src = URL.createObjectURL(new Blob([svgTexto], { type: "image/svg+xml;charset=utf-8" }));
+      await imagem.decode().catch(function () {});
+      document.getElementById("acoes").hidden = false;
+      mostrarEstado("");
+      ajustar();
+    } catch (erro) {
+      mostrarEstado("Não foi possível carregar o diagrama. Verifique a conexão e recarregue a página.", true);
+    }
+  })();
+})();
+</script>
+</body>
+</html>

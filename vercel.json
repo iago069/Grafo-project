@@ -1,7 +1,10 @@
 {
   "version": 2,
   "framework": null,
+  "buildCommand": "npm test",
+  "outputDirectory": ".",
   "rewrites": [
+    { "source": "/ver", "destination": "/ver.html" },
     { "source": "/((?!api/|assets/|favicon.ico|.*\\..*).*)", "destination": "/index.html" }
   ]
 }

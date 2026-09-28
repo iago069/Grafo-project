@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <!--
-  Grafo — Copyright (c) 2026 iago069. Todos os direitos reservados.
+  Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Todos os direitos reservados.
   Proibido copiar, modificar ou distribuir sem autorização. Veja o arquivo LICENSE.
 -->
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="author" content="iago069">
-<meta name="copyright" content="© 2026 iago069. Todos os direitos reservados.">
+<meta name="author" content="Iago Ariel Gularte Barbosa">
+<meta name="copyright" content="© 2026 Iago Ariel Gularte Barbosa. Todos os direitos reservados.">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Grafo - Gerador Rápido Automatizado de Fluxos Organizados</title>
 <meta name="description" content="Monte diagramas de topologia de rede (OLTs, switches, roteadores, nobreaks) direto no navegador e exporte em PNG ou SVG.">
@@ -120,6 +120,77 @@
       </div>
     </div>
 
+    <!-- A mesma conta salvou em outra aba ou computador depois que esta aba carregou (auth.js). -->
+    <div id="conflitoModal" class="modal-backdrop hidden" role="alertdialog" aria-modal="true" aria-labelledby="conflitoTitulo" aria-describedby="conflitoTexto">
+      <div class="modal-box">
+        <div class="modal-header">
+          <h3 id="conflitoTitulo">Projeto alterado em outro lugar</h3>
+        </div>
+        <p id="conflitoTexto">Seus projetos foram salvos em outra aba ou computador depois que esta aba foi aberta. Para não perder nada, escolha qual versão fica.</p>
+        <p class="conflito-dica">Na dúvida, baixe o projeto aberto nesta aba antes de escolher: ele pode ser importado depois em "Importar projeto".</p>
+        <div class="modal-actions conflito-acoes">
+          <button type="button" class="ghost" id="conflitoBaixar">Baixar o projeto aberto</button>
+          <button type="button" class="ghost" id="conflitoManter">Manter a desta aba</button>
+          <button type="button" class="primary" id="conflitoRecarregar">Carregar a mais recente</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dados da conta (LGPD): cópia de todos os projetos e exclusão da conta (auth.js). -->
+    <div id="contaModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="contaTitulo">
+      <div class="modal-box">
+        <div class="modal-header">
+          <h3 id="contaTitulo">Minha conta</h3>
+          <button type="button" class="ghost small" data-conta-fechar aria-label="Fechar">×</button>
+        </div>
+        <p>Conta: <strong id="contaEmail"></strong></p>
+        <h4 class="conta-secao">Seus dados</h4>
+        <p>Baixe uma cópia de todos os seus projetos num arquivo só. Ele pode ser importado de volta em "Importar projeto".</p>
+        <div class="modal-actions conta-acoes">
+          <button type="button" class="ghost" id="contaBaixar">Baixar todos os projetos</button>
+        </div>
+        <h4 class="conta-secao conta-perigo">Excluir conta</h4>
+        <p>Apaga a conta e todos os projetos salvos nela, sem volta. Baixe uma cópia antes se quiser guardar algo.</p>
+        <form id="contaExcluirForm">
+          <label class="modal-field">
+            <span>Para confirmar, digite o seu e-mail</span>
+            <input id="contaConfirmar" type="email" autocomplete="off" spellcheck="false">
+          </label>
+          <p id="contaMensagem" class="conta-mensagem" role="status" aria-live="polite"></p>
+          <div class="modal-actions conta-acoes">
+            <button type="submit" class="danger" id="contaExcluir" disabled>Excluir minha conta</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Link só para visualizar o projeto aberto (compartilhar.js). -->
+    <div id="compartilharModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="compartilharTitulo">
+      <div class="modal-box">
+        <div class="modal-header">
+          <h3 id="compartilharTitulo">Compartilhar</h3>
+          <button type="button" class="ghost small" data-compartilhar-fechar aria-label="Fechar">×</button>
+        </div>
+        <p>Quem tiver o link vê o diagrama de <strong id="compartilharProjeto"></strong>, sem poder editar e sem acesso à sua conta. O link acompanha as alterações que você fizer.</p>
+        <div id="compartilharSemLink">
+          <div class="modal-actions conta-acoes">
+            <button type="button" class="primary" id="compartilharCriar">Criar link</button>
+          </div>
+        </div>
+        <div id="compartilharComLink" hidden>
+          <label class="modal-field">
+            <span>Link só para visualizar</span>
+            <input id="compartilharUrl" type="text" readonly>
+          </label>
+          <div class="modal-actions conta-acoes">
+            <button type="button" class="primary" id="compartilharCopiar">Copiar link</button>
+            <button type="button" class="ghost" id="compartilharDesativar">Desativar link</button>
+          </div>
+        </div>
+        <p id="compartilharMensagem" class="conta-mensagem" role="status" aria-live="polite"></p>
+      </div>
+    </div>
+
     <!-- Limpar o diagrama: tudo, só cabos, ou equipamentos de uma categoria. -->
     <div id="limparModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="limparTitulo">
       <div class="modal-box">
@@ -214,7 +285,8 @@
         <div class="nav-section">
           <div class="nav-label">Projeto</div>
           <button class="nav-item" id="btnExportarProjeto" type="button" data-icon="baixar" title="Exportar projeto (.json) — atalho: Ctrl+S">Exportar projeto (.json)</button>
-          <label class="nav-item nav-item-file" data-icon="enviar" title="Importar projeto (.json)">Importar projeto (.json)<input id="arquivoProjeto" type="file" accept=".json,application/json" hidden></label>
+          <label class="nav-item nav-item-file" data-icon="enviar" title="Importar projeto (.json) ou backup de todos os projetos">Importar projeto (.json)<input id="arquivoProjeto" type="file" accept=".json,application/json" hidden></label>
+          <button class="nav-item" id="btnExportarTodos" type="button" data-icon="baixar" title="Baixar todos os projetos da conta num arquivo só (.json)">Baixar todos os projetos</button>
         </div>
 
         
@@ -234,6 +306,7 @@
           <div class="theme-toolbar">
             <div id="accountTools" class="account-tools" hidden>
               <span id="accountEmail"></span>
+              <button type="button" class="ghost small" id="accountOpen" aria-haspopup="dialog">Conta</button>
               <button type="button" class="ghost small" id="accountLogout">Sair</button>
               <span id="cloudStatus" role="status" aria-live="polite"></span>
               <button type="button" class="ghost small" id="cloudRetry" hidden>Tentar novamente</button>
@@ -416,6 +489,7 @@
               <button class="ghost" id="btnBaixar" type="button" disabled>Baixar SVG</button>
               <button class="ghost" id="btnBaixarPng" type="button" disabled>Baixar PNG</button>
               <button class="ghost" id="btnPaginaPdf" type="button" aria-expanded="false" aria-controls="painelPagina" title="Formato da página, escala, prévia e exportação em PDF">PDF…</button>
+              <button class="ghost" id="btnCompartilhar" type="button" aria-haspopup="dialog" title="Link para ver o diagrama sem editar" hidden>Compartilhar</button>
             </div>
           </div>
           <div class="layout-toolbar">
@@ -423,6 +497,7 @@
             <select id="direcao" title="Sentido do layout" aria-label="Sentido do layout">
               <option value="LR">Esquerda → Direita</option>
               <option value="TB">Cima → Baixo</option>
+              <option value="GRADE">Grade por grupo</option>
             </select>
             <button class="ghost" id="btnCaminho" type="button" aria-expanded="false" aria-controls="caminhoBar">Rastrear caminho</button>
             <button class="ghost" id="btnLimpar" type="button" title="Remover tudo, só os cabos ou os equipamentos de um tipo, grupo ou status">Limpar…</button>
