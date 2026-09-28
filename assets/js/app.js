@@ -100,7 +100,7 @@
     if (valorEmTexto.indexOf("olt") >= 0) return caminhoImagem("OLT.jpeg");
     if (valorEmTexto.indexOf("retificador") >= 0 || valorEmTexto.indexOf("rps") >= 0) return caminhoImagem("RETIFICADOR.jpeg");
     if (valorEmTexto.indexOf("nobreak") >= 0 || valorEmTexto.indexOf("nobreack") >= 0) return caminhoImagem("NOBREAK.jpeg");
-    if (valorEmTexto.indexOf("conversor") >= 0 || valorEmTexto.indexOf("modulo") >= 0 || valorEmTexto.indexOf("volt") >= 0) return caminhoImagem("VOLT.jpeg");
+    if (valorEmTexto.indexOf("volt") >= 0 || valorEmTexto.indexOf("volt") >= 0 || valorEmTexto.indexOf("volt") >= 0) return caminhoImagem("VOLT.jpeg");
     return "";
   }
 
