@@ -574,3 +574,71 @@ body:not(.auth-locked) .auth-screen { display: none; }
 #accountEmail { max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #cloudStatus { min-width: 105px; color: var(--text-dim); }
 @media (max-width: 650px) { .auth-card { padding: 24px; } .account-tools { order: 3; width: 100%; } }
+
+/* ---------- Contador de equipamentos (n/35) ---------- */
+.contador-equip {
+  display: inline-flex; align-items: center; margin-left: 8px; padding: 2px 9px; border-radius: 999px; vertical-align: middle;
+  font: 600 0.7rem var(--mono); color: var(--text-dim); background: color-mix(in srgb, var(--teal) 14%, transparent);
+  border: 1px solid transparent; transition: background-color var(--dur-media) ease, color var(--dur-media) ease;
+}
+.contador-equip.perto { color: var(--text); background: color-mix(in srgb, var(--accent) 22%, transparent); border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+.contador-equip.cheio { color: var(--text); background: color-mix(in srgb, var(--danger) 22%, transparent); border-color: var(--danger); animation: pulsoLimite 0.5s var(--ease-out); }
+@keyframes pulsoLimite { 0% { transform: scale(1); } 40% { transform: scale(1.12); } 100% { transform: scale(1); } }
+.nav-item.no-limite { opacity: 0.55; }
+
+/* ---------- Arraste dos equipamentos ---------- */
+.canvas-wrap svg g.node.arrastando { filter: drop-shadow(0 6px 10px rgba(10, 30, 45, 0.28)); cursor: grabbing; }
+.canvas-wrap svg g.node.arrastando polygon, .canvas-wrap svg g.node.arrastando ellipse { stroke: var(--accent); }
+
+/* ---------- Barra lateral direita: página e PDF ---------- */
+.painel-pagina {
+  width: 300px; flex: 0 0 300px; height: 100vh; position: sticky; top: 0; overflow-y: auto; margin: 0 6px 0 0; padding: 16px 14px 20px;
+  display: flex; flex-direction: column; gap: 14px;
+  background: color-mix(in srgb, var(--bg-panel) 96%, var(--bg)); border-left: 1px solid var(--line-soft);
+  box-shadow: -12px 0 32px color-mix(in srgb, var(--bg) 40%, transparent);
+  scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--text-dim) 55%, transparent) transparent;
+  animation: painelEntrar var(--dur-media) var(--ease-out);
+}
+.painel-pagina[hidden] { display: none; }
+@keyframes painelEntrar { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+.painel-pagina-topo { display: flex; align-items: center; justify-content: space-between; }
+.painel-pagina-topo h2 { margin: 0; font-size: 0.95rem; font-weight: 600; }
+.painel-pagina-form { display: grid; gap: 12px; }
+.painel-pagina fieldset { margin: 0; padding: 12px; border: 1px solid var(--line-soft); border-radius: 12px; display: grid; gap: 10px; background: color-mix(in srgb, var(--bg) 35%, transparent); }
+.painel-pagina legend { padding: 0 6px; color: var(--teal); font: 600 0.66rem var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.painel-pagina label { display: grid; gap: 5px; color: var(--text-dim); font: 0.7rem var(--mono); }
+.painel-pagina input[type="number"], .painel-pagina select { width: 100%; min-width: 0; }
+.campos-dupla { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.dica-campo { margin: 0; color: var(--text-dim); font-size: 0.7rem; line-height: 1.4; }
+.painel-pagina .opcao-check { display: flex; align-items: center; gap: 8px; color: var(--text); font: 0.8rem var(--sans); cursor: pointer; }
+.painel-pagina .opcao-check input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+
+/* Retrato | Paisagem */
+.segmentado { display: grid; grid-template-columns: 1fr 1fr; padding: 3px; gap: 3px; border-radius: 10px; background: var(--field-bg); border: 1px solid var(--field-border); }
+.segmentado label { display: block; position: relative; cursor: pointer; }
+.segmentado input { position: absolute; opacity: 0; pointer-events: none; }
+.segmentado span {
+  display: block; padding: 7px 6px; border-radius: 7px; text-align: center; color: var(--text-dim); font: 600 0.76rem var(--sans);
+  transition: background-color var(--dur-rapida) ease, color var(--dur-rapida) ease, box-shadow var(--dur-media) var(--ease-out);
+}
+.segmentado input:checked + span { background: var(--accent); color: var(--accent-ink); box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 25%, transparent); }
+.segmentado input:focus-visible + span { outline: 2px solid var(--teal); outline-offset: 1px; }
+
+/* Prévia */
+.previa-bloco { display: grid; gap: 8px; }
+.previa-titulo { color: var(--teal); font: 600 0.66rem var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.previa-pagina {
+  min-height: 150px; padding: 14px; border-radius: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center;
+  background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--bg) 70%, transparent) 0 8px, color-mix(in srgb, var(--bg) 55%, transparent) 8px 16px);
+  border: 1px solid var(--line-soft); transition: opacity var(--dur-media) ease;
+}
+.previa-pagina.carregando { opacity: 0.55; }
+.previa-folha { display: block; border-radius: 2px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(0, 0, 0, 0.06); animation: aparecer var(--dur-media) ease-out; }
+.previa-vazia, .previa-mais { color: var(--text-dim); font-size: 0.76rem; text-align: center; }
+.previa-resumo { margin: 0; color: var(--text-dim); font-size: 0.74rem; line-height: 1.45; min-height: 1.45em; }
+.painel-pagina-acao { width: 100%; }
+#btnPaginaPdf.active { color: var(--text); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+
+@media (max-width: 900px) {
+  .painel-pagina { width: calc(100% - 12px); flex-basis: auto; height: auto; position: relative; margin: 6px; border: 1px solid var(--line-soft); border-radius: 16px; }
+}

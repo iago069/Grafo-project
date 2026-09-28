@@ -397,7 +397,9 @@
         <section class="panel render-panel" aria-label="Diagrama gerado">
           <h2>Diagrama</h2>
           <div class="render-toolbar">
-            <div class="panel-title panel-title-inline">Topologia</div>
+            <div class="panel-title panel-title-inline">Topologia
+              <span class="contador-equip" id="contadorEquip" role="status" aria-live="polite" title="Equipamentos no diagrama (máximo 35)">0/35</span>
+            </div>
             <div class="busca-diagrama">
               <input id="buscaEquip" type="search" placeholder="Buscar nome ou IP" aria-label="Buscar equipamento por nome, IP ou modelo" title="Enter: próximo · Shift+Enter: anterior · Esc: limpar" autocomplete="off" spellcheck="false">
               <span id="buscaResultado" aria-live="polite"></span>
@@ -413,6 +415,7 @@
               </div>
               <button class="ghost" id="btnBaixar" type="button" disabled>Baixar SVG</button>
               <button class="ghost" id="btnBaixarPng" type="button" disabled>Baixar PNG</button>
+              <button class="ghost" id="btnPaginaPdf" type="button" aria-expanded="false" aria-controls="painelPagina" title="Formato da página, escala, prévia e exportação em PDF">PDF…</button>
             </div>
           </div>
           <div class="layout-toolbar">
@@ -436,6 +439,66 @@
         </section>
       </main>
     </div>
+
+    <!-- Barra lateral direita: área de desenho, página (A0–A5), prévia e PDF. -->
+    <aside class="painel-pagina" id="painelPagina" aria-label="Página e exportação em PDF" hidden>
+      <div class="painel-pagina-topo">
+        <h2>Página e PDF</h2>
+        <button type="button" class="ghost small" id="btnFecharPagina" aria-label="Fechar painel">×</button>
+      </div>
+
+      <form class="painel-pagina-form" id="formPagina" novalidate>
+        <fieldset>
+          <legend>Área de desenho</legend>
+          <div class="campos-dupla">
+            <label>Largura (px)<input type="number" id="areaLargura" min="1000" max="20000" step="100" inputmode="numeric"></label>
+            <label>Altura (px)<input type="number" id="areaAltura" min="1000" max="20000" step="100" inputmode="numeric"></label>
+          </div>
+          <p class="dica-campo">Limite até onde os equipamentos podem ser arrastados.</p>
+        </fieldset>
+
+        <fieldset>
+          <legend>Página</legend>
+          <label>Formato
+            <select id="paginaFormato">
+              <option value="A0">A0 · 841 × 1189 mm</option>
+              <option value="A1">A1 · 594 × 841 mm</option>
+              <option value="A2">A2 · 420 × 594 mm</option>
+              <option value="A3">A3 · 297 × 420 mm</option>
+              <option value="A4">A4 · 210 × 297 mm</option>
+              <option value="A5">A5 · 148 × 210 mm</option>
+            </select>
+          </label>
+          <div class="segmentado" role="radiogroup" aria-label="Orientação">
+            <label><input type="radio" name="paginaOrientacao" value="retrato"><span>Retrato</span></label>
+            <label><input type="radio" name="paginaOrientacao" value="paisagem"><span>Paisagem</span></label>
+          </div>
+          <div class="campos-dupla">
+            <label>Escala
+              <select id="paginaEscala">
+                <option value="ajustar">Ajustar à página</option>
+                <option value="25">25%</option>
+                <option value="50">50%</option>
+                <option value="75">75%</option>
+                <option value="100">100%</option>
+                <option value="150">150%</option>
+                <option value="200">200%</option>
+              </select>
+            </label>
+            <label>Margem (mm)<input type="number" id="paginaMargem" min="0" max="40" step="1" inputmode="numeric"></label>
+          </div>
+          <label class="opcao-check"><input type="checkbox" id="paginaMoldura"> Cabeçalho e legenda</label>
+        </fieldset>
+      </form>
+
+      <div class="previa-bloco">
+        <div class="previa-titulo">Prévia</div>
+        <div class="previa-pagina" id="previaPagina" aria-live="polite"></div>
+        <p class="previa-resumo" id="previaResumo"></p>
+      </div>
+
+      <button type="button" class="primary painel-pagina-acao" id="btnExportarPdf" disabled>Baixar PDF</button>
+    </aside>
   </div>
 
 <div class="toasts" id="toasts" aria-live="polite"></div>
