@@ -67,7 +67,7 @@
     { valor: caminhoImagem("SWITCH.jpeg"), nome: "Switch", arquivo: caminhoImagem("SWITCH.jpeg") },
     { valor: caminhoImagem("RETIFICADOR.jpeg"), nome: "Retificador / RPS", arquivo: caminhoImagem("RETIFICADOR.jpeg") },
     { valor: caminhoImagem("NOBREAK.jpeg"), nome: "Nobreak", arquivo: caminhoImagem("NOBREAK.jpeg") },
-    { valor: caminhoImagem("VOLT.jpeg"), nome: "Módulo / Conversor", arquivo: caminhoImagem("VOLT.jpeg") }
+    { valor: caminhoImagem("VOLT.jpeg"), nome: "Volt", arquivo: caminhoImagem("VOLT.jpeg") }
   ];
   var catalogoTiposEquipamentos = TIPOS_BASE.slice();
 
@@ -100,7 +100,7 @@
     if (valorEmTexto.indexOf("olt") >= 0) return caminhoImagem("OLT.jpeg");
     if (valorEmTexto.indexOf("retificador") >= 0 || valorEmTexto.indexOf("rps") >= 0) return caminhoImagem("RETIFICADOR.jpeg");
     if (valorEmTexto.indexOf("nobreak") >= 0 || valorEmTexto.indexOf("nobreack") >= 0) return caminhoImagem("NOBREAK.jpeg");
-    if (valorEmTexto.indexOf("volt") >= 0 || valorEmTexto.indexOf("volt") >= 0 || valorEmTexto.indexOf("volt") >= 0) return caminhoImagem("VOLT.jpeg");
+    if (valorEmTexto.indexOf("VOLT") >= 0 || valorEmTexto.indexOf("Volt") >= 0 || valorEmTexto.indexOf("volt") >= 0) return caminhoImagem("VOLT.jpeg");
     return "";
   }
 
