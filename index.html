@@ -45,20 +45,21 @@
           <button type="button" class="ghost small" data-editor-fechar aria-label="Fechar">×</button>
         </div>
         <form class="nav-form hidden" id="editorEquipForm">
-          <label class="full">Nome<input id="editEquipNome" required></label>
+          <label class="full">Nome<input id="editEquipNome" data-limite="nome" required></label>
           <div class="nav-form-grid">
-            <label>Tipo<input id="editEquipTipo" list="tipos-sugeridos"></label>
-            <label>Modelo<input id="editEquipModelo"></label>
+            <label>Tipo<input id="editEquipTipo" data-limite="tipo" list="tipos-sugeridos"></label>
+            <label>Modelo<input id="editEquipModelo" data-limite="modelo"></label>
           </div>
           <div class="nav-form-grid">
-            <label>IP<input id="editEquipIp" inputmode="decimal" autocomplete="off" spellcheck="false"></label>
-            <label>Grupo / rack / sala<input id="editEquipGrupo" list="grupos-sugeridos" autocomplete="off"></label>
+            <label>IP<input id="editEquipIp" data-limite="ip" inputmode="decimal" autocomplete="off" spellcheck="false"></label>
+            <label>Grupo / rack / sala<input id="editEquipGrupo" data-limite="grupo" list="grupos-sugeridos" autocomplete="off"></label>
           </div>
           <div class="nav-form-grid">
             <label>Status<select id="editEquipStatus"><option value="ativo">Ativo</option><option value="manutencao">Manutenção</option><option value="offline">Offline</option></select></label>
             <label>Ícone<select id="editEquipIcone"></select></label>
           </div>
           <label>Cor da fonte<input id="editEquipCor" type="color"></label>
+          <div class="nav-panel-message" id="editEquipMensagem" aria-live="polite"></div>
           <div class="nav-form-actions">
             <button class="ghost" type="button" data-editor-excluir>Excluir</button>
             <button class="ghost" type="button" data-editor-fechar>Cancelar</button>
@@ -71,12 +72,12 @@
             <label>Destino<select id="editCaboPara" required></select></label>
           </div>
           <div class="nav-form-grid">
-            <label>Porta origem<input id="editCaboSaida"></label>
-            <label>Porta destino<input id="editCaboChegada"></label>
+            <label>Porta origem<input id="editCaboSaida" data-limite="porta"></label>
+            <label>Porta destino<input id="editCaboChegada" data-limite="porta"></label>
           </div>
           <div class="nav-form-grid">
-            <label>Tipo de enlace<input id="editCaboTipo"></label>
-            <label>Capacidade<input id="editCaboPotencia" list="capacidades-sugeridas" autocomplete="off" placeholder="Ex.: 10G"></label>
+            <label>Tipo de enlace<input id="editCaboTipo" data-limite="tipoCabo"></label>
+            <label>Capacidade<input id="editCaboPotencia" data-limite="capacidade" list="capacidades-sugeridas" autocomplete="off" placeholder="Ex.: 10G"></label>
           </div>
           <div class="nav-form-grid">
             <label>Cor<input id="editCaboCor" type="color"></label>
@@ -88,6 +89,31 @@
             <button class="ghost" type="button" data-editor-excluir>Excluir</button>
             <button class="ghost" type="button" data-editor-fechar>Cancelar</button>
             <button class="primary" type="submit">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Limpar o diagrama: tudo, só cabos, ou equipamentos de uma categoria. -->
+    <div id="limparModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="limparTitulo">
+      <div class="modal-box">
+        <div class="modal-header">
+          <h3 id="limparTitulo">Limpar diagrama</h3>
+          <button type="button" class="ghost small" data-limpar-fechar aria-label="Fechar">×</button>
+        </div>
+        <form class="nav-form" id="limparForm">
+          <fieldset class="limpar-opcoes">
+            <legend>O que remover</legend>
+            <label><input type="radio" name="limparModo" value="tudo" checked> Tudo (equipamentos e cabos)</label>
+            <label><input type="radio" name="limparModo" value="cabos"> Só os cabos</label>
+            <label><input type="radio" name="limparModo" value="tipo"> Equipamentos do tipo <select id="limparTipo" aria-label="Tipo"></select></label>
+            <label><input type="radio" name="limparModo" value="grupo"> Equipamentos do grupo <select id="limparGrupo" aria-label="Grupo"></select></label>
+            <label><input type="radio" name="limparModo" value="status"> Equipamentos com status <select id="limparStatus" aria-label="Status"><option value="offline">Offline</option><option value="manutencao">Manutenção</option><option value="ativo">Ativo</option></select></label>
+          </fieldset>
+          <p class="limpar-resumo" id="limparResumo" aria-live="polite"></p>
+          <div class="nav-form-actions">
+            <button class="ghost" type="button" data-limpar-fechar>Cancelar</button>
+            <button class="primary" type="submit" id="limparConfirmar">Limpar</button>
           </div>
         </form>
       </div>
@@ -106,21 +132,22 @@
           <button class="nav-item" type="button" data-nav-panel="navAddEquip">Adicionar equipamento</button>
           <div class="nav-panel" id="navAddEquip">
             <form class="nav-form" id="navEquipForm">
-              <label class="full">Nome<input id="navEquipNome" required placeholder="Ex.: OLT-01"></label>
+              <label class="full">Nome<input id="navEquipNome" data-limite="nome" required placeholder="Ex.: OLT-01"></label>
               <div class="nav-form-grid">
-                <label>Modelo<input id="navEquipModelo" placeholder="Modelo"></label>
-                <label>Tipo<input id="navEquipTipo" list="tipos-sugeridos" placeholder="Tipo"></label>
+                <label>Modelo<input id="navEquipModelo" data-limite="modelo" placeholder="Modelo"></label>
+                <label>Tipo<input id="navEquipTipo" data-limite="tipo" list="tipos-sugeridos" placeholder="Tipo"></label>
               </div>
-              <label class="full">IP<input id="navEquipIp" placeholder="Ex.: 10.0.0.1" inputmode="decimal" autocomplete="off" spellcheck="false"></label>
+              <label class="full">IP<input id="navEquipIp" data-limite="ip" placeholder="Ex.: 10.0.0.1" inputmode="decimal" autocomplete="off" spellcheck="false"></label>
               <div class="nav-form-grid">
-                <label>Grupo / rack / sala<input id="navEquipGrupo" list="grupos-sugeridos" placeholder="Ex.: Rack 01" autocomplete="off"></label>
+                <label>Grupo / rack / sala<input id="navEquipGrupo" data-limite="grupo" list="grupos-sugeridos" placeholder="Ex.: Rack 01" autocomplete="off"></label>
                 <label>Status<select id="navEquipStatus"><option value="ativo">Ativo</option><option value="manutencao">Manutenção</option><option value="offline">Offline</option></select></label>
               </div>
               <div class="nav-form-grid">
-                <label>Ícone / emoji<input id="navEquipIcone" placeholder="Ex.: 📡"></label>
+                <label>Ícone / emoji<input id="navEquipIcone" data-limite="icone" placeholder="Ex.: 📡"></label>
                 <label>Imagem<input id="navEquipImagem" type="file" accept="image/*"></label>
               </div>
               <div class="nav-form-actions"><button class="primary" type="submit">Adicionar</button><button class="ghost" type="button" data-nav-close>Cancelar</button></div>
+              <div class="nav-panel-message" id="navEquipMessage" aria-live="polite"></div>
             </form>
           </div>
         </div>
@@ -134,17 +161,17 @@
                 <label>Origem<select id="navCableDe" required></select></label>
                 <label>Destino<select id="navCablePara" required></select></label>
               </div>
-              <label>Tipo de enlace<input id="navCableTipo" required placeholder="Ex.: Fibra GPON"></label>
+              <label>Tipo de enlace<input id="navCableTipo" data-limite="tipoCabo" required placeholder="Ex.: Fibra GPON"></label>
               <div class="nav-form-grid">
                 <label>Cor<input id="navCableCor" type="color" value="#5A7284"></label>
                 <label>Espessura<input id="navCableGrossura" type="number" min="1" max="10" value="2"></label>
               </div>
               <div class="nav-form-grid">
                 <label>Estilo<select id="navCableEstilo"><option value="solid">Contínuo</option><option value="dashed">Tracejado</option><option value="dotted">Pontilhado</option></select></label>
-                <label>Porta equipamento 1<input id="navCableSaida" placeholder="Ex.: xe1/1/1"></label>
-                <label>Porta equipamento 2<input id="navCableChegada" placeholder="Ex.: XE1/1/7"></label>
+                <label>Porta equipamento 1<input id="navCableSaida" data-limite="porta" placeholder="Ex.: xe1/1/1"></label>
+                <label>Porta equipamento 2<input id="navCableChegada" data-limite="porta" placeholder="Ex.: XE1/1/7"></label>
               </div>
-              <label>Capacidade do cabo<input id="navCablePotencia" list="capacidades-sugeridas" autocomplete="off" value="1G" placeholder="Ex.: 10G"></label>
+              <label>Capacidade do cabo<input id="navCablePotencia" data-limite="capacidade" list="capacidades-sugeridas" autocomplete="off" value="1G" placeholder="Ex.: 10G"></label>
               <div class="nav-form-actions"><button class="primary" type="submit">Adicionar</button><button class="ghost" type="button" data-nav-close>Cancelar</button></div>
               <div class="nav-panel-message" id="navCableMessage"></div>
             </form>
@@ -154,13 +181,13 @@
 
         <div class="nav-section">
           <div class="nav-label">Diagrama</div>
-          <button class="nav-item" id="btnModoAvancado" type="button">Modo avançado</button>
+          <button class="nav-item" id="btnModoAvancado" type="button" title="Abre a lista de equipamentos e cabos para editar vários de uma vez">Editar em lista</button>
           <button class="nav-item" type="button" data-nav-action="export-diagram">Exportar diagrama</button>
         </div>
 
         <div class="nav-section">
           <div class="nav-label">Projeto</div>
-          <button class="nav-item" id="btnExportarProjeto" type="button">Exportar projeto (.json)</button>
+          <button class="nav-item" id="btnExportarProjeto" type="button" title="Exportar projeto (.json) — atalho: Ctrl+S">Exportar projeto (.json)</button>
           <label class="nav-item nav-item-file">Importar projeto (.json)<input id="arquivoProjeto" type="file" accept=".json,application/json" hidden></label>
         </div>
 
@@ -171,7 +198,13 @@
     <div class="app-main">
       <header>
         <div class="header-bar">
-          <div></div>
+          <div>
+            <div class="lembrete-backup hidden" id="lembreteBackup" role="status">
+              <span data-lembrete-texto></span>
+              <button type="button" class="primary small" data-lembrete-exportar title="Ctrl+S">Exportar agora</button>
+              <button type="button" class="ghost small" data-lembrete-adiar>Depois</button>
+            </div>
+          </div>
           <div class="theme-toolbar">
             <div class="project-tools" aria-label="Projetos salvos">
               <select id="projetoSelect" title="Trocar projeto" aria-label="Trocar projeto"></select>
@@ -211,7 +244,9 @@
           <h2>01 — DADOS</h2>
           <div class="panel-title">Equipamentos e conexões</div>
 
-          <div class="secao-titulo">Equipamentos</div>
+          <details class="secao-lista" id="secaoEquip" open>
+          <summary class="secao-titulo">Equipamentos <span class="secao-contagem" id="contagemEquip">0</span></summary>
+          <input type="search" class="filtro-lista" id="filtroEquip" placeholder="Filtrar por nome, IP, tipo ou grupo" aria-label="Filtrar equipamentos" autocomplete="off" spellcheck="false">
           <div id="listaEquip"></div>
           <div id="formEquipamento" class="quick-form hidden" aria-live="polite">
             <div class="quick-form-header">
@@ -221,19 +256,19 @@
             <div class="quick-form-grid">
               <label class="full">
                 Nome
-                <input type="text" id="novoEquipNome" placeholder="Ex.: OLT-01">
+                <input type="text" id="novoEquipNome" data-limite="nome" placeholder="Ex.: OLT-01">
               </label>
               <label>
                 Tipo
-                <input type="text" id="novoEquipTipo" placeholder="Ex.: OLT">
+                <input type="text" id="novoEquipTipo" data-limite="tipo" placeholder="Ex.: OLT">
               </label>
               <label>
                 Modelo
-                <input type="text" id="novoEquipModelo" placeholder="Ex.: Cisco 9300">
+                <input type="text" id="novoEquipModelo" data-limite="modelo" placeholder="Ex.: Cisco 9300">
               </label>
               <label>
                 IP
-                <input type="text" id="novoEquipIp" placeholder="Ex.: 10.0.0.1" inputmode="decimal" autocomplete="off" spellcheck="false">
+                <input type="text" id="novoEquipIp" data-limite="ip" placeholder="Ex.: 10.0.0.1" inputmode="decimal" autocomplete="off" spellcheck="false">
               </label>
               <label>
                 Cor da fonte
@@ -246,8 +281,11 @@
             </div>
           </div>
           <button class="add-item" id="btnAddEquip" type="button">+ Adicionar equipamento</button>
+          </details>
 
-          <div class="secao-titulo">Conexões</div>
+          <details class="secao-lista" id="secaoConex" open>
+          <summary class="secao-titulo">Conexões <span class="secao-contagem" id="contagemConex">0</span></summary>
+          <input type="search" class="filtro-lista" id="filtroConex" placeholder="Filtrar por equipamento, porta ou tipo" aria-label="Filtrar conexões" autocomplete="off" spellcheck="false">
           <div id="listaConex"></div>
           <div id="formCabemamento" class="quick-form hidden" aria-live="polite">
             <div class="quick-form-header">
@@ -257,7 +295,7 @@
             <div class="quick-form-grid">
               <label class="full">
                 Nome
-                <input type="text" id="novoCabNome" placeholder="Ex.: Fibra tronco">
+                <input type="text" id="novoCabNome" data-limite="tipoCabo" placeholder="Ex.: Fibra tronco">
               </label>
               <label>
                 Origem
@@ -277,15 +315,15 @@
               </label>
               <label>
                 Porta origem
-                <input type="text" id="novoCabSaida" placeholder="Ex.: xe1/1/1">
+                <input type="text" id="novoCabSaida" data-limite="porta" placeholder="Ex.: xe1/1/1">
               </label>
               <label>
                 Porta destino
-                <input type="text" id="novoCabChegada" placeholder="Ex.: XE1/1/7">
+                <input type="text" id="novoCabChegada" data-limite="porta" placeholder="Ex.: XE1/1/7">
               </label>
               <label>
                 Capacidade
-                <input type="text" id="novoCabPotencia" list="capacidades-sugeridas" autocomplete="off" value="1G" placeholder="Ex.: 10G">
+                <input type="text" id="novoCabPotencia" data-limite="capacidade" list="capacidades-sugeridas" autocomplete="off" value="1G" placeholder="Ex.: 10G">
               </label>
               <label>
                 Estilo do traço
@@ -298,15 +336,15 @@
             </div>
           </div>
           <button class="add-item" id="btnAddConex" type="button">+ Adicionar cabeamento</button>
+          </details>
 
           <div class="controls-row">
             <button class="primary" id="btnGerar" type="button">Gerar diagrama</button>
           </div>
 
-          <div id="erro"></div>
 
           <details id="json-avancado">
-            <summary>Avançado: importar/exportar como JSON</summary>
+            <summary>Importar / exportar JSON e CSV</summary>
             <textarea id="jsonAvancado" spellcheck="false"></textarea>
             <div class="controls-row">
               <button class="ghost" id="btnAplicarJson" type="button">Aplicar JSON acima</button>
@@ -317,7 +355,7 @@
           </details>
 
           <details id="dot-src">
-            <summary>Avançado: código DOT (Graphviz)</summary>
+            <summary>Código DOT (Graphviz)</summary>
             <pre id="dot-code"></pre>
             <div class="controls-row">
               <button class="ghost" id="btnCopiarDot" type="button" disabled>Copiar DOT</button>
@@ -354,6 +392,7 @@
               <option value="TB">Cima → Baixo</option>
             </select>
             <button class="ghost" id="btnCaminho" type="button" aria-expanded="false" aria-controls="caminhoBar">Rastrear caminho</button>
+            <button class="ghost" id="btnLimpar" type="button" title="Remover tudo, só os cabos ou os equipamentos de um tipo, grupo ou status">Limpar…</button>
           </div>
           <div class="caminho-bar hidden" id="caminhoBar">
             <label>De <select id="caminhoDe"></select></label>
@@ -361,6 +400,7 @@
             <span id="caminhoResultado" aria-live="polite"></span>
             <button class="ghost small" id="btnFecharCaminho" type="button">Fechar</button>
           </div>
+          <div id="erro" role="alert"></div>
           <div class="canvas-wrap vazio" id="canvas"></div>
           <div class="legenda" id="legenda"></div>
         </section>
@@ -376,6 +416,8 @@
   <option value="GPON"></option><option value="XGS-PON"></option>
 </datalist>
 
+<script src="./assets/vendor/zod-3.25.76.min.js"></script>
+<script src="./assets/js/esquema.js"></script>
 <script src="./assets/js/app.js"></script>
 </body>
 </html>

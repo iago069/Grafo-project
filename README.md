@@ -50,7 +50,9 @@ O projeto já está pronto para a Vercel: o `index.html` e os `assets/` são ser
 
 ## Onde ficam os dados
 
-Os projetos são salvos no `localStorage` do navegador. Limpar os dados do site ou trocar de navegador apaga tudo, então use **Projeto → Exportar projeto (.json)** na barra lateral para guardar uma cópia e **Importar projeto (.json)** para restaurar.
+Os projetos são salvos no `localStorage` do navegador. Limpar os dados do site ou trocar de navegador apaga tudo, então use **Projeto → Exportar projeto (.json)** na barra lateral (ou **Ctrl+S**) para guardar uma cópia e **Importar projeto (.json)** para restaurar.
+
+Um aviso no topo lembra de fazer backup quando o projeto aberto tem mudanças e o último backup tem 7 dias ou mais (ou quando nunca foi feito backup e a primeira mudança tem mais de 1 dia). "Depois" adia o aviso por um dia.
 
 ## Ícones dos equipamentos
 
@@ -64,7 +66,7 @@ Isso atualiza `assets/js/icones-embutidos.js`, que a exportação usa para coloc
 
 ## Importar CSV
 
-Em **Modo avançado → Avançado: importar/exportar como JSON → Importar CSV** (o botão **Baixar modelo CSV** ao lado gera um exemplo). Uma linha por cabo; os equipamentos são criados pelos nomes. Linha sem `destino` cadastra só o equipamento. A importação substitui o projeto aberto — o botão ↶ desfaz.
+Em **Editar em lista → Importar / exportar JSON e CSV → Importar CSV** (o botão **Baixar modelo CSV** ao lado gera um exemplo). Uma linha por cabo; os equipamentos são criados pelos nomes. Linha sem `destino` cadastra só o equipamento. A importação substitui o projeto aberto — o botão ↶ desfaz.
 
 | Coluna | Também aceita | Exemplo |
 |---|---|---|

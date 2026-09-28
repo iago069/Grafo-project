@@ -1,6 +1,13 @@
 (function () {
   "use strict";
 
+  // Regras de validação/normalização (assets/js/esquema.js): as mesmas para
+  // formulários, importação de JSON/CSV e o que está salvo no navegador.
+  var Esquema = window.GrafoEsquema;
+  var LIMITES = Esquema.LIMITES;
+  var ipValido = Esquema.ipValido;
+  var normalizarCapacidade = Esquema.normalizarCapacidade;
+
   var ICONES = [""];
   var EQUIPAMENTOS_API_URL = (window.EQUIPAMENTOS_API_URL && window.EQUIPAMENTOS_API_URL.trim()) || "/api/equipamentos";
 
@@ -202,15 +209,6 @@
     tentarProximo();
   }
 
-  // Capacidade em texto livre, padronizada: "10 gbps" -> "10G", "2,5g" -> "2.5G",
-  // "100 Mb" -> "100M", "xgs-pon" -> "XGS-PON".
-  function normalizarCapacidade(valor) {
-    var texto = String(valor || "").trim().toUpperCase().replace(/\s+/g, "");
-    var m = /^(\d+(?:[.,]\d+)?)([KMGT])(?:BPS|B|BIT\/S)?$/.exec(texto);
-    if (m) return m[1].replace(",", ".") + m[2];
-    return texto;
-  }
-
   function iconePorTipo(tipo) {
     var itemCatalogo = buscarTipoNoCatalogo(tipo);
     if (itemCatalogo && itemCatalogo.icone) return itemCatalogo.icone;
@@ -242,6 +240,8 @@
 
   var elListaEquip = document.getElementById("listaEquip");
   var elListaConex = document.getElementById("listaConex");
+  var elFiltroEquip = document.getElementById("filtroEquip");
+  var elFiltroConex = document.getElementById("filtroConex");
   var elFormEquip = document.getElementById("formEquipamento");
   var elFormCab = document.getElementById("formCabemamento");
   var elErro = document.getElementById("erro");
@@ -280,7 +280,7 @@
   var aplicandoHistorico = false;
   var atualizacaoDiagramaPendente = null;
   var canvasView = { scale: 1, x: 0, y: 0, dragging: false, startX: 0, startY: 0, originX: 0, originY: 0 };
-  var LIMITE_CANVAS = { minX: -4200, maxX: 4200, minY: -3200, maxY: 3200 };
+  var LIMITE_CANVAS = LIMITES.canvas;
   Object.defineProperty(window, 'LIMITE_CANVAS', { value: LIMITE_CANVAS, configurable: true, writable: true, enumerable: true });
   Object.defineProperty(globalThis, 'LIMITE_CANVAS', { value: LIMITE_CANVAS, configurable: true, writable: true, enumerable: true });
 
@@ -499,12 +499,20 @@
   // ---- Portas ---------------------------------------------------------------
   // A porta fica no lado do equipamento voltado para o equipamento do outro
   // lado do cabo. Sem posição conhecida, usa o padrão do layout.
-  function ladoVoltadoPara(origem, destino, padrao) {
+  // Prefere o eixo do layout (esquerda/direita em "LR", cima/baixo em "TB"):
+  // só usa o outro eixo quando os dois estão quase alinhados nele. Sem isso,
+  // no LR os filhos empilhados numa coluna ganhavam porta em cima e os cabos
+  // desciam pela coluna, por cima dos outros equipamentos.
+  var DISTANCIA_MINIMA_NO_EIXO = 40;
+  function ladoVoltadoPara(origem, destino, padrao, direcao) {
     if (!origem || !destino || !posicaoValida(origem.posicao) || !posicaoValida(destino.posicao)) return padrao;
     var dx = destino.posicao.x - origem.posicao.x;
     var dy = destino.posicao.y - origem.posicao.y;
     if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return padrao;
-    if (Math.abs(dx) >= Math.abs(dy)) return dx > 0 ? "direita" : "esquerda";
+    var horizontal = direcao === "TB"
+      ? Math.abs(dy) < DISTANCIA_MINIMA_NO_EIXO && Math.abs(dx) > Math.abs(dy)
+      : Math.abs(dx) >= DISTANCIA_MINIMA_NO_EIXO || Math.abs(dx) >= Math.abs(dy);
+    if (horizontal) return dx > 0 ? "direita" : "esquerda";
     return dy > 0 ? "baixo" : "cima";
   }
 
@@ -1084,6 +1092,94 @@
     aplicarBusca();
   }
 
+  // ---- Limpar diagrama -------------------------------------------------------
+  // Remove tudo, só os cabos, ou os equipamentos de um tipo/grupo/status (com os
+  // cabos ligados a eles). Vira um passo do desfazer, como qualquer edição.
+  var limpar = {
+    backdrop: document.getElementById("limparModal"),
+    form: document.getElementById("limparForm"),
+    tipo: document.getElementById("limparTipo"),
+    grupo: document.getElementById("limparGrupo"),
+    status: document.getElementById("limparStatus"),
+    resumo: document.getElementById("limparResumo"),
+    confirmar: document.getElementById("limparConfirmar")
+  };
+
+  function valoresDistintos(campo, vazio) {
+    var vistos = {};
+    estado.equipamentos.forEach(function (eq) { vistos[String(eq[campo] || "").trim() || vazio] = true; });
+    return Object.keys(vistos).sort(function (a, b) { return a.localeCompare(b, "pt-BR"); });
+  }
+
+  function preencherSelectLimpar(select, valores) {
+    var atual = select.value;
+    select.innerHTML = valores.map(function (v) { return '<option value="' + escaparHtml(v) + '">' + escaparHtml(v) + '</option>'; }).join("");
+    select.disabled = !valores.length;
+    if (valores.indexOf(atual) >= 0) select.value = atual;
+  }
+
+  var SEM_TIPO = "(sem tipo)", SEM_GRUPO = "(sem grupo)";
+
+  // Quais equipamentos e cabos a opção escolhida remove.
+  function selecaoParaLimpar() {
+    var modo = (limpar.form.querySelector('input[name="limparModo"]:checked') || {}).value;
+    if (modo === "tudo") return { equipamentos: estado.equipamentos.slice(), conexoes: estado.conexoes.slice() };
+    if (modo === "cabos") return { equipamentos: [], conexoes: estado.conexoes.slice() };
+    var filtro = {
+      tipo: function (eq) { return (String(eq.tipo || "").trim() || SEM_TIPO) === limpar.tipo.value; },
+      grupo: function (eq) { return (String(eq.grupo || "").trim() || SEM_GRUPO) === limpar.grupo.value; },
+      status: function (eq) { return (eq.status || "ativo") === limpar.status.value; }
+    }[modo];
+    var equipamentos = filtro ? estado.equipamentos.filter(filtro) : [];
+    var ids = {};
+    equipamentos.forEach(function (eq) { ids[eq.id] = true; });
+    return { equipamentos: equipamentos, conexoes: estado.conexoes.filter(function (c) { return ids[c.de] || ids[c.para]; }) };
+  }
+
+  function atualizarResumoLimpar() {
+    var s = selecaoParaLimpar();
+    var total = s.equipamentos.length + s.conexoes.length;
+    limpar.resumo.innerHTML = total
+      ? "Vai remover <strong>" + escaparHtml(plural(s.equipamentos.length, "equipamento", "equipamentos")) + "</strong> e <strong>" +
+        escaparHtml(plural(s.conexoes.length, "cabo", "cabos")) + "</strong>. Dá para desfazer com ↶."
+      : "Nada para remover com essa opção.";
+    limpar.confirmar.disabled = !total;
+  }
+
+  function abrirLimpar() {
+    preencherSelectLimpar(limpar.tipo, valoresDistintos("tipo", SEM_TIPO));
+    preencherSelectLimpar(limpar.grupo, valoresDistintos("grupo", SEM_GRUPO));
+    atualizarResumoLimpar();
+    limpar.backdrop.classList.remove("hidden");
+    var marcado = limpar.form.querySelector('input[name="limparModo"]:checked');
+    if (marcado) marcado.focus();
+  }
+
+  function fecharLimpar() { limpar.backdrop.classList.add("hidden"); }
+
+  document.getElementById("btnLimpar").addEventListener("click", abrirLimpar);
+  limpar.backdrop.querySelectorAll("[data-limpar-fechar]").forEach(function (b) { b.addEventListener("click", fecharLimpar); });
+  limpar.backdrop.addEventListener("click", function (event) { if (event.target === limpar.backdrop) fecharLimpar(); });
+  limpar.backdrop.addEventListener("keydown", function (event) { if (event.key === "Escape") { event.preventDefault(); fecharLimpar(); } });
+  limpar.form.addEventListener("change", function (event) {
+    // Escolher no select marca a opção dele.
+    var label = event.target.closest("label");
+    var radio = label && label.querySelector('input[type="radio"]');
+    if (event.target.tagName === "SELECT" && radio) radio.checked = true;
+    atualizarResumoLimpar();
+  });
+  limpar.form.addEventListener("submit", function (event) {
+    event.preventDefault();
+    var s = selecaoParaLimpar();
+    var removerEq = {}, removerCabo = new Set(s.conexoes);
+    s.equipamentos.forEach(function (eq) { removerEq[eq.id] = true; });
+    estado.equipamentos = estado.equipamentos.filter(function (eq) { return !removerEq[eq.id]; });
+    estado.conexoes = estado.conexoes.filter(function (c) { return !removerCabo.has(c); });
+    fecharLimpar();
+    fecharCaminho();
+    renderTudo();
+  });
+
   btnCaminho.addEventListener("click", function () { if (caminhoAberto()) fecharCaminho(); else abrirCaminho(); });
   document.getElementById("btnFecharCaminho").addEventListener("click", fecharCaminho);
   elCaminhoDe.addEventListener("change", aplicarCaminho);
@@ -1179,7 +1275,7 @@
     var fechado = elPainelDados.classList.toggle("painel-dados-oculto");
     elWorkspace.classList.toggle("modo-avancado-fechado", fechado);
     btnModoAvancado.classList.toggle("active", !fechado);
-    btnModoAvancado.textContent = fechado ? "Modo avançado" : "Fechar modo avançado";
+    btnModoAvancado.textContent = fechado ? "Editar em lista" : "Fechar lista";
   });
 
   var modalRef = {
@@ -1306,6 +1402,7 @@
     campoEditor("editEquipModelo").value = eq.modelo || "";
     campoEditor("editEquipIp").value = eq.ip || "";
     campoEditor("editEquipIp").setCustomValidity("");
+    campoEditor("editEquipMensagem").textContent = "";
     campoEditor("editEquipGrupo").value = eq.grupo || "";
     selecionarOpcao(campoEditor("editEquipStatus"), eq.status || "ativo");
     campoEditor("editEquipIcone").innerHTML = '<option value="">— sem ícone —</option>' + CATALOGO_ICONES.map(function (icone) {
@@ -1345,26 +1442,18 @@
     event.preventDefault();
     var eq = editor.equipamento;
     if (!eq) return;
-    var nome = campoEditor("editEquipNome").value.trim();
-    var campoIp = campoEditor("editEquipIp");
-    var ip = campoIp.value.trim();
-    if (!ipValido(ip)) {
-      campoIp.setCustomValidity("IP inválido. Ex.: 10.0.0.1, 10.0.0.0/24 ou 2001:db8::1");
-      campoIp.reportValidity();
-      return;
-    }
     var tipo = campoEditor("editEquipTipo").value.trim();
-    eq.nome = nome || eq.nome;
     // Tipo trocado com o ícone ainda no padrão do tipo antigo: segue o novo tipo.
     var icone = campoEditor("editEquipIcone").value;
     if (tipo !== (eq.tipo || "") && icone === (eq.icone || "") && icone === iconePorTipo(eq.tipo)) icone = iconePorTipo(tipo);
-    eq.icone = icone;
-    eq.tipo = tipo;
-    eq.modelo = campoEditor("editEquipModelo").value.trim();
-    eq.ip = ip;
-    eq.grupo = campoEditor("editEquipGrupo").value.trim();
-    eq.status = campoEditor("editEquipStatus").value;
-    eq.corFonte = campoEditor("editEquipCor").value;
+    var validacao = Esquema.validarEquipamento(Object.assign({}, eq, {
+      nome: campoEditor("editEquipNome").value, tipo: tipo, icone: icone,
+      modelo: campoEditor("editEquipModelo").value, ip: campoEditor("editEquipIp").value,
+      grupo: campoEditor("editEquipGrupo").value, status: campoEditor("editEquipStatus").value,
+      corFonte: campoEditor("editEquipCor").value
+    }));
+    if (!validacao.ok) { campoEditor("editEquipMensagem").textContent = textoDosErros(validacao.erros); return; }
+    Object.assign(eq, validacao.dados);
     fecharEditor();
     renderTudo();
   });
@@ -1375,18 +1464,15 @@
     if (!c) return;
     var de = campoEditor("editCaboDe").value;
     var para = campoEditor("editCaboPara").value;
-    if (de === para) { campoEditor("editCaboMensagem").textContent = "Origem e destino precisam ser diferentes."; return; }
+    var validacao = Esquema.validarConexao(Object.assign({}, c, {
+      de: de, para: para, saida: campoEditor("editCaboSaida").value, chegada: campoEditor("editCaboChegada").value,
+      tipo: campoEditor("editCaboTipo").value, potencia: campoEditor("editCaboPotencia").value, cor: campoEditor("editCaboCor").value,
+      grossura: campoEditor("editCaboGrossura").value, estilo: campoEditor("editCaboEstilo").value
+    }), estado.equipamentos.map(function (eq) { return eq.id; }));
+    if (!validacao.ok) { campoEditor("editCaboMensagem").textContent = textoDosErros(validacao.erros); return; }
     // Trocou as pontas: o arraste manual do cabo antigo não vale mais.
-    if (de !== c.de || para !== c.para) delete c.deslocamento;
-    c.de = de;
-    c.para = para;
-    c.saida = campoEditor("editCaboSaida").value.trim();
-    c.chegada = campoEditor("editCaboChegada").value.trim();
-    c.tipo = campoEditor("editCaboTipo").value.trim();
-    c.potencia = normalizarCapacidade(campoEditor("editCaboPotencia").value);
-    c.cor = campoEditor("editCaboCor").value;
-    c.grossura = Math.min(10, Math.max(1, Number(campoEditor("editCaboGrossura").value) || 2));
-    c.estilo = campoEditor("editCaboEstilo").value;
+    if (de !== c.de || para !== c.para) { delete c.deslocamento; delete validacao.dados.deslocamento; }
+    Object.assign(c, validacao.dados);
     fecharEditor();
     renderTudo();
   });
@@ -1426,17 +1512,33 @@
   function clonarDados(dados) { return JSON.parse(JSON.stringify(dados)); }
   function projetoVazio() { return { equipamentos: [], conexoes: [] }; }
 
+  // O que foi corrigido ao carregar os dados salvos (mostrado depois da 1ª renderização).
+  var ajustesAoCarregar = [];
+
   function carregarProjetos() {
+    ajustesAoCarregar = [];
     try {
       var salvo = JSON.parse(localStorage.getItem("grafo-projetos") || "null");
-      if (salvo && typeof salvo === "object" && Object.keys(salvo).length) {
+      if (salvo && typeof salvo === "object" && !Array.isArray(salvo) && Object.keys(salvo).length) {
         var projetosSanitizados = {};
-        Object.keys(salvo).forEach(function (nome) {
-          var projeto = salvo[nome];
-          if (!projeto || typeof projeto !== "object") return;
-          var equipamentos = Array.isArray(projeto.equipamentos) ? projeto.equipamentos.map(migrarImagensAntigas) : [];
-          var conexoes = Array.isArray(projeto.conexoes) ? projeto.conexoes : [];
-          projetosSanitizados[nome] = { equipamentos: equipamentos, conexoes: conexoes };
+        var nomes = Object.keys(salvo);
+        if (nomes.length > LIMITES.projetos) {
+          ajustesAoCarregar.push({ onde: "Projetos", mensagem: "máximo de " + LIMITES.projetos + " projetos — os excedentes não foram carregados" });
+          nomes = nomes.slice(0, LIMITES.projetos);
+        }
+        // Os dados salvos passam pelas mesmas regras da importação, no modo que
+        // corrige em vez de recusar: um dado estragado não trava o app.
+        nomes.forEach(function (nomeBruto) {
+          var nomeValido = Esquema.validarNomeProjeto(nomeBruto);
+          var nome = nomeValido.ok ? nomeValido.dados : String(nomeBruto).trim().slice(0, LIMITES.nomeProjeto) || "Projeto sem nome";
+          var baseNome = nome.slice(0, LIMITES.nomeProjeto - 5);
+          for (var n = 2; projetosSanitizados[nome]; n++) nome = baseNome + " (" + n + ")";
+          if (!nomeValido.ok) ajustesAoCarregar.push({ onde: 'Projeto "' + nome + '"', mensagem: "nome: " + nomeValido.mensagem + " — corrigido" });
+          var projeto = salvo[nomeBruto];
+          if (projeto && typeof projeto === "object" && Array.isArray(projeto.equipamentos)) projeto.equipamentos.forEach(migrarImagensAntigas);
+          var r = Esquema.validarProjeto(projeto, "reparar");
+          r.ajustes.forEach(function (a) { ajustesAoCarregar.push({ onde: (nomes.length > 1 ? nome + " › " : "") + a.onde, mensagem: a.mensagem }); });
+          projetosSanitizados[nome] = r.dados;
         });
         if (Object.keys(projetosSanitizados).length) {
           // "diagrama-estado" é o formato antigo (um projeto só), já migrado para
@@ -1449,7 +1551,9 @@
     var legado = carregarLocal();
     if (legado && Array.isArray(legado.equipamentos) && legado.equipamentos.length) {
       legado.equipamentos.forEach(migrarImagensAntigas);
-      return { "Projeto principal": clonarDados(legado) };
+      var r = Esquema.validarProjeto(legado, "reparar");
+      ajustesAoCarregar = ajustesAoCarregar.concat(r.ajustes);
+      return { "Projeto principal": r.dados };
     }
     return { "Projeto principal": projetoVazio() };
   }
@@ -1458,6 +1562,11 @@
   function salvarLocal(semHistorico) {
     try {
       var estadoAtual = JSON.stringify(estado);
+      // Mudança feita pelo usuário (não só posições recalculadas ao redesenhar).
+      if (!semHistorico && ultimoEstadoHistorico && ultimoEstadoHistorico !== estadoAtual) {
+        registrarAlteracao(projetoAtual);
+        atualizarLembreteBackup();
+      }
       if (!semHistorico && !aplicandoHistorico && ultimoEstadoHistorico && ultimoEstadoHistorico !== estadoAtual) {
         historicoDesfazer.push(JSON.parse(ultimoEstadoHistorico));
         if (historicoDesfazer.length > 50) historicoDesfazer.shift();
@@ -1494,6 +1603,7 @@
     elProjetoSelect.innerHTML = Object.keys(projetos).map(function (nome) {
       return '<option value="' + escaparHtml(nome) + '"' + (nome === projetoAtual ? " selected" : "") + '>' + escaparHtml(nome) + '</option>';
     }).join("");
+    atualizarLembreteBackup();
   }
 
   // Projeto de exemplo da tela vazia: um POP pequeno com as situações mais comuns.
@@ -1587,9 +1697,12 @@
       cancelText: "Cancelar",
       kind: "prompt"
     }).then(function (valor) {
-      var nome = valor ? String(valor).trim() : "";
-      if (!nome) return;
+      if (!valor || !String(valor).trim()) return;
+      var validacaoNome = Esquema.validarNomeProjeto(valor);
+      if (!validacaoNome.ok) { mostrarErro("Nome de projeto inválido: " + validacaoNome.mensagem + "."); return; }
+      var nome = validacaoNome.dados;
       if (projetos[nome]) { mostrarErro("Escolha um nome novo para o projeto."); return; }
+      if (Object.keys(projetos).length >= LIMITES.projetos) { mostrarErro("Limite de " + LIMITES.projetos + " projetos atingido. Exclua algum antes."); return; }
       salvarLocal();
       projetos[nome] = { equipamentos: [], conexoes: [] };
       projetoAtual = nome;
@@ -1628,12 +1741,85 @@
     });
   });
 
-  document.getElementById("btnExportarProjeto").addEventListener("click", function () {
+  function exportarProjeto() {
     salvarLocal();
     var conteudo = JSON.stringify({ projeto: projetoAtual, equipamentos: estado.equipamentos, conexoes: estado.conexoes }, null, 2);
     var arquivo = projetoAtual.replace(/[^\wÀ-ſ-]+/g, "-").replace(/^-+|-+$/g, "") || "projeto";
     baixarBlob(new Blob([conteudo], { type: "application/json" }), "grafo-" + arquivo + ".json");
+    registrarBackup(projetoAtual);
+  }
+
+  document.getElementById("btnExportarProjeto").addEventListener("click", exportarProjeto);
+
+  // Ctrl+S (Cmd+S no Mac) exporta o projeto aberto em vez de "salvar a página".
+  document.addEventListener("keydown", function (event) {
+    if (!(event.ctrlKey || event.metaKey) || event.altKey || String(event.key).toLowerCase() !== "s") return;
+    event.preventDefault();
+    exportarProjeto();
   });
+
+  // ---- Lembrete de backup ---------------------------------------------------
+  // Os projetos só existem neste navegador. Por projeto, guarda quando foi o
+  // último backup (exportação/importação) e desde quando há mudanças fora dele.
+  var LEMBRETE_DIAS_ENTRE_BACKUPS = 7;
+  var LEMBRETE_DIAS_SEM_BACKUP = 1;
+  var DIA_MS = 24 * 60 * 60 * 1000;
+  var elLembrete = document.getElementById("lembreteBackup");
+
+  function lerInfoBackup() {
+    try { return JSON.parse(localStorage.getItem("grafo-backup") || "{}") || {}; } catch (e) { return {}; }
+  }
+  function gravarInfoBackup(info) {
+    try { localStorage.setItem("grafo-backup", JSON.stringify(info)); } catch (e) {}
+  }
+
+  function registrarBackup(nome) {
+    var info = lerInfoBackup();
+    info[nome] = { ultimo: Date.now(), pendenteDesde: null, adiadoAte: null };
+    gravarInfoBackup(info);
+    atualizarLembreteBackup();
+  }
+
+  function registrarAlteracao(nome) {
+    var info = lerInfoBackup();
+    var item = info[nome] || { ultimo: null, pendenteDesde: null, adiadoAte: null };
+    if (item.pendenteDesde) return;
+    item.pendenteDesde = Date.now();
+    info[nome] = item;
+    gravarInfoBackup(info);
+  }
+
+  function descreverDias(ms) {
+    var dias = Math.floor(ms / DIA_MS);
+    return dias <= 0 ? "hoje" : dias === 1 ? "há 1 dia" : "há " + dias + " dias";
+  }
+
+  function atualizarLembreteBackup() {
+    if (!elLembrete) return;
+    var item = lerInfoBackup()[projetoAtual];
+    var agora = Date.now();
+    var mostrar = false, texto = "";
+    if (item && item.pendenteDesde && estado.equipamentos.length && !(item.adiadoAte && item.adiadoAte > agora)) {
+      if (item.ultimo && agora - item.ultimo >= LEMBRETE_DIAS_ENTRE_BACKUPS * DIA_MS) {
+        mostrar = true;
+        texto = "Último backup deste projeto: " + descreverDias(agora - item.ultimo) + ".";
+      } else if (!item.ultimo && agora - item.pendenteDesde >= LEMBRETE_DIAS_SEM_BACKUP * DIA_MS) {
+        mostrar = true;
+        texto = "Este projeto ainda não tem backup.";
+      }
+    }
+    elLembrete.classList.toggle("hidden", !mostrar);
+    if (mostrar) elLembrete.querySelector("[data-lembrete-texto]").textContent = texto + " Os dados ficam só neste navegador.";
+  }
+
+  if (elLembrete) {
+    elLembrete.querySelector("[data-lembrete-exportar]").addEventListener("click", exportarProjeto);
+    elLembrete.querySelector("[data-lembrete-adiar]").addEventListener("click", function () {
+      var info = lerInfoBackup();
+      if (info[projetoAtual]) { info[projetoAtual].adiadoAte = Date.now() + DIA_MS; gravarInfoBackup(info); }
+      atualizarLembreteBackup();
+    });
+  }
 
   document.getElementById("arquivoProjeto").addEventListener("change", function (event) {
     var arquivo = event.target.files && event.target.files[0];
@@ -1641,23 +1827,30 @@
     if (!arquivo) return;
     var leitor = new FileReader();
     leitor.onload = function () {
-      try {
-        var dados = JSON.parse(leitor.result);
-        if (!dados || !Array.isArray(dados.equipamentos)) throw new Error('O arquivo precisa ter a lista "equipamentos".');
-        if (!Array.isArray(dados.conexoes)) dados.conexoes = [];
-        if (dados.equipamentos.length) validarDados(dados);
-        dados.equipamentos.forEach(function (eq) { if (!eq.icone) eq.icone = ""; if (!eq.imagem) eq.imagem = ""; migrarImagensAntigas(eq); });
+      var bruto;
+      try { bruto = JSON.parse(leitor.result); }
+      catch (e) { mostrarErro('Não foi possível importar "' + arquivo.name + '": o arquivo não é um JSON válido.', [{ onde: "JSON", mensagem: e.message }]); return; }
+      if (bruto && Array.isArray(bruto.equipamentos)) bruto.equipamentos.forEach(migrarImagensAntigas);
+      var resultado = Esquema.validarProjeto(bruto, "estrito");
+      if (!resultado.ok) { mostrarErrosDeValidacao('"' + arquivo.name + '"', resultado); return; }
+      if (Object.keys(projetos).length >= LIMITES.projetos) {
+        mostrarErro("Não foi possível importar: o limite é de " + LIMITES.projetos + " projetos. Exclua algum antes.");
+        return;
+      }
 
-        var base = String(dados.projeto || arquivo.name.replace(/\.json$/i, "")).trim() || "Projeto importado";
-        var nome = base;
-        for (var i = 2; projetos[nome]; i++) nome = base + " (" + i + ")";
+      var nomeArquivo = bruto.projeto != null ? bruto.projeto : arquivo.name.replace(/\.json$/i, "");
+      var nomeValido = Esquema.validarNomeProjeto(nomeArquivo);
+      var base = nomeValido.ok ? nomeValido.dados : "Projeto importado";
+      var nome = base;
+      for (var i = 2; projetos[nome]; i++) nome = base.slice(0, LIMITES.nomeProjeto - 5) + " (" + i + ")";
 
-        salvarLocal();
-        projetos[nome] = { equipamentos: dados.equipamentos, conexoes: dados.conexoes };
-        abrirProjeto(nome);
-        salvarLocal();
-        esconderErro();
-      } catch (e) { mostrarErro("Não foi possível importar o projeto.\nDetalhe: " + e.message); }
+      salvarLocal();
+      projetos[nome] = resultado.dados;
+      abrirProjeto(nome);
+      salvarLocal();
+      // Veio de um arquivo: esse arquivo já é um backup do projeto.
+      registrarBackup(nome);
+      esconderErro();
     };
     leitor.readAsText(arquivo, "UTF-8");
   });
@@ -1795,18 +1988,18 @@
       return (
         '<div class="equip-card" data-idx="' + i + '">' +
           '<div class="equip-row1">' +
-            '<input type="text" data-field="nome" value="' + escaparHtml(eq.nome) + '" placeholder="Nome do equipamento" aria-label="Nome do equipamento">' +
+            '<input type="text" data-field="nome" data-limite="nome" value="' + escaparHtml(eq.nome) + '" placeholder="Nome do equipamento" aria-label="Nome do equipamento">' +
             '<select data-field="icone" aria-label="Ícone"><optgroup label="Símbolos">' + opcoesImagem + '</optgroup><optgroup label="Emojis">' + opcoesEmoji + '</optgroup></select>' +
             '<span class="equip-status"><i class="equip-status-dot ' + (eq.status || "ativo") + '"></i>' + (eq.status === "manutencao" ? "Manutenção" : eq.status === "offline" ? "Offline" : "Ativo") + '</span>' +
-            '<button type="button" class="ghost small equip-advanced-toggle" data-action="toggle-avancado">Modo avançado</button>' +
+            '<button type="button" class="ghost small equip-advanced-toggle" data-action="toggle-avancado" aria-expanded="false">Detalhes</button>' +
             '<button type="button" class="ghost small" data-action="remover-equip" title="Remover" aria-label="Remover equipamento">×</button>' +
           '</div>' +
           '<div class="equip-advanced" data-advanced-panel>' +
             '<div class="equip-row2">' +
-              '<input type="text" data-field="modelo" value="' + escaparHtml(eq.modelo) + '" placeholder="Modelo (fabricante)" aria-label="Modelo (fabricante)">' +
-              '<input type="text" data-field="tipo" value="' + escaparHtml(eq.tipo) + '" placeholder="Tipo" aria-label="Tipo" list="tipos-sugeridos">' +
-              '<input type="text" data-field="ip" value="' + escaparHtml(eq.ip || "") + '" placeholder="IP (ex.: 10.0.0.1)" aria-label="IP" aria-invalid="' + (ipValido(eq.ip) ? "false" : "true") + '" inputmode="decimal" autocomplete="off" spellcheck="false">' +
-              '<input type="text" data-field="grupo" value="' + escaparHtml(eq.grupo || "") + '" placeholder="Grupo / rack / sala" aria-label="Grupo / rack / sala">' +
+              '<input type="text" data-field="modelo" data-limite="modelo" value="' + escaparHtml(eq.modelo) + '" placeholder="Modelo (fabricante)" aria-label="Modelo (fabricante)">' +
+              '<input type="text" data-field="tipo" data-limite="tipo" value="' + escaparHtml(eq.tipo) + '" placeholder="Tipo" aria-label="Tipo" list="tipos-sugeridos">' +
+              '<input type="text" data-field="ip" data-limite="ip" value="' + escaparHtml(eq.ip || "") + '" placeholder="IP (ex.: 10.0.0.1)" aria-label="IP" aria-invalid="' + (ipValido(eq.ip) ? "false" : "true") + '" inputmode="decimal" autocomplete="off" spellcheck="false">' +
+              '<input type="text" data-field="grupo" data-limite="grupo" value="' + escaparHtml(eq.grupo || "") + '" placeholder="Grupo / rack / sala" aria-label="Grupo / rack / sala">' +
             '</div>' +
             '<div class="equip-row3">' +
               '<label class="color-picker">Fonte <input type="color" data-field="corFonte" value="' + corValida(eq.corFonte, "#16323D") + '"></label>' +
@@ -1819,7 +2012,49 @@
         '</div>'
       );
     }).join("");
+    aplicarLimitesNosCampos(elListaEquip);
+    filtrarListas();
   }
+
+  // maxlength dos campos marcados com data-limite="<chave de LIMITES>": a tela
+  // usa os mesmos limites da validação (esquema.js).
+  function aplicarLimitesNosCampos(raiz) {
+    (raiz || document).querySelectorAll("[data-limite]").forEach(function (campo) {
+      var limite = LIMITES[campo.getAttribute("data-limite")];
+      if (typeof limite === "number") campo.maxLength = limite;
+    });
+  }
+
+  // Filtro e contagem das seções da lista. Esconde (sem apagar) os itens que não
+  // batem; a contagem mostra "3 de 40" enquanto há filtro.
+  function filtrarLista(lista, seletor, itens, filtro, contagem, textos) {
+    var termo = normalizarTextoEquipamento(filtro.value);
+    var visiveis = 0;
+    lista.querySelectorAll(seletor).forEach(function (el) {
+      var item = itens[parseInt(el.getAttribute("data-idx"), 10)];
+      if (!item) return; // linha de uma renderização anterior, prestes a ser refeita
+      var bate = !termo || textos(item).some(function (t) { return normalizarTextoEquipamento(t).indexOf(termo) >= 0; });
+      el.hidden = !bate;
+      if (bate) visiveis++;
+    });
+    contagem.textContent = termo ? visiveis + " de " + itens.length : String(itens.length);
+    var aviso = lista.querySelector(".lista-vazia-filtro");
+    if (termo && !visiveis && itens.length) {
+      if (!aviso) { aviso = document.createElement("div"); aviso.className = "lista-vazia-filtro"; lista.appendChild(aviso); }
+      aviso.textContent = 'Nada encontrado para "' + filtro.value.trim() + '".';
+    } else if (aviso) aviso.remove();
+  }
+
+  function filtrarListas() {
+    var nomePorId = {};
+    estado.equipamentos.forEach(function (eq) { nomePorId[eq.id] = eq.nome; });
+    filtrarLista(elListaEquip, ".equip-card", estado.equipamentos, elFiltroEquip, document.getElementById("contagemEquip"),
+      function (eq) { return [eq.nome, eq.ip, eq.tipo, eq.grupo, eq.modelo]; });
+    filtrarLista(elListaConex, ".conex-row", estado.conexoes, elFiltroConex, document.getElementById("contagemConex"),
+      function (c) { return [nomePorId[c.de], nomePorId[c.para], c.tipo, c.saida, c.chegada, c.potencia]; });
+  }
+  elFiltroEquip.addEventListener("input", filtrarListas);
+  elFiltroConex.addEventListener("input", filtrarListas);
 
   function renderConexoes() {
     var opcoesEquip = estado.equipamentos.map(function (eq) { return { id: eq.id, nome: eq.nome || eq.id }; });
@@ -1834,15 +2069,17 @@
           '<select data-field="de" aria-label="Origem">' + opcoes(c.de) + '</select>' +
           '<span class="conex-arrow">→</span>' +
           '<select data-field="para" aria-label="Destino">' + opcoes(c.para) + '</select>' +
-          '<input type="text" data-field="tipo" value="' + escaparHtml(c.tipo) + '" placeholder="Tipo de enlace" aria-label="Tipo de enlace">' +
-          '<input type="text" data-field="saida" value="' + escaparHtml(c.saida || "") + '" placeholder="Porta origem" aria-label="Porta origem">' +
-          '<input type="text" data-field="chegada" value="' + escaparHtml(c.chegada || "") + '" placeholder="Porta destino" aria-label="Porta destino">' +
-          '<input type="text" data-field="potencia" value="' + escaparHtml(c.potencia || "") + '" list="capacidades-sugeridas" placeholder="Capacidade" title="Capacidade do cabo" aria-label="Capacidade do cabo" autocomplete="off">' +
+          '<input type="text" data-field="tipo" data-limite="tipoCabo" value="' + escaparHtml(c.tipo) + '" placeholder="Tipo de enlace" aria-label="Tipo de enlace">' +
+          '<input type="text" data-field="saida" data-limite="porta" value="' + escaparHtml(c.saida || "") + '" placeholder="Porta origem" aria-label="Porta origem">' +
+          '<input type="text" data-field="chegada" data-limite="porta" value="' + escaparHtml(c.chegada || "") + '" placeholder="Porta destino" aria-label="Porta destino">' +
+          '<input type="text" data-field="potencia" data-limite="capacidade" value="' + escaparHtml(c.potencia || "") + '" list="capacidades-sugeridas" placeholder="Capacidade" title="Capacidade do cabo" aria-label="Capacidade do cabo" autocomplete="off">' +
           '<label class="color-picker">Linha <input type="color" data-field="cor" value="' + corValida(c.cor, "#5A7284") + '"></label>' +
           '<button type="button" class="ghost small" data-action="remover-conex" title="Remover" aria-label="Remover conexão">×</button>' +
         '</div>'
       );
     }).join("");
+    aplicarLimitesNosCampos(elListaConex);
+    filtrarListas();
   }
 
   function renderSidebarPanels() {
@@ -1881,17 +2118,31 @@
     elJsonAvancado.value = JSON.stringify(estado, null, 2);
   }
 
+  // Edição direta na lista: o campo só é gravado se o item continuar válido
+  // pelas regras do esquema. Enquanto inválido, o campo fica marcado e o valor
+  // anterior continua salvo; ao sair do campo (change), ele volta ao salvo.
+  function validarCampoDaLista(tipo, item, campo, valor) {
+    var candidato = Object.assign({}, item);
+    candidato[campo] = valor;
+    var r = tipo === "equipamento" ? Esquema.validarEquipamento(candidato)
+      : Esquema.validarConexao(candidato, estado.equipamentos.map(function (eq) { return eq.id; }));
+    return r.ok ? { ok: true, valor: r.dados[campo] } : { ok: false, mensagem: textoDosErros(r.erros) };
+  }
+
+  function marcarCampo(input, mensagem) {
+    input.setAttribute("aria-invalid", mensagem ? "true" : "false");
+    input.title = mensagem || "";
+  }
+
   elListaEquip.addEventListener("input", function (e) {
     var campo = e.target.getAttribute("data-field");
-    if (!campo) return;
+    if (!campo || e.target.tagName === "SELECT") return;
     var card = e.target.closest(".equip-card");
     var idx = parseInt(card.getAttribute("data-idx"), 10);
-    estado.equipamentos[idx][campo] = e.target.value;
-    if (campo === "ip") {
-      var invalido = !ipValido(e.target.value);
-      e.target.setAttribute("aria-invalid", invalido ? "true" : "false");
-      e.target.title = invalido ? "IP inválido. Ex.: 10.0.0.1, 10.0.0.0/24 ou 2001:db8::1" : "";
-    }
+    var r = validarCampoDaLista("equipamento", estado.equipamentos[idx], campo, e.target.value);
+    marcarCampo(e.target, r.ok ? "" : r.mensagem);
+    if (!r.ok) return;
+    estado.equipamentos[idx][campo] = r.valor;
     if (campo === "nome") renderConexoes();
     salvarLocal();
     atualizarJsonAvancado();
@@ -1929,7 +2180,9 @@
       var arquivo = e.target.files && e.target.files[0];
       if (!arquivo) return;
       lerImagemReduzida(arquivo, function (imagem) {
-        estado.equipamentos[idx].imagem = imagem;
+        var r = validarCampoDaLista("equipamento", estado.equipamentos[idx], "imagem", imagem);
+        if (!r.ok) { mostrarErro("Não foi possível usar essa imagem.", [{ onde: arquivo.name, mensagem: r.mensagem }]); return; }
+        estado.equipamentos[idx].imagem = r.valor;
         renderEquipamentos();
         atualizarJsonAvancado();
         salvarLocal();
@@ -1941,7 +2194,9 @@
     if (!campo) return;
     var card = e.target.closest(".equip-card");
     var idx = parseInt(card.getAttribute("data-idx"), 10);
-    estado.equipamentos[idx][campo] = e.target.value;
+    var r = validarCampoDaLista("equipamento", estado.equipamentos[idx], campo, e.target.value);
+    if (!r.ok) mostrarErro("Valor não aceito em " + (estado.equipamentos[idx].nome || "equipamento") + "; o anterior foi mantido.", [{ onde: campo, mensagem: r.mensagem }]);
+    else estado.equipamentos[idx][campo] = r.valor;
     renderEquipamentos();
     salvarLocal();
     atualizarJsonAvancado();
@@ -1955,7 +2210,8 @@
     if (acao === "toggle-avancado") {
       var painelAvancado = card.querySelector("[data-advanced-panel]");
       var aberto = painelAvancado.classList.toggle("open");
-      e.target.textContent = aberto ? "Fechar avançado" : "Modo avançado";
+      e.target.textContent = aberto ? "Ocultar detalhes" : "Detalhes";
+      e.target.setAttribute("aria-expanded", aberto ? "true" : "false");
       return;
     }
     var idx = parseInt(card.getAttribute("data-idx"), 10);
@@ -1994,28 +2250,12 @@
     document.getElementById("novoEquipCor").value = "#16323D";
   }
 
-  // IPv4 (com máscara /0-32 opcional) ou IPv6 (com /0-128 opcional). Vazio é aceito.
-  function ipValido(valor) {
-    var ip = String(valor || "").trim();
-    if (!ip) return true;
-    var partes = ip.split("/");
-    if (partes.length > 2) return false;
-    var endereco = partes[0], mascara = partes[1];
-    var octeto = "(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)";
-    if (new RegExp("^" + octeto + "(\\." + octeto + "){3}$").test(endereco)) {
-      return mascara === undefined || (/^\d{1,2}$/.test(mascara) && Number(mascara) <= 32);
-    }
-    var ehIpv6 = endereco.indexOf(":") >= 0 && /^[0-9a-fA-F:.]+$/.test(endereco) &&
-      endereco.indexOf(":::") < 0 && (endereco.match(/::/g) || []).length <= 1 && endereco.split(":").every(function (g) { return g.length <= 4 || g.indexOf(".") >= 0; });
-    return ehIpv6 && (mascara === undefined || (/^\d{1,3}$/.test(mascara) && Number(mascara) <= 128));
-  }
-
   function abrirFormularioCabemamento() {
     elFormCab.classList.remove("hidden");
     elFormEquip.classList.add("hidden");
     var de = document.getElementById("novoCabDe");
     var para = document.getElementById("novoCabPara");
-    var options = estado.equipamentos.map(function (eq) { return '<option value="' + eq.id + '">' + (eq.nome || eq.id) + '</option>'; }).join("");
+    var options = estado.equipamentos.map(function (eq) { return '<option value="' + escaparHtml(eq.id) + '">' + escaparHtml(eq.nome || eq.id) + '</option>'; }).join("");
     de.innerHTML = options;
     para.innerHTML = options;
     if (estado.equipamentos.length > 1) {
@@ -2062,24 +2302,40 @@
     event.target.setCustomValidity("");
   });
 
+  // Erros de GrafoEsquema.validarEquipamento/validarConexao em texto para o formulário
+  // ("IP: IP inválido…"), sem o prefixo "Equipamento ›"/"Cabo ›".
+  function textoDosErros(erros) {
+    return erros.map(function (e) {
+      var campo = e.onde.replace(/^(Equipamento|Cabo)( › )?/, "");
+      return (campo ? campo + ": " : "") + e.mensagem;
+    }).join("\n");
+  }
+
+  // Mensagem quando já se chegou ao limite; null se ainda cabe.
+  function limiteAtingido(tipo) {
+    if (tipo === "equipamento" && estado.equipamentos.length >= LIMITES.equipamentos) return "Limite de " + LIMITES.equipamentos + " equipamentos por projeto atingido.";
+    if (tipo === "cabo" && estado.conexoes.length >= LIMITES.conexoes) return "Limite de " + LIMITES.conexoes + " cabos por projeto atingido.";
+    return null;
+  }
+
   document.getElementById("navEquipForm").addEventListener("submit", function (event) {
     event.preventDefault();
-    var nome = document.getElementById("navEquipNome").value.trim();
-    if (!nome) return;
+    var mensagem = document.getElementById("navEquipMessage");
+    mensagem.textContent = limiteAtingido("equipamento") || "";
+    if (mensagem.textContent) return;
     var arquivo = document.getElementById("navEquipImagem").files[0];
     var tipo = document.getElementById("navEquipTipo").value.trim();
     var iconeInformado = document.getElementById("navEquipIcone").value.trim();
-    var campoIp = document.getElementById("navEquipIp");
-    var ip = campoIp.value.trim();
-    if (!ipValido(ip)) {
-      campoIp.setCustomValidity("IP inválido. Ex.: 10.0.0.1, 10.0.0.0/24 ou 2001:db8::1");
-      campoIp.reportValidity();
-      return;
-    }
-    var novoEquipamento = { id: novoId(), nome: nome, modelo: document.getElementById("navEquipModelo").value.trim(), ip: ip, tipo: tipo, icone: iconeInformado || iconePorTipo(tipo), imagem: "", corFonte: "#16323D",
-      grupo: document.getElementById("navEquipGrupo").value.trim(), status: document.getElementById("navEquipStatus").value };
+    var validacao = Esquema.validarEquipamento({ id: novoId(), nome: document.getElementById("navEquipNome").value, modelo: document.getElementById("navEquipModelo").value,
+      ip: document.getElementById("navEquipIp").value, tipo: tipo, icone: iconeInformado || iconePorTipo(tipo), imagem: "", corFonte: "#16323D",
+      grupo: document.getElementById("navEquipGrupo").value, status: document.getElementById("navEquipStatus").value });
+    if (!validacao.ok) { mensagem.textContent = textoDosErros(validacao.erros); return; }
+    var novoEquipamento = validacao.dados;
     function concluir(imagem) {
-      novoEquipamento.imagem = imagem || "";
+      var comImagem = Esquema.validarEquipamento(Object.assign({}, novoEquipamento, { imagem: imagem || "" }));
+      if (!comImagem.ok) { mensagem.textContent = textoDosErros(comImagem.erros); return; }
+      novoEquipamento = comImagem.dados;
+      mensagem.textContent = "";
       estado.equipamentos.push(novoEquipamento);
       renderTudo();
       renderSidebarPanels();
@@ -2097,12 +2353,15 @@
     var para = document.getElementById("navCablePara").value;
     var mensagem = document.getElementById("navCableMessage");
     if (!de || !para) { mensagem.textContent = "Cadastre dois equipamentos primeiro."; return; }
-    if (de === para) { mensagem.textContent = "Origem e destino precisam ser diferentes."; return; }
-    estado.conexoes.push({
-      de: de, para: para, tipo: document.getElementById("navCableTipo").value.trim(),
-      cor: document.getElementById("navCableCor").value, grossura: Number(document.getElementById("navCableGrossura").value || 2),
-      estilo: document.getElementById("navCableEstilo").value, saida: document.getElementById("navCableSaida").value.trim(), chegada: document.getElementById("navCableChegada").value.trim(), potencia: normalizarCapacidade(document.getElementById("navCablePotencia").value)
-    });
+    mensagem.textContent = limiteAtingido("cabo") || "";
+    if (mensagem.textContent) return;
+    var validacao = Esquema.validarConexao({
+      de: de, para: para, tipo: document.getElementById("navCableTipo").value,
+      cor: document.getElementById("navCableCor").value, grossura: document.getElementById("navCableGrossura").value,
+      estilo: document.getElementById("navCableEstilo").value, saida: document.getElementById("navCableSaida").value, chegada: document.getElementById("navCableChegada").value, potencia: document.getElementById("navCablePotencia").value
+    }, estado.equipamentos.map(function (eq) { return eq.id; }));
+    if (!validacao.ok) { mensagem.textContent = textoDosErros(validacao.erros); return; }
+    estado.conexoes.push(validacao.dados);
     renderTudo();
     event.target.reset();
     document.getElementById("navCableCor").value = "#5A7284";
@@ -2135,15 +2394,10 @@
       var modelo = document.getElementById("novoEquipModelo").value.trim();
       var ip = document.getElementById("novoEquipIp").value.trim();
       var cor = document.getElementById("novoEquipCor").value || "#16323D";
-      if (!nome) {
-        mostrarErro("Informe o nome do equipamento.");
-        return;
-      }
-      if (!ipValido(ip)) {
-        mostrarErro("IP inválido. Ex.: 10.0.0.1, 10.0.0.0/24 ou 2001:db8::1");
-        return;
-      }
-      estado.equipamentos.push({ id: novoId(), nome: nome, modelo: modelo, ip: ip, tipo: tipo, icone: iconePorTipo(tipo), imagem: "", corFonte: cor });
+      if (limiteAtingido("equipamento")) { mostrarErro(limiteAtingido("equipamento")); return; }
+      var validacaoEquip = Esquema.validarEquipamento({ id: novoId(), nome: nome, modelo: modelo, ip: ip, tipo: tipo, icone: iconePorTipo(tipo), imagem: "", corFonte: cor });
+      if (!validacaoEquip.ok) { mostrarErro("Não foi possível adicionar o equipamento.", validacaoEquip.erros); return; }
+      estado.equipamentos.push(validacaoEquip.dados);
       renderTudo();
       fecharFormularioEquipamento();
       esconderErro();
@@ -2154,22 +2408,21 @@
       var de = document.getElementById("novoCabDe").value;
       var para = document.getElementById("novoCabPara").value;
       var cor = document.getElementById("novoCabCor").value || "#5A7284";
-      var grossura = Number(document.getElementById("novoCabGrossura").value || 2);
+      var grossura = document.getElementById("novoCabGrossura").value;
       if (!de || !para || !cabNome) {
         mostrarErro("Informe nome, origem e destino do cabeamento.");
         return;
       }
-      if (de === para) {
-        mostrarErro("Origem e destino do cabeamento precisam ser diferentes.");
-        return;
-      }
-      estado.conexoes.push({
+      if (limiteAtingido("cabo")) { mostrarErro(limiteAtingido("cabo")); return; }
+      var validacaoCabo = Esquema.validarConexao({
         de: de, para: para, tipo: cabNome, cor: cor, grossura: grossura,
-        saida: document.getElementById("novoCabSaida").value.trim(),
-        chegada: document.getElementById("novoCabChegada").value.trim(),
-        potencia: normalizarCapacidade(document.getElementById("novoCabPotencia").value),
+        saida: document.getElementById("novoCabSaida").value,
+        chegada: document.getElementById("novoCabChegada").value,
+        potencia: document.getElementById("novoCabPotencia").value,
         estilo: document.getElementById("novoCabEstilo").value
-      });
+      }, estado.equipamentos.map(function (eq) { return eq.id; }));
+      if (!validacaoCabo.ok) { mostrarErro("Não foi possível adicionar o cabeamento.", validacaoCabo.erros); return; }
+      estado.conexoes.push(validacaoCabo.dados);
       renderTudo();
       fecharFormularioCabemamento();
       esconderErro();
@@ -2178,20 +2431,31 @@
 
   elListaConex.addEventListener("input", function (e) {
     var campo = e.target.getAttribute("data-field");
-    if (!campo) return;
-    var row = e.target.closest(".conex-row");
-    var idx = parseInt(row.getAttribute("data-idx"), 10);
-    estado.conexoes[idx][campo] = e.target.value;
+    if (!campo || e.target.tagName === "SELECT") return;
+    var idx = parseInt(e.target.closest(".conex-row").getAttribute("data-idx"), 10);
+    var r = validarCampoDaLista("cabo", estado.conexoes[idx], campo, e.target.value);
+    marcarCampo(e.target, r.ok ? "" : r.mensagem);
+    if (!r.ok) return;
+    estado.conexoes[idx][campo] = r.valor;
     salvarLocal();
     atualizarJsonAvancado();
     solicitarAtualizacaoDiagrama();
   });
 
-  // Capacidade: padroniza ao sair do campo (durante a digitação fica como está).
+  // Ao sair do campo (ou trocar origem/destino): grava o valor já padronizado
+  // (ex.: capacidade "10 gbps" -> "10G") ou, se inválido, volta ao anterior.
   elListaConex.addEventListener("change", function (e) {
-    if (e.target.getAttribute("data-field") !== "potencia") return;
+    var campo = e.target.getAttribute("data-field");
+    if (!campo) return;
     var idx = parseInt(e.target.closest(".conex-row").getAttribute("data-idx"), 10);
-    e.target.value = estado.conexoes[idx].potencia = normalizarCapacidade(e.target.value);
+    var r = validarCampoDaLista("cabo", estado.conexoes[idx], campo, e.target.value);
+    if (!r.ok) {
+      mostrarErro("Valor não aceito no cabo " + (idx + 1) + "; o anterior foi mantido.", [{ onde: campo, mensagem: r.mensagem }]);
+      renderConexoes();
+      return;
+    }
+    estado.conexoes[idx][campo] = r.valor;
+    if (e.target.tagName !== "SELECT") e.target.value = r.valor;
     salvarLocal();
     atualizarJsonAvancado();
     solicitarAtualizacaoDiagrama();
@@ -2278,7 +2542,9 @@
     return linhas.filter(function (l) { return l.some(function (c) { return c.trim(); }); });
   }
 
-  // Retorna { dados: { equipamentos, conexoes }, avisos: [texto, ...] }.
+  // Monta { equipamentos, conexoes } a partir do CSV e valida com as mesmas regras
+  // do JSON. Retorna { ok, dados, erros: [{onde, mensagem}] }; o "onde" aponta a
+  // linha do arquivo (ex.: "Linha 7 (OLT-01) › IP").
   function importarCsv(texto) {
     var linhas = lerLinhasCsv(texto);
     if (linhas.length < 2) throw new Error("O CSV precisa de uma linha de cabeçalho e ao menos uma linha de dados.");
@@ -2294,20 +2560,21 @@
     function valor(linha, campo) { return coluna[campo] === undefined ? "" : String(linha[coluna[campo]] || "").trim(); }
 
     var dados = { equipamentos: [], conexoes: [] };
-    var avisos = [];
+    var erros = [];
     var porNome = {};
+    var linhaDoEquipamento = [], linhaDoCabo = [];
     function obterEquipamento(nome, ip, modelo, tipo, numeroLinha) {
       var chave = normalizarTextoEquipamento(nome);
       var eq = porNome[chave];
       if (!eq) {
         eq = { id: novoId(), nome: nome, modelo: "", ip: "", tipo: "", icone: "", imagem: "", corFonte: "#16323D" };
         porNome[chave] = eq;
+        linhaDoEquipamento.push(numeroLinha);
         dados.equipamentos.push(eq);
       }
       if (ip) {
-        if (!ipValido(ip)) avisos.push("Linha " + numeroLinha + ": IP inválido \"" + ip + "\" em " + nome + " (importado mesmo assim).");
         if (!eq.ip) eq.ip = ip;
-        else if (eq.ip !== ip) avisos.push("Linha " + numeroLinha + ": " + nome + " já tinha o IP " + eq.ip + "; \"" + ip + "\" foi ignorado.");
+        else if (eq.ip !== ip) erros.push({ onde: "Linha " + numeroLinha + " (" + nome + ")", mensagem: 'IP "' + ip + '" diferente do informado antes (' + eq.ip + ")" });
       }
       if (modelo && !eq.modelo) eq.modelo = modelo;
       if (tipo && !eq.tipo) eq.tipo = tipo;
@@ -2317,21 +2584,31 @@
     for (var n = 1; n < linhas.length; n++) {
       var linha = linhas[n], numeroLinha = n + 1;
       var nomeOrigem = valor(linha, "origem"), nomeDestino = valor(linha, "destino");
-      if (!nomeOrigem) { avisos.push("Linha " + numeroLinha + ": sem origem, ignorada."); continue; }
+      if (!nomeOrigem) { erros.push({ onde: "Linha " + numeroLinha, mensagem: 'coluna "origem" vazia' }); continue; }
       var de = obterEquipamento(nomeOrigem, valor(linha, "ip_origem"), valor(linha, "modelo_origem"), valor(linha, "tipo_origem"), numeroLinha);
       if (!nomeDestino) continue;
       var para = obterEquipamento(nomeDestino, valor(linha, "ip_destino"), valor(linha, "modelo_destino"), valor(linha, "tipo_destino"), numeroLinha);
-      if (de === para) { avisos.push("Linha " + numeroLinha + ": origem e destino iguais, cabo ignorado."); continue; }
-      var capacidade = normalizarCapacidade(valor(linha, "capacidade"));
+      if (de === para) { erros.push({ onde: "Linha " + numeroLinha + " (" + nomeOrigem + ")", mensagem: "origem e destino são o mesmo equipamento" }); continue; }
+      linhaDoCabo.push(numeroLinha);
       dados.conexoes.push({
-        de: de.id, para: para.id, tipo: valor(linha, "tipo") || "Cabo", potencia: capacidade || "1G",
+        de: de.id, para: para.id, tipo: valor(linha, "tipo") || "Cabo", potencia: valor(linha, "capacidade") || "1G",
         saida: valor(linha, "porta_origem"), chegada: valor(linha, "porta_destino"),
         cor: "#5A7284", grossura: 2, estilo: "solid"
       });
     }
+    if (!dados.equipamentos.length && !erros.length) erros.push({ onde: "Arquivo", mensagem: "nenhum equipamento encontrado" });
     // Ícone pelo tipo ou, sem tipo, pelo nome (ex.: "OLT-01" -> ícone de OLT).
     dados.equipamentos.forEach(function (eq) { eq.icone = iconePorTipo(eq.tipo || eq.nome); });
-    return { dados: dados, avisos: avisos };
+
+    var nomePorId = {};
+    dados.equipamentos.forEach(function (eq) { nomePorId[eq.id] = eq.nome; });
+    var resultado = Esquema.validarProjeto(dados, "estrito", {
+      descreverEquipamento: function (i, eq) { return "Linha " + linhaDoEquipamento[i] + " (" + String(eq.nome).slice(0, 30) + ")"; },
+      descreverConexao: function (i, c) { return "Linha " + linhaDoCabo[i] + " (cabo " + String(nomePorId[c.de]).slice(0, 25) + " → " + String(nomePorId[c.para]).slice(0, 25) + ")"; }
+    });
+    resultado.erros = erros.concat(resultado.erros);
+    resultado.ok = !resultado.erros.length;
+    return resultado;
   }
 
   document.getElementById("arquivoCsv").addEventListener("change", function (event) {
@@ -2344,18 +2621,14 @@
       var texto;
       try { texto = new TextDecoder("utf-8", { fatal: true }).decode(leitor.result); }
       catch (erroUtf8) { texto = new TextDecoder("windows-1252").decode(leitor.result); }
-      try {
-        var resultado = importarCsv(texto);
-        if (!resultado.dados.equipamentos.length) throw new Error("Nenhum equipamento encontrado no arquivo.");
-        estado = resultado.dados;
-        ajustarNaProximaRenderizacao = true;
-        renderTudo();
-        gerar(); // já agora, para os avisos abaixo não serem apagados pela renderização
-        if (resultado.avisos.length) {
-          mostrarErro("CSV importado (" + estado.equipamentos.length + " equipamento(s), " + estado.conexoes.length + " cabo(s)) com avisos:\n" +
-            resultado.avisos.slice(0, 10).join("\n") + (resultado.avisos.length > 10 ? "\n… e mais " + (resultado.avisos.length - 10) : ""));
-        }
-      } catch (erroCsv) { mostrarErro("Não foi possível importar o CSV.\nDetalhe: " + erroCsv.message); }
+      var resultado;
+      try { resultado = importarCsv(texto); }
+      catch (erroCsv) { mostrarErro('Não foi possível importar "' + arquivo.name + '".', [{ onde: "CSV", mensagem: erroCsv.message }]); return; }
+      if (!resultado.ok) { mostrarErrosDeValidacao('"' + arquivo.name + '"', resultado); return; }
+      estado = resultado.dados;
+      ajustarNaProximaRenderizacao = true;
+      esconderErro();
+      renderTudo();
     };
     leitor.readAsArrayBuffer(arquivo);
   });
@@ -2366,20 +2639,66 @@
   });
 
   document.getElementById("btnAplicarJson").addEventListener("click", function () {
-    try {
-      var novo = JSON.parse(elJsonAvancado.value);
-      validarDados(novo);
-      novo.equipamentos.forEach(function (eq) { if (!eq.icone) eq.icone = ""; if (!eq.imagem) eq.imagem = ""; migrarImagensAntigas(eq); });
-      estado = novo;
-      ajustarNaProximaRenderizacao = true;
-      renderTudo();
-      esconderErro();
-    } catch (e) { mostrarErro("Não foi possível aplicar o JSON.\nDetalhe: " + e.message); }
+    var novo;
+    try { novo = JSON.parse(elJsonAvancado.value); }
+    catch (e) { mostrarErro("O texto não é um JSON válido.", [{ onde: "JSON", mensagem: e.message }]); return; }
+    if (novo && Array.isArray(novo.equipamentos)) novo.equipamentos.forEach(migrarImagensAntigas);
+    var resultado = Esquema.validarProjeto(novo, "estrito");
+    if (!resultado.ok) { mostrarErrosDeValidacao("o JSON", resultado); return; }
+    estado = resultado.dados;
+    ajustarNaProximaRenderizacao = true;
+    esconderErro();
+    renderTudo();
   });
   document.getElementById("btnAtualizarJson").addEventListener("click", atualizarJsonAvancado);
 
-  function esconderErro() { elErro.style.display = "none"; elErro.textContent = ""; }
-  function mostrarErro(msg) { elErro.style.display = "block"; elErro.textContent = msg; }
+  function esconderErro() { elErro.style.display = "none"; elErro.textContent = ""; elErro.classList.remove("aviso"); }
+
+  // msg: texto principal. itens (opcional): [{ onde, mensagem }] da validação,
+  // listados um por linha para a pessoa achar o problema no arquivo.
+  // opcoes.aviso: estilo de aviso (algo foi feito, mas com ressalvas) em vez de erro.
+  function mostrarErro(msg, itens, opcoes) {
+    var MAX_ITENS = 40;
+    elErro.textContent = "";
+    elErro.classList.toggle("aviso", !!(opcoes && opcoes.aviso));
+    var titulo = document.createElement("div");
+    titulo.className = "erro-titulo";
+    titulo.textContent = msg;
+    elErro.appendChild(titulo);
+    if (itens && itens.length) {
+      var lista = document.createElement("ul");
+      itens.slice(0, MAX_ITENS).forEach(function (item) {
+        var li = document.createElement("li");
+        var onde = document.createElement("strong");
+        onde.textContent = item.onde;
+        li.appendChild(onde);
+        li.appendChild(document.createTextNode(": " + item.mensagem));
+        lista.appendChild(li);
+      });
+      if (itens.length > MAX_ITENS) {
+        var mais = document.createElement("li");
+        mais.textContent = "… e mais " + (itens.length - MAX_ITENS) + " problema(s).";
+        lista.appendChild(mais);
+      }
+      elErro.appendChild(lista);
+    }
+    var fechar = document.createElement("button");
+    fechar.type = "button";
+    fechar.className = "ghost small erro-fechar";
+    fechar.setAttribute("aria-label", "Fechar mensagem");
+    fechar.textContent = "×";
+    fechar.addEventListener("click", esconderErro);
+    elErro.appendChild(fechar);
+    elErro.style.display = "block";
+  }
+
+  function plural(n, singular, pluralTexto) { return n + " " + (n === 1 ? singular : pluralTexto); }
+
+  // Resultado de GrafoEsquema.validarProjeto recusado: mostra tudo o que está errado.
+  function mostrarErrosDeValidacao(origem, resultado) {
+    mostrarErro("Não foi possível importar " + origem + ": " + plural(resultado.erros.length, "problema encontrado", "problemas encontrados") +
+      ". Nada foi alterado. Corrija o arquivo e tente de novo.", resultado.erros);
+  }
 
   function validarDados(dados) {
     if (!dados || typeof dados !== "object") throw new Error('O JSON precisa ser um objeto com "equipamentos" e "conexoes".');
@@ -2421,11 +2740,11 @@
     dados.conexoes.forEach(function (c, indice) {
       var de = equipamentoPorId[c.de], para = equipamentoPorId[c.para];
       if (de) {
-        var ladoSaida = ladoVoltadoPara(de, para, padraoSaida);
+        var ladoSaida = ladoVoltadoPara(de, para, padraoSaida, direcao);
         portasPorEquipamento[c.de][ladoSaida].push({ indice: indice, ponta: "inicio", lado: ladoSaida, nome: c.saida || "P1", outro: para });
       }
       if (para) {
-        var ladoChegada = ladoVoltadoPara(para, de, padraoChegada);
+        var ladoChegada = ladoVoltadoPara(para, de, padraoChegada, direcao);
         portasPorEquipamento[c.para][ladoChegada].push({ indice: indice, ponta: "fim", lado: ladoChegada, nome: c.chegada || "P2", outro: de });
       }
     });
@@ -2737,7 +3056,8 @@
   function gerar() {
     window.clearTimeout(atualizacaoDiagramaPendente);
     if (!vizInstancia) { gerarPendente = true; return; }
-    esconderErro();
+    // Erros de uma ação anterior somem ao redesenhar; avisos ficam até a pessoa fechar.
+    if (!elErro.classList.contains("aviso")) esconderErro();
     try { validarDados(estado); } catch (e) { mostrarErro(e.message); return; }
 
     // Se o estado já está registrado no histórico, o que mudar aqui é só o que
@@ -3272,6 +3592,7 @@
     if (ultimoDot) btnBaixar.disabled = false;
   })();
 
+  aplicarLimitesNosCampos(document);
   projetos = carregarProjetos();
   projetoAtual = localStorage.getItem("grafo-projeto-atual") || Object.keys(projetos)[0] || "Projeto principal";
   if (!projetos[projetoAtual]) projetoAtual = Object.keys(projetos)[0] || "Projeto principal";
@@ -3282,4 +3603,8 @@
   renderProjetos();
   renderTudo();
   if (estado.equipamentos.length) gerar(); else limparDiagrama();
+  if (ajustesAoCarregar.length) {
+    mostrarErro("Alguns dados salvos neste navegador estavam inválidos e foram corrigidos ao carregar (" +
+      plural(ajustesAoCarregar.length, "ajuste", "ajustes") + "):", ajustesAoCarregar, { aviso: true });
+  }
 })();
