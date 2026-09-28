@@ -56,16 +56,10 @@
   var TIPOS_BASE = [
     { nome: "OLT", icone: caminhoImagem("OLT.jpeg") },
     { nome: "Switch", icone: caminhoImagem("SWITCH.jpeg") },
-    { nome: "Roteador", icone: caminhoImagem("MIKROTIK.png") },
-    { nome: "Rádio", icone: "" },
-    { nome: "ONT", icone: "" },
-    { nome: "ONU", icone: "" },
-    { nome: "Firewall", icone: "" },
-    { nome: "Servidor", icone: "" },
-    { nome: "Antena", icone: "" },
+    { nome: "VOLT", icone: "VOLT.jpeg" },
     { nome: "MikroTik", icone: caminhoImagem("MIKROTIK.png") },
     { nome: "UPS", icone: caminhoImagem("NOBREAK.jpeg") },
-    { nome: "Nobreak", icone: caminhoImagem("NOBREAK.jpeg") }
+    { nome: "RPS", icone: caminhoImagem("RETIFICADOR.jpeg") }
   ];
   var CATALOGO_ICONES = [
     { valor: caminhoImagem("MIKROTIK.png"), nome: "MikroTik / RB", arquivo: caminhoImagem("MIKROTIK.png") },
