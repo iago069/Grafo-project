@@ -1,72 +1,34 @@
 # Grafo
 
-**G**erador **R**ápido **A**utomatizado de **F**luxos **O**rganizados — monta diagramas de topologia de rede (OLTs, switches, roteadores, ONUs, servidores, nobreaks…) direto no navegador, a partir dos equipamentos e cabos que você cadastra.
+**G**erador **R**ápido **A**utomatizado de **F**luxos **O**rganizados — monta diagramas de topologia de rede (OLTs, switches, roteadores, ONUs, servidores, nobreaks…) direto no navegador, a partir dos equipamentos e cabos que você cadastra. Cada pessoa entra com a própria conta e os projetos ficam salvos na nuvem.
+
+**Acesse:** https://thegrafo.vercel.app
 
 ![Diagrama de exemplo no Grafo](docs/Layout1.png)
 
 ## Sumário
 
 - [Recursos](#recursos)
-- [Configurar login e projetos por usuário](#configurar-login-e-projetos-por-usuário)
-- [Rodando localmente](#rodando-localmente)
-- [Deploy na Vercel](#deploy-na-vercel)
 - [Como usar](#como-usar)
 - [Atalhos](#atalhos)
 - [Importar e exportar](#importar-e-exportar)
 - [Onde ficam os dados](#onde-ficam-os-dados)
 - [Ícones dos equipamentos](#ícones-dos-equipamentos)
+- [Configuração (para quem mantém o projeto)](#configuração-para-quem-mantém-o-projeto)
+  - [1. Supabase (login e banco)](#1-supabase-login-e-banco)
+  - [2. Rodar localmente](#2-rodar-localmente)
+  - [3. Publicar na Vercel](#3-publicar-na-vercel)
+  - [Problemas comuns](#problemas-comuns)
 - [Estrutura do projeto](#estrutura-do-projeto)
 - [Tecnologias](#tecnologias)
 
-## Configurar login e projetos por usuário
-
-O login usa **Supabase Auth** com e-mail e senha. Os projetos ficam na tabela
-`grafo_user_data`, protegida por Row Level Security (RLS). O app não abre o
-editor antes de confirmar a sessão e carregar os projetos da conta.
-
-1. Crie um projeto no [Supabase](https://supabase.com/dashboard). No SQL Editor,
-   execute `supabase/schema.sql` uma vez. A tabela guarda todos os projetos de
-   cada pessoa em uma linha e as regras permitem ler/escrever somente a própria
-   linha.
-2. Em Authentication, habilite **Email**. Configure a URL do site
-   `https://thegrafo.vercel.app` e acrescente a mesma URL às URLs de
-   redirecionamento de autenticação, para confirmação de e-mail e recuperação
-   de senha. Se for usar um domínio próprio, inclua-o também.
-3. Na Vercel, em **Settings → Environment Variables**, crie:
-
-   | Variável | Valor |
-   | --- | --- |
-   | `SUPABASE_URL` | URL do projeto Supabase |
-   | `SUPABASE_PUBLISHABLE_KEY` | Chave **publishable** do projeto |
-
-   Configure Production, Preview e Development conforme os ambientes usados e
-   faça novo deploy. A rota `/api/auth-config` retorna somente esses valores
-   públicos. **Nunca** coloque uma chave `secret` ou `service_role` no front-end
-   ou nessa rota.
-4. Para rodar localmente, copie `.env.example` para `.env`, preencha as duas
-   variáveis e rode `npm start` — o `servidor-local.js` lê o `.env` sozinho
-   (funciona igual no Windows, Mac e Linux). Adicione também
-   `http://localhost:3000` às URLs de redirecionamento permitidas no Supabase.
-
-   ```bash
-   copy .env.example .env    # Windows (no Mac/Linux: cp .env.example .env)
-   npm start
-   ```
-
-Ao entrar pela primeira vez em um navegador com projetos anteriores, o app
-pergunta se deve copiá-los para a conta. A cópia antiga é removida somente
-depois que a gravação no Supabase dá certo. Se a pessoa recusar, a cópia local
-antiga continua intocada. As alterações novas sincronizam automaticamente;
-o indicador no cabeçalho mostra `Salvo na nuvem` ou um erro com opção de
-tentar novamente. Mantenha exportações JSON como backup independente.
-
-O salvamento atual usa o último estado gravado quando duas abas editam a mesma
-conta ao mesmo tempo. Evite edição simultânea do mesmo projeto até que haja
-controle de versões. A autenticação real depende de configurar o projeto
-Supabase e as variáveis antes de publicar; sem elas, o app mostra o erro de
-configuração e mantém o editor fechado.
-
 ## Recursos
+
+**Conta e nuvem**
+- Login com e-mail e senha, criação de conta e recuperação de senha por e-mail.
+- Cada pessoa vê só os próprios projetos, salvos automaticamente na nuvem.
+- Indicador no topo: **Salvo na nuvem**, **Alterações pendentes** ou erro com **Tentar novamente**.
+- No primeiro login, o app oferece copiar para a conta os projetos que já estavam salvos no navegador.
 
 **Diagrama**
 - Layout automático, recalculado a cada mudança, com cabos em ângulo reto e cada porta no lado voltado para o vizinho.
@@ -97,36 +59,15 @@ configuração e mantém o editor fechado.
 - Respeita a opção "reduzir movimento" do sistema.
 - Botão **Carregar exemplo** na tela vazia para ver a ferramenta funcionando.
 
-## Rodando localmente
-
-Requer **Node.js 18+**.
-
-```bash
-npm install
-npm start        # http://localhost:3000
-npm run dev      # reinicia sozinho ao salvar o servidor-local.js
-```
-
-A porta pode ser trocada com a variável de ambiente `PORT`.
-
-| Script | O que faz |
-|---|---|
-| `npm start` | Sobe o servidor local (`servidor-local.js`) |
-| `npm run dev` | Igual ao `start`, reiniciando ao salvar |
-| `npm run icones` | Gera `assets/js/icones-embutidos.js` (veja [Ícones](#ícones-dos-equipamentos)) |
-
-> Depois de atualizar os arquivos, recarregue a página com **Ctrl+F5** para o navegador não usar a versão antiga em cache.
-
-## Deploy na Vercel
-
-O `index.html` e os `assets/` são arquivos estáticos; `api/equipamentos.js` e `api/auth-config.js` viram funções serverless. Configure o Supabase e as variáveis acima antes do deploy. O `vercel.json` redireciona as demais rotas para o `index.html`.
-
 ## Como usar
 
-1. **Adicionar equipamento** (barra lateral): nome, tipo, modelo, IP, grupo, status e ícone.
-2. **Adicionar cabeamento**: origem, destino, portas, tipo de enlace, capacidade, cor e estilo.
-3. O diagrama é redesenhado sozinho. Arraste os equipamentos para ajustar, ou use **Organizar**.
-4. **Exportar diagrama** gera PNG ou SVG; **Exportar projeto (.json)** guarda um backup.
+1. Abra https://thegrafo.vercel.app, clique em **Criar conta** e confirme pelo link enviado ao seu e-mail (veja também o spam).
+2. **Adicionar equipamento** (barra lateral): nome, tipo, modelo, IP, grupo, status e ícone.
+3. **Adicionar cabeamento**: origem, destino, portas, tipo de enlace, capacidade, cor e estilo.
+4. O diagrama é redesenhado sozinho. Arraste os equipamentos para ajustar, ou use **Organizar**.
+5. **Exportar diagrama** gera PNG ou SVG; **Exportar projeto (.json)** guarda um backup.
+
+Esqueceu a senha? Na tela de login, clique em **Esqueci minha senha** e siga o link do e-mail.
 
 ## Atalhos
 
@@ -198,9 +139,10 @@ Separador `;`, `,` ou tab. O arquivo pode estar em UTF-8 ou no formato padrão d
 
 ## Onde ficam os dados
 
-Os projetos são salvos na conta, no Supabase. O navegador mantém uma cópia local separada por usuário enquanto a sessão está aberta. Ao sair, essa cópia local é apagada; os projetos continuam na conta. Use **Exportar projeto (.json)** (ou `Ctrl+S`) para guardar também um backup independente.
+Os projetos ficam na sua conta, no Supabase, e são salvos automaticamente poucos segundos depois de cada mudança. Enquanto você está logado, o navegador mantém uma cópia local separada por usuário; ao clicar em **Sair**, essa cópia é apagada e os projetos continuam na conta.
 
-Um aviso no topo lembra de fazer backup quando o projeto aberto tem mudanças e o último backup tem 7 dias ou mais (ou quando nunca houve backup e a primeira mudança tem mais de 1 dia). "Depois" adia o aviso por um dia.
+- Use **Exportar projeto (.json)** (ou `Ctrl+S`) para guardar também um backup fora da nuvem. Um aviso no topo lembra de fazer isso quando o último backup tem 7 dias ou mais.
+- Evite editar a mesma conta em duas abas ou computadores ao mesmo tempo: vale o último salvamento.
 
 ## Ícones dos equipamentos
 
@@ -221,21 +163,100 @@ O ícone é escolhido pelo tipo ou nome do equipamento, ou manualmente no editor
 
 Também dá para usar um emoji ou enviar uma imagem própria pelo campo **Imagem** (é reduzida para 256 px).
 
-A lista de tipos sugeridos vem de `data/equipamentos.json` — **edite ali** para adicionar tipos. Ao adicionar ou trocar uma imagem em `assets/images/`, rode:
+A lista de tipos sugeridos vem de `data/equipamentos.json` — **edite ali** para adicionar tipos. Ao adicionar ou trocar uma imagem em `assets/images/`, rode `npm run icones` para atualizar `assets/js/icones-embutidos.js`, que a exportação usa para colocar os ícones dentro do PNG/SVG.
+
+## Configuração (para quem mantém o projeto)
+
+O login usa **Supabase Auth** (e-mail e senha). Os projetos ficam na tabela `grafo_user_data`, protegida por Row Level Security: cada pessoa só lê e grava a própria linha. O navegador recebe a URL e a chave pública do Supabase pela rota `/api/auth-config`; sem elas, o app mostra um erro de configuração e mantém o editor fechado.
+
+### 1. Supabase (login e banco)
+
+1. Crie um projeto em https://supabase.com/dashboard (região sugerida: São Paulo).
+2. **SQL Editor → New query**: cole o conteúdo de [`supabase/schema.sql`](supabase/schema.sql) e clique em **Run**. Deve aparecer "Success. No rows returned".
+3. **Authentication → Sign In / Providers**: deixe **Email** ligado. A opção **Confirm email** exige confirmar o e-mail antes do primeiro login — pode desligar para testes, mas mantenha ligada em produção.
+4. **Authentication → URL Configuration**:
+   - **Site URL**: `https://thegrafo.vercel.app`
+   - **Redirect URLs**: adicione `https://thegrafo.vercel.app` e `http://localhost:3000` (e o seu domínio próprio, se tiver). Sem isso, os links de confirmação e de recuperação de senha não voltam para o app.
+5. Anote as duas informações que o app usa:
+   - **Project URL** — em **Project Settings → Data API**. Ex.: `https://abcdxyz.supabase.co` (**sem** `/rest/v1/` no final).
+   - **Publishable key** — em **Project Settings → API Keys** (começa com `sb_publishable_`; em projetos antigos, a **anon public**).
+
+> **Nunca** use a chave `secret` ou `service_role` no `.env`, na Vercel ou no front-end. A publishable é feita para ficar pública; a proteção dos dados vem das regras da tabela.
+
+### 2. Rodar localmente
+
+Requer **Node.js 18+**.
 
 ```bash
-npm run icones
+npm install
+copy .env.example .env    # Windows — no Mac/Linux: cp .env.example .env
 ```
 
-Isso atualiza `assets/js/icones-embutidos.js`, que a exportação usa para colocar os ícones dentro do PNG/SVG. Sem ele, com o app aberto direto do disco (`file://`), o navegador bloqueia a leitura das imagens e o PNG sai sem os ícones.
+Abra o `.env` e preencha:
+
+```
+SUPABASE_URL=https://abcdxyz.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxxxxxxxxxxx
+```
+
+Depois:
+
+```bash
+npm start        # http://localhost:3000
+```
+
+O `servidor-local.js` lê o `.env` sozinho ao iniciar — se mudar o arquivo, pare o servidor (`Ctrl+C`) e rode `npm start` de novo. O `.env` não vai para o Git nem para a Vercel.
+
+| Script | O que faz |
+|---|---|
+| `npm start` | Sobe o servidor local (`servidor-local.js`) |
+| `npm run dev` | Igual ao `start`, reiniciando ao salvar o `servidor-local.js` |
+| `npm run icones` | Gera `assets/js/icones-embutidos.js` |
+
+A porta pode ser trocada com a variável `PORT`. Depois de atualizar os arquivos, recarregue a página com **Ctrl+F5**.
+
+### 3. Publicar na Vercel
+
+O projeto `thegrafo` na Vercel está ligado a este repositório: **cada envio para o branch `main` publica o site automaticamente**. O `index.html` e os `assets/` são estáticos; `api/equipamentos.js` e `api/auth-config.js` viram funções serverless; o `vercel.json` redireciona as demais rotas para o `index.html`.
+
+Variáveis de ambiente (configurar uma vez):
+
+1. No projeto da Vercel, abra **Settings → Environments → Production**.
+2. Em **Environment Variables**, adicione:
+
+   | Key | Value |
+   |---|---|
+   | `SUPABASE_URL` | Project URL do Supabase |
+   | `SUPABASE_PUBLISHABLE_KEY` | Publishable key do Supabase |
+
+   Repita em **Preview** se usar deploys de outros branches.
+3. As variáveis só valem para deploys novos: em **Deployments**, no deploy mais recente, clique em **⋯ → Redeploy**.
+
+Para conferir, abra `https://thegrafo.vercel.app/api/auth-config`: deve mostrar a URL e a chave. Um erro 503 significa que as variáveis não estão configuradas (ou faltou o redeploy).
+
+Também é possível publicar direto do computador com a Vercel CLI: `npx vercel deploy --prod`.
+
+### Problemas comuns
+
+| Mensagem ou sintoma | Causa e solução |
+|---|---|
+| "Configure SUPABASE_URL e SUPABASE_PUBLISHABLE_KEY no servidor" | Faltam as variáveis: no `.env` (local) ou na Vercel (site). Na Vercel, faça **Redeploy** depois de criá-las |
+| "E-mail ou senha incorretos" | Confira a senha, ou crie a conta primeiro |
+| "Confirme seu e-mail antes de entrar" | Clique no link do e-mail de confirmação (veja o spam) |
+| O link do e-mail abre `localhost` ou dá erro | Ajuste **Site URL** e **Redirect URLs** no Supabase (passo 1.4) |
+| "Não foi possível carregar os projetos" | A tabela não existe ou a URL está errada: rode o `schema.sql` e confira se a URL não termina em `/rest/v1/` |
+| "Muitas tentativas seguidas" | Limite do Supabase; aguarde um minuto |
+| `npm.ps1 não pode ser carregado` (PowerShell) | Use `npm.cmd start` no lugar de `npm start` |
+| `EADDRINUSE :::3000` | Já há um servidor rodando na porta 3000; feche o outro terminal |
+| `Cannot find module 'express'` | Rode `npm install` |
 
 ## Estrutura do projeto
 
 | Caminho | Conteúdo |
 |---|---|
-| `index.html` | Página única da aplicação |
-| `assets/js/app.js` | Lógica do front-end: estado, formulários, geração do DOT, roteamento dos cabos, exportação |
-| `assets/js/auth.js` | Login, cadastro, recuperação de senha e sincronização por conta |
+| `index.html` | Página única da aplicação (tela de login + editor) |
+| `assets/js/auth.js` | Login, cadastro, recuperação de senha e sincronização com o Supabase |
+| `assets/js/app.js` | Editor: estado, formulários, geração do DOT, roteamento dos cabos, exportação |
 | `assets/js/esquema.js` | Validação dos dados (formulários, JSON, CSV e o que está salvo) |
 | `assets/js/icones-embutidos.js` | Ícones em base64 para a exportação — **gerado** por `npm run icones` |
 | `assets/css/styles.css` | Estilos, temas e animações |
@@ -243,17 +264,19 @@ Isso atualiza `assets/js/icones-embutidos.js`, que a exportação usa para coloc
 | `assets/vendor/` | Zod (validação), servido localmente |
 | `data/equipamentos.json` | Catálogo de tipos de equipamento |
 | `api/equipamentos.js` | Função da Vercel que serve o catálogo |
-| `api/auth-config.js` | Expõe URL e chave pública do Supabase para o navegador |
+| `api/auth-config.js` | Função da Vercel que entrega a URL e a chave pública do Supabase |
 | `supabase/schema.sql` | Tabela de projetos e regras de acesso por usuário |
-| `servidor-local.js` | Servidor Express para rodar localmente (não se chama `server.js` para a Vercel não tratar o projeto como app Express) |
+| `servidor-local.js` | Servidor Express para rodar localmente; lê o `.env` |
+| `.env.example` | Modelo do `.env` |
 | `scripts/gerar-icones-embutidos.js` | Gera o `icones-embutidos.js` |
 | `docs/` | Imagens deste README |
 
-> O catálogo fica em `data/`, fora de `api/`, porque na Vercel `api/equipamentos.js` e `api/equipamentos.json` colidiriam na mesma rota.
+> O catálogo fica em `data/`, fora de `api/`, porque na Vercel `api/equipamentos.js` e `api/equipamentos.json` colidiriam na mesma rota. O servidor local se chama `servidor-local.js` (e não `server.js`) para a Vercel não tratar o projeto como app Express.
 
 ## Tecnologias
 
 - [Viz.js](https://github.com/mdaines/viz-js) — Graphviz em WebAssembly, carregado via CDN, desenha o diagrama.
+- [Supabase](https://supabase.com) — login e banco de dados dos projetos.
 - [Zod](https://zod.dev) — validação dos dados.
 - [Express](https://expressjs.com) — servidor local.
 - HTML, CSS e JavaScript puros, sem etapa de build.
