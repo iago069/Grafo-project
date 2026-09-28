@@ -726,6 +726,7 @@
   // dos grupos. Cada rota ignora os próprios equipamentos e os grupos deles
   // (o cabo precisa sair/entrar ali).
   var FOLGA_OBSTACULO = 6;
+  var FOLGA_GRUPO = 16;
   function coletarObstaculos(svg) {
     var lista = [];
     svg.querySelectorAll("g.node").forEach(function (node) {
@@ -742,7 +743,10 @@
       var b;
       try { b = forma && forma.getBBox(); } catch (e) { b = null; }
       if (!b || !b.width) return;
-      lista.push({ grupo: nome, custo: 1500, x1: b.x, y1: b.y, x2: b.x + b.width, y2: b.y + b.height });
+      // Folga maior que a dos equipamentos: o cabo não corre colado na borda
+      // e o rótulo dele (5 px acima do trecho) não cai dentro da caixa.
+      lista.push({ grupo: nome, custo: 1500,
+        x1: b.x - FOLGA_GRUPO, y1: b.y - FOLGA_GRUPO, x2: b.x + b.width + FOLGA_GRUPO, y2: b.y + b.height + FOLGA_GRUPO });
     });
     return lista;
   }
