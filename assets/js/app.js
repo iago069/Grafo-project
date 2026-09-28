@@ -59,8 +59,9 @@
     { nome: "VOLT", icone: caminhoImagem("VOLT.jpeg") },
     { nome: "MikroTik", icone: caminhoImagem("MIKROTIK.png") },
     { nome: "UPS", icone: caminhoImagem("NOBREAK.jpeg") },
-    { valor: "AR", icone: caminhoImagem("AR.jpeg") },
-    { nome: "RPS", icone: caminhoImagem("RETIFICADOR.jpeg") }
+    { nome: "AR", icone: caminhoImagem("AR.jpeg") },
+    { nome: "RPS", icone: caminhoImagem("RETIFICADOR.jpeg") },
+    { nome: "Camera IP", icone: caminhoImagem("CAMERA.jpeg") }
   ];
   var CATALOGO_ICONES = [
     { valor: caminhoImagem("MIKROTIK.png"), nome: "MikroTik / RB", arquivo: caminhoImagem("MIKROTIK.png") },
@@ -69,7 +70,8 @@
     { valor: caminhoImagem("RETIFICADOR.jpeg"), nome: "Retificador / RPS", arquivo: caminhoImagem("RETIFICADOR.jpeg") },
     { valor: caminhoImagem("NOBREAK.jpeg"), nome: "Nobreak", arquivo: caminhoImagem("NOBREAK.jpeg") },
     { valor: caminhoImagem("AR.jpeg"), nome: "AR", arquivo: caminhoImagem("AR.jpeg") },
-    { valor: caminhoImagem("VOLT.jpeg"), nome: "Volt", arquivo: caminhoImagem("VOLT.jpeg") }
+    { valor: caminhoImagem("VOLT.jpeg"), nome: "Volt", arquivo: caminhoImagem("VOLT.jpeg") },
+    { valor: caminhoImagem("CAMERA.jpeg"), nome: "Câmera", arquivo: caminhoImagem("CAMERA.jpeg") }
   ];
   var catalogoTiposEquipamentos = TIPOS_BASE.slice();
 
@@ -100,10 +102,11 @@
     if (valorEmTexto.indexOf("mikrotik") >= 0 || valorEmTexto.indexOf("rb/") >= 0 || valorEmTexto.indexOf("roteador") >= 0) return caminhoImagem("MIKROTIK.png");
     if (valorEmTexto.indexOf("switch") >= 0) return caminhoImagem("SWITCH.jpeg");
     if (valorEmTexto.indexOf("olt") >= 0) return caminhoImagem("OLT.jpeg");
-     if (valorEmTexto.indexOf("ar") >= 0) return caminhoImagem("AR.jpeg");
+    if (/(^|[^a-z])ar([^a-z]|$)/.test(valorEmTexto) || valorEmTexto.indexOf("hvac") >= 0 || valorEmTexto.indexOf("climatiz") >= 0) return caminhoImagem("AR.jpeg");
+    if (/c[aâ]mera/.test(valorEmTexto)) return caminhoImagem("CAMERA.jpeg");
     if (valorEmTexto.indexOf("retificador") >= 0 || valorEmTexto.indexOf("rps") >= 0) return caminhoImagem("RETIFICADOR.jpeg");
     if (valorEmTexto.indexOf("nobreak") >= 0 || valorEmTexto.indexOf("nobreack") >= 0) return caminhoImagem("NOBREAK.jpeg");
-    if (valorEmTexto.indexOf("VOLT") >= 0 || valorEmTexto.indexOf("Volt") >= 0 || valorEmTexto.indexOf("volt") >= 0) return caminhoImagem("VOLT.jpeg");
+    if (valorEmTexto.indexOf("volt") >= 0) return caminhoImagem("VOLT.jpeg");
     return "";
   }
 
