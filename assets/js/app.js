@@ -56,7 +56,7 @@
   var TIPOS_BASE = [
     { nome: "OLT", icone: caminhoImagem("OLT.jpeg") },
     { nome: "Switch", icone: caminhoImagem("SWITCH.jpeg") },
-    { nome: "VOLT", icone: "VOLT.jpeg" },
+    { nome: "VOLT", icone: caminhoImagem("VOLT.jpeg") },
     { nome: "MikroTik", icone: caminhoImagem("MIKROTIK.png") },
     { nome: "UPS", icone: caminhoImagem("NOBREAK.jpeg") },
     { nome: "RPS", icone: caminhoImagem("RETIFICADOR.jpeg") }
