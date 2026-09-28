@@ -3,12 +3,12 @@
     { "nome": "OLT", "icone": "OLT.jpeg" },
     { "nome": "Switch", "icone": "SWITCH.jpeg" },
     { "nome": "MikroTik", "icone": "MIKROTIK.png" },
-    { "nome": "ONU", "icone": "ONU.png" },
+    { "nome": "ONU" },
     { "nome": "RPS", "icone": "RETIFICADOR.jpeg" },
-    { "nome": "Servidor", "icone": "SERVIDOR.png" },
+    { "nome": "Servidor" },
     { "nome": "UPS", "icone": "NOBREAK.jpeg" },
-    { "nome": "HVAC", "icone": "AR.png" },
+    { "nome": "HVAC", "icone": "AR.jpeg" },
     { "nome": "VOLT", "icone": "VOLT.jpeg" },
-    { "nome": "Camera IP", "icone": "CAMERA.jpeg" },
+    { "nome": "Camera IP", "icone": "CAMERA.jpeg" }
   ]
 }
