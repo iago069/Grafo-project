@@ -1,0 +1,7 @@
+# Texto sempre guardado com quebra de linha LF no repositório (o Git converte
+# para CRLF ao baixar no Windows, se configurado). Sem isso, assets/js/app.js
+# (antigo, em CRLF) e as partes de src/app/ (LF) ficavam diferentes no Linux.
+* text=auto
+*.png binary
+*.jpeg binary
+*.jpg binary
