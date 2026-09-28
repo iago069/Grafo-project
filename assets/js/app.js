@@ -100,7 +100,7 @@
     if (valorEmTexto.indexOf("mikrotik") >= 0 || valorEmTexto.indexOf("rb/") >= 0 || valorEmTexto.indexOf("roteador") >= 0) return caminhoImagem("MIKROTIK.png");
     if (valorEmTexto.indexOf("switch") >= 0) return caminhoImagem("SWITCH.jpeg");
     if (valorEmTexto.indexOf("olt") >= 0) return caminhoImagem("OLT.jpeg");
-     if (valorEmTexto.indexOf("AR") >= 0 || valorEmTexto.indexOf("Ar") >= 0) || valorEmTexto.indexOf("ar") >= 0) return caminhoImagem("AR.jpeg");
+     if (valorEmTexto.indexOf("ar") >= 0) return caminhoImagem("AR.jpeg");
     if (valorEmTexto.indexOf("retificador") >= 0 || valorEmTexto.indexOf("rps") >= 0) return caminhoImagem("RETIFICADOR.jpeg");
     if (valorEmTexto.indexOf("nobreak") >= 0 || valorEmTexto.indexOf("nobreack") >= 0) return caminhoImagem("NOBREAK.jpeg");
     if (valorEmTexto.indexOf("VOLT") >= 0 || valorEmTexto.indexOf("Volt") >= 0 || valorEmTexto.indexOf("volt") >= 0) return caminhoImagem("VOLT.jpeg");
