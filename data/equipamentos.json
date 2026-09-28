@@ -9,6 +9,6 @@
     { "nome": "UPS", "icone": "NOBREAK.jpeg" },
     { "nome": "HVAC", "icone": "AR.png" },
     { "nome": "VOLT", "icone": "VOLT.jpeg" },
-    { "nome": "Camera IP", "icone": "CAMERA.png" },
+    { "nome": "Camera IP", "icone": "CAMERA.jpeg" },
   ]
 }
