@@ -81,6 +81,8 @@ async function abrirAba(banco) {
     visibilityState: "visible",
     activeElement: null,
     getElementById: id => els[id] || (els[id] = elemento(id)),
+    querySelectorAll: () => [],
+    documentElement: elemento("html"),
     createElement: () => elemento("criado"),
     addEventListener() {},
     body: {

@@ -10,11 +10,22 @@
 <meta name="copyright" content="© 2026 Iago Ariel Gularte Barbosa. Todos os direitos reservados.">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Grafo - Gerador Rápido Automatizado de Fluxos Organizados</title>
-<meta name="description" content="Monte diagramas de topologia de rede (OLTs, switches, roteadores, nobreaks) direto no navegador e exporte em PNG ou SVG.">
-<meta name="theme-color" content="#091722">
+<meta name="description" content="Desenhe a topologia da sua rede (OLTs, switches, roteadores, ONUs, nobreaks) direto no navegador. Exporte em PDF, PNG ou SVG e compartilhe por link.">
+<meta name="theme-color" content="#0f2536">
 <meta property="og:type" content="website">
+<meta property="og:url" content="https://thegrafo.vercel.app/">
 <meta property="og:title" content="Grafo - diagramas de topologia de rede">
-<meta property="og:description" content="Monte diagramas de topologia de rede (OLTs, switches, roteadores, nobreaks) direto no navegador e exporte em PNG ou SVG.">
+<meta property="og:description" content="Desenhe a topologia da sua rede direto no navegador. Exporte em PDF, PNG ou SVG e compartilhe por link.">
+<script>
+  // Quem já tem sessão salva vai direto para o editor: esconde a página inicial
+  // desde o primeiro desenho da tela (auth.js tira a classe se a sessão não valer).
+  try {
+    if (!/[?&#](recuperar=1|conta-excluida=1|error)|type=recovery/.test(location.search + location.hash) &&
+        Object.keys(localStorage).some(function (k) { return /^sb-.+-auth-token$/.test(k); })) {
+      document.documentElement.classList.add("com-sessao");
+    }
+  } catch (e) {}
+</script>
 <link rel="icon" type="image/png" href="./assets/images/favicon-64.png">
 <link rel="apple-touch-icon" href="./assets/images/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,10 +35,40 @@
 <link rel="stylesheet" href="./assets/css/styles.css">
 </head>
 <body class="auth-locked">
-  <section id="authScreen" class="auth-screen" aria-labelledby="authTitle">
-    <div class="auth-card">
+  <!-- Enquanto a sessão salva é conferida (html.com-sessao): só um aviso de carregamento. -->
+  <div class="carregando-editor" role="status">Carregando seus projetos...</div>
+
+  <!-- Página inicial: aparece para quem não está logado. O cartão de login
+       (#authCard) é o mesmo formulário que o auth.js controla. -->
+  <div id="authScreen" class="landing">
+    <header class="landing-topo">
+      <span class="landing-marca"><img src="./assets/images/grafo.png" alt="" width="34" height="34"><span>Grafo</span></span>
+      <div class="landing-topo-acoes">
+        <button type="button" class="landing-link" data-ir-para="login">Entrar</button>
+        <button type="button" class="landing-botao" data-ir-para="signup">Criar conta</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="landing-heroi" id="inicio">
+        <div class="landing-heroi-texto">
+          <p class="landing-sobretitulo">Topologia de rede sem complicação</p>
+          <h1>Desenhe a rede do seu provedor em minutos, direto no navegador.</h1>
+          <p class="landing-lead">Cadastre OLTs, switches, roteadores, ONUs e nobreaks, ligue os cabos porta a porta e o Grafo organiza o diagrama para você. Depois é só exportar em PDF ou mandar um link para o cliente.</p>
+          <div class="landing-ctas">
+            <button type="button" class="landing-botao grande" data-ir-para="signup">Criar minha conta</button>
+            <button type="button" class="landing-botao-secundario grande" data-ir-para="login">Já tenho conta</button>
+          </div>
+          <ul class="landing-destaques">
+            <li>Nada para instalar</li>
+            <li>Salvo na nuvem automaticamente</li>
+            <li>PDF pronto para imprimir</li>
+          </ul>
+        </div>
+
+    <div class="auth-card" id="authCard">
       <img src="./assets/images/grafo.png" alt="" class="auth-logo">
-      <h1 id="authTitle">Entre no Grafo</h1>
+      <h2 id="authTitle">Entre no Grafo</h2>
       <p id="authIntro">Acesse seus diagramas com sua conta.</p>
       <form id="authForm">
         <label for="authEmail">E-mail</label>
@@ -43,7 +84,9 @@
         <button type="button" id="authBack" hidden>Voltar ao login</button>
       </div>
     </div>
-  </section>
+      </section>
+    </main>
+  </div>
   <div class="app-shell">
     <div id="appModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
       <div class="modal-box">

@@ -412,6 +412,23 @@
     }
   });
 
+  // ---- Página inicial ------------------------------------------------------
+  var authCard = document.getElementById("authCard");
+  // A sessão salva não valeu (ou não havia): mostra a página inicial.
+  function showLanding() { document.documentElement.classList.remove("com-sessao"); }
+  function goToCard() {
+    var reduzir = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    authCard.scrollIntoView({ behavior: reduzir ? "auto" : "smooth", block: "center" });
+  }
+  // Botões "Criar conta" / "Entrar" da página: abrem o formulário no modo certo.
+  document.querySelectorAll("[data-ir-para]").forEach(function (botao) {
+    botao.addEventListener("click", function () {
+      setMode(botao.getAttribute("data-ir-para") === "signup" ? "signup" : "login");
+      goToCard();
+      setTimeout(function () { emailInput.focus({ preventScroll: true }); }, 350);
+    });
+  });
+
   toggle.addEventListener("click", function () { setMode("signup"); });
   recover.addEventListener("click", function () { setMode("recover"); });
   back.addEventListener("click", function () { setMode("login"); });
@@ -515,8 +532,15 @@
         notice(accountDeleted ? "Sua conta e todos os projetos foram excluídos." : "");
       }
     } catch (error) {
-      notice(error.message || "Não foi possível preparar o login.", true);
+      // "Failed to fetch" etc. viram mensagem em português (ERROS_CONHECIDOS).
+      notice(traduzirErro(error), true);
       submit.disabled = true;
+    }
+    // Sem editor aberto (sem sessão, sessão vencida ou erro): mostra a página
+    // inicial; se a pessoa veio de um link de e-mail, leva direto ao formulário.
+    if (!appLoaded) {
+      showLanding();
+      if (mode !== "login" || erroLink || accountDeleted) goToCard();
     }
   })();
 })();

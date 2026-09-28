@@ -562,13 +562,70 @@
   }
 /* A aplicação só aparece depois de carregar a sessão e os projetos da conta. */
 body.auth-locked .app-shell { display: none !important; }
-.auth-screen { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #0f2536; font-family: 'IBM Plex Sans', sans-serif; }
-body:not(.auth-locked) .auth-screen { display: none; }
+body:not(.auth-locked) .landing { display: none; }
+
+/* ---------- Página inicial (quem não está logado) ---------- */
+/* Só o topo e o destaque com o formulário de login, ocupando a tela inteira. */
+.landing {
+  --l-heroi: #0f2536; --l-heroi-texto: #e8f1f7; --l-heroi-suave: #a9c0cf; --l-acento: #e0932f; --l-acento-texto: #1b2733; --l-foco: #5fd4c4;
+  display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh;
+  background: radial-gradient(1100px 520px at 12% 0%, #1b4560 0%, transparent 62%), var(--l-heroi);
+  color: var(--l-heroi-texto); font-family: var(--sans); line-height: 1.55;
+}
+.landing main { flex: 1; display: flex; }
+.landing button { font-family: inherit; }
+.landing :focus-visible { outline: 2px solid var(--l-foco); outline-offset: 3px; border-radius: 6px; }
+.landing-topo {
+  display: flex; align-items: center; gap: 18px; padding: 12px clamp(16px, 5vw, 56px);
+  border-bottom: 1px solid color-mix(in srgb, var(--l-heroi-texto) 10%, transparent);
+}
+.landing-marca { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.3rem; letter-spacing: -0.02em; }
+.landing-topo-acoes { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.landing-link { background: none; border: 0; color: var(--l-heroi-texto); font-weight: 600; padding: 8px 10px; cursor: pointer; }
+.landing-link:hover { text-decoration: underline; }
+.landing-botao, .landing-botao-secundario {
+  border-radius: 10px; font-weight: 600; font-size: 0.93rem; padding: 9px 16px; cursor: pointer;
+  transition: filter var(--dur-rapida) ease, transform var(--dur-rapida) var(--ease-out);
+}
+.landing-botao { background: var(--l-acento); color: var(--l-acento-texto); border: 1px solid var(--l-acento); }
+.landing-botao:hover { filter: brightness(1.07); transform: translateY(-1px); }
+.landing-botao-secundario { background: transparent; color: var(--l-heroi-texto); border: 1px solid color-mix(in srgb, var(--l-heroi-texto) 45%, transparent); }
+.landing-botao-secundario:hover { border-color: var(--l-heroi-texto); }
+.landing-botao.grande, .landing-botao-secundario.grande { font-size: 1rem; padding: 13px 22px; }
+
+.landing-heroi {
+  flex: 1; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(320px, 410px); gap: clamp(28px, 5vw, 72px); align-items: center;
+  width: 100%; max-width: 1280px; margin: 0 auto; padding: clamp(32px, 6vw, 72px) clamp(16px, 5vw, 56px);
+}
+.landing-sobretitulo { margin: 0 0 12px; font-family: var(--mono); font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--l-foco); }
+.landing-heroi h1 { margin: 0 0 18px; font-size: clamp(2rem, 4.2vw, 3.15rem); line-height: 1.12; letter-spacing: -0.03em; max-width: 17em; }
+.landing-lead { margin: 0 0 28px; font-size: clamp(1rem, 1.4vw, 1.14rem); color: var(--l-heroi-suave); max-width: 36em; }
+.landing-ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 26px; }
+.landing-destaques { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 0; padding: 0; list-style: none; font-size: 0.9rem; color: var(--l-heroi-suave); }
+.landing-destaques li::before { content: "✓"; margin-right: 7px; color: var(--l-foco); font-weight: 700; }
+.landing-heroi .auth-card { justify-self: end; width: 100%; scroll-margin-top: 24px; }
+
+@media (max-width: 900px) {
+  .landing-heroi { grid-template-columns: 1fr; }
+  .landing-heroi .auth-card { justify-self: stretch; max-width: 460px; }
+}
+@media (max-width: 420px) {
+  .landing-topo { gap: 8px; }
+  .landing-marca span { display: none; }
+  .landing-ctas > * { flex: 1 1 100%; }
+}
+
+/* Sessão salva: enquanto o editor carrega, nada da página inicial aparece. */
+.carregando-editor { display: none; }
+html.com-sessao body.auth-locked .landing { display: none; }
+html.com-sessao body.auth-locked .carregando-editor {
+  display: grid; place-items: center; min-height: 100vh; color: var(--text-dim); font-family: var(--mono); font-size: 0.85rem;
+}
 .auth-card { width: min(100%, 410px); padding: 32px; border-radius: 18px; background: #fff; color: #0f2536; box-shadow: 0 16px 56px rgba(0,0,0,.24); animation: modalEntrar var(--dur-media) var(--ease-out); }
 /* O display: block abaixo venceria o atributo hidden (usado ao trocar de modo). */
 .auth-card [hidden] { display: none !important; }
 .auth-logo { width: 54px; height: 54px; object-fit: contain; margin-bottom: 10px; }
-.auth-card h1 { margin: 0 0 8px; font-size: 25px; }
+.auth-card h1, .auth-card h2 { margin: 0 0 8px; font-size: 25px; }
 .auth-card p { margin: 0 0 20px; color: #526575; }
 .auth-card label { display: block; margin: 14px 0 5px; font-size: 14px; font-weight: 600; }
 .auth-card input { width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1px solid #b7c5ce; border-radius: 8px; font: inherit; color: #0f2536; background: #fff; }
