@@ -67,6 +67,7 @@
     { valor: caminhoImagem("SWITCH.jpeg"), nome: "Switch", arquivo: caminhoImagem("SWITCH.jpeg") },
     { valor: caminhoImagem("RETIFICADOR.jpeg"), nome: "Retificador / RPS", arquivo: caminhoImagem("RETIFICADOR.jpeg") },
     { valor: caminhoImagem("NOBREAK.jpeg"), nome: "Nobreak", arquivo: caminhoImagem("NOBREAK.jpeg") },
+    { valor: caminhoImagem("AR.jpeg"), nome: "AR", arquivo: caminhoImagem("AR.jpeg") },
     { valor: caminhoImagem("VOLT.jpeg"), nome: "Volt", arquivo: caminhoImagem("VOLT.jpeg") }
   ];
   var catalogoTiposEquipamentos = TIPOS_BASE.slice();
