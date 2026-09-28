@@ -228,13 +228,15 @@
         notice(result.data.session ? "Conta criada. Carregando..." : "Cadastro recebido. Confirme o e-mail para entrar.");
         if (result.data.session) await activate(result.data.session);
       } else if (mode === "recover") {
-        result = await client.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+        // ?recuperar=1 marca a volta do e-mail: o bootstrap abre direto a tela de
+        // nova senha, sem depender do evento PASSWORD_RECOVERY (que chega tarde).
+        result = await client.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname + "?recuperar=1" });
         if (result.error) throw result.error;
         notice("Se houver uma conta para esse e-mail, você receberá um link de recuperação.");
       } else if (mode === "reset") {
         result = await client.auth.updateUser({ password: password });
         if (result.error) throw result.error;
-        history.replaceState(null, "", location.pathname + location.search);
+        history.replaceState(null, "", location.pathname);
         setMode("login");
         notice("Senha alterada. Seus projetos estão sendo carregados.");
         var sessionResult = await client.auth.getSession();
@@ -251,8 +253,28 @@
     }
   });
 
+  // Link de recuperação de senha. O Supabase abre a sessão ao processar o link
+  // e só depois dispara PASSWORD_RECOVERY; sem olhar a URL antes, o app via a
+  // sessão e entrava direto no editor, sem pedir a senha nova.
+  // Reconhece: ?recuperar=1 (nosso marcador) e #...type=recovery (fluxo implícito).
+  function linkDeRecuperacao() {
+    return /[?&]recuperar=1(&|$)/.test(location.search) || /(^#|&)type=recovery(&|$)/.test(location.hash);
+  }
+  // Link vencido ou já usado: o Supabase volta com #error=...&error_code=...
+  function erroNoLink() {
+    var hash = new URLSearchParams(location.hash.replace(/^#/, ""));
+    return hash.get("error_code") || hash.get("error") || "";
+  }
+
   (async function bootstrap() {
     notice("Preparando o login...");
+    var erroLink = erroNoLink();
+    if (erroLink) {
+      history.replaceState(null, "", location.pathname);
+      setMode(/recover|otp_expired|access_denied/.test(erroLink) ? "recover" : "login");
+    } else if (linkDeRecuperacao()) {
+      setMode("reset");
+    }
     try {
       var response = await fetch("/api/auth-config", { cache: "no-store" });
       if (!response.ok) throw new Error("Configure SUPABASE_URL e SUPABASE_PUBLISHABLE_KEY no servidor.");
@@ -277,8 +299,16 @@
       });
       var initial = await client.auth.getSession();
       if (initial.error) throw initial.error;
-      if (initial.data.session && mode !== "reset") await activate(initial.data.session);
-      else if (mode !== "reset") notice("");
+      if (erroLink) {
+        notice("O link expirou ou já foi usado. Digite seu e-mail para receber um novo.", true);
+      } else if (mode === "reset") {
+        notice(initial.data.session ? "" : "Link inválido ou expirado. Volte ao login e peça um novo em \"Esqueci minha senha\".", !initial.data.session);
+        back.hidden = !!initial.data.session;
+      } else if (initial.data.session) {
+        await activate(initial.data.session);
+      } else {
+        notice("");
+      }
     } catch (error) {
       notice(error.message || "Não foi possível preparar o login.", true);
       submit.disabled = true;
