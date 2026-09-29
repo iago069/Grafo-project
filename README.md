@@ -192,7 +192,9 @@ A lista de tipos sugeridos vem de `data/equipamentos.json` — **edite ali** par
 
 ## Modelos de equipamento e portas
 
-O campo **Modelo** sugere modelos conhecidos (MikroTik CCR/CRS/RB, Cisco Catalyst 2960X, Huawei S5720, Datacom DM4610 e modelos genéricos de OLT, ONU, switch, servidor, nobreak, retificador e câmera). Escolher um modelo com o **Tipo** vazio preenche o tipo.
+O campo **Modelo** sugere modelos conhecidos (MikroTik CCR/CRS/RB, Cisco Catalyst 2960X, Huawei S5720, Datacom DM4610 e modelos genéricos de OLT, ONU, switch, servidor, nobreak, retificador e câmera). A lista **segue o Tipo** do equipamento: com "Switch" aparecem só os switches, com "OLT" só as OLTs, com o nome de um fabricante ("MikroTik") todos os modelos dele; com o Tipo vazio, todos. Escolher um modelo com o **Tipo** vazio preenche o tipo.
+
+O modelo pode ser escrito completo ou só o começo, quando só um modelo começa assim: `CRS326` e `DM4610` são reconhecidos.
 
 Com o modelo preenchido, os campos **Porta origem** e **Porta destino** dos cabos (barra lateral, formulário rápido, editor e **Editar em lista**) viram uma lista com as portas daquele equipamento:
 

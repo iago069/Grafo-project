@@ -400,7 +400,54 @@
       var contido = new RegExp("(^|[^a-z0-9])" + nome.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "([^a-z0-9]|$)").test(alvo);
       if (contido && (!melhor || nome.length > melhor.peso)) melhor = { m: m, peso: nome.length };
     });
-    return melhor ? melhor.m : null;
+    if (melhor) return melhor.m;
+    // Nome curto ("CRS326", "DM4610", "MikroTik CCR2004"): vale se um único
+    // modelo começa com ele (seguido de "-", espaço ou fim).
+    var palavras = alvo.split(" ");
+    for (var i = 0; i < palavras.length; i++) {
+      var inicio = palavras.slice(i).join(" ");
+      if (inicio.length < 4) continue;
+      var candidatos = modelos.filter(function (m) {
+        var nome = chaveModelo(m.nome);
+        return nome.indexOf(inicio) === 0 && /^([^a-z0-9]|$)/.test(nome.slice(inicio.length));
+      });
+      if (candidatos.length === 1) return candidatos[0];
+      if (candidatos.length > 1) return null; // ambíguo: melhor não chutar
+    }
+    return null;
+  }
+
+  // Categoria de um tipo/modelo, para filtrar a lista de modelos pelo Tipo
+  // escolhido. Os tipos do catálogo variam ("UPS", "Nobreak"; "MikroTik", "Roteador").
+  var CATEGORIAS_EQUIPAMENTO = [
+    ["switch", /switch/],
+    ["olt", /(^|[^a-z])olt([^a-z]|$)/],
+    ["onu", /(^|[^a-z])(onu|ont)([^a-z]|$)/],
+    ["roteador", /roteador|router|mikrotik|(^|[^a-z])(rb|ccr)([^a-z]|$)/],
+    ["servidor", /servidor|server/],
+    ["nobreak", /nobreak|(^|[^a-z])ups([^a-z]|$)/],
+    ["retificador", /retificador|(^|[^a-z])rps([^a-z]|$)/],
+    ["camera", /camera/]
+  ];
+  function categoriaEquipamento(texto) {
+    var t = chaveModelo(texto);
+    for (var i = 0; i < CATEGORIAS_EQUIPAMENTO.length; i++) if (CATEGORIAS_EQUIPAMENTO[i][1].test(t)) return CATEGORIAS_EQUIPAMENTO[i][0];
+    return "";
+  }
+
+  // Modelos que combinam com o Tipo do equipamento. O tipo pode ser um fabricante
+  // ("MikroTik" -> todos os MikroTik) ou uma categoria ("Switch" -> só switches).
+  // Tipo vazio ou desconhecido (ou nenhum modelo da categoria): lista inteira.
+  function filtrarModelosPorTipo(modelos, tipo) {
+    var lista = Array.isArray(modelos) ? modelos : [];
+    var t = chaveModelo(tipo);
+    if (!t) return lista.slice();
+    var porFabricante = lista.filter(function (m) { return m.fabricante && chaveModelo(m.fabricante) === t; });
+    if (porFabricante.length) return porFabricante;
+    var categoria = categoriaEquipamento(t);
+    if (!categoria) return lista.slice();
+    var porCategoria = lista.filter(function (m) { return categoriaEquipamento(m.tipo) === categoria; });
+    return porCategoria.length ? porCategoria : lista.slice();
   }
 
   global.GrafoEsquema = {
@@ -413,6 +460,7 @@
     validarNomeProjeto: validarNomeProjeto,
     expandirPortas: expandirPortas,
     normalizarModelos: normalizarModelos,
-    buscarModelo: buscarModelo
+    buscarModelo: buscarModelo,
+    filtrarModelosPorTipo: filtrarModelosPorTipo
   };
 })(window);

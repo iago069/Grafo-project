@@ -54,6 +54,38 @@ test("o modelo é achado pelo nome, com fabricante ou com texto a mais", () => {
   assert.equal(nome(""), undefined);
 });
 
+const catalogoReal = () => E.normalizarModelos(JSON.parse(fs.readFileSync(path.join(raiz, "data", "equipamentos.json"), "utf8")).modelos);
+
+test("nome curto é reconhecido quando só um modelo começa com ele", () => {
+  const modelos = catalogoReal();
+  const nome = t => (E.buscarModelo(modelos, t) || {}).nome;
+  assert.equal(nome("CRS326"), "CRS326-24G-2S+");     // usado no exemplo do Grafo
+  assert.equal(nome("CCR2004"), "CCR2004-16G-2S+");
+  assert.equal(nome("MikroTik CCR2004"), "CCR2004-16G-2S+");
+  assert.equal(nome("DM4610"), "DM4610 8GPON");
+  assert.equal(nome("CRS3"), undefined);               // não é início de nome inteiro
+  assert.equal(nome("OLT"), undefined);                // curto demais
+});
+
+test("a lista de modelos segue o Tipo do equipamento", () => {
+  const modelos = catalogoReal();
+  const tipos = t => [...new Set(simples(E.filtrarModelosPorTipo(modelos, t)).map(m => m.tipo))].sort().join(",");
+  const nomes = t => simples(E.filtrarModelosPorTipo(modelos, t)).map(m => m.nome);
+  assert.equal(tipos("Switch"), "Switch");
+  assert.equal(tipos("switch de acesso"), "Switch");
+  assert.equal(tipos("OLT"), "OLT");
+  assert.equal(tipos("ONU"), "ONU");
+  assert.equal(tipos("Roteador"), "Roteador");
+  assert.equal(tipos("UPS"), "Nobreak");               // tipos do catálogo com outro nome
+  assert.equal(tipos("RPS"), "RPS");
+  assert.equal(tipos("Camera IP"), "Camera IP");
+  assert.ok(nomes("MikroTik").every(n => /^(CCR|CRS|RB|hEX)/.test(n)) && nomes("MikroTik").includes("CRS326-24G-2S+"),
+    "tipo = fabricante: todos os modelos dele, inclusive switches");
+  assert.equal(nomes("").length, modelos.length, "sem tipo: todos");
+  assert.equal(nomes("Geladeira").length, modelos.length, "tipo desconhecido: todos");
+  assert.equal(nomes("HVAC").length, modelos.length, "categoria sem modelos: todos");
+});
+
 test("o catálogo data/equipamentos.json é válido", () => {
   const catalogo = JSON.parse(fs.readFileSync(path.join(raiz, "data", "equipamentos.json"), "utf8"));
   assert.ok(Array.isArray(catalogo.modelos) && catalogo.modelos.length > 0, "tem modelos");

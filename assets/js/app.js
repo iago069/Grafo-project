@@ -250,10 +250,11 @@
     renderizarModelosSugeridos();
   }
 
-  function renderizarModelosSugeridos() {
+  // lista: os modelos a mostrar (padrão: o catálogo inteiro).
+  function renderizarModelosSugeridos(lista) {
     var datalist = document.getElementById("modelos-sugeridos");
     if (!datalist) return;
-    datalist.innerHTML = catalogoModelos.map(function (m) {
+    datalist.innerHTML = (lista || catalogoModelos).map(function (m) {
       var detalhe = [m.fabricante, m.tipo, m.portas.length + (m.portas.length === 1 ? " porta" : " portas")].filter(Boolean).join(" · ");
       return '<option value="' + escaparHtml(m.nome) + '" label="' + escaparHtml(detalhe) + '"></option>';
     }).join("");
@@ -337,6 +338,27 @@
 
   // Escolheu um modelo do catálogo com o Tipo vazio: preenche o tipo do modelo.
   var CAMPOS_MODELO = { navEquipModelo: "navEquipTipo", novoEquipModelo: "novoEquipTipo", editEquipModelo: "editEquipTipo" };
+
+  // Campo Tipo que acompanha um campo Modelo (formulários e "Editar em lista").
+  function campoTipoDoModelo(campo) {
+    if (!campo || campo.tagName !== "INPUT") return null;
+    if (CAMPOS_MODELO[campo.id]) return document.getElementById(CAMPOS_MODELO[campo.id]);
+    if (campo.getAttribute("data-field") !== "modelo") return null;
+    var cartao = campo.closest(".equip-card");
+    return cartao ? cartao.querySelector('input[data-field="tipo"]') : null;
+  }
+
+  // Ao abrir o campo Modelo, a lista mostra só os modelos do Tipo escolhido
+  // ("Switch" -> switches; "MikroTik" -> todos os MikroTik; vazio -> todos).
+  document.addEventListener("focusin", function (event) {
+    var campoTipo = campoTipoDoModelo(event.target);
+    if (!campoTipo && !(event.target && (CAMPOS_MODELO[event.target.id] || event.target.getAttribute && event.target.getAttribute("data-field") === "modelo"))) return;
+    var lista = Esquema.filtrarModelosPorTipo(catalogoModelos, campoTipo ? campoTipo.value : "");
+    renderizarModelosSugeridos(lista);
+    event.target.title = campoTipo && campoTipo.value.trim() && lista.length < catalogoModelos.length
+      ? "Mostrando " + lista.length + " modelo(s) do tipo " + campoTipo.value.trim() + ". Apague o Tipo para ver todos."
+      : "";
+  });
   document.addEventListener("input", function (event) {
     var campoTipo = event.target && CAMPOS_MODELO[event.target.id] && document.getElementById(CAMPOS_MODELO[event.target.id]);
     if (!campoTipo || campoTipo.value.trim()) return;
