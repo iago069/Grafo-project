@@ -21,6 +21,15 @@ const apiPath = path.join(rootDir, 'data', 'equipamentos.json');
 
 app.disable('x-powered-by');
 
+// Mesmos cabeçalhos de segurança do site (vercel.json), para testar local igual.
+const cabecalhos = (JSON.parse(fs.readFileSync(path.join(rootDir, 'vercel.json'), 'utf8')).headers || [])
+  .flatMap((regra) => regra.headers)
+  .filter((h) => h.key !== 'Strict-Transport-Security'); // HSTS só faz sentido em HTTPS
+app.use((_req, res, next) => {
+  cabecalhos.forEach((h) => res.setHeader(h.key, h.value));
+  next();
+});
+
 app.get('/health', (_req, res) => {
   res.json({ ok: true, app: 'grafo-io', time: new Date().toISOString() });
 });

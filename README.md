@@ -270,6 +270,8 @@ Para conferir, abra `https://thegrafo.vercel.app/api/auth-config`: deve mostrar 
 
 Também é possível publicar direto do computador com a Vercel CLI: `npx vercel deploy --prod`.
 
+**Segurança.** O `vercel.json` envia cabeçalhos de segurança em todas as páginas (o `servidor-local.js` envia os mesmos): um CSP que só aceita scripts do próprio site e do jsDelivr, bloqueia scripts embutidos no HTML e impede que o Grafo seja aberto dentro de outro site; além de `nosniff`, `Referrer-Policy`, `Permissions-Policy` e HSTS. Por isso não há `<script>` embutido nas páginas: o código fica em arquivos (`assets/js/sessao.js`, `assets/js/ver.js`). As bibliotecas do jsDelivr têm versão fixa e `integrity` (SRI): o navegador recusa o arquivo se o CDN entregar outro conteúdo. Ao atualizar uma delas, recalcule o hash (`sha384`). O teste `tests/seguranca.test.js` confere tudo isso.
+
 ### Problemas comuns
 
 | Mensagem ou sintoma | Causa e solução |

@@ -16,22 +16,13 @@
 <meta property="og:url" content="https://thegrafo.vercel.app/">
 <meta property="og:title" content="Grafo - diagramas de topologia de rede">
 <meta property="og:description" content="Desenhe a topologia da sua rede direto no navegador. Exporte em PDF, PNG ou SVG e compartilhe por link.">
-<script>
-  // Quem já tem sessão salva vai direto para o editor: esconde a página inicial
-  // desde o primeiro desenho da tela (auth.js tira a classe se a sessão não valer).
-  try {
-    if (!/[?&#](recuperar=1|conta-excluida=1|error)|type=recovery/.test(location.search + location.hash) &&
-        Object.keys(localStorage).some(function (k) { return /^sb-.+-auth-token$/.test(k); })) {
-      document.documentElement.classList.add("com-sessao");
-    }
-  } catch (e) {}
-</script>
+<script src="./assets/js/sessao.js"></script>
 <link rel="icon" type="image/png" href="./assets/images/favicon-64.png">
 <link rel="apple-touch-icon" href="./assets/images/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@viz-js/viz@3.30.0/dist/viz-global.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@viz-js/viz@3.30.0/dist/viz-global.js" integrity="sha384-KtL79YzRfvZ8ULC1SlgbwCIy18KoEk5fAudzHYqetJVonV6ubRN1KD2sDvNT9uuX" crossorigin="anonymous"></script>
 <link rel="stylesheet" href="./assets/css/styles.css">
 </head>
 <body class="auth-locked">
@@ -681,7 +672,7 @@
 
 <script src="./assets/vendor/zod-3.25.76.min.js"></script>
 <script src="./assets/js/esquema.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok" crossorigin="anonymous"></script>
 <script src="./assets/js/equipe.js"></script>
 <script src="./assets/js/auth.js"></script>
 </body>

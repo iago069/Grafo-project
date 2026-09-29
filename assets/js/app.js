@@ -4418,7 +4418,10 @@
     if (!promessaJsPdf) {
       promessaJsPdf = new Promise(function (resolver, rejeitar) {
         var script = document.createElement("script");
-        script.src = "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js";
+        // integrity: o navegador recusa o arquivo se o CDN entregar outro conteúdo.
+        script.src = "https://cdn.jsdelivr.net/npm/jspdf@4.2.1/dist/jspdf.umd.min.js";
+        script.integrity = "sha384-qovJwSBbRDPP5cEjCp8S0UP66wrvnjaa60XMOGzTNanrThcrGfXfnZkvgY8N1KT3";
+        script.crossOrigin = "anonymous";
         script.onload = function () { window.jspdf && window.jspdf.jsPDF ? resolver(window.jspdf.jsPDF) : rejeitar(new Error("jsPDF indisponível.")); };
         script.onerror = function () { promessaJsPdf = null; rejeitar(new Error("Não foi possível carregar o gerador de PDF. Verifique a conexão.")); };
         document.head.appendChild(script);
@@ -4436,6 +4439,8 @@
       promessaSvg2Pdf = new Promise(function (resolver, rejeitar) {
         var script = document.createElement("script");
         script.src = "https://cdn.jsdelivr.net/npm/svg2pdf.js@2.8.1/dist/svg2pdf.umd.min.js";
+        script.integrity = "sha384-7hc/mtl4lyRUMzYFqHxwNbYZwh27MESE5AWa2nEuVChLn8bCQcrn18OgGv9uHgzz";
+        script.crossOrigin = "anonymous";
         script.onload = function () { window.svg2pdf && window.svg2pdf.svg2pdf ? resolver() : rejeitar(new Error("svg2pdf indisponível.")); };
         script.onerror = function () { promessaSvg2Pdf = null; rejeitar(new Error("Não foi possível carregar o svg2pdf.")); };
         document.head.appendChild(script);
