@@ -246,7 +246,14 @@ async function abrirAba(banco, opcoes) {
     vm.runInContext(codigoEquipe, ctx);
   }
   vm.runInContext(codigoAuth, ctx);
-  await esperar(30);
+  // Espera o editor abrir (auth.js preenche o e-mail da conta no fim) ou o login falhar.
+  for (let i = 0; i < 100; i++) {
+    await esperar(10);
+    const aberto = els.accountEmail && els.accountEmail.textContent;
+    const falhou = els.authMessage && els.authMessage.classList.contains("error");
+    if (aberto || falhou) break;
+  }
+  await esperar(10);
   // O editor abre com o que auth.js deixou no navegador.
   editor.projetos = JSON.parse(armazenamento["grafo-projetos:" + conta.id] || "{}");
   editor.atual = armazenamento["grafo-projeto-atual:" + conta.id] || Object.keys(editor.projetos)[0] || null;

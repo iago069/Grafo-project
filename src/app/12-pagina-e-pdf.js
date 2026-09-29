@@ -382,6 +382,7 @@
       baixarBlob(r.doc.output("blob"), nome);
       if (r.imagensIgnoradas > 0) avisarImagensIgnoradas("PDF", r.imagensIgnoradas);
       else { esconderErro(); avisar("PDF baixado: " + nome); }
+      document.dispatchEvent(new CustomEvent("grafo:exportado", { detail: "pdf" }));
     } catch (e) {
       mostrarErro("Não foi possível exportar o PDF.\nDetalhe: " + e.message);
     } finally {

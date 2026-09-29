@@ -22,7 +22,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@viz-js/viz@3.30.0/dist/viz-global.js" integrity="sha384-KtL79YzRfvZ8ULC1SlgbwCIy18KoEk5fAudzHYqetJVonV6ubRN1KD2sDvNT9uuX" crossorigin="anonymous"></script>
 <link rel="stylesheet" href="./assets/css/styles.css">
 </head>
 <body class="auth-locked">
@@ -33,7 +32,7 @@
        (#authCard) é o mesmo formulário que o auth.js controla. -->
   <div id="authScreen" class="landing">
     <header class="landing-topo">
-      <span class="landing-marca"><img src="./assets/images/grafo.png" alt="" width="34" height="34"><span>Grafo</span></span>
+      <span class="landing-marca"><img src="./assets/images/grafo-160.png" alt="" width="34" height="34"><span>Grafo</span></span>
       <div class="landing-topo-acoes">
         <button type="button" class="landing-link" data-ir-para="login">Entrar</button>
         <button type="button" class="landing-botao" data-ir-para="signup">Criar conta</button>
@@ -58,7 +57,7 @@
         </div>
 
     <div class="auth-card" id="authCard">
-      <img src="./assets/images/grafo.png" alt="" class="auth-logo">
+      <img src="./assets/images/grafo-160.png" alt="" class="auth-logo">
       <h2 id="authTitle">Entre no Grafo</h2>
       <p id="authIntro">Acesse seus diagramas com sua conta.</p>
       <form id="authForm">
@@ -302,7 +301,7 @@
     <aside class="sidebar" aria-label="Navegação lateral">
       <button class="sidebar-collapse" id="btnSidebarCollapse" type="button" aria-label="Recolher barra lateral" title="Recolher barra lateral">‹</button>
       <div class="brand">
-        <img class="brand-mark" src="./assets/images/grafo.png" alt="Logo Grafo">
+        <img class="brand-mark" src="./assets/images/grafo-160.png" alt="Logo Grafo">
         <span>Grafo</span>
       </div>
 
@@ -593,6 +592,32 @@
             <button class="ghost small" id="btnFecharCaminho" type="button">Fechar</button>
           </div>
           <div id="erro" role="alert"></div>
+          <!-- Primeiros passos para quem ainda não tem equipamentos (primeiros-passos.js). -->
+          <section class="primeiros-passos" id="primeirosPassos" aria-labelledby="ppTitulo" hidden>
+            <div class="pp-cabecalho">
+              <h3 id="ppTitulo">Primeiros passos</h3>
+              <span class="pp-progresso" id="ppProgresso" aria-live="polite">0 de 3</span>
+              <button type="button" class="ghost small" id="ppFechar" aria-label="Fechar primeiros passos" title="Fechar">×</button>
+            </div>
+            <ol class="pp-lista">
+              <li data-passo="equipamento">
+                <span class="pp-marca" aria-hidden="true"></span>
+                <div class="pp-texto"><strong>Adicione um equipamento</strong><span>Nome, tipo, IP e grupo (rack, sala ou POP).</span></div>
+                <button type="button" class="ghost small" data-pp-acao="equipamento">Adicionar</button>
+              </li>
+              <li data-passo="cabo">
+                <span class="pp-marca" aria-hidden="true"></span>
+                <div class="pp-texto"><strong>Ligue dois equipamentos com um cabo</strong><span>Informe a porta de cada ponta e o tipo de enlace.</span></div>
+                <button type="button" class="ghost small" data-pp-acao="cabo">Ligar</button>
+              </li>
+              <li data-passo="exportar">
+                <span class="pp-marca" aria-hidden="true"></span>
+                <div class="pp-texto"><strong>Exporte o diagrama</strong><span>Em PDF para imprimir, ou em PNG e SVG.</span></div>
+                <button type="button" class="ghost small" data-pp-acao="exportar">Exportar</button>
+              </li>
+            </ol>
+            <p class="pp-rodape">Quer ver como fica? <button type="button" class="pp-link" data-pp-acao="exemplo">Carregar um exemplo pronto</button></p>
+          </section>
           <div class="canvas-wrap vazio" id="canvas"></div>
           <div class="legenda" id="legenda"></div>
         </section>
@@ -670,8 +695,6 @@
   <option value="GPON"></option><option value="XGS-PON"></option>
 </datalist>
 
-<script src="./assets/vendor/zod-3.25.76.min.js"></script>
-<script src="./assets/js/esquema.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok" crossorigin="anonymous"></script>
 <script src="./assets/js/equipe.js"></script>
 <script src="./assets/js/auth.js"></script>

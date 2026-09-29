@@ -3613,6 +3613,28 @@
       atualizarBotoesHistorico();
     },
     removerProjeto: function (nome) { removerProjetoDaLista(nome); },
+    // Usados por primeiros-passos.js.
+    resumoAtual: function () { return { equipamentos: estado.equipamentos.length, conexoes: estado.conexoes.length }; },
+    carregarExemplo: function () { carregarExemplo(); },
+    // Abre um formulário da barra lateral ("navAddEquip" ou "navAddCable"),
+    // expandindo o menu antes, se estiver recolhido (celular).
+    abrirPainelLateral: function (id) {
+      var painel = document.getElementById(id);
+      var item = document.querySelector('.nav-item[data-nav-panel="' + id + '"]');
+      if (!painel || !item) return;
+      if (elSidebar.classList.contains("collapsed")) definirSidebarRecolhida(false);
+      fecharPaineisLaterais();
+      painel.classList.add("open");
+      item.classList.add("active");
+      if (id === "navAddCable") renderSidebarPanels();
+      item.scrollIntoView({ behavior: "smooth", block: "start" });
+      var campo = painel.querySelector("input, select");
+      if (campo) setTimeout(function () { campo.focus({ preventScroll: true }); }, 350);
+    },
+    abrirPdf: function () {
+      abrirPainelPagina(true);
+      if (telaCelular.matches) elPainelPagina.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
     salvar: function () { salvarLocal(true); },
     atualizarListaProjetos: function () { renderProjetos(); }
   };
@@ -4053,12 +4075,14 @@
         try {
           await downloadsCap.save({ filename: nomeSvg, data: svgText });
           avisar("SVG baixado.");
+          document.dispatchEvent(new CustomEvent("grafo:exportado", { detail: "svg" }));
           return;
         } catch (e) {}
       }
 
       baixarBlob(new Blob([svgText], { type: "image/svg+xml;charset=utf-8" }), nomeSvg);
       avisar("SVG baixado: " + nomeSvg);
+      document.dispatchEvent(new CustomEvent("grafo:exportado", { detail: "svg" }));
     } catch (e) {
       mostrarErro("Não foi possível exportar o SVG.\nDetalhe: " + e.message);
     }
@@ -4199,6 +4223,7 @@
       baixarBlob(await canvasParaPngBlob(r.canvas), nomeArquivoExportacao("png"));
       if (r.imagensIgnoradas > 0) avisarImagensIgnoradas("PNG", r.imagensIgnoradas);
       else { esconderErro(); avisar("PNG baixado."); }
+      document.dispatchEvent(new CustomEvent("grafo:exportado", { detail: "png" }));
     } catch (e) {
       mostrarErro("Não foi possível exportar o diagrama como PNG.\nDetalhe: " + e.message);
     } finally {
@@ -4591,6 +4616,7 @@
       baixarBlob(r.doc.output("blob"), nome);
       if (r.imagensIgnoradas > 0) avisarImagensIgnoradas("PDF", r.imagensIgnoradas);
       else { esconderErro(); avisar("PDF baixado: " + nome); }
+      document.dispatchEvent(new CustomEvent("grafo:exportado", { detail: "pdf" }));
     } catch (e) {
       mostrarErro("Não foi possível exportar o PDF.\nDetalhe: " + e.message);
     } finally {

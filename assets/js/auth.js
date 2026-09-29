@@ -168,21 +168,32 @@
     prepareLocal(row, team);
   }
 
-  function loadScript(src) {
+  function loadScript(src, integrity) {
     return new Promise(function (resolve, reject) {
       var script = document.createElement("script");
       script.src = src;
+      if (integrity) { script.integrity = integrity; script.crossOrigin = "anonymous"; }
       script.onload = resolve;
       script.onerror = function () { reject(new Error("Não foi possível carregar o editor.")); };
       document.body.appendChild(script);
     });
   }
 
+  // O que só o editor usa carrega depois do login: a página inicial fica leve.
+  // (sessao.js já começa a baixar estes arquivos para quem tem sessão salva.)
+  var EDITOR_SCRIPTS = [
+    ["https://cdn.jsdelivr.net/npm/@viz-js/viz@3.30.0/dist/viz-global.js", "sha384-KtL79YzRfvZ8ULC1SlgbwCIy18KoEk5fAudzHYqetJVonV6ubRN1KD2sDvNT9uuX"],
+    ["./assets/vendor/zod-3.25.76.min.js"],
+    ["./assets/js/esquema.js"],
+    ["./assets/js/app.js"]
+  ];
+
   async function loadApp() {
     if (appLoaded) return;
-    await loadScript("./assets/js/app.js");
+    for (var i = 0; i < EDITOR_SCRIPTS.length; i++) await loadScript(EDITOR_SCRIPTS[i][0], EDITOR_SCRIPTS[i][1]);
     appLoaded = true;
     if (equipe) equipe.iniciarInterface();
+    loadScript("./assets/js/primeiros-passos.js").catch(function (error) { console.error(error); });
     // Opcional: sem ele o editor funciona, só não há o botão "Compartilhar".
     loadScript("./assets/js/compartilhar.js").catch(function (error) { console.error(error); });
   }

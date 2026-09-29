@@ -38,7 +38,12 @@ test("as páginas não têm scripts embutidos (o CSP os bloquearia)", () => {
 test("scripts de CDN têm versão fixa e integrity (SRI)", () => {
   const html = ler("index.html");
   const externos = html.match(/<script[^>]+src="https:[^"]+"[^>]*>/g) || [];
-  assert.ok(externos.length >= 2);
+  assert.ok(externos.length >= 1);
+  // Graphviz: carregado depois do login (auth.js) e pré-carregado (sessao.js), com o mesmo integrity.
+  const hashViz = arquivo => (ler(arquivo).match(/viz-global\.js",\s*"(sha384-[A-Za-z0-9+/=]+)"/) || [])[1];
+  assert.ok(hashViz("assets/js/auth.js"), "auth.js deve carregar o Graphviz com integrity");
+  assert.equal(hashViz("assets/js/sessao.js"), hashViz("assets/js/auth.js"), "o integrity do Graphviz precisa ser igual nos dois arquivos");
+  assert.doesNotMatch(html, /viz-global\.js/, "o Graphviz não deve pesar na página inicial");
   externos.forEach(tag => {
     assert.match(tag, /integrity="sha384-[A-Za-z0-9+/=]+"/, "sem integrity: " + tag);
     assert.match(tag, /crossorigin="anonymous"/, "sem crossorigin: " + tag);

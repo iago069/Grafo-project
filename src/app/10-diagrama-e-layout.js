@@ -465,6 +465,28 @@
       atualizarBotoesHistorico();
     },
     removerProjeto: function (nome) { removerProjetoDaLista(nome); },
+    // Usados por primeiros-passos.js.
+    resumoAtual: function () { return { equipamentos: estado.equipamentos.length, conexoes: estado.conexoes.length }; },
+    carregarExemplo: function () { carregarExemplo(); },
+    // Abre um formulário da barra lateral ("navAddEquip" ou "navAddCable"),
+    // expandindo o menu antes, se estiver recolhido (celular).
+    abrirPainelLateral: function (id) {
+      var painel = document.getElementById(id);
+      var item = document.querySelector('.nav-item[data-nav-panel="' + id + '"]');
+      if (!painel || !item) return;
+      if (elSidebar.classList.contains("collapsed")) definirSidebarRecolhida(false);
+      fecharPaineisLaterais();
+      painel.classList.add("open");
+      item.classList.add("active");
+      if (id === "navAddCable") renderSidebarPanels();
+      item.scrollIntoView({ behavior: "smooth", block: "start" });
+      var campo = painel.querySelector("input, select");
+      if (campo) setTimeout(function () { campo.focus({ preventScroll: true }); }, 350);
+    },
+    abrirPdf: function () {
+      abrirPainelPagina(true);
+      if (telaCelular.matches) elPainelPagina.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
     salvar: function () { salvarLocal(true); },
     atualizarListaProjetos: function () { renderProjetos(); }
   };

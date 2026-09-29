@@ -296,12 +296,14 @@
         try {
           await downloadsCap.save({ filename: nomeSvg, data: svgText });
           avisar("SVG baixado.");
+          document.dispatchEvent(new CustomEvent("grafo:exportado", { detail: "svg" }));
           return;
         } catch (e) {}
       }
 
       baixarBlob(new Blob([svgText], { type: "image/svg+xml;charset=utf-8" }), nomeSvg);
       avisar("SVG baixado: " + nomeSvg);
+      document.dispatchEvent(new CustomEvent("grafo:exportado", { detail: "svg" }));
     } catch (e) {
       mostrarErro("Não foi possível exportar o SVG.\nDetalhe: " + e.message);
     }
@@ -442,6 +444,7 @@
       baixarBlob(await canvasParaPngBlob(r.canvas), nomeArquivoExportacao("png"));
       if (r.imagensIgnoradas > 0) avisarImagensIgnoradas("PNG", r.imagensIgnoradas);
       else { esconderErro(); avisar("PNG baixado."); }
+      document.dispatchEvent(new CustomEvent("grafo:exportado", { detail: "png" }));
     } catch (e) {
       mostrarErro("Não foi possível exportar o diagrama como PNG.\nDetalhe: " + e.message);
     } finally {
