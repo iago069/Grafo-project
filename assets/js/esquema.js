@@ -331,6 +331,78 @@
     return r.success ? { ok: true, dados: r.data } : { ok: false, mensagem: r.error.issues[0].message };
   }
 
+  // ---- Modelos de equipamento e portas ----------------------------------------
+  // Catálogo em data/equipamentos.json ("modelos"). As portas aceitam faixas:
+  // "ether1-16" -> ether1…ether16; "gpon1/1/1-8" -> gpon1/1/1…gpon1/1/8;
+  // "sfp-sfpplus1-2" -> sfp-sfpplus1, sfp-sfpplus2. Sem faixa, vale o nome como está.
+  var MAX_PORTAS_MODELO = 256;
+
+  function expandirPortas(lista) {
+    var portas = [];
+    var vistas = {};
+    (Array.isArray(lista) ? lista : []).forEach(function (item) {
+      var texto = String(item == null ? "" : item).trim();
+      if (!texto) return;
+      var faixa = /^(.*?)(\d+)-(\d+)$/.exec(texto);
+      var nomes = [];
+      if (faixa && Number(faixa[3]) >= Number(faixa[2]) && Number(faixa[3]) - Number(faixa[2]) < MAX_PORTAS_MODELO) {
+        for (var n = Number(faixa[2]); n <= Number(faixa[3]); n++) nomes.push(faixa[1] + n);
+      } else {
+        nomes.push(texto);
+      }
+      nomes.forEach(function (nome) {
+        var porta = nome.slice(0, LIMITES.porta);
+        var chave = porta.toLowerCase();
+        if (vistas[chave] || portas.length >= MAX_PORTAS_MODELO) return;
+        vistas[chave] = true;
+        portas.push(porta);
+      });
+    });
+    return portas;
+  }
+
+  // Modelos vindos do JSON: descarta o que não tiver nome ou portas, sem travar.
+  function normalizarModelos(lista) {
+    var modelos = [];
+    var vistos = {};
+    (Array.isArray(lista) ? lista : []).forEach(function (m) {
+      if (!ehObjeto(m)) return;
+      var nome = typeof m.nome === "string" || typeof m.nome === "number" ? String(m.nome).trim().slice(0, LIMITES.modelo) : "";
+      var portas = expandirPortas(m.portas);
+      if (!nome || !portas.length || vistos[nome.toLowerCase()]) return;
+      vistos[nome.toLowerCase()] = true;
+      modelos.push({
+        nome: nome,
+        fabricante: typeof m.fabricante === "string" ? m.fabricante.trim().slice(0, 40) : "",
+        tipo: typeof m.tipo === "string" ? m.tipo.trim().slice(0, LIMITES.tipo) : "",
+        portas: portas
+      });
+    });
+    return modelos;
+  }
+
+  function chaveModelo(texto) {
+    return semAcento(String(texto || "")).toLowerCase().replace(/[\s_]+/g, " ").trim();
+  }
+
+  // Modelo do catálogo para o texto do campo "Modelo" do equipamento. Aceita
+  // o nome exato ("CRS326-24G-2S+"), com fabricante ("MikroTik CRS326-24G-2S+")
+  // ou com texto a mais ("CRS326-24G-2S+ rack 2"): vence o nome mais longo contido.
+  function buscarModelo(modelos, texto) {
+    var alvo = chaveModelo(texto);
+    if (!alvo || !Array.isArray(modelos)) return null;
+    var melhor = null;
+    modelos.forEach(function (m) {
+      var nome = chaveModelo(m.nome);
+      if (!nome) return;
+      var comFabricante = chaveModelo(m.fabricante + " " + m.nome);
+      if (alvo === nome || alvo === comFabricante) { melhor = { m: m, peso: Infinity }; return; }
+      var contido = new RegExp("(^|[^a-z0-9])" + nome.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "([^a-z0-9]|$)").test(alvo);
+      if (contido && (!melhor || nome.length > melhor.peso)) melhor = { m: m, peso: nome.length };
+    });
+    return melhor ? melhor.m : null;
+  }
+
   global.GrafoEsquema = {
     LIMITES: LIMITES,
     ipValido: ipValido,
@@ -338,6 +410,9 @@
     validarProjeto: validarProjeto,
     validarEquipamento: validarEquipamento,
     validarConexao: validarConexao,
-    validarNomeProjeto: validarNomeProjeto
+    validarNomeProjeto: validarNomeProjeto,
+    expandirPortas: expandirPortas,
+    normalizarModelos: normalizarModelos,
+    buscarModelo: buscarModelo
   };
 })(window);

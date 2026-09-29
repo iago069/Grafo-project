@@ -10,5 +10,28 @@
     { "nome": "HVAC", "icone": "AR.jpeg" },
     { "nome": "VOLT", "icone": "VOLT.jpeg" },
     { "nome": "Camera IP", "icone": "CAMERA.jpeg" }
+  ],
+  "modelos": [
+    { "nome": "CCR2004-16G-2S+", "fabricante": "MikroTik", "tipo": "Roteador", "portas": ["ether1-16", "sfp-sfpplus1-2"] },
+    { "nome": "CCR1036-12G-4S", "fabricante": "MikroTik", "tipo": "Roteador", "portas": ["ether1-12", "sfp1-4"] },
+    { "nome": "CCR1009-7G-1C-1S+", "fabricante": "MikroTik", "tipo": "Roteador", "portas": ["ether1-7", "combo1", "sfp-sfpplus1"] },
+    { "nome": "RB4011iGS+", "fabricante": "MikroTik", "tipo": "Roteador", "portas": ["ether1-10", "sfp-sfpplus1"] },
+    { "nome": "hEX RB750Gr3", "fabricante": "MikroTik", "tipo": "Roteador", "portas": ["ether1-5"] },
+    { "nome": "CRS326-24G-2S+", "fabricante": "MikroTik", "tipo": "Switch", "portas": ["ether1-24", "sfp-sfpplus1-2"] },
+    { "nome": "CRS328-24P-4S+", "fabricante": "MikroTik", "tipo": "Switch", "portas": ["ether1-24", "sfp-sfpplus1-4"] },
+    { "nome": "CRS317-1G-16S+", "fabricante": "MikroTik", "tipo": "Switch", "portas": ["ether1", "sfp-sfpplus1-16"] },
+    { "nome": "Catalyst 2960X-24TS", "fabricante": "Cisco", "tipo": "Switch", "portas": ["Gi1/0/1-28"] },
+    { "nome": "S5720-28X-SI", "fabricante": "Huawei", "tipo": "Switch", "portas": ["GE0/0/1-24", "XGE0/0/1-4"] },
+    { "nome": "DM4610 8GPON", "fabricante": "Datacom", "tipo": "OLT", "portas": ["gpon1/1/1-8", "xe1/1/1-4"] },
+    { "nome": "Switch 24G + 4 SFP", "fabricante": "Genérico", "tipo": "Switch", "portas": ["ge1-24", "sfp1-4"] },
+    { "nome": "Switch 48G + 4 SFP+", "fabricante": "Genérico", "tipo": "Switch", "portas": ["ge1-48", "sfp+1-4"] },
+    { "nome": "OLT 8 PON", "fabricante": "Genérico", "tipo": "OLT", "portas": ["pon1-8", "uplink1-4"] },
+    { "nome": "OLT 16 PON", "fabricante": "Genérico", "tipo": "OLT", "portas": ["pon1-16", "uplink1-4"] },
+    { "nome": "ONU 1GE", "fabricante": "Genérico", "tipo": "ONU", "portas": ["pon", "lan1"] },
+    { "nome": "ONU 4GE Wi-Fi", "fabricante": "Genérico", "tipo": "ONU", "portas": ["pon", "lan1-4"] },
+    { "nome": "Servidor 2x1G + 2x10G", "fabricante": "Genérico", "tipo": "Servidor", "portas": ["eno1-2", "ens1f0-1"] },
+    { "nome": "Nobreak 8 tomadas", "fabricante": "Genérico", "tipo": "Nobreak", "portas": ["entrada", "saida1-8"] },
+    { "nome": "Retificador 4 saídas", "fabricante": "Genérico", "tipo": "RPS", "portas": ["entrada", "saida1-4"] },
+    { "nome": "Câmera IP PoE", "fabricante": "Genérico", "tipo": "Camera IP", "portas": ["eth0"] }
   ]
 }

@@ -47,7 +47,7 @@
           '</div>' +
           '<div class="equip-advanced" data-advanced-panel>' +
             '<div class="equip-row2">' +
-              '<input type="text" data-field="modelo" data-limite="modelo" value="' + escaparHtml(eq.modelo) + '" placeholder="Modelo (fabricante)" aria-label="Modelo (fabricante)">' +
+              '<input type="text" data-field="modelo" data-limite="modelo" list="modelos-sugeridos" autocomplete="off" value="' + escaparHtml(eq.modelo) + '" placeholder="Modelo (fabricante)" aria-label="Modelo (fabricante)">' +
               '<input type="text" data-field="tipo" data-limite="tipo" value="' + escaparHtml(eq.tipo) + '" placeholder="Tipo" aria-label="Tipo" list="tipos-sugeridos">' +
               '<input type="text" data-field="ip" data-limite="ip" value="' + escaparHtml(eq.ip || "") + '" placeholder="IP (ex.: 10.0.0.1)" aria-label="IP" aria-invalid="' + (ipValido(eq.ip) ? "false" : "true") + '" inputmode="decimal" autocomplete="off" spellcheck="false">' +
               '<input type="text" data-field="grupo" data-limite="grupo" value="' + escaparHtml(eq.grupo || "") + '" placeholder="Grupo / rack / sala" aria-label="Grupo / rack / sala">' +
@@ -436,6 +436,7 @@
     if (!validacao.ok) { mensagem.textContent = textoDosErros(validacao.erros); return; }
     estado.conexoes.push(validacao.dados);
     renderTudo();
+    avisarPortaEmUso(validacao.dados);
     event.target.reset();
     document.getElementById("navCableCor").value = "#5A7284";
     document.getElementById("navCableGrossura").value = "2";
@@ -499,6 +500,7 @@
       renderTudo();
       fecharFormularioCabemamento();
       esconderErro();
+      avisarPortaEmUso(validacaoCabo.dados);
     }
   });
 

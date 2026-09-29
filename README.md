@@ -14,6 +14,7 @@
 - [Importar e exportar](#importar-e-exportar)
 - [Onde ficam os dados](#onde-ficam-os-dados)
 - [Ícones dos equipamentos](#ícones-dos-equipamentos)
+- [Modelos de equipamento e portas](#modelos-de-equipamento-e-portas)
 - [Configuração (para quem mantém o projeto)](#configuração-para-quem-mantém-o-projeto)
   - [1. Supabase (login e banco)](#1-supabase-login-e-banco)
   - [2. Rodar localmente](#2-rodar-localmente)
@@ -188,6 +189,29 @@ O ícone é escolhido pelo tipo ou nome do equipamento, ou manualmente no editor
 Também dá para usar um emoji ou enviar uma imagem própria pelo campo **Imagem** (é reduzida para 256 px).
 
 A lista de tipos sugeridos vem de `data/equipamentos.json` — **edite ali** para adicionar tipos. Ao adicionar ou trocar uma imagem em `assets/images/`, rode `npm run icones` para atualizar `assets/js/icones-embutidos.js`, que a exportação usa para colocar os ícones dentro do PNG/SVG.
+
+## Modelos de equipamento e portas
+
+O campo **Modelo** sugere modelos conhecidos (MikroTik CCR/CRS/RB, Cisco Catalyst 2960X, Huawei S5720, Datacom DM4610 e modelos genéricos de OLT, ONU, switch, servidor, nobreak, retificador e câmera). Escolher um modelo com o **Tipo** vazio preenche o tipo.
+
+Com o modelo preenchido, os campos **Porta origem** e **Porta destino** dos cabos (barra lateral, formulário rápido, editor e **Editar em lista**) viram uma lista com as portas daquele equipamento:
+
+- portas **livres** primeiro; as **em uso** no fim, com o nome do equipamento do outro lado;
+- o campo mostra quantas estão livres (ex.: "25 de 26 portas livres") e sugere a primeira livre;
+- digitar outra porta continua valendo — a lista é só sugestão;
+- salvar um cabo numa porta que outro cabo já usa **não é bloqueado**, mas aparece um aviso.
+
+O modelo é reconhecido pelo nome exato, com o fabricante na frente (`MikroTik CRS326-24G-2S+`) ou com texto a mais (`CRS326-24G-2S+ rack 2`).
+
+### Adicionar ou corrigir modelos
+
+Os modelos ficam em `data/equipamentos.json`, na lista `"modelos"`:
+
+```json
+{ "nome": "CRS326-24G-2S+", "fabricante": "MikroTik", "tipo": "Switch", "portas": ["ether1-24", "sfp-sfpplus1-2"] }
+```
+
+Em `portas`, uma faixa termina em `início-fim` e vira uma porta para cada número: `ether1-24` → `ether1` … `ether24`; `gpon1/1/1-8` → `gpon1/1/1` … `gpon1/1/8`. Sem faixa, o nome vale como está (`pon`, `combo1`). Os nomes das portas seguem a nomenclatura mais comum de cada fabricante; confira com o seu equipamento e ajuste se precisar. O teste `tests/modelos.test.js` confere se o arquivo continua válido.
 
 ## Configuração (para quem mantém o projeto)
 

@@ -200,6 +200,7 @@
           return resposta.json();
         })
         .then(function (dados) {
+          if (dados && !Array.isArray(dados)) aplicarModelos(dados.modelos);
           var lista = Array.isArray(dados) ? dados : (Array.isArray(dados.tipos) ? dados.tipos : []);
           if (lista.length) {
             aplicarCatalogoExterno(lista);
@@ -236,6 +237,125 @@
     recarregar: carregarTiposDeEquipamento,
     url: EQUIPAMENTOS_API_URL
   };
+
+  // ---- Modelos de equipamento e portas ------------------------------------------
+  // Catálogo em data/equipamentos.json ("modelos"). Com o Modelo do equipamento
+  // preenchido com um modelo conhecido, os campos de porta dos cabos sugerem as
+  // portas dele — livres primeiro, as ocupadas com o equipamento do outro lado.
+  // Digitar outra porta continua valendo (a lista é só sugestão).
+  var catalogoModelos = [];
+
+  function aplicarModelos(lista) {
+    catalogoModelos = Esquema.normalizarModelos(lista);
+    renderizarModelosSugeridos();
+  }
+
+  function renderizarModelosSugeridos() {
+    var datalist = document.getElementById("modelos-sugeridos");
+    if (!datalist) return;
+    datalist.innerHTML = catalogoModelos.map(function (m) {
+      var detalhe = [m.fabricante, m.tipo, m.portas.length + (m.portas.length === 1 ? " porta" : " portas")].filter(Boolean).join(" · ");
+      return '<option value="' + escaparHtml(m.nome) + '" label="' + escaparHtml(detalhe) + '"></option>';
+    }).join("");
+  }
+
+  function modeloDoEquipamento(eq) {
+    return eq ? Esquema.buscarModelo(catalogoModelos, eq.modelo) : null;
+  }
+
+  // Portas do equipamento já usadas por outros cabos: { "ether2": "SW-CORE" } (chave em minúsculas).
+  function portasEmUso(idEquipamento, conexaoIgnorada) {
+    var nomePorId = {};
+    estado.equipamentos.forEach(function (eq) { nomePorId[eq.id] = eq.nome || eq.id; });
+    var usadas = {};
+    estado.conexoes.forEach(function (c) {
+      if (c === conexaoIgnorada) return;
+      if (c.de === idEquipamento && c.saida) usadas[String(c.saida).toLowerCase()] = nomePorId[c.para] || c.para;
+      if (c.para === idEquipamento && c.chegada) usadas[String(c.chegada).toLowerCase()] = nomePorId[c.de] || c.de;
+    });
+    return usadas;
+  }
+
+  // Campo de porta -> select do equipamento daquela ponta.
+  var CAMPOS_PORTA = {
+    navCableSaida: "navCableDe", navCableChegada: "navCablePara",
+    novoCabSaida: "novoCabDe", novoCabChegada: "novoCabPara",
+    editCaboSaida: "editCaboDe", editCaboChegada: "editCaboPara"
+  };
+
+  // { idEquipamento, conexao (a que está sendo editada, para não contar a própria porta) } ou null.
+  function contextoDoCampoPorta(campo) {
+    if (!campo || campo.tagName !== "INPUT") return null;
+    var idSelect = CAMPOS_PORTA[campo.id];
+    if (idSelect) {
+      var select = document.getElementById(idSelect);
+      return { idEquipamento: select ? select.value : "", conexao: campo.id.indexOf("editCabo") === 0 ? editor.conexao : null };
+    }
+    var campoLista = campo.getAttribute("data-field");
+    var linha = (campoLista === "saida" || campoLista === "chegada") && campo.closest(".conex-row");
+    if (!linha) return null;
+    var c = estado.conexoes[parseInt(linha.getAttribute("data-idx"), 10)];
+    return c ? { idEquipamento: campoLista === "saida" ? c.de : c.para, conexao: c } : null;
+  }
+
+  function prepararSugestoesDePorta(campo) {
+    var ctx = contextoDoCampoPorta(campo);
+    var datalist = document.getElementById("portas-sugeridas");
+    if (!ctx || !datalist) return;
+    if (!campo.hasAttribute("data-placeholder-original")) campo.setAttribute("data-placeholder-original", campo.placeholder || "");
+    campo.setAttribute("list", "portas-sugeridas");
+    campo.setAttribute("autocomplete", "off");
+    var eq = estado.equipamentos.find(function (item) { return item.id === ctx.idEquipamento; });
+    var modelo = modeloDoEquipamento(eq);
+    if (!modelo) {
+      datalist.innerHTML = "";
+      campo.placeholder = campo.getAttribute("data-placeholder-original");
+      campo.title = eq ? "Preencha o Modelo de " + (eq.nome || eq.id) + " com um modelo do catálogo para escolher a porta numa lista." : "";
+      return;
+    }
+    var usadas = portasEmUso(eq.id, ctx.conexao);
+    var livres = [], ocupadas = [];
+    modelo.portas.forEach(function (p) { (usadas[p.toLowerCase()] ? ocupadas : livres).push(p); });
+    function opcao(p, rotulo) { return '<option value="' + escaparHtml(p) + '" label="' + escaparHtml(rotulo) + '"></option>'; }
+    datalist.innerHTML = livres.map(function (p) { return opcao(p, "livre"); })
+      .concat(ocupadas.map(function (p) { return opcao(p, "em uso · " + usadas[p.toLowerCase()]); })).join("");
+    campo.placeholder = livres.length ? "Livre: " + livres[0] : "Todas as portas em uso";
+    campo.title = modelo.nome + ": " + livres.length + " de " + modelo.portas.length + " portas livres";
+  }
+
+  document.addEventListener("focusin", function (event) { prepararSugestoesDePorta(event.target); });
+  // Trocar o equipamento da ponta com o campo de porta já aberto atualiza a lista.
+  document.addEventListener("change", function (event) {
+    var id = event.target && event.target.id;
+    Object.keys(CAMPOS_PORTA).forEach(function (campoId) {
+      if (CAMPOS_PORTA[campoId] === id) {
+        var campo = document.getElementById(campoId);
+        if (campo) prepararSugestoesDePorta(campo);
+      }
+    });
+  });
+
+  // Escolheu um modelo do catálogo com o Tipo vazio: preenche o tipo do modelo.
+  var CAMPOS_MODELO = { navEquipModelo: "navEquipTipo", novoEquipModelo: "novoEquipTipo", editEquipModelo: "editEquipTipo" };
+  document.addEventListener("input", function (event) {
+    var campoTipo = event.target && CAMPOS_MODELO[event.target.id] && document.getElementById(CAMPOS_MODELO[event.target.id]);
+    if (!campoTipo || campoTipo.value.trim()) return;
+    var modelo = Esquema.buscarModelo(catalogoModelos, event.target.value);
+    if (modelo && modelo.tipo) campoTipo.value = modelo.tipo;
+  });
+
+  // Depois de salvar um cabo: avisa (sem bloquear) se alguma ponta usa porta que outro cabo já usa.
+  function avisarPortaEmUso(conexao) {
+    if (!conexao) return;
+    [["de", "saida"], ["para", "chegada"]].forEach(function (par) {
+      var porta = String(conexao[par[1]] || "").trim();
+      if (!porta) return;
+      var outro = portasEmUso(conexao[par[0]], conexao)[porta.toLowerCase()];
+      if (!outro) return;
+      var eq = estado.equipamentos.find(function (item) { return item.id === conexao[par[0]]; });
+      avisar("Atenção: a porta " + porta + " de " + (eq ? eq.nome || eq.id : "") + " já estava ligada a " + outro + ".");
+    });
+  }
 
   renderizarTiposSugeridos();
   carregarTiposDeEquipamento();

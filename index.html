@@ -107,7 +107,7 @@
           <label class="full">Nome<input id="editEquipNome" data-limite="nome" required></label>
           <div class="nav-form-grid">
             <label>Tipo<input id="editEquipTipo" data-limite="tipo" list="tipos-sugeridos"></label>
-            <label>Modelo<input id="editEquipModelo" data-limite="modelo"></label>
+            <label>Modelo<input id="editEquipModelo" data-limite="modelo" list="modelos-sugeridos" autocomplete="off"></label>
           </div>
           <div class="nav-form-grid">
             <label>IP<input id="editEquipIp" data-limite="ip" inputmode="decimal" autocomplete="off" spellcheck="false"></label>
@@ -313,7 +313,7 @@
             <form class="nav-form" id="navEquipForm">
               <label class="full">Nome<input id="navEquipNome" data-limite="nome" required placeholder="Ex.: OLT-01"></label>
               <div class="nav-form-grid">
-                <label>Modelo<input id="navEquipModelo" data-limite="modelo" placeholder="Modelo"></label>
+                <label>Modelo<input id="navEquipModelo" data-limite="modelo" list="modelos-sugeridos" autocomplete="off" placeholder="Ex.: CRS326-24G-2S+"></label>
                 <label>Tipo<input id="navEquipTipo" data-limite="tipo" list="tipos-sugeridos" placeholder="Tipo"></label>
               </div>
               <label class="full">IP<input id="navEquipIp" data-limite="ip" placeholder="Ex.: 10.0.0.1" inputmode="decimal" autocomplete="off" spellcheck="false"></label>
@@ -451,7 +451,7 @@
               </label>
               <label>
                 Modelo
-                <input type="text" id="novoEquipModelo" data-limite="modelo" placeholder="Ex.: Cisco 9300">
+                <input type="text" id="novoEquipModelo" data-limite="modelo" list="modelos-sugeridos" autocomplete="off" placeholder="Ex.: CRS326-24G-2S+">
               </label>
               <label>
                 IP
@@ -688,6 +688,8 @@
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
 <datalist id="tipos-sugeridos"></datalist>
+<datalist id="modelos-sugeridos"></datalist>
+<datalist id="portas-sugeridas"></datalist>
 <datalist id="grupos-sugeridos"></datalist>
 <datalist id="capacidades-sugeridas">
   <option value="100M"></option><option value="1G"></option><option value="2.5G"></option><option value="10G"></option>

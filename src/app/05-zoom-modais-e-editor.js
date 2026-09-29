@@ -365,6 +365,7 @@
     Object.assign(c, validacao.dados);
     fecharEditor();
     renderTudo();
+    avisarPortaEmUso(c);
   });
 
   editor.backdrop.querySelectorAll("[data-editor-fechar]").forEach(function (botao) {
