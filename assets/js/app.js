@@ -434,7 +434,9 @@
   Object.defineProperty(window, 'LIMITE_CANVAS', { value: LIMITE_CANVAS, configurable: true, writable: true, enumerable: true });
   Object.defineProperty(globalThis, 'LIMITE_CANVAS', { value: LIMITE_CANVAS, configurable: true, writable: true, enumerable: true });
 
-  function limitarZoom(valor) { return Math.min(3, Math.max(0.08, Number(valor.toFixed(2)))); }
+  // Sem arredondar: a animação do zoom dá passos pequenos que o arredondamento
+  // "comia" (em 12%, 0.1212 virava 0.12 e o zoom travava). A tela mostra o valor redondo.
+  function limitarZoom(valor) { return Math.min(3, Math.max(0.08, Number(valor) || 1)); }
 
   function limitarPosicaoNoCanvas(valor, min, max) {
     var numero = Number(valor) || 0;
@@ -458,30 +460,132 @@
     return { largura: comprimentoEmPx(svg.getAttribute("width")), altura: comprimentoEmPx(svg.getAttribute("height")) };
   }
 
+  // Tamanho da área do diagrama, guardado: ler clientWidth logo depois de mover
+  // o SVG obriga o navegador a recalcular o layout da página a cada quadro.
+  // O ResizeObserver (05-zoom…) atualiza quando a área muda de tamanho.
+  var tamanhoAreaCanvas = null;
+  function tamanhoDaArea() {
+    if (!tamanhoAreaCanvas || !tamanhoAreaCanvas.w) tamanhoAreaCanvas = { w: elCanvas.clientWidth, h: elCanvas.clientHeight };
+    return tamanhoAreaCanvas;
+  }
+
   // Pan livre, mas sempre deixando ao menos MARGEM px do diagrama visíveis.
   function limitarPan(svg) {
     var MARGEM = 80;
     var tamanho = tamanhoNaturalSvg(svg);
     var largura = tamanho.largura * canvasView.scale;
     var altura = tamanho.altura * canvasView.scale;
-    var larguraCanvas = elCanvas.clientWidth;
-    var alturaCanvas = elCanvas.clientHeight;
+    var area = tamanhoDaArea();
+    var larguraCanvas = area.w;
+    var alturaCanvas = area.h;
     if (!larguraCanvas || !alturaCanvas || !largura || !altura) return;
     canvasView.x = Math.min(larguraCanvas - MARGEM, Math.max(MARGEM - largura, canvasView.x));
     canvasView.y = Math.min(alturaCanvas - MARGEM, Math.max(MARGEM - altura, canvasView.y));
   }
 
+  var textoZoomAtual = "";
   function aplicarCanvasView() {
     var svg = elCanvas.querySelector("svg");
     if (svg) {
       limitarPan(svg);
-      svg.style.transform = "translate(" + canvasView.x + "px, " + canvasView.y + "px) scale(" + canvasView.scale + ")";
+      // translate3d: fica na GPU; com .interagindo (will-change) o movimento nem repinta.
+      svg.style.transform = "translate3d(" + canvasView.x + "px, " + canvasView.y + "px, 0) scale(" + canvasView.scale + ")";
     }
-    elZoomValue.textContent = Math.round(canvasView.scale * 100) + "%";
+    var texto = Math.round(canvasView.scale * 100) + "%";
+    if (texto !== textoZoomAtual) { elZoomValue.textContent = texto; textoZoomAtual = texto; }
+  }
+
+  // ---- Câmera suave -------------------------------------------------------------
+  // Zoom e "ajustar à tela" deslizam até o alvo a cada quadro (requestAnimationFrame),
+  // com desaceleração exponencial independente da taxa de quadros. Antes era uma
+  // transição CSS que recomeçava a cada giro da roda e "engasgava". O arrastar
+  // (pan) segue o ponteiro sem atraso, agrupado por quadro.
+  // Durante o movimento o SVG vira camada da GPU (.interagindo -> will-change):
+  // mover e ampliar não repinta nada; ao parar, ele é redesenhado nítido.
+  var reduzirMovimentoCamera = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)");
+  var camera = { alvo: null, ancora: null, suavidade: 0.2, quadro: 0, ultimo: 0 };
+  var timerInteracao = null;
+  var panAgendado = false;
+
+  function marcarInteracao() {
+    elCanvas.classList.add("interagindo");
+    clearTimeout(timerInteracao);
+    timerInteracao = setTimeout(function () {
+      if (!camera.quadro && !canvasView.dragging) elCanvas.classList.remove("interagindo");
+    }, 160);
+  }
+
+  function passoCamera(agora) {
+    camera.quadro = 0;
+    var alvo = camera.alvo;
+    if (!alvo) return;
+    var dt = camera.ultimo ? Math.min(64, agora - camera.ultimo) : 16.7;
+    camera.ultimo = agora;
+    var k = 1 - Math.pow(1 - camera.suavidade, dt / 16.7);
+    var s0 = canvasView.scale;
+    var s1 = Math.exp(Math.log(s0) + (Math.log(alvo.scale) - Math.log(s0)) * k);
+    var fim;
+    if (camera.ancora) {
+      // Zoom em torno de um ponto (cursor ou centro): o ponto fica parado na tela.
+      if (Math.abs(Math.log(alvo.scale / s1)) < 0.0015) s1 = alvo.scale;
+      var px = camera.ancora.x, py = camera.ancora.y;
+      canvasView.x = px - (px - canvasView.x) * s1 / s0;
+      canvasView.y = py - (py - canvasView.y) * s1 / s0;
+      canvasView.scale = s1;
+      fim = s1 === alvo.scale;
+    } else {
+      canvasView.x += (alvo.x - canvasView.x) * k;
+      canvasView.y += (alvo.y - canvasView.y) * k;
+      canvasView.scale = s1;
+      fim = Math.abs(Math.log(alvo.scale / s1)) < 0.0015 && Math.abs(alvo.x - canvasView.x) < 0.4 && Math.abs(alvo.y - canvasView.y) < 0.4;
+      if (fim) { canvasView.x = alvo.x; canvasView.y = alvo.y; canvasView.scale = alvo.scale; }
+    }
+    aplicarCanvasView();
+    if (fim) { camera.alvo = null; camera.ultimo = 0; marcarInteracao(); return; }
+    camera.quadro = requestAnimationFrame(passoCamera);
+  }
+
+  function iniciarCamera() {
+    marcarInteracao();
+    if (reduzirMovimentoCamera && reduzirMovimentoCamera.matches) camera.suavidade = 1;
+    if (!camera.quadro) { camera.ultimo = 0; camera.quadro = requestAnimationFrame(passoCamera); }
+  }
+
+  function pararCamera() {
+    if (camera.quadro) cancelAnimationFrame(camera.quadro);
+    camera.quadro = 0; camera.alvo = null; camera.ultimo = 0;
+  }
+
+  // Zoom animado por um fator, em torno de (px, py) do canvas (centro, se omitido).
+  // Giros seguidos acumulam no alvo, então a roda rápida não perde passos.
+  // suavidade: fração do caminho por quadro (0.2 = deslize; 0.5 = quase imediato).
+  function zoomSuave(fator, px, py, suavidade) {
+    if (px == null || py == null) { px = elCanvas.clientWidth / 2; py = elCanvas.clientHeight / 2; }
+    var base = camera.alvo && camera.ancora ? camera.alvo.scale : canvasView.scale;
+    camera.alvo = { scale: limitarZoom(base * fator) };
+    camera.ancora = { x: px, y: py };
+    camera.suavidade = suavidade || 0.2;
+    iniciarCamera();
+  }
+
+  function moverCameraPara(scale, x, y) {
+    camera.alvo = { scale: limitarZoom(scale), x: x, y: y };
+    camera.ancora = null;
+    camera.suavidade = 0.16;
+    iniciarCamera();
+  }
+
+  // Pan: grava a posição e desenha uma vez por quadro, por mais eventos que cheguem.
+  function agendarPan() {
+    marcarInteracao();
+    if (panAgendado) return;
+    panAgendado = true;
+    requestAnimationFrame(function () { panAgendado = false; aplicarCanvasView(); });
   }
 
   // Centraliza o diagrama e escolhe um zoom (até 100%) em que ele caiba inteiro.
-  function ajustarATela() {
+  // animar: desliza até lá (botão ↺); sem animar, vai direto (primeira renderização).
+  function ajustarATela(animar) {
     var svg = elCanvas.querySelector("svg");
     if (!svg) return;
     var tamanho = tamanhoNaturalSvg(svg);
@@ -489,9 +593,14 @@
     var alturaCanvas = elCanvas.clientHeight;
     if (!tamanho.largura || !tamanho.altura || !larguraCanvas || !alturaCanvas) return;
     var folga = 32;
-    canvasView.scale = limitarZoom(Math.min(1, (larguraCanvas - folga) / tamanho.largura, (alturaCanvas - folga) / tamanho.altura));
-    canvasView.x = (larguraCanvas - tamanho.largura * canvasView.scale) / 2;
-    canvasView.y = (alturaCanvas - tamanho.altura * canvasView.scale) / 2;
+    var escala = limitarZoom(Math.min(1, (larguraCanvas - folga) / tamanho.largura, (alturaCanvas - folga) / tamanho.altura));
+    var x = (larguraCanvas - tamanho.largura * escala) / 2;
+    var y = (alturaCanvas - tamanho.altura * escala) / 2;
+    if (animar === true) { moverCameraPara(escala, x, y); return; }
+    pararCamera();
+    canvasView.scale = escala;
+    canvasView.x = x;
+    canvasView.y = y;
     aplicarCanvasView();
   }
 
@@ -1149,17 +1258,27 @@
         var originalY = deslocamento.y;
         arrastandoEquipamento = true;
         node.classList.add("arrastando");
+        elCanvas.classList.add("arrastando-no");
+        // Mouses de alta taxa mandam vários movimentos por quadro: a posição é
+        // gravada em cada um, mas o nó e os cabos são desenhados uma vez por quadro.
+        var quadroMover = 0;
+        function desenharPosicao() {
+          quadroMover = 0;
+          node.setAttribute("transform", "translate(" + deslocamento.x + "," + deslocamento.y + ")");
+        }
         function mover(movimento) {
           // Limita já durante o arraste: o nó para na borda da área de desenho
           // em vez de "pular" de volta ao soltar.
           deslocamento.x = limitarPosicaoNoCanvas(originalX + (movimento.clientX - inicioX) * escalaX, LIMITE_CANVAS.minX, LIMITE_CANVAS.maxX);
           deslocamento.y = limitarPosicaoNoCanvas(originalY + (movimento.clientY - inicioY) * escalaY, LIMITE_CANVAS.minY, LIMITE_CANVAS.maxY);
-          node.setAttribute("transform", "translate(" + deslocamento.x + "," + deslocamento.y + ")");
+          if (!quadroMover) quadroMover = requestAnimationFrame(desenharPosicao); // antes do roteamento, no mesmo quadro
           solicitarRoteamentoCabos();
         }
         function soltar() {
           arrastandoEquipamento = false;
+          if (quadroMover) { cancelAnimationFrame(quadroMover); desenharPosicao(); }
           node.classList.remove("arrastando");
+          elCanvas.classList.remove("arrastando-no");
           node.removeEventListener("pointermove", mover);
           node.removeEventListener("pointerup", soltar);
           node.removeEventListener("pointercancel", soltar);
@@ -1169,9 +1288,10 @@
           atualizarPosicaoAbsoluta(equipamento);
           // Redesenha para as portas irem para o lado voltado aos vizinhos.
           // O grupo deste equipamento fica parado; os outros é que abrem espaço.
+          // Espera o quadro do "soltar" aparecer: o redesenho completo é o
+          // trabalho mais pesado e travaria a mão bem no momento de soltar.
           equipamentoFixoNaSeparacao = equipamento.id;
-          gerar();
-          atualizarJsonAvancado();
+          requestAnimationFrame(function () { setTimeout(function () { gerar(); atualizarJsonAvancado(); }, 0); });
         }
         node.addEventListener("pointermove", mover);
         node.addEventListener("pointerup", soltar);
@@ -1574,28 +1694,29 @@
     aplicarCanvasView();
   }
 
-  // Liga a transição do zoom só por um instante; ligada o tempo todo, o
-  // diagrama recém-renderizado "voaria" do canto até a posição.
-  var timerZoomSuave = null;
-  function suavizarProximoZoom() {
-    elCanvas.classList.add("zoom-suave");
-    clearTimeout(timerZoomSuave);
-    timerZoomSuave = setTimeout(function () { elCanvas.classList.remove("zoom-suave"); }, 300);
-  }
-
-  // Zoom proporcional ao giro: roda do mouse dá passos (~12%) com transição
-  // suave; touchpad e pinça (ctrlKey) mandam deltas pequenos e contínuos, que
-  // seguem o dedo sem transição para não "atrasar".
+  // Roda do mouse: zoom em passos (~16%) que deslizam até o alvo, em torno do
+  // cursor; giros rápidos acumulam. Pinça no touchpad (chega como ctrl+roda):
+  // zoom contínuo quase imediato. Dois dedos no touchpad (deltas pequenos ou
+  // horizontais, sem ctrl): move o diagrama, como nos editores de desenho.
   elCanvas.addEventListener("wheel", function (event) {
     event.preventDefault();
-    var delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 400 : 1);
-    var gestoPinca = event.ctrlKey;
-    var passoDeRoda = !gestoPinca && (event.deltaMode !== 0 || Math.abs(delta) >= 50);
-    if (passoDeRoda) suavizarProximoZoom(); else elCanvas.classList.remove("zoom-suave");
-    var fator = Math.exp(-delta * (gestoPinca ? 0.01 : 0.0012));
-    fator = Math.min(1.5, Math.max(1 / 1.5, fator));
+    var escalaDelta = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 400 : 1;
+    var dx = event.deltaX * escalaDelta, dy = event.deltaY * escalaDelta;
     var rect = elCanvas.getBoundingClientRect();
-    definirZoom(canvasView.scale * fator, event.clientX - rect.left, event.clientY - rect.top);
+    var px = event.clientX - rect.left, py = event.clientY - rect.top;
+    if (event.ctrlKey) {
+      zoomSuave(Math.exp(-dy * 0.012), px, py, 0.55);
+      return;
+    }
+    var rodaDeMouse = event.deltaMode !== 0 || (dx === 0 && Math.abs(dy) >= 40 && Number.isInteger(event.deltaY));
+    if (rodaDeMouse) {
+      zoomSuave(Math.min(1.6, Math.max(1 / 1.6, Math.exp(-dy * 0.0015))), px, py, 0.2);
+      return;
+    }
+    pararCamera();
+    canvasView.x -= dx;
+    canvasView.y -= dy;
+    agendarPan();
   }, { passive: false });
 
   // Pinça com dois dedos (tela de toque): zoom no ponto médio + arrasto.
@@ -1611,7 +1732,8 @@
     toques[event.pointerId] = { x: event.clientX, y: event.clientY };
     if (Object.keys(toques).length === 2) {
       canvasView.dragging = false; // a pinça assume no lugar do pan de um dedo
-      elCanvas.classList.remove("panning", "zoom-suave");
+      elCanvas.classList.remove("panning");
+      pararCamera();
       pinca = pontoMedio();
     }
   }, true);
@@ -1624,7 +1746,7 @@
     canvasView.x += atual.x - pinca.x;
     canvasView.y += atual.y - pinca.y;
     if (pinca.dist > 0) definirZoom(canvasView.scale * atual.dist / pinca.dist, atual.x - rect.left, atual.y - rect.top);
-    aplicarCanvasView(); // o arrasto vale mesmo quando o zoom já está no limite
+    agendarPan(); // o arrasto vale mesmo quando o zoom já está no limite
     pinca = atual;
   }, true);
   function fimDoToque(event) {
@@ -1640,6 +1762,7 @@
     var tamanhoCanvasAnterior = null;
     new ResizeObserver(function () {
       var w = elCanvas.clientWidth, h = elCanvas.clientHeight;
+      tamanhoAreaCanvas = { w: w, h: h };
       if (tamanhoCanvasAnterior && elCanvas.querySelector("svg") && (w !== tamanhoCanvasAnterior.w || h !== tamanhoCanvasAnterior.h)) {
         canvasView.x += (w - tamanhoCanvasAnterior.w) / 2;
         canvasView.y += (h - tamanhoCanvasAnterior.h) / 2;
@@ -1655,10 +1778,12 @@
     canvasView.dragging = true;
     canvasView.startX = event.clientX;
     canvasView.startY = event.clientY;
+    // Pegar o diagrama no meio de um zoom animado: para onde está e segue a mão.
+    pararCamera();
     canvasView.originX = canvasView.x;
     canvasView.originY = canvasView.y;
-    elCanvas.classList.remove("zoom-suave");
     elCanvas.classList.add("panning");
+    marcarInteracao();
     elCanvas.setPointerCapture(event.pointerId);
   });
 
@@ -1666,21 +1791,22 @@
     if (!canvasView.dragging) return;
     canvasView.x = canvasView.originX + event.clientX - canvasView.startX;
     canvasView.y = canvasView.originY + event.clientY - canvasView.startY;
-    aplicarCanvasView();
+    agendarPan();
   });
 
   function terminarPan(event) {
     if (!canvasView.dragging) return;
     canvasView.dragging = false;
     elCanvas.classList.remove("panning");
+    marcarInteracao(); // tira a camada da GPU logo depois, para redesenhar nítido
     if (event && elCanvas.hasPointerCapture(event.pointerId)) elCanvas.releasePointerCapture(event.pointerId);
   }
 
   elCanvas.addEventListener("pointerup", terminarPan);
   elCanvas.addEventListener("pointercancel", terminarPan);
-  document.getElementById("btnZoomIn").addEventListener("click", function () { suavizarProximoZoom(); definirZoom(canvasView.scale + 0.1); });
-  document.getElementById("btnZoomOut").addEventListener("click", function () { suavizarProximoZoom(); definirZoom(canvasView.scale - 0.1); });
-  document.getElementById("btnZoomReset").addEventListener("click", function () { suavizarProximoZoom(); ajustarATela(); });
+  document.getElementById("btnZoomIn").addEventListener("click", function () { zoomSuave(1.25); });
+  document.getElementById("btnZoomOut").addEventListener("click", function () { zoomSuave(1 / 1.25); });
+  document.getElementById("btnZoomReset").addEventListener("click", function () { ajustarATela(true); });
 
   // No celular a barra lateral vira um menu no topo: começa recolhida (só a
   // marca e o botão ☰), para o diagrama aparecer logo na primeira tela.
@@ -4776,7 +4902,13 @@
     btnPaginaPdf.classList.toggle("active", abrir);
     document.body.classList.toggle("com-painel-pagina", abrir);
     try { localStorage.setItem("grafo-painel-pagina", abrir ? "1" : "0"); } catch (e) {}
-    if (abrir) atualizarPrevia();
+    // A prévia rasteriza o diagrama (trabalho pesado): espera o painel terminar
+    // de entrar, senão a animação de abertura trava no meio.
+    if (abrir) {
+      elPrevia.classList.add("carregando");
+      clearTimeout(timerPrevia);
+      timerPrevia = setTimeout(atualizarPrevia, 280);
+    }
   }
 
   btnPaginaPdf.addEventListener("click", function () {

@@ -52,7 +52,12 @@
 - **Rastrear caminho**: escolha dois equipamentos e o menor caminho de cabos entre eles é destacado.
 - **Organizar** refaz o layout respeitando os grupos, na direção escolhida (esquerda → direita ou cima → baixo).
 - **Grade por grupo** (no mesmo seletor) arruma cada grupo em linhas e colunas, com os equipamentos ligados entre si lado a lado, e distribui os grupos na proporção da folha do PDF. Com muitos equipamentos, aproveita bem melhor a página: com 35 equipamentos em A4, a escala vai de ~16% para ~32%.
-- Zoom proporcional na roda do mouse e no touchpad, pinça com dois dedos na tela de toque, e arrastar para mover a área. O diagrama continua centralizado quando os painéis abrem ou fecham.
+- Navegação fluida, animada a cada quadro e acelerada pela placa de vídeo:
+  - **roda do mouse**: zoom em torno do cursor, deslizando até o ponto (giros rápidos acumulam);
+  - **touchpad**: deslizar dois dedos move o diagrama; **pinça** dá zoom;
+  - **tela de toque**: um dedo move, dois dedos dão zoom;
+  - botões **+ / − / ↺** com a mesma animação; arrastar a área ou um equipamento segue o ponteiro sem atraso.
+  - O diagrama continua centralizado quando os painéis abrem ou fecham. Com "reduzir movimento" ligado no sistema, as animações são desligadas.
 
 **Projetos e interface**
 - Vários projetos por conta, com backup em JSON e importação de CSV.

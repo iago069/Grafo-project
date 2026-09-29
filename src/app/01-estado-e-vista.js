@@ -50,7 +50,9 @@
   Object.defineProperty(window, 'LIMITE_CANVAS', { value: LIMITE_CANVAS, configurable: true, writable: true, enumerable: true });
   Object.defineProperty(globalThis, 'LIMITE_CANVAS', { value: LIMITE_CANVAS, configurable: true, writable: true, enumerable: true });
 
-  function limitarZoom(valor) { return Math.min(3, Math.max(0.08, Number(valor.toFixed(2)))); }
+  // Sem arredondar: a animação do zoom dá passos pequenos que o arredondamento
+  // "comia" (em 12%, 0.1212 virava 0.12 e o zoom travava). A tela mostra o valor redondo.
+  function limitarZoom(valor) { return Math.min(3, Math.max(0.08, Number(valor) || 1)); }
 
   function limitarPosicaoNoCanvas(valor, min, max) {
     var numero = Number(valor) || 0;
@@ -74,30 +76,132 @@
     return { largura: comprimentoEmPx(svg.getAttribute("width")), altura: comprimentoEmPx(svg.getAttribute("height")) };
   }
 
+  // Tamanho da área do diagrama, guardado: ler clientWidth logo depois de mover
+  // o SVG obriga o navegador a recalcular o layout da página a cada quadro.
+  // O ResizeObserver (05-zoom…) atualiza quando a área muda de tamanho.
+  var tamanhoAreaCanvas = null;
+  function tamanhoDaArea() {
+    if (!tamanhoAreaCanvas || !tamanhoAreaCanvas.w) tamanhoAreaCanvas = { w: elCanvas.clientWidth, h: elCanvas.clientHeight };
+    return tamanhoAreaCanvas;
+  }
+
   // Pan livre, mas sempre deixando ao menos MARGEM px do diagrama visíveis.
   function limitarPan(svg) {
     var MARGEM = 80;
     var tamanho = tamanhoNaturalSvg(svg);
     var largura = tamanho.largura * canvasView.scale;
     var altura = tamanho.altura * canvasView.scale;
-    var larguraCanvas = elCanvas.clientWidth;
-    var alturaCanvas = elCanvas.clientHeight;
+    var area = tamanhoDaArea();
+    var larguraCanvas = area.w;
+    var alturaCanvas = area.h;
     if (!larguraCanvas || !alturaCanvas || !largura || !altura) return;
     canvasView.x = Math.min(larguraCanvas - MARGEM, Math.max(MARGEM - largura, canvasView.x));
     canvasView.y = Math.min(alturaCanvas - MARGEM, Math.max(MARGEM - altura, canvasView.y));
   }
 
+  var textoZoomAtual = "";
   function aplicarCanvasView() {
     var svg = elCanvas.querySelector("svg");
     if (svg) {
       limitarPan(svg);
-      svg.style.transform = "translate(" + canvasView.x + "px, " + canvasView.y + "px) scale(" + canvasView.scale + ")";
+      // translate3d: fica na GPU; com .interagindo (will-change) o movimento nem repinta.
+      svg.style.transform = "translate3d(" + canvasView.x + "px, " + canvasView.y + "px, 0) scale(" + canvasView.scale + ")";
     }
-    elZoomValue.textContent = Math.round(canvasView.scale * 100) + "%";
+    var texto = Math.round(canvasView.scale * 100) + "%";
+    if (texto !== textoZoomAtual) { elZoomValue.textContent = texto; textoZoomAtual = texto; }
+  }
+
+  // ---- Câmera suave -------------------------------------------------------------
+  // Zoom e "ajustar à tela" deslizam até o alvo a cada quadro (requestAnimationFrame),
+  // com desaceleração exponencial independente da taxa de quadros. Antes era uma
+  // transição CSS que recomeçava a cada giro da roda e "engasgava". O arrastar
+  // (pan) segue o ponteiro sem atraso, agrupado por quadro.
+  // Durante o movimento o SVG vira camada da GPU (.interagindo -> will-change):
+  // mover e ampliar não repinta nada; ao parar, ele é redesenhado nítido.
+  var reduzirMovimentoCamera = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)");
+  var camera = { alvo: null, ancora: null, suavidade: 0.2, quadro: 0, ultimo: 0 };
+  var timerInteracao = null;
+  var panAgendado = false;
+
+  function marcarInteracao() {
+    elCanvas.classList.add("interagindo");
+    clearTimeout(timerInteracao);
+    timerInteracao = setTimeout(function () {
+      if (!camera.quadro && !canvasView.dragging) elCanvas.classList.remove("interagindo");
+    }, 160);
+  }
+
+  function passoCamera(agora) {
+    camera.quadro = 0;
+    var alvo = camera.alvo;
+    if (!alvo) return;
+    var dt = camera.ultimo ? Math.min(64, agora - camera.ultimo) : 16.7;
+    camera.ultimo = agora;
+    var k = 1 - Math.pow(1 - camera.suavidade, dt / 16.7);
+    var s0 = canvasView.scale;
+    var s1 = Math.exp(Math.log(s0) + (Math.log(alvo.scale) - Math.log(s0)) * k);
+    var fim;
+    if (camera.ancora) {
+      // Zoom em torno de um ponto (cursor ou centro): o ponto fica parado na tela.
+      if (Math.abs(Math.log(alvo.scale / s1)) < 0.0015) s1 = alvo.scale;
+      var px = camera.ancora.x, py = camera.ancora.y;
+      canvasView.x = px - (px - canvasView.x) * s1 / s0;
+      canvasView.y = py - (py - canvasView.y) * s1 / s0;
+      canvasView.scale = s1;
+      fim = s1 === alvo.scale;
+    } else {
+      canvasView.x += (alvo.x - canvasView.x) * k;
+      canvasView.y += (alvo.y - canvasView.y) * k;
+      canvasView.scale = s1;
+      fim = Math.abs(Math.log(alvo.scale / s1)) < 0.0015 && Math.abs(alvo.x - canvasView.x) < 0.4 && Math.abs(alvo.y - canvasView.y) < 0.4;
+      if (fim) { canvasView.x = alvo.x; canvasView.y = alvo.y; canvasView.scale = alvo.scale; }
+    }
+    aplicarCanvasView();
+    if (fim) { camera.alvo = null; camera.ultimo = 0; marcarInteracao(); return; }
+    camera.quadro = requestAnimationFrame(passoCamera);
+  }
+
+  function iniciarCamera() {
+    marcarInteracao();
+    if (reduzirMovimentoCamera && reduzirMovimentoCamera.matches) camera.suavidade = 1;
+    if (!camera.quadro) { camera.ultimo = 0; camera.quadro = requestAnimationFrame(passoCamera); }
+  }
+
+  function pararCamera() {
+    if (camera.quadro) cancelAnimationFrame(camera.quadro);
+    camera.quadro = 0; camera.alvo = null; camera.ultimo = 0;
+  }
+
+  // Zoom animado por um fator, em torno de (px, py) do canvas (centro, se omitido).
+  // Giros seguidos acumulam no alvo, então a roda rápida não perde passos.
+  // suavidade: fração do caminho por quadro (0.2 = deslize; 0.5 = quase imediato).
+  function zoomSuave(fator, px, py, suavidade) {
+    if (px == null || py == null) { px = elCanvas.clientWidth / 2; py = elCanvas.clientHeight / 2; }
+    var base = camera.alvo && camera.ancora ? camera.alvo.scale : canvasView.scale;
+    camera.alvo = { scale: limitarZoom(base * fator) };
+    camera.ancora = { x: px, y: py };
+    camera.suavidade = suavidade || 0.2;
+    iniciarCamera();
+  }
+
+  function moverCameraPara(scale, x, y) {
+    camera.alvo = { scale: limitarZoom(scale), x: x, y: y };
+    camera.ancora = null;
+    camera.suavidade = 0.16;
+    iniciarCamera();
+  }
+
+  // Pan: grava a posição e desenha uma vez por quadro, por mais eventos que cheguem.
+  function agendarPan() {
+    marcarInteracao();
+    if (panAgendado) return;
+    panAgendado = true;
+    requestAnimationFrame(function () { panAgendado = false; aplicarCanvasView(); });
   }
 
   // Centraliza o diagrama e escolhe um zoom (até 100%) em que ele caiba inteiro.
-  function ajustarATela() {
+  // animar: desliza até lá (botão ↺); sem animar, vai direto (primeira renderização).
+  function ajustarATela(animar) {
     var svg = elCanvas.querySelector("svg");
     if (!svg) return;
     var tamanho = tamanhoNaturalSvg(svg);
@@ -105,9 +209,14 @@
     var alturaCanvas = elCanvas.clientHeight;
     if (!tamanho.largura || !tamanho.altura || !larguraCanvas || !alturaCanvas) return;
     var folga = 32;
-    canvasView.scale = limitarZoom(Math.min(1, (larguraCanvas - folga) / tamanho.largura, (alturaCanvas - folga) / tamanho.altura));
-    canvasView.x = (larguraCanvas - tamanho.largura * canvasView.scale) / 2;
-    canvasView.y = (alturaCanvas - tamanho.altura * canvasView.scale) / 2;
+    var escala = limitarZoom(Math.min(1, (larguraCanvas - folga) / tamanho.largura, (alturaCanvas - folga) / tamanho.altura));
+    var x = (larguraCanvas - tamanho.largura * escala) / 2;
+    var y = (alturaCanvas - tamanho.altura * escala) / 2;
+    if (animar === true) { moverCameraPara(escala, x, y); return; }
+    pararCamera();
+    canvasView.scale = escala;
+    canvasView.x = x;
+    canvasView.y = y;
     aplicarCanvasView();
   }
 

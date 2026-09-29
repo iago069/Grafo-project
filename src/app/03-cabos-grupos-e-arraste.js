@@ -444,17 +444,27 @@
         var originalY = deslocamento.y;
         arrastandoEquipamento = true;
         node.classList.add("arrastando");
+        elCanvas.classList.add("arrastando-no");
+        // Mouses de alta taxa mandam vários movimentos por quadro: a posição é
+        // gravada em cada um, mas o nó e os cabos são desenhados uma vez por quadro.
+        var quadroMover = 0;
+        function desenharPosicao() {
+          quadroMover = 0;
+          node.setAttribute("transform", "translate(" + deslocamento.x + "," + deslocamento.y + ")");
+        }
         function mover(movimento) {
           // Limita já durante o arraste: o nó para na borda da área de desenho
           // em vez de "pular" de volta ao soltar.
           deslocamento.x = limitarPosicaoNoCanvas(originalX + (movimento.clientX - inicioX) * escalaX, LIMITE_CANVAS.minX, LIMITE_CANVAS.maxX);
           deslocamento.y = limitarPosicaoNoCanvas(originalY + (movimento.clientY - inicioY) * escalaY, LIMITE_CANVAS.minY, LIMITE_CANVAS.maxY);
-          node.setAttribute("transform", "translate(" + deslocamento.x + "," + deslocamento.y + ")");
+          if (!quadroMover) quadroMover = requestAnimationFrame(desenharPosicao); // antes do roteamento, no mesmo quadro
           solicitarRoteamentoCabos();
         }
         function soltar() {
           arrastandoEquipamento = false;
+          if (quadroMover) { cancelAnimationFrame(quadroMover); desenharPosicao(); }
           node.classList.remove("arrastando");
+          elCanvas.classList.remove("arrastando-no");
           node.removeEventListener("pointermove", mover);
           node.removeEventListener("pointerup", soltar);
           node.removeEventListener("pointercancel", soltar);
@@ -464,9 +474,10 @@
           atualizarPosicaoAbsoluta(equipamento);
           // Redesenha para as portas irem para o lado voltado aos vizinhos.
           // O grupo deste equipamento fica parado; os outros é que abrem espaço.
+          // Espera o quadro do "soltar" aparecer: o redesenho completo é o
+          // trabalho mais pesado e travaria a mão bem no momento de soltar.
           equipamentoFixoNaSeparacao = equipamento.id;
-          gerar();
-          atualizarJsonAvancado();
+          requestAnimationFrame(function () { setTimeout(function () { gerar(); atualizarJsonAvancado(); }, 0); });
         }
         node.addEventListener("pointermove", mover);
         node.addEventListener("pointerup", soltar);

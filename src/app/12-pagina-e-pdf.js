@@ -397,7 +397,13 @@
     btnPaginaPdf.classList.toggle("active", abrir);
     document.body.classList.toggle("com-painel-pagina", abrir);
     try { localStorage.setItem("grafo-painel-pagina", abrir ? "1" : "0"); } catch (e) {}
-    if (abrir) atualizarPrevia();
+    // A prévia rasteriza o diagrama (trabalho pesado): espera o painel terminar
+    // de entrar, senão a animação de abertura trava no meio.
+    if (abrir) {
+      elPrevia.classList.add("carregando");
+      clearTimeout(timerPrevia);
+      timerPrevia = setTimeout(atualizarPrevia, 280);
+    }
   }
 
   btnPaginaPdf.addEventListener("click", function () {

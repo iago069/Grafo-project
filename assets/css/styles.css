@@ -32,8 +32,10 @@
     /* Movimento: saída rápida e desaceleração suave, como em apps nativos. */
     --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
     --ease-in: cubic-bezier(0.4, 0, 1, 1);
-    --dur-rapida: 0.14s;
-    --dur-media: 0.24s;
+    /* "Mola": passa um tiquinho do ponto e volta — entradas de janela, aviso, painel. */
+    --ease-mola: cubic-bezier(0.34, 1.32, 0.64, 1);
+    --dur-rapida: 0.12s;
+    --dur-media: 0.2s;
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
@@ -65,12 +67,16 @@
   html { scroll-padding-top: env(safe-area-inset-top, 0px); }
   * { box-sizing: border-box; }
   html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); }
-  body {
+  /* O fundo (brilhos + grade) fica numa camada fixa própria, pintada uma vez.
+     Antes era background-attachment: fixed no body, que o navegador repinta
+     inteiro a cada rolagem ou mudança de layout (abrir painel, recolher menu). */
+  body { background-color: transparent; display: flex; flex-direction: column; }
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; transform: translateZ(0);
     background-image: radial-gradient(circle at top left, color-mix(in srgb, var(--teal) 14%, transparent), transparent 28%),
       radial-gradient(circle at bottom right, color-mix(in srgb, var(--accent) 14%, transparent), transparent 26%),
       linear-gradient(var(--line-soft) 1px, transparent 1px), linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
-    background-size: auto, auto, 28px 28px, 28px 28px; background-attachment: fixed;
-    display: flex; flex-direction: column;
+    background-size: auto, auto, 28px 28px, 28px 28px;
   }
   header {
     min-height: 68px; padding: 8px clamp(16px, 3vw, 32px);
@@ -88,7 +94,8 @@
   }
   .theme-toggle {
     font-family: var(--mono); font-size: 0.76rem; background: var(--bg-panel-2); border: 1px solid var(--line);
-    color: var(--text); padding: 9px 14px; border-radius: 12px; cursor: pointer; transition: 0.2s ease;
+    color: var(--text); padding: 9px 14px; border-radius: 12px; cursor: pointer;
+    transition: transform var(--dur-rapida) var(--ease-out), border-color var(--dur-rapida) ease, color var(--dur-rapida) ease;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
   }
   .theme-toggle:hover { color: var(--text); border-color: var(--text-dim); transform: translateY(-1px); }
@@ -165,16 +172,18 @@
     width: 52px; height: 52px; display: block; object-fit: contain; flex-shrink: 0;
   }
   .nav {
-    flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; padding: 12px 10px 16px;
+    flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding: 10px 8px 14px;
     background: color-mix(in srgb, var(--bg-panel) 96%, var(--bg)); border: 1px solid var(--line-soft); border-radius: 16px;
     box-shadow: 0 18px 40px color-mix(in srgb, var(--bg) 55%, transparent), inset 0 1px 0 color-mix(in srgb, var(--text) 5%, transparent);
     scrollbar-color: var(--text-dim) transparent; scrollbar-width: thin;
   }
   .nav-item {
-    display: flex; align-items: center; gap: 10px; width: 100%; border: 1px solid transparent; border-radius: 0 18px 18px 0; background: transparent;
-    color: var(--text); padding: 14px 16px; font-size: 0.92rem; text-align: left; font-weight: 600; letter-spacing: -0.01em;
-    transition: background-color var(--dur-rapida) ease, color var(--dur-rapida) ease, border-color var(--dur-rapida) ease, box-shadow var(--dur-media) var(--ease-out);
+    display: flex; align-items: center; gap: 10px; width: 100%; border: 1px solid transparent; border-radius: 10px; background: transparent;
+    color: var(--text); padding: 11px 14px; font-size: 0.9rem; text-align: left; font-weight: 600; letter-spacing: -0.01em;
+    transition: background-color var(--dur-rapida) ease, color var(--dur-rapida) ease, border-color var(--dur-rapida) ease,
+      box-shadow var(--dur-media) var(--ease-out), transform var(--dur-rapida) var(--ease-out);
   }
+  .nav-item:active { transform: scale(0.98); }
   .nav-item.active {
     background: var(--accent); border-color: var(--accent); color: var(--accent-ink); box-shadow: 0 8px 20px color-mix(in srgb, var(--accent) 22%, transparent);
   }
@@ -210,10 +219,10 @@
   .lembrete-backup button { padding: 6px 12px; font-size: 0.76rem; }
   .nav-dica { margin: 6px 12px 2px; color: var(--text-dim); font-size: 0.7rem; line-height: 1.45; }
   .nav-panel-message { white-space: pre-line; color: var(--danger); font: 0.68rem var(--mono); line-height: 1.4; }
+  /* Título de seção do menu: rótulo discreto, sem caixa (antes ocupava um bloco inteiro). */
   .nav-label {
-    font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-dim); margin: 0 0 6px;
-    padding: 15px 16px; border-radius: 16px; background: color-mix(in srgb, var(--bg-panel-2) 82%, transparent);
-    font-family: var(--mono); font-weight: 600;
+    font-size: 0.64rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim); margin: 4px 0 2px;
+    padding: 6px 16px 4px; font-family: var(--mono); font-weight: 600; opacity: 0.85;
   }
   .nav-section { display: flex; flex-direction: column; gap: 2px; }
   .sidebar.collapsed .nav { padding: 12px 0 16px; align-items: stretch; border-radius: 14px; }
@@ -271,12 +280,13 @@
 
   .hidden { display: none !important; }
   .modal-backdrop {
-    position: fixed; inset: 0; background: rgba(3, 8, 14, 0.55); display: flex; align-items: center; justify-content: center;
+    /* Sem backdrop-filter: o desfoque de tela cheia sobre o diagrama custava
+       quadros a cada passo do fade. Um véu um pouco mais escuro faz o mesmo papel. */
+    position: fixed; inset: 0; background: rgba(3, 8, 14, 0.62); display: flex; align-items: center; justify-content: center;
     z-index: 9999; padding: 20px;
-    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
     animation: aparecer var(--dur-rapida) ease-out;
   }
-  .modal-backdrop .modal-box { animation: modalEntrar var(--dur-media) var(--ease-out); }
+  .modal-backdrop .modal-box { animation: modalEntrar 0.26s var(--ease-mola); will-change: transform, opacity; }
   /* Saída: app.js põe .saindo e só depois .hidden (ver esconderModal). */
   .modal-backdrop.saindo { animation: sumir var(--dur-rapida) var(--ease-in) forwards; pointer-events: none; }
   .modal-backdrop.saindo .modal-box { animation: modalSair var(--dur-rapida) var(--ease-in) forwards; }
@@ -495,8 +505,18 @@
     /* Altura fixa pela janela: sem isso a área cresce junto com o SVG e o
        "ajustar à tela" calcula sobre uma área maior do que a visível. */
     flex: none; height: max(420px, calc(100vh - 250px));
+    /* O que acontece aqui dentro (zoom, arraste, redesenho) não recalcula nem
+       repinta o resto da página. */
+    contain: layout paint;
+    border-radius: 12px;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 8%, transparent);
   }
   .canvas-wrap.panning { cursor: grabbing; }
+  /* Durante zoom/arraste o SVG é uma camada da GPU: mover e ampliar não repinta.
+     Ao parar (app.js tira .interagindo), ele volta a ser desenhado nítido. */
+  /* Só o <svg> muda: regras em "svg *" (ou trocar text-rendering) fariam o
+     navegador recalcular todos os elementos do diagrama a cada início/fim de zoom. */
+  .canvas-wrap.interagindo svg { will-change: transform; }
   /* transform-origin 0 0: o zoom/pan em app.js calcula a posição a partir do canto superior esquerdo. */
   .canvas-wrap svg { display: block; flex: none; max-width: none; transform-origin: 0 0; overflow: visible; user-select: none; pointer-events: auto; margin: 0; }  .canvas-wrap svg g.node { cursor: grab; }
   .canvas-wrap svg g.node:active, .canvas-wrap svg g.node.selecionado { cursor: grabbing; }
@@ -504,8 +524,10 @@
   .canvas-wrap svg g.edge.selecionado { cursor: default; }
   .canvas-wrap svg g.node:focus { outline: none; }
   .canvas-wrap svg g.node:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  /* Selecionado: contorno de destaque, sem filtro (o drop-shadow era refeito a
+     cada quadro enquanto o equipamento era arrastado). */
   .canvas-wrap svg g.node.selecionado polygon, .canvas-wrap svg g.node.selecionado ellipse {
-    stroke: var(--accent); stroke-width: 2.6px; filter: drop-shadow(0 0 4px color-mix(in srgb, var(--accent) 75%, transparent));
+    stroke: var(--accent); stroke-width: 2.6px;
   }
   .busca-diagrama { display: flex; align-items: center; gap: 8px; flex: 1 1 200px; max-width: 320px; }
   .busca-diagrama input { flex: 1; min-width: 0; height: 32px; padding: 4px 10px; font-size: 0.8rem; }
@@ -557,11 +579,10 @@
   #painelDados { animation: surgir var(--dur-media) var(--ease-out); }
   details[open] > :not(summary) { animation: surgir var(--dur-media) var(--ease-out); }
 
-  /* Zoom pelos botões/roda do mouse: app.js liga .zoom-suave por um instante.
-     No arrastar (pan) fica sem transição para acompanhar o cursor. */
-  .canvas-wrap.zoom-suave svg { transition: transform 0.26s var(--ease-out); }
-  .canvas-wrap.panning svg { transition: none; }
-  .canvas-wrap svg g.node, .canvas-wrap svg g.edge { transition: opacity var(--dur-media) ease, filter var(--dur-media) ease; }
+  /* Zoom e arraste são animados pelo app.js (câmera em requestAnimationFrame);
+     o SVG nunca tem transição de transform. Só a opacidade (busca, caminho) anima. */
+  .canvas-wrap svg { transition: none; }
+  .canvas-wrap svg g.node, .canvas-wrap svg g.edge { transition: opacity var(--dur-media) ease; }
 
   /* Avisos rápidos (app.js: avisar). */
   .toasts {
@@ -572,7 +593,7 @@
     max-width: min(360px, calc(100vw - 32px)); padding: 10px 14px 10px 12px; border-radius: 12px;
     background: var(--bg-panel-2); color: var(--text); border: 1px solid var(--line-soft);
     border-left: 3px solid var(--teal); box-shadow: var(--shadow-soft); font-size: 0.82rem; line-height: 1.4;
-    overflow-wrap: anywhere; animation: toastEntrar var(--dur-media) var(--ease-out);
+    overflow-wrap: anywhere; animation: toastEntrar 0.32s var(--ease-mola);
   }
   .toast.saindo { animation: sumir 0.2s var(--ease-in) forwards; }
   @keyframes toastEntrar { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: none; } }
@@ -715,8 +736,10 @@ html.com-sessao body.auth-locked .carregando-editor {
 .nav-item.no-limite { opacity: 0.55; }
 
 /* ---------- Arraste dos equipamentos ---------- */
-.canvas-wrap svg g.node.arrastando { filter: drop-shadow(0 6px 10px rgba(10, 30, 45, 0.28)); cursor: grabbing; }
-.canvas-wrap svg g.node.arrastando polygon, .canvas-wrap svg g.node.arrastando ellipse { stroke: var(--accent); }
+/* Arrastando: sem filtro de sombra (custava repintar a cada quadro); o destaque
+   é o contorno e uma leve transparência, que mostra os cabos por baixo. */
+.canvas-wrap svg g.node.arrastando { cursor: grabbing; opacity: 0.92; }
+.canvas-wrap svg g.node.arrastando polygon, .canvas-wrap svg g.node.arrastando ellipse { stroke: var(--accent); stroke-width: 2.6px; }
 
 /* ---------- Barra lateral direita: página e PDF ---------- */
 .painel-pagina {
@@ -725,7 +748,7 @@ html.com-sessao body.auth-locked .carregando-editor {
   background: color-mix(in srgb, var(--bg-panel) 96%, var(--bg)); border-left: 1px solid var(--line-soft);
   box-shadow: -12px 0 32px color-mix(in srgb, var(--bg) 40%, transparent);
   scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--text-dim) 55%, transparent) transparent;
-  animation: painelEntrar var(--dur-media) var(--ease-out);
+  animation: painelEntrar 0.3s var(--ease-mola);
 }
 .painel-pagina[hidden] { display: none; }
 @keyframes painelEntrar { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
@@ -770,3 +793,37 @@ html.com-sessao body.auth-locked .carregando-editor {
 @media (max-width: 900px) {
   .painel-pagina { width: calc(100% - 12px); flex-basis: auto; height: auto; position: relative; margin: 6px; border: 1px solid var(--line-soft); border-radius: 16px; }
 }
+
+/* ---------- Tela cheia no computador ----------
+   O painel do diagrama ocupa a altura da janela e a área de desenho fica com o
+   que sobra. Antes a área tinha altura fixa (janela − 250 px) e a legenda
+   ficava cortada embaixo quando as barras de ferramentas quebravam de linha. */
+@media (min-width: 901px) {
+  .app-main { height: 100vh; min-height: 0; }
+  .workspace { min-height: 0; }
+  .workspace > .panel { min-height: 0; }
+  .render-panel .canvas-wrap { flex: 1 1 0; height: auto; min-height: 280px; }
+  .legenda { margin-top: 10px; }
+}
+
+/* ---------- Barra de ferramentas do diagrama ----------
+   Controles do mesmo assunto ficam juntos numa "pílula" (desfazer/refazer,
+   zoom), todos da mesma altura, com retorno imediato ao passar e ao clicar. */
+.canvas-tools {
+  gap: 2px; padding: 3px; border-radius: 12px;
+  background: color-mix(in srgb, var(--bg) 45%, transparent); border: 1px solid var(--line-soft);
+}
+.canvas-tools button.ghost { border-color: transparent; background: transparent; min-width: 32px; height: 30px; border-radius: 9px; font-size: 0.95rem; }
+.canvas-tools button.ghost:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 10%, transparent); color: var(--text); }
+.render-actions > button, .layout-toolbar > button, .layout-toolbar > select { height: 36px; }
+.render-actions { align-items: center; }
+button.ghost:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 6%, var(--ghost-bg)); }
+/* O "12%" muda a cada quadro do zoom: com tamanho fixo e contain, trocar o
+   texto não recalcula o layout da barra inteira. */
+#zoomValue { font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; justify-content: center;
+  width: 50px; min-width: 50px; height: 30px; padding: 0; contain: strict; }
+
+/* Editar em lista: cartões fora da área visível não são desenhados até a
+   rolagem chegar neles (35 equipamentos abriam de uma vez, com travada). */
+#listaEquip .equip-card { content-visibility: auto; contain-intrinsic-size: auto 132px; }
+#listaConex .conex-row { content-visibility: auto; contain-intrinsic-size: auto 58px; }

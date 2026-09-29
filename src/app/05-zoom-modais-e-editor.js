@@ -35,28 +35,29 @@
     aplicarCanvasView();
   }
 
-  // Liga a transição do zoom só por um instante; ligada o tempo todo, o
-  // diagrama recém-renderizado "voaria" do canto até a posição.
-  var timerZoomSuave = null;
-  function suavizarProximoZoom() {
-    elCanvas.classList.add("zoom-suave");
-    clearTimeout(timerZoomSuave);
-    timerZoomSuave = setTimeout(function () { elCanvas.classList.remove("zoom-suave"); }, 300);
-  }
-
-  // Zoom proporcional ao giro: roda do mouse dá passos (~12%) com transição
-  // suave; touchpad e pinça (ctrlKey) mandam deltas pequenos e contínuos, que
-  // seguem o dedo sem transição para não "atrasar".
+  // Roda do mouse: zoom em passos (~16%) que deslizam até o alvo, em torno do
+  // cursor; giros rápidos acumulam. Pinça no touchpad (chega como ctrl+roda):
+  // zoom contínuo quase imediato. Dois dedos no touchpad (deltas pequenos ou
+  // horizontais, sem ctrl): move o diagrama, como nos editores de desenho.
   elCanvas.addEventListener("wheel", function (event) {
     event.preventDefault();
-    var delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 400 : 1);
-    var gestoPinca = event.ctrlKey;
-    var passoDeRoda = !gestoPinca && (event.deltaMode !== 0 || Math.abs(delta) >= 50);
-    if (passoDeRoda) suavizarProximoZoom(); else elCanvas.classList.remove("zoom-suave");
-    var fator = Math.exp(-delta * (gestoPinca ? 0.01 : 0.0012));
-    fator = Math.min(1.5, Math.max(1 / 1.5, fator));
+    var escalaDelta = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 400 : 1;
+    var dx = event.deltaX * escalaDelta, dy = event.deltaY * escalaDelta;
     var rect = elCanvas.getBoundingClientRect();
-    definirZoom(canvasView.scale * fator, event.clientX - rect.left, event.clientY - rect.top);
+    var px = event.clientX - rect.left, py = event.clientY - rect.top;
+    if (event.ctrlKey) {
+      zoomSuave(Math.exp(-dy * 0.012), px, py, 0.55);
+      return;
+    }
+    var rodaDeMouse = event.deltaMode !== 0 || (dx === 0 && Math.abs(dy) >= 40 && Number.isInteger(event.deltaY));
+    if (rodaDeMouse) {
+      zoomSuave(Math.min(1.6, Math.max(1 / 1.6, Math.exp(-dy * 0.0015))), px, py, 0.2);
+      return;
+    }
+    pararCamera();
+    canvasView.x -= dx;
+    canvasView.y -= dy;
+    agendarPan();
   }, { passive: false });
 
   // Pinça com dois dedos (tela de toque): zoom no ponto médio + arrasto.
@@ -72,7 +73,8 @@
     toques[event.pointerId] = { x: event.clientX, y: event.clientY };
     if (Object.keys(toques).length === 2) {
       canvasView.dragging = false; // a pinça assume no lugar do pan de um dedo
-      elCanvas.classList.remove("panning", "zoom-suave");
+      elCanvas.classList.remove("panning");
+      pararCamera();
       pinca = pontoMedio();
     }
   }, true);
@@ -85,7 +87,7 @@
     canvasView.x += atual.x - pinca.x;
     canvasView.y += atual.y - pinca.y;
     if (pinca.dist > 0) definirZoom(canvasView.scale * atual.dist / pinca.dist, atual.x - rect.left, atual.y - rect.top);
-    aplicarCanvasView(); // o arrasto vale mesmo quando o zoom já está no limite
+    agendarPan(); // o arrasto vale mesmo quando o zoom já está no limite
     pinca = atual;
   }, true);
   function fimDoToque(event) {
@@ -101,6 +103,7 @@
     var tamanhoCanvasAnterior = null;
     new ResizeObserver(function () {
       var w = elCanvas.clientWidth, h = elCanvas.clientHeight;
+      tamanhoAreaCanvas = { w: w, h: h };
       if (tamanhoCanvasAnterior && elCanvas.querySelector("svg") && (w !== tamanhoCanvasAnterior.w || h !== tamanhoCanvasAnterior.h)) {
         canvasView.x += (w - tamanhoCanvasAnterior.w) / 2;
         canvasView.y += (h - tamanhoCanvasAnterior.h) / 2;
@@ -116,10 +119,12 @@
     canvasView.dragging = true;
     canvasView.startX = event.clientX;
     canvasView.startY = event.clientY;
+    // Pegar o diagrama no meio de um zoom animado: para onde está e segue a mão.
+    pararCamera();
     canvasView.originX = canvasView.x;
     canvasView.originY = canvasView.y;
-    elCanvas.classList.remove("zoom-suave");
     elCanvas.classList.add("panning");
+    marcarInteracao();
     elCanvas.setPointerCapture(event.pointerId);
   });
 
@@ -127,21 +132,22 @@
     if (!canvasView.dragging) return;
     canvasView.x = canvasView.originX + event.clientX - canvasView.startX;
     canvasView.y = canvasView.originY + event.clientY - canvasView.startY;
-    aplicarCanvasView();
+    agendarPan();
   });
 
   function terminarPan(event) {
     if (!canvasView.dragging) return;
     canvasView.dragging = false;
     elCanvas.classList.remove("panning");
+    marcarInteracao(); // tira a camada da GPU logo depois, para redesenhar nítido
     if (event && elCanvas.hasPointerCapture(event.pointerId)) elCanvas.releasePointerCapture(event.pointerId);
   }
 
   elCanvas.addEventListener("pointerup", terminarPan);
   elCanvas.addEventListener("pointercancel", terminarPan);
-  document.getElementById("btnZoomIn").addEventListener("click", function () { suavizarProximoZoom(); definirZoom(canvasView.scale + 0.1); });
-  document.getElementById("btnZoomOut").addEventListener("click", function () { suavizarProximoZoom(); definirZoom(canvasView.scale - 0.1); });
-  document.getElementById("btnZoomReset").addEventListener("click", function () { suavizarProximoZoom(); ajustarATela(); });
+  document.getElementById("btnZoomIn").addEventListener("click", function () { zoomSuave(1.25); });
+  document.getElementById("btnZoomOut").addEventListener("click", function () { zoomSuave(1 / 1.25); });
+  document.getElementById("btnZoomReset").addEventListener("click", function () { ajustarATela(true); });
 
   // No celular a barra lateral vira um menu no topo: começa recolhida (só a
   // marca e o botão ☰), para o diagrama aparecer logo na primeira tela.
