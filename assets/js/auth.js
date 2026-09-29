@@ -185,6 +185,7 @@
     ["https://cdn.jsdelivr.net/npm/@viz-js/viz@3.30.0/dist/viz-global.js", "sha384-KtL79YzRfvZ8ULC1SlgbwCIy18KoEk5fAudzHYqetJVonV6ubRN1KD2sDvNT9uuX"],
     ["./assets/vendor/zod-3.25.76.min.js"],
     ["./assets/js/esquema.js"],
+    ["./assets/js/planilha.js"],
     ["./assets/js/app.js"]
   ];
 
@@ -196,6 +197,8 @@
     loadScript("./assets/js/primeiros-passos.js").catch(function (error) { console.error(error); });
     // Opcional: sem ele o editor funciona, só não há o botão "Compartilhar".
     loadScript("./assets/js/compartilhar.js").catch(function (error) { console.error(error); });
+    // Opcional: sem ele não há o botão "Histórico".
+    loadScript("./assets/js/historico.js").catch(function (error) { console.error(error); });
   }
 
   async function activate(session) {

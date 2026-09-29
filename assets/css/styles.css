@@ -252,6 +252,7 @@
   .nav-item[data-icon="cabo"] { --icone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71'/%3E%3Cpath d='M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'/%3E%3C/svg%3E"); }
   .nav-item[data-icon="lista"] { --icone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01'/%3E%3C/svg%3E"); }
   .nav-item[data-icon="imagem"] { --icone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2'/%3E%3Ccircle cx='9' cy='9' r='2'/%3E%3Cpath d='m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21'/%3E%3C/svg%3E"); }
+  .nav-item[data-icon="planilha"] { --icone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2'/%3E%3Cpath d='M3 9h18M3 15h18M9 3v18'/%3E%3C/svg%3E"); }
   .nav-item[data-icon="baixar"] { --icone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3'/%3E%3C/svg%3E"); }
   .nav-item[data-icon="enviar"] { --icone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12'/%3E%3C/svg%3E"); }
   .app-main {
@@ -805,6 +806,70 @@ html.com-sessao body.auth-locked .carregando-editor {
   .render-panel .canvas-wrap { flex: 1 1 0; height: auto; min-height: 280px; }
   .legenda { margin-top: 10px; }
 }
+
+/* ---------- Seleção de vários equipamentos ---------- */
+.barra-selecao {
+  position: absolute; left: 50%; z-index: 5; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 4px; padding: 5px 6px 5px 14px; border-radius: 999px;
+  background: var(--bg-panel-2); border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line-soft));
+  box-shadow: var(--shadow-soft); font-size: 0.8rem; color: var(--text);
+  animation: barraEntrar 0.28s var(--ease-mola);
+}
+.barra-selecao[hidden] { display: none; }
+.barra-selecao [data-selecao-contagem] { margin-right: 6px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.barra-selecao button.ghost.small { border-radius: 999px; padding: 5px 11px; }
+.barra-selecao .danger-texto { color: var(--danger); }
+@keyframes barraEntrar { from { opacity: 0; transform: translate(-50%, -8px) scale(0.96); } to { opacity: 1; transform: translate(-50%, 0); } }
+.retangulo-selecao {
+  position: absolute; left: 0; top: 0; z-index: 4; pointer-events: none; will-change: transform, width, height;
+  border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); border-radius: 3px;
+}
+/* Guias de alinhamento ao arrastar (desenhadas dentro do SVG). */
+.canvas-wrap svg g.guias-alinhamento line { stroke: #E0485E; stroke-width: 1px; stroke-dasharray: 4 3; pointer-events: none; }
+.canvas-wrap svg g.node.selecionado polygon, .canvas-wrap svg g.node.selecionado ellipse { stroke-dasharray: none; }
+
+/* ---------- Histórico de versões ---------- */
+.historico-box { width: min(520px, 100%); }
+.historico-dica { font-size: 0.8rem; margin: -4px 0 10px !important; }
+.historico-lista { list-style: none; margin: 0 0 8px; padding: 0; max-height: min(52vh, 420px); overflow-y: auto; scrollbar-width: thin; }
+.historico-dia { position: sticky; top: 0; z-index: 1; padding: 8px 2px 4px; background: var(--bg-panel-2); color: var(--teal); font: 600 0.68rem var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.historico-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; margin-bottom: 4px;
+  border: 1px solid var(--line-soft); border-radius: 10px; background: color-mix(in srgb, var(--bg) 30%, transparent);
+  animation: surgir var(--dur-media) var(--ease-out);
+}
+.historico-info { display: grid; gap: 2px; min-width: 0; }
+.historico-info strong { font-size: 0.92rem; font-variant-numeric: tabular-nums; }
+.historico-info span { color: var(--text-dim); font-size: 0.76rem; overflow-wrap: anywhere; }
+.historico-info em { font-style: normal; font-size: 0.66rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.historico-item button.confirmar { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.historico-vazio { padding: 14px 4px; color: var(--text-dim); font-size: 0.82rem; line-height: 1.5; }
+.historico-mensagem { min-height: 1.2em; margin: 0 0 8px !important; font-size: 0.82rem; }
+.historico-mensagem.erro { color: var(--danger) !important; }
+
+/* ---------- Anotações ---------- */
+.canvas-wrap svg g.anotacao { cursor: grab; }
+.canvas-wrap svg g.anotacao rect { filter: drop-shadow(0 2px 3px rgba(20, 33, 43, 0.18)); }
+.canvas-wrap svg g.anotacao:hover rect, .canvas-wrap svg g.anotacao:focus-visible rect { stroke: var(--accent); stroke-width: 2px; }
+.canvas-wrap svg g.anotacao:focus { outline: none; }
+.canvas-wrap svg g.anotacao.arrastando { cursor: grabbing; opacity: 0.9; }
+.canvas-wrap svg g.anotacao.arrastando rect { filter: none; }
+#anotacaoTexto {
+  width: 100%; min-height: 96px; resize: vertical; padding: 10px; border-radius: 10px; font: 0.9rem/1.45 var(--sans);
+  background: var(--field-bg); color: var(--field-text); border: 1px solid var(--field-border);
+}
+#anotacaoTexto:focus { outline: none; border-color: rgba(113, 235, 214, 0.8); box-shadow: 0 0 0 3px rgba(113, 235, 214, 0.12); }
+.anotacao-cores { display: flex; gap: 10px; margin: 0 0 16px; }
+.anotacao-cores label { position: relative; cursor: pointer; }
+.anotacao-cores input { position: absolute; opacity: 0; pointer-events: none; }
+.anotacao-cores span {
+  display: block; width: 30px; height: 30px; border-radius: 50%; background: var(--cor); border: 2px solid transparent;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12); transition: transform var(--dur-rapida) var(--ease-out), border-color var(--dur-rapida) ease;
+}
+.anotacao-cores label:hover span { transform: scale(1.08); }
+.anotacao-cores input:checked + span { border-color: var(--accent); transform: scale(1.1); }
+.anotacao-cores input:focus-visible + span { outline: 2px solid var(--teal); outline-offset: 2px; }
+.danger-texto { color: var(--danger) !important; }
 
 /* ---------- Barra de ferramentas do diagrama ----------
    Controles do mesmo assunto ficam juntos numa "pílula" (desfazer/refazer,

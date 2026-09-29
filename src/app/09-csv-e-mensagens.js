@@ -264,3 +264,24 @@
     });
   }
 
+  // ---- Relatório de inventário (.xlsx) ------------------------------------------
+  // Abas Resumo, Equipamentos, Cabos e Portas (assets/js/planilha.js). As portas
+  // livres vêm do catálogo de modelos: equipamento sem modelo conhecido lista só
+  // as portas que os cabos usam.
+  function exportarInventario() {
+    if (!window.GrafoPlanilha) { mostrarErro("O gerador de planilha não carregou. Recarregue a página e tente de novo."); return; }
+    if (!estado.equipamentos.length) { mostrarErro("Adicione equipamentos antes de gerar o inventário."); return; }
+    try {
+      var data = new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+      var abas = window.GrafoPlanilha.montarInventario(projetoAtual, estado, {
+        data: data, buscarModelo: function (texto) { return Esquema.buscarModelo(catalogoModelos, texto); }
+      });
+      var nome = nomeArquivoExportacao("xlsx").replace(/\.xlsx$/, "-inventario.xlsx");
+      baixarBlob(new Blob([window.GrafoPlanilha.gerarXlsx(abas)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), nome);
+      avisar("Inventário baixado: " + nome);
+    } catch (e) {
+      mostrarErro("Não foi possível gerar o inventário.\nDetalhe: " + e.message);
+    }
+  }
+  document.getElementById("btnInventario").addEventListener("click", exportarInventario);
+

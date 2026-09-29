@@ -321,6 +321,113 @@
     gerar();
     // Grade: o layout do Graphviz acima só serve para medir os equipamentos.
     if (selDirecao.value === "GRADE" && posicionarEmGrade()) gerar();
+    if (selDirecao.value === "LADO" && posicionarGruposLadoALado()) gerar();
+  }
+
+  // Arruma blocos {w, h} em prateleiras (linhas), testando larguras máximas e
+  // ficando com a que deixa o conjunto maior na folha. Grava bl.x/bl.y; retorna {w, h}.
+  function empacotarEmPrateleiras(blocos, proporcao, entre) {
+    function empacotar(limite) {
+      var x = 0, y = 0, alturaLinha = 0, largura = 0;
+      blocos.forEach(function (bl) {
+        if (x > 0 && x + bl.w > limite) { x = 0; y += alturaLinha + entre; alturaLinha = 0; }
+        bl.x = x; bl.y = y;
+        x += bl.w + entre;
+        alturaLinha = Math.max(alturaLinha, bl.h);
+        largura = Math.max(largura, x - entre);
+      });
+      return { w: largura, h: y + alturaLinha };
+    }
+    var maiorBloco = Math.max.apply(null, blocos.map(function (bl) { return bl.w; }));
+    var somaLarguras = blocos.reduce(function (s, bl) { return s + bl.w + entre; }, 0);
+    var melhor = null;
+    for (var t = 0; t <= 32; t++) {
+      var limite = maiorBloco + (somaLarguras - maiorBloco) * t / 32;
+      var r = empacotar(limite);
+      var custo = Math.max(r.w / proporcao, r.h);
+      if (!melhor || custo < melhor.custo - 1e-6) melhor = { limite: limite, custo: custo };
+    }
+    return empacotar(melhor.limite);
+  }
+
+  // "Grupos lado a lado": cada grupo mantém o próprio layout em camadas (quem
+  // liga em quem, como no Esquerda → Direita), mas os grupos são arrumados em
+  // linhas na proporção da folha do PDF, em vez de um embaixo do outro. Com
+  // muitos equipamentos o desenho deixa de ficar alto e estreito.
+  // O Graphviz calcula o layout de cada grupo sozinho, com caixas do tamanho
+  // exato de cada equipamento (medido no desenho atual, já com as portas).
+  function posicionarGruposLadoALado() {
+    var svg = elCanvas.querySelector("svg");
+    if (!svg || !vizInstancia) return false;
+    var tamanhos = {}, somaX = 0, somaY = 0, n = 0;
+    estado.equipamentos.forEach(function (eq) {
+      var node = obterNodePorId(svg, eq.id);
+      var b;
+      try { b = node && node.getBBox(); } catch (e) { b = null; }
+      if (!b || !b.width) return;
+      tamanhos[eq.id] = { w: b.width, h: b.height };
+      if (centrosBase[eq.id]) { somaX += centrosBase[eq.id].x; somaY += centrosBase[eq.id].y; n++; }
+    });
+    if (!n) return false;
+
+    var MARGEM = 18, ROTULO = 30, ENTRE_BLOCOS = 56;
+    var blocos = [];
+    nomesDosGrupos(estado).forEach(function (nome) {
+      var membros = estado.equipamentos.filter(function (eq) { return String(eq.grupo || "").trim() === nome && tamanhos[eq.id]; });
+      if (membros.length) blocos.push({ membros: membros, grupo: true });
+    });
+    var soltos = estado.equipamentos.filter(function (eq) { return !String(eq.grupo || "").trim() && tamanhos[eq.id]; });
+    if (soltos.length) blocos.push({ membros: soltos, grupo: false });
+    if (blocos.length < 2) return posicionarEmGrade(); // um grupo só: não há o que pôr lado a lado
+
+    function aspas(t) { return '"' + String(t).replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"'; }
+    try {
+      blocos.forEach(function (bl) {
+        var ids = {};
+        bl.membros.forEach(function (eq) { ids[eq.id] = true; });
+        var linhas = ["digraph G {", "  rankdir=LR; nodesep=0.55; ranksep=1.3; splines=false; pad=0;",
+          '  node [shape=box, fixedsize=true, label=""];'];
+        bl.membros.forEach(function (eq) {
+          var t = tamanhos[eq.id];
+          linhas.push("  " + aspas(eq.id) + " [width=" + (t.w / 72).toFixed(3) + ", height=" + (t.h / 72).toFixed(3) + "];");
+        });
+        estado.conexoes.forEach(function (c) {
+          if (ids[c.de] && ids[c.para] && c.de !== c.para) linhas.push("  " + aspas(c.de) + " -> " + aspas(c.para) + ";");
+        });
+        linhas.push("}");
+        var json = JSON.parse(vizInstancia.renderString(linhas.join("\n"), { format: "json" }));
+        var bb = String(json.bb || "0,0,0,0").split(",").map(Number); // pt, y para cima
+        bl.centros = {};
+        (json.objects || []).forEach(function (o) {
+          if (!o.pos || !ids[o.name]) return;
+          var p = String(o.pos).split(",").map(Number);
+          // No SVG o y cresce para baixo: a origem do bloco é o canto de cima.
+          bl.centros[o.name] = { x: p[0] - bb[0], y: bb[3] - p[1] };
+        });
+        bl.w = (bb[2] - bb[0]) + (bl.grupo ? 2 * MARGEM : 0);
+        bl.h = (bb[3] - bb[1]) + (bl.grupo ? ROTULO + MARGEM : 0);
+      });
+    } catch (e) {
+      console.error("Grupos lado a lado: falha no layout, usando a grade.", e);
+      return posicionarEmGrade();
+    }
+
+    // Blocos mais altos primeiro: as prateleiras ficam mais parelhas.
+    blocos.sort(function (a, b) { return b.h - a.h; });
+    var pagina = tamanhoPaginaMm();
+    var total = empacotarEmPrateleiras(blocos, pagina.w / pagina.h, ENTRE_BLOCOS);
+    var origemX = somaX / n - total.w / 2, origemY = somaY / n - total.h / 2;
+    blocos.forEach(function (bl) {
+      var x0 = origemX + bl.x + (bl.grupo ? MARGEM : 0);
+      var y0 = origemY + bl.y + (bl.grupo ? ROTULO : 0);
+      bl.membros.forEach(function (eq) {
+        var c = bl.centros[eq.id];
+        if (!c) return;
+        eq.posicao = { x: x0 + c.x, y: y0 + c.y };
+        delete eq.deslocamento;
+      });
+    });
+    return true;
   }
 
   // Ordem dentro do grupo: começa pelo mais ligado e segue pelos vizinhos
@@ -465,6 +572,22 @@
       atualizarBotoesHistorico();
     },
     removerProjeto: function (nome) { removerProjetoDaLista(nome); },
+    // Usado por historico.js: volta o projeto para uma versão guardada. Entra no
+    // desfazer como um passo (Ctrl+Z volta para como estava antes de restaurar).
+    restaurarDados: function (nome, dados) {
+      if (nome !== projetoAtual) {
+        // Projeto excluído que volta pelo histórico: recriado com o mesmo nome.
+        if (!projetos[nome]) { projetos[nome] = projetoVazio(); renderProjetos(); }
+        abrirProjeto(nome);
+      }
+      var r = Esquema.validarProjeto(dados, "reparar");
+      estado = clonarDados(r.dados);
+      selecao = {};
+      ajustarNaProximaRenderizacao = true;
+      renderTudo();
+      if (estado.equipamentos.length) gerar(); else limparDiagrama();
+      return r.ajustes.length;
+    },
     // Usados por primeiros-passos.js.
     resumoAtual: function () { return { equipamentos: estado.equipamentos.length, conexoes: estado.conexoes.length }; },
     carregarExemplo: function () { carregarExemplo(); },
@@ -542,6 +665,7 @@
         ajustarCaixasDosGrupos();
       }
       rotearCabosOrtogonalmente();
+      desenharAnotacoes(); // antes do viewBox: as anotações também contam na área do desenho
       ajustarViewBoxAoConteudo(false);
       if (ajustarNaProximaRenderizacao) {
         ajustarNaProximaRenderizacao = false;
@@ -567,7 +691,11 @@
       btnBaixarPng.disabled = false;
       if (idFocado) {
         var noFocado = obterNodePorId(elCanvas.querySelector("svg"), idFocado);
-        if (noFocado) noFocado.focus({ preventScroll: true });
+        // Devolver o foco não é "clicar" no equipamento: não mexe na seleção.
+        if (noFocado) {
+          focoPorCliqueComModificador = true;
+          try { noFocado.focus({ preventScroll: true }); } finally { focoPorCliqueComModificador = false; }
+        }
       }
       salvarLocal(jaRegistrado);
       solicitarPrevia();
@@ -613,7 +741,7 @@
 
   // Direção do layout: lembrada neste navegador e aplicada na hora
   // (antes só valia no próximo "Organizar").
-  try { if (/^(LR|TB|GRADE)$/.test(localStorage.getItem("grafo-direcao"))) selDirecao.value = localStorage.getItem("grafo-direcao"); } catch (e) {}
+  try { if (/^(LR|TB|GRADE|LADO)$/.test(localStorage.getItem("grafo-direcao"))) selDirecao.value = localStorage.getItem("grafo-direcao"); } catch (e) {}
   selDirecao.addEventListener("change", function () {
     try { localStorage.setItem("grafo-direcao", selDirecao.value); } catch (e) {}
     if (estado.equipamentos.length) organizarDiagramaAutomaticamente();

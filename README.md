@@ -42,15 +42,19 @@
 
 **Edição**
 - Duplo clique (ou Enter) num equipamento ou cabo abre o editor, com opção de excluir.
-- Arrastar com o mouse ou mover com as setas do teclado.
+- Arrastar com o mouse ou mover com as setas do teclado. Ao arrastar, **guias de alinhamento** aparecem quando a borda ou o centro do equipamento se alinha com outro, e ele "gruda" na posição (segure **Alt** para mover livre).
+- **Seleção de vários equipamentos**: `Shift`/`Ctrl` + clique soma ou tira; `Shift` + arrastar numa área vazia desenha um retângulo; `Ctrl+A` seleciona tudo. Os selecionados andam juntos (mouse ou setas), e uma barra mostra **Duplicar**, **Copiar** e **Excluir**.
+- **Copiar e colar** (`Ctrl+C` / `Ctrl+V`, ou `Ctrl+D` para duplicar): as cópias ganham nomes novos ("SW-CORE (cópia)"), levam junto os cabos entre elas e respeitam o limite de 35. Dá para colar em outro projeto.
+- **Anotações**: caixas de texto livres no diagrama ("aguardando instalação", "cliente X"), em 5 cores. Botão **Anotação** cria no centro da tela; duplo clique edita; arrastar move. Saem no PDF, PNG, SVG e no link compartilhado.
 - **Editar em lista**: todos os equipamentos e cabos numa tabela, com filtro.
 - **Limpar…**: remove tudo, só os cabos, ou os equipamentos de um tipo, grupo ou status.
-- Desfazer / refazer.
+- Desfazer / refazer (`Ctrl+Z` / `Ctrl+Y`).
 
 **Navegação**
 - **Busca** por nome, IP ou modelo, com destaque no diagrama.
 - **Rastrear caminho**: escolha dois equipamentos e o menor caminho de cabos entre eles é destacado.
 - **Organizar** refaz o layout respeitando os grupos, na direção escolhida (esquerda → direita ou cima → baixo).
+- **Grupos lado a lado** (no mesmo seletor): cada grupo mantém a própria hierarquia (quem liga em quem, como no Esquerda → Direita), mas os grupos são arrumados em linhas na proporção da folha do PDF, em vez de um embaixo do outro. Com 35 equipamentos em 4 grupos, o desenho passa de alto e estreito para quase o formato da folha, e em A4 paisagem a escala vai de ~13% para ~23%.
 - **Grade por grupo** (no mesmo seletor) arruma cada grupo em linhas e colunas, com os equipamentos ligados entre si lado a lado, e distribui os grupos na proporção da folha do PDF. Com muitos equipamentos, aproveita bem melhor a página: com 35 equipamentos em A4, a escala vai de ~16% para ~32%.
 - Navegação fluida, animada a cada quadro e acelerada pela placa de vídeo:
   - **roda do mouse**: zoom em torno do cursor, deslizando até o ponto (giros rápidos acumulam);
@@ -63,6 +67,8 @@
 - Vários projetos por conta, com backup em JSON e importação de CSV.
 - Até **35 equipamentos por diagrama**, com contador visível (`n/35`) e aviso ao atingir o limite.
 - Exportação em **PDF** (A0 a A5, retrato ou paisagem, escala ajustável, com prévia), **PNG** e **SVG**, com cabeçalho (projeto, data, totais) e legenda.
+- **Relatório de inventário** (barra lateral): planilha Excel (.xlsx) com as abas **Resumo** (totais por tipo, grupo e status), **Equipamentos** (IP, modelo, fabricante, portas livres), **Cabos** e **Portas** (cada porta livre ou em uso, ligada a quê e em qual porta do outro lado). Abre no Excel, LibreOffice e Google Planilhas.
+- **Histórico de versões** (botão **Histórico**, ao lado da lista de projetos): o Grafo guarda sozinho uma versão a cada alteração (no máximo uma a cada 10 minutos), por até 90 dias. Dá para **restaurar a versão de ontem** (a restauração também pode ser desfeita), **recuperar um projeto excluído** e **guardar uma versão agora** antes de uma mudança grande. Nos projetos de equipe, todos os membros veem o histórico e quem salvou cada versão.
 - Temas claros, escuros e de alto contraste; barra lateral recolhível.
 - Avisos rápidos no canto da tela ao exportar, importar ou copiar.
 - Respeita a opção "reduzir movimento" do sistema.
@@ -83,8 +89,16 @@ Esqueceu a senha? Na tela de login, clique em **Esqueci minha senha** e siga o l
 | Onde | Tecla | Ação |
 |---|---|---|
 | Qualquer lugar | `Ctrl+S` | Exportar o projeto (.json) |
+| Diagrama | `Ctrl+Z` / `Ctrl+Y` (ou `Ctrl+Shift+Z`) | Desfazer / refazer |
+| Diagrama | `Ctrl+A` | Selecionar todos os equipamentos |
+| Diagrama | `Shift`/`Ctrl` + clique · `Shift` + arrastar no vazio | Somar à seleção · retângulo de seleção |
+| Seleção | `Ctrl+C` / `Ctrl+V` / `Ctrl+D` | Copiar / colar / duplicar |
+| Seleção | `Delete` | Excluir os selecionados (e os cabos deles) |
+| Seleção | `Esc` | Limpar a seleção |
+| Arrastando | `Alt` | Mover livre, sem grudar nas guias de alinhamento |
 | Equipamento selecionado | `Enter` / `F2` | Abrir o editor |
-| Equipamento selecionado | `←` `↑` `→` `↓` | Mover 10 px (`Shift` + seta: 50 px) |
+| Equipamento selecionado | `←` `↑` `→` `↓` | Mover a seleção 10 px (`Shift` + seta: 50 px) |
+| Anotação | duplo clique / `Enter` · `Ctrl+Enter` na janela | Editar · salvar |
 | Cabo selecionado | `Enter` / `F2` | Abrir o editor |
 | Busca | `Enter` / `Shift+Enter` | Próximo / anterior resultado |
 | Busca | `Esc` | Limpar a busca |
@@ -120,6 +134,7 @@ Formato:
 | `cor` | Formato `#1A2B3C` |
 | `grossura` | De 1 a 10 |
 | `de` / `para` | Precisam ser `id`s de equipamentos existentes e diferentes entre si |
+| `anotacoes` (opcional) | Lista de `{ "id", "texto", "x", "y", "cor" }`: até 50, texto de até 500 caracteres, cor `#FFF3B0` (amarelo), `#D6ECFF`, `#DDF5D8`, `#FFDDE4` ou `#ECEFF3` |
 
 Se algo estiver errado, **nada é alterado** e o app lista cada problema com o item e o campo.
 
@@ -232,6 +247,7 @@ O login usa **Supabase Auth** (e-mail e senha). Os projetos ficam na tabela `gra
      - `2026-09-28-excluir-conta.sql`: sem ele, **Excluir conta** avisa que a exclusão ainda não está ativada;
      - `2026-09-28-compartilhar.sql`: sem ele, o botão **Compartilhar** não aparece.
      - `2026-09-29-equipes.sql`: sem ele, o botão **Equipe** não aparece (o resto funciona normalmente).
+     - `2026-09-29-historico.sql` (depois do de equipes): sem ele, a janela **Histórico** explica que o histórico ainda não está ativado. As versões começam a ser guardadas a partir da instalação.
 3. **Authentication → Sign In / Providers**: deixe **Email** ligado. A opção **Confirm email** exige confirmar o e-mail antes do primeiro login — pode desligar para testes, mas mantenha ligada em produção.
 4. **Authentication → URL Configuration**:
    - **Site URL**: `https://thegrafo.vercel.app`
@@ -328,6 +344,8 @@ Também é possível publicar direto do computador com a Vercel CLI: `npx vercel
 | `scripts/montar-app.js` | Junta as partes de `src/app/` no `assets/js/app.js` |
 | `assets/js/equipe.js` | Projetos de equipe: carrega, grava cada um na própria linha, recebe as alterações dos colegas em tempo real e controla a janela **Equipe** |
 | `assets/js/compartilhar.js` | Botão **Compartilhar**: cria, atualiza e desativa os links só para visualizar |
+| `assets/js/historico.js` | Janela **Histórico**: lista as versões guardadas pelo banco, restaura, recupera projeto excluído e guarda versão na hora |
+| `assets/js/planilha.js` | **Relatório de inventário**: monta o .xlsx no navegador (ZIP + XML, sem biblioteca externa) |
 | `ver.html` | Página aberta pelo link compartilhado (`/ver?t=...`): mostra o desenho, sem login |
 | `assets/js/esquema.js` | Validação dos dados (formulários, JSON, CSV e o que está salvo) |
 | `assets/js/icones-embutidos.js` | Ícones em base64 para a exportação — **gerado** por `npm run icones` |
@@ -337,12 +355,12 @@ Também é possível publicar direto do computador com a Vercel CLI: `npx vercel
 | `data/equipamentos.json` | Catálogo de tipos de equipamento |
 | `api/equipamentos.js` | Função da Vercel que serve o catálogo |
 | `api/auth-config.js` | Função da Vercel que entrega a URL e a chave pública do Supabase |
-| `supabase/schema.sql` | Tabelas de projetos e de links compartilhados, regras de acesso por usuário e exclusão da própria conta |
+| `supabase/schema.sql` | Tabelas de projetos, links compartilhados, equipes e histórico de versões; regras de acesso por usuário e exclusão da própria conta |
 | `supabase/migracoes/` | SQL para atualizar um banco criado com uma versão anterior do `schema.sql` |
 | `servidor-local.js` | Servidor Express para rodar localmente; lê o `.env` |
 | `.env.example` | Modelo do `.env` |
 | `scripts/gerar-icones-embutidos.js` | Gera o `icones-embutidos.js` |
-| `tests/` | Testes automáticos (`npm test`): validação, rotas da API, conflito entre abas, exclusão de conta, projetos de equipe e montagem do `app.js`. `simulador.js` é o navegador simulado que os testes usam |
+| `tests/` | Testes automáticos (`npm test`): validação, anotações, modelos e portas, planilha de inventário, rotas da API, conflito entre abas, exclusão de conta, projetos de equipe e montagem do `app.js`. `simulador.js` é o navegador simulado que os testes usam |
 | `docs/` | Imagens deste README |
 
 > O catálogo fica em `data/`, fora de `api/`, porque na Vercel `api/equipamentos.js` e `api/equipamentos.json` colidiriam na mesma rota. O servidor local se chama `servidor-local.js` (e não `server.js`) para a Vercel não tratar o projeto como app Express.

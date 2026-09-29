@@ -14,6 +14,8 @@
     projetos: 100,
     nomeProjeto: 60,
     equipamentos: 35, // por diagrama; o app mostra o contador "n/35"
+    anotacoes: 50,
+    anotacaoTexto: 500,
     conexoes: 2000,
     id: 60,
     nome: 60,
@@ -176,6 +178,22 @@
     deslocamento: { rotulo: "Deslocamento", esquema: ESQUEMA_PONTO, opcional: true }
   };
 
+  // Anotações livres no diagrama (caixas de texto). x/y: canto de cima à esquerda,
+  // nas coordenadas do desenho (as mesmas de "posicao" dos equipamentos).
+  var CORES_ANOTACAO = ["#FFF3B0", "#D6ECFF", "#DDF5D8", "#FFDDE4", "#ECEFF3"];
+  var ESQUEMA_COORDENADA = z.coerce.number({ invalid_type_error: "precisa ser um número" }).finite("precisa ser um número")
+    .min(-LIMITES.coordenada).max(LIMITES.coordenada);
+  var CAMPOS_ANOTACAO = {
+    id: { rotulo: "id", esquema: texto(LIMITES.id, true), reparar: null },
+    texto: { rotulo: "Texto", esquema: texto(LIMITES.anotacaoTexto, true), reparar: function (v) {
+      var t = typeof v === "string" ? v.trim().slice(0, LIMITES.anotacaoTexto) : "";
+      return t || null;
+    } },
+    x: { rotulo: "x", esquema: ESQUEMA_COORDENADA, reparar: null },
+    y: { rotulo: "y", esquema: ESQUEMA_COORDENADA, reparar: null },
+    cor: { rotulo: "Cor", esquema: cor(CORES_ANOTACAO[0]), reparar: constante(CORES_ANOTACAO[0]) }
+  };
+
   // Valida campo a campo. No modo "reparar", campo inválido recebe o valor de
   // reparo (e vira um ajuste); campo obrigatório sem reparo invalida o item.
   function validarCampos(obj, campos, modo, onde, relatorio) {
@@ -298,7 +316,28 @@
       conexoes.push(c);
     });
 
-    return concluir(relatorio, { equipamentos: equipamentos, conexoes: conexoes });
+    var dados = { equipamentos: equipamentos, conexoes: conexoes };
+    // Anotações são opcionais: projetos sem elas continuam só com as duas listas.
+    if (entrada.anotacoes != null) {
+      var anotacoesBrutas = entrada.anotacoes;
+      if (!Array.isArray(anotacoesBrutas)) { falha("anotacoes", "precisa ser uma lista"); anotacoesBrutas = []; }
+      if (anotacoesBrutas.length > LIMITES.anotacoes) {
+        falha("anotacoes", "máximo de " + LIMITES.anotacoes + " anotações (o arquivo tem " + anotacoesBrutas.length + ")" + (modo === "reparar" ? " — as excedentes foram descartadas" : ""));
+        anotacoesBrutas = anotacoesBrutas.slice(0, LIMITES.anotacoes);
+      }
+      var idsAnotacao = {};
+      dados.anotacoes = [];
+      anotacoesBrutas.forEach(function (bruto, i) {
+        var onde = "Anotação " + (i + 1);
+        if (!ehObjeto(bruto)) { falha(onde, "precisa ser um objeto { id, texto, x, y }" + (modo === "reparar" ? " — descartada" : "")); return; }
+        var a = validarCampos(bruto, CAMPOS_ANOTACAO, modo, onde, relatorio);
+        if (!a) { if (modo === "reparar") relatorio.ajustes.push({ onde: onde, mensagem: "anotação descartada" }); return; }
+        if (idsAnotacao[a.id]) { falha(onde + " › id", '"' + a.id + '" repetido' + (modo === "reparar" ? " — descartada" : "")); return; }
+        idsAnotacao[a.id] = true;
+        dados.anotacoes.push(a);
+      });
+    }
+    return concluir(relatorio, dados);
   }
 
   function concluir(relatorio, dados) {
@@ -461,6 +500,7 @@
     expandirPortas: expandirPortas,
     normalizarModelos: normalizarModelos,
     buscarModelo: buscarModelo,
-    filtrarModelosPorTipo: filtrarModelosPorTipo
+    filtrarModelosPorTipo: filtrarModelosPorTipo,
+    CORES_ANOTACAO: CORES_ANOTACAO
   };
 })(window);

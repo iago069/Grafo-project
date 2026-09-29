@@ -58,7 +58,8 @@
     var dy = destino.posicao.y - origem.posicao.y;
     if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return padrao;
     // Na grade não há eixo principal: vale o lado para onde o outro está mais longe.
-    var horizontal = direcao === "GRADE" ? Math.abs(dx) >= Math.abs(dy) : direcao === "TB"
+    // Grade e grupos lado a lado: a porta vai para o lado de onde o vizinho está de fato.
+    var horizontal = direcao === "GRADE" || direcao === "LADO" ? Math.abs(dx) >= Math.abs(dy) : direcao === "TB"
       ? Math.abs(dy) < DISTANCIA_MINIMA_NO_EIXO && Math.abs(dx) > Math.abs(dy)
       : Math.abs(dx) >= DISTANCIA_MINIMA_NO_EIXO || Math.abs(dx) >= Math.abs(dy);
     if (horizontal) return dx > 0 ? "direita" : "esquerda";
@@ -86,7 +87,7 @@
       var t = translateDoElemento(node);
       info.ordem.forEach(function (porta, i) {
         var b;
-        try { b = caixas[i] && caixas[i].getBBox(); } catch (e) { b = null; }
+        try { b = caixas[i] && medir(caixas[i]); } catch (e) { b = null; }
         if (!b) return;
         var v = VETOR_LADO[porta.lado];
         pontos[porta.indice + ":" + porta.ponta] = {

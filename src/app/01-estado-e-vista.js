@@ -76,6 +76,26 @@
     return { largura: comprimentoEmPx(svg.getAttribute("width")), altura: comprimentoEmPx(svg.getAttribute("height")) };
   }
 
+  // Medidas que não mudam durante um arraste (formato dos equipamentos, das
+  // portas e dos rótulos: só a posição muda). Guardadas enquanto o arraste dura:
+  // medir (getBBox) logo depois de mover algo obriga o navegador a recalcular o
+  // layout, e o redesenho dos cabos media várias vezes por quadro.
+  var cacheMedidas = null;
+  function medir(el) {
+    if (!cacheMedidas) return el.getBBox();
+    var b = cacheMedidas.get(el);
+    if (!b) { b = el.getBBox(); cacheMedidas.set(el, b); }
+    return b;
+  }
+  function iniciarCacheDeMedidas() { cacheMedidas = new WeakMap(); }
+  function encerrarCacheDeMedidas() { cacheMedidas = null; }
+  // Caixa de um grupo: ajustarCaixasDosGrupos grava as medidas que acabou de
+  // desenhar (el.__caixa), e quem vem depois lê sem medir de novo.
+  function caixaDoGrupo(forma) {
+    if (forma && forma.__caixa) return forma.__caixa;
+    return forma ? forma.getBBox() : null;
+  }
+
   // Tamanho da área do diagrama, guardado: ler clientWidth logo depois de mover
   // o SVG obriga o navegador a recalcular o layout da página a cada quadro.
   // O ResizeObserver (05-zoom…) atualiza quando a área muda de tamanho.
@@ -235,7 +255,7 @@
     if (!grafo) return;
     var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     Array.prototype.forEach.call(grafo.children, function (el) {
-      if (!el.classList || !(el.classList.contains("node") || el.classList.contains("edge") || el.classList.contains("cluster"))) return;
+      if (!el.classList || !(el.classList.contains("node") || el.classList.contains("edge") || el.classList.contains("cluster") || el.classList.contains("anotacao"))) return;
       var b;
       try { b = el.getBBox(); } catch (e) { return; }
       if (!b || (!b.width && !b.height)) return;
