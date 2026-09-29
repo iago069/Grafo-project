@@ -301,6 +301,11 @@
   .modal-box p.conta-mensagem { min-height: 1.2em; margin: 0 0 8px; font-size: 0.85rem; }
   .modal-box p.conta-mensagem.erro { color: var(--danger); }
   button.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+  .project-tools button.equipe-botao { width: auto; padding: 0 12px; }
+  .equipe-membros { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 6px; }
+  .equipe-membros li { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--line-soft); border-radius: 10px; font-size: 0.86rem; }
+  .equipe-membros li > span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .equipe-selo { font: 600 0.68rem var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }
   button.danger:disabled { opacity: 0.45; cursor: not-allowed; }
 
   .secao-titulo {

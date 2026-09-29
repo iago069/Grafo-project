@@ -162,6 +162,7 @@ A **prévia** mostra as folhas como vão sair (a linha tracejada é a margem) e 
 Os projetos ficam na sua conta, no Supabase, e são salvos automaticamente poucos segundos depois de cada mudança. Enquanto você está logado, o navegador mantém uma cópia local separada por usuário; ao clicar em **Sair**, essa cópia é apagada e os projetos continuam na conta.
 
 - Use **Exportar projeto (.json)** (ou `Ctrl+S`) para guardar também um backup fora da nuvem. Um aviso no topo lembra de fazer isso quando o último backup tem 7 dias ou mais.
+- **Equipe** (ao lado da lista de projetos) transforma o projeto aberto em **projeto de equipe**: o dono gera um link de convite, e quem entra por ele (com a própria conta, ou criando uma) passa a editar o projeto. As alterações de cada um aparecem para os outros em segundos; se duas pessoas editarem ao mesmo tempo, vale o aviso de conflito (ninguém sobrescreve o outro sem aviso). Na lista, projetos de equipe aparecem com 👥. O dono vê os membros, remove pessoas, troca ou desativa o link e exclui o projeto para todos (×); os membros podem sair.
 - **Compartilhar** (barra do diagrama) cria um link só para visualizar o projeto aberto: quem abre vê o desenho (com zoom e download em SVG), sem login, sem poder editar e sem acesso à conta. O link se atualiza sozinho poucos segundos depois de cada alteração. **Desativar link** faz o endereço parar de funcionar na hora, e excluir o projeto também apaga o link.
 - **Baixar todos os projetos** (barra lateral ou botão **Conta**) gera um arquivo só com todos os projetos. **Importar projeto** aceita esse arquivo e traz todos de volta; se algum projeto tiver erro, nada é importado.
 - Em **Conta → Excluir conta**, a pessoa apaga a própria conta e todos os projetos, sem volta. Para confirmar, é preciso digitar o e-mail da conta.
@@ -199,6 +200,7 @@ O login usa **Supabase Auth** (e-mail e senha). Os projetos ficam na tabela `gra
    - Projeto criado antes de 28/09/2026: rode também, uma vez cada, os arquivos de [`supabase/migracoes/`](supabase/migracoes/):
      - `2026-09-28-excluir-conta.sql`: sem ele, **Excluir conta** avisa que a exclusão ainda não está ativada;
      - `2026-09-28-compartilhar.sql`: sem ele, o botão **Compartilhar** não aparece.
+     - `2026-09-29-equipes.sql`: sem ele, o botão **Equipe** não aparece (o resto funciona normalmente).
 3. **Authentication → Sign In / Providers**: deixe **Email** ligado. A opção **Confirm email** exige confirmar o e-mail antes do primeiro login — pode desligar para testes, mas mantenha ligada em produção.
 4. **Authentication → URL Configuration**:
    - **Site URL**: `https://thegrafo.vercel.app`
@@ -291,6 +293,7 @@ Também é possível publicar direto do computador com a Vercel CLI: `npx vercel
 | `assets/js/app.js` | Editor: estado, formulários, geração do DOT, roteamento dos cabos, exportação. **Gerado** por `npm run montar` |
 | `src/app/` | Partes do editor, uma por assunto (`00-catalogo.js` … `12-pagina-e-pdf.js`). É aqui que se edita |
 | `scripts/montar-app.js` | Junta as partes de `src/app/` no `assets/js/app.js` |
+| `assets/js/equipe.js` | Projetos de equipe: carrega, grava cada um na própria linha, recebe as alterações dos colegas em tempo real e controla a janela **Equipe** |
 | `assets/js/compartilhar.js` | Botão **Compartilhar**: cria, atualiza e desativa os links só para visualizar |
 | `ver.html` | Página aberta pelo link compartilhado (`/ver?t=...`): mostra o desenho, sem login |
 | `assets/js/esquema.js` | Validação dos dados (formulários, JSON, CSV e o que está salvo) |
@@ -306,7 +309,7 @@ Também é possível publicar direto do computador com a Vercel CLI: `npx vercel
 | `servidor-local.js` | Servidor Express para rodar localmente; lê o `.env` |
 | `.env.example` | Modelo do `.env` |
 | `scripts/gerar-icones-embutidos.js` | Gera o `icones-embutidos.js` |
-| `tests/` | Testes automáticos (`npm test`): validação, rotas da API, conflito entre abas, exclusão de conta e montagem do `app.js`. `simulador.js` é o navegador simulado que os testes usam |
+| `tests/` | Testes automáticos (`npm test`): validação, rotas da API, conflito entre abas, exclusão de conta, projetos de equipe e montagem do `app.js`. `simulador.js` é o navegador simulado que os testes usam |
 | `docs/` | Imagens deste README |
 
 > O catálogo fica em `data/`, fora de `api/`, porque na Vercel `api/equipamentos.js` e `api/equipamentos.json` colidiriam na mesma rota. O servidor local se chama `servidor-local.js` (e não `server.js`) para a Vercel não tratar o projeto como app Express.

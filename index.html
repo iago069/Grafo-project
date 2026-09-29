@@ -193,7 +193,7 @@
           <button type="button" class="ghost" id="contaBaixar">Baixar todos os projetos</button>
         </div>
         <h4 class="conta-secao conta-perigo">Excluir conta</h4>
-        <p>Apaga a conta e todos os projetos salvos nela, sem volta. Baixe uma cópia antes se quiser guardar algo.</p>
+        <p>Apaga a conta e todos os projetos salvos nela, sem volta, inclusive os projetos de equipe que você criou (para todos os membros). Baixe uma cópia antes se quiser guardar algo.</p>
         <form id="contaExcluirForm">
           <label class="modal-field">
             <span>Para confirmar, digite o seu e-mail</span>
@@ -204,6 +204,55 @@
             <button type="submit" class="danger" id="contaExcluir" disabled>Excluir minha conta</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Projeto de equipe: membros, link de convite, sair (equipe.js). -->
+    <div id="equipeModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="equipeTitulo">
+      <div class="modal-box">
+        <div class="modal-header">
+          <h3 id="equipeTitulo">Equipe</h3>
+          <button type="button" class="ghost small" id="equipeFechar" data-equipe-fechar aria-label="Fechar">×</button>
+        </div>
+        <div id="equipePessoal">
+          <p><strong id="equipeProjeto"></strong> é um projeto pessoal: só você vê e edita.</p>
+          <p>Transforme em projeto de equipe para convidar outras pessoas. Cada uma edita com a própria conta, e as alterações aparecem para todos em segundos.</p>
+          <div class="modal-actions conta-acoes">
+            <button type="button" class="primary" id="equipeTransformar">Transformar em projeto de equipe</button>
+          </div>
+        </div>
+        <div id="equipeProjetoEquipe" hidden>
+          <h4 class="conta-secao">Membros</h4>
+          <ul class="equipe-membros" id="equipeMembros"></ul>
+          <div id="equipeDono" hidden>
+            <h4 class="conta-secao">Convidar</h4>
+            <div id="equipeConviteCom">
+              <p>Quem abrir este link e entrar (ou criar a conta) passa a editar o projeto.</p>
+              <label class="modal-field">
+                <span>Link de convite</span>
+                <input id="equipeConviteUrl" type="text" readonly>
+              </label>
+              <div class="modal-actions conta-acoes">
+                <button type="button" class="primary" id="equipeCopiar">Copiar link</button>
+                <button type="button" class="ghost" id="equipeNovoLink">Gerar novo link</button>
+                <button type="button" class="ghost" id="equipeDesativarLink">Desativar link</button>
+              </div>
+            </div>
+            <div id="equipeConviteSem" hidden>
+              <p>O link de convite está desativado.</p>
+              <div class="modal-actions conta-acoes">
+                <button type="button" class="primary" id="equipeCriarLink">Criar link de convite</button>
+              </div>
+            </div>
+            <p class="conflito-dica">Para excluir o projeto para todos, use o × ao lado da lista de projetos.</p>
+          </div>
+          <div id="equipeMembro" hidden>
+            <div class="modal-actions conta-acoes">
+              <button type="button" class="ghost" id="equipeSair">Sair do projeto</button>
+            </div>
+          </div>
+        </div>
+        <p id="equipeMensagem" class="conta-mensagem" role="status" aria-live="polite"></p>
       </div>
     </div>
 
@@ -358,6 +407,7 @@
               <select id="projetoSelect" title="Trocar projeto" aria-label="Trocar projeto"></select>
               <button class="ghost" id="btnNovoProjeto" type="button" title="Novo projeto" aria-label="Novo projeto">+</button>
               <button class="ghost" id="btnExcluirProjeto" type="button" title="Excluir projeto atual" aria-label="Excluir projeto atual">×</button>
+              <button class="ghost equipe-botao" id="btnEquipe" type="button" aria-haspopup="dialog" title="Editar este projeto em equipe" hidden>Equipe</button>
             </div>
             <button class="theme-toggle" id="btnTema" type="button">Tema: Automático</button>
             <span class="theme-select-wrap">
@@ -632,6 +682,7 @@
 <script src="./assets/vendor/zod-3.25.76.min.js"></script>
 <script src="./assets/js/esquema.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./assets/js/equipe.js"></script>
 <script src="./assets/js/auth.js"></script>
 </body>
 </html>

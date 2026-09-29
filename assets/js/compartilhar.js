@@ -149,7 +149,10 @@
   botaoDesativar.addEventListener("click", desativar);
   modal.querySelectorAll("[data-compartilhar-fechar]").forEach(function (b) { b.addEventListener("click", fechar); });
   modal.addEventListener("click", function (event) { if (event.target === modal) fechar(); });
-  modal.addEventListener("keydown", function (event) { if (event.key === "Escape") { event.preventDefault(); fechar(); } });
+  // No documento: "Desativar link" some da tela e leva o foco para fora da janela.
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && !modal.classList.contains("hidden")) { event.preventDefault(); fechar(); }
+  });
   document.addEventListener("grafo:alterado", agendarSincronizacao);
 
   // Links já criados. Sem a tabela no servidor, o botão fica escondido.

@@ -1890,9 +1890,13 @@
   function salvarTema(t) { try { localStorage.setItem("diagrama-tema", t); } catch (e) {} }
   function carregarTema() { try { return localStorage.getItem("diagrama-tema"); } catch (e) { return null; } }
 
+  // Projetos de equipe (equipe.js) aparecem com 👥 na lista.
+  function ehProjetoDeEquipe(nome) { return !!(window.GrafoEquipe && window.GrafoEquipe.ehEquipe(nome)); }
+
   function renderProjetos() {
     elProjetoSelect.innerHTML = Object.keys(projetos).map(function (nome) {
-      return '<option value="' + escaparHtml(nome) + '"' + (nome === projetoAtual ? " selected" : "") + '>' + escaparHtml(nome) + '</option>';
+      var rotulo = (ehProjetoDeEquipe(nome) ? "👥 " : "") + nome;
+      return '<option value="' + escaparHtml(nome) + '"' + (nome === projetoAtual ? " selected" : "") + '>' + escaparHtml(rotulo) + '</option>';
     }).join("");
     atualizarLembreteBackup();
   }
@@ -2011,7 +2015,28 @@
     });
   });
 
+  // Tira um projeto da lista (excluído, ou a pessoa saiu da equipe) e abre outro.
+  function removerProjetoDaLista(nome) {
+    if (!projetos[nome]) return;
+    delete projetos[nome];
+    if (!Object.keys(projetos).length) projetos["Projeto principal"] = projetoVazio();
+    if (projetoAtual === nome) {
+      projetoAtual = Object.keys(projetos)[0];
+      estado = clonarDados(projetos[projetoAtual]);
+      historicoDesfazer = [];
+      historicoRefazer = [];
+      ultimoEstadoHistorico = JSON.stringify(estado);
+      ajustarNaProximaRenderizacao = true;
+      renderTudo();
+      if (estado.equipamentos.length) gerar(); else limparDiagrama();
+    }
+    salvarLocal(true);
+    renderProjetos();
+  }
+
   document.getElementById("btnExcluirProjeto").addEventListener("click", function () {
+    // Projeto de equipe: o dono exclui para todos; os membros saem (equipe.js).
+    if (ehProjetoDeEquipe(projetoAtual)) { window.GrafoEquipe.excluirOuSair(projetoAtual); return; }
     var nomes = Object.keys(projetos);
     if (nomes.length <= 1) { mostrarErro("Mantenha ao menos um projeto salvo."); return; }
     abrirModal({
@@ -3562,7 +3587,34 @@
       adicionarMolduraDeExportacao(copia);
       return new XMLSerializer().serializeToString(copia);
     },
-    avisar: function (texto) { avisar(texto); }
+    avisar: function (texto) { avisar(texto); },
+    // Usados por equipe.js (projetos de equipe).
+    dadosProjeto: function (nome) {
+      if (nome === projetoAtual) return clonarDados(estado);
+      return projetos[nome] ? clonarDados(projetos[nome]) : null;
+    },
+    // Alteração de um colega: troca os dados do projeto (e redesenha se estiver aberto).
+    substituirProjeto: function (nome, dados) {
+      var r = Esquema.validarProjeto(dados, "reparar");
+      projetos[nome] = r.dados;
+      if (nome !== projetoAtual) { salvarLocal(true); return; }
+      estado = clonarDados(r.dados);
+      // O desfazer da versão anterior não vale mais: voltaria a versão do colega.
+      historicoDesfazer = [];
+      historicoRefazer = [];
+      ultimoEstadoHistorico = JSON.stringify(estado);
+      aplicandoHistorico = true;
+      try {
+        renderTudo();
+        if (estado.equipamentos.length) gerar(); else limparDiagrama();
+      } finally {
+        aplicandoHistorico = false;
+      }
+      atualizarBotoesHistorico();
+    },
+    removerProjeto: function (nome) { removerProjetoDaLista(nome); },
+    salvar: function () { salvarLocal(true); },
+    atualizarListaProjetos: function () { renderProjetos(); }
   };
 
   // O Graphviz (WebAssembly) carrega de forma assíncrona; depois disso a

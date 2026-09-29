@@ -83,14 +83,27 @@
     return key + ":" + user.id;
   }
 
-  function prepareLocal(row) {
-    var projects = row && row.projects && typeof row.projects === "object" && !Array.isArray(row.projects) ? row.projects : null;
+  // Projetos de equipe (equipe.js): ficam no mesmo mapa do editor, mas cada um
+  // é gravado na própria linha. Sem o módulo, tudo é pessoal, como antes.
+  var equipe = window.GrafoEquipe || null;
+  // O que vai para grafo_user_data: só os projetos pessoais.
+  function personalSnapshot(snapshot) {
+    return { projects: equipe ? equipe.separar(snapshot.projects) : snapshot.projects, current_project: snapshot.current_project };
+  }
+
+  // team: { projetos: {chave: dados}, abrir: chave|null } vindo de equipe.carregar().
+  function prepareLocal(row, team) {
+    var personal = row && row.projects && typeof row.projects === "object" && !Array.isArray(row.projects) ? row.projects : {};
+    var teamProjects = team && team.projetos || {};
+    var projects = Object.assign({}, personal, teamProjects);
     serverVersion = row && row.updated_at || null;
-    if (projects && Object.keys(projects).length) {
+    if (Object.keys(projects).length) {
+      var current = team && team.abrir || row && row.current_project;
+      if (!projects[current]) current = Object.keys(projects)[0];
       localStorage.setItem(storageKey("grafo-projetos"), JSON.stringify(projects));
-      localStorage.setItem(storageKey("grafo-projeto-atual"), row.current_project || Object.keys(projects)[0]);
-      localState = { projects: projects, current_project: row.current_project || Object.keys(projects)[0] };
-      lastSaved = JSON.stringify(localState);
+      localStorage.setItem(storageKey("grafo-projeto-atual"), current);
+      localState = { projects: projects, current_project: current };
+      lastSaved = Object.keys(personal).length ? JSON.stringify({ projects: personal, current_project: row.current_project || Object.keys(personal)[0] }) : null;
     } else {
       localStorage.removeItem(storageKey("grafo-projetos"));
       localStorage.removeItem(storageKey("grafo-projeto-atual"));
@@ -149,7 +162,10 @@
         localStorage.removeItem("diagrama-estado");
       }
     }
-    prepareLocal(row);
+    var occupied = {};
+    if (row && row.projects && typeof row.projects === "object") Object.keys(row.projects).forEach(function (k) { occupied[k] = true; });
+    var team = equipe ? await equipe.carregar(client, user, occupied) : null;
+    prepareLocal(row, team);
   }
 
   function loadScript(src) {
@@ -166,6 +182,7 @@
     if (appLoaded) return;
     await loadScript("./assets/js/app.js");
     appLoaded = true;
+    if (equipe) equipe.iniciarInterface();
     // Opcional: sem ele o editor funciona, só não há o botão "Compartilhar".
     loadScript("./assets/js/compartilhar.js").catch(function (error) { console.error(error); });
   }
@@ -215,9 +232,15 @@
         var snapshot = pending;
         pending = null;
         status.textContent = "Salvando...";
-        var saved;
+        var personal = personalSnapshot(snapshot);
+        var personalJson = JSON.stringify(personal);
+        var saved = true;
         try {
-          saved = await write(snapshot);
+          if (personalJson !== lastSaved) {
+            saved = await write(personal);
+            if (saved) lastSaved = personalJson;
+          }
+          if (saved && equipe) saved = (await equipe.gravar(snapshot.projects)) === "ok";
         } catch (error) {
           pending = pending || snapshot;
           status.textContent = "Erro ao salvar";
@@ -229,7 +252,6 @@
           showConflict(true);
           throw new Error("Projeto alterado em outro lugar.");
         }
-        lastSaved = JSON.stringify(snapshot);
         status.textContent = "Salvo na nuvem";
         retry.hidden = true;
       }
@@ -247,9 +269,9 @@
     scheduleSave: function (projects, currentProject) {
       if (!user || deleting) return;
       var snapshot = { projects: JSON.parse(JSON.stringify(projects)), current_project: currentProject };
-      var serialized = JSON.stringify(snapshot);
+      var unchanged = JSON.stringify(personalSnapshot(snapshot)) === lastSaved && !(equipe && equipe.temAlteracao(snapshot.projects));
       localState = snapshot;
-      if (serialized === lastSaved && !pending) return;
+      if (unchanged && !pending) return;
       pending = snapshot;
       // Com o conflito aberto, guarda a alteração e espera a escolha da pessoa.
       if (conflict) return;
@@ -297,6 +319,7 @@
       var response = await client.from("grafo_user_data").select("updated_at").eq("user_id", user.id).maybeSingle();
       if (response.error) throw response.error;
       serverVersion = response.data && response.data.updated_at || null;
+      if (equipe) await equipe.assumirVersoesAtuais();
       conflict = false;
       conflictModal.classList.add("hidden");
       pending = pending || localState;
@@ -529,7 +552,9 @@
       } else if (initial.data.session) {
         await activate(initial.data.session);
       } else {
-        notice(accountDeleted ? "Sua conta e todos os projetos foram excluídos." : "");
+        var invited = equipe && equipe.conviteNaUrl();
+        notice(accountDeleted ? "Sua conta e todos os projetos foram excluídos."
+          : invited ? "Você recebeu um convite para editar um projeto em equipe. Entre ou crie sua conta para participar." : "");
       }
     } catch (error) {
       // "Failed to fetch" etc. viram mensagem em português (ERROS_CONHECIDOS).
@@ -540,7 +565,7 @@
     // inicial; se a pessoa veio de um link de e-mail, leva direto ao formulário.
     if (!appLoaded) {
       showLanding();
-      if (mode !== "login" || erroLink || accountDeleted) goToCard();
+      if (mode !== "login" || erroLink || accountDeleted || (equipe && equipe.conviteNaUrl())) goToCard();
     }
   })();
 })();

@@ -439,7 +439,34 @@
       adicionarMolduraDeExportacao(copia);
       return new XMLSerializer().serializeToString(copia);
     },
-    avisar: function (texto) { avisar(texto); }
+    avisar: function (texto) { avisar(texto); },
+    // Usados por equipe.js (projetos de equipe).
+    dadosProjeto: function (nome) {
+      if (nome === projetoAtual) return clonarDados(estado);
+      return projetos[nome] ? clonarDados(projetos[nome]) : null;
+    },
+    // Alteração de um colega: troca os dados do projeto (e redesenha se estiver aberto).
+    substituirProjeto: function (nome, dados) {
+      var r = Esquema.validarProjeto(dados, "reparar");
+      projetos[nome] = r.dados;
+      if (nome !== projetoAtual) { salvarLocal(true); return; }
+      estado = clonarDados(r.dados);
+      // O desfazer da versão anterior não vale mais: voltaria a versão do colega.
+      historicoDesfazer = [];
+      historicoRefazer = [];
+      ultimoEstadoHistorico = JSON.stringify(estado);
+      aplicandoHistorico = true;
+      try {
+        renderTudo();
+        if (estado.equipamentos.length) gerar(); else limparDiagrama();
+      } finally {
+        aplicandoHistorico = false;
+      }
+      atualizarBotoesHistorico();
+    },
+    removerProjeto: function (nome) { removerProjetoDaLista(nome); },
+    salvar: function () { salvarLocal(true); },
+    atualizarListaProjetos: function () { renderProjetos(); }
   };
 
   // O Graphviz (WebAssembly) carrega de forma assíncrona; depois disso a
