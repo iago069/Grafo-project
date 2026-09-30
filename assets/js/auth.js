@@ -182,7 +182,7 @@
   // O que só o editor usa carrega depois do login: a página inicial fica leve.
   // (sessao.js já começa a baixar estes arquivos para quem tem sessão salva.)
   var EDITOR_SCRIPTS = [
-    ["https://cdn.jsdelivr.net/npm/@viz-js/viz@3.30.0/dist/viz-global.js", "sha384-KtL79YzRfvZ8ULC1SlgbwCIy18KoEk5fAudzHYqetJVonV6ubRN1KD2sDvNT9uuX"],
+    ["https://cdn.jsdelivr.net/npm/@viz-js/viz@3.31.0/dist/viz-global.js", "sha384-iX6VK6ib27dxYB4T470zbHOsDDoLewuYvrIgv2B3XXe8kgfKsGMf8QIleFy6VPi4"],
     ["./assets/vendor/zod-3.25.76.min.js"],
     ["./assets/js/esquema.js"],
     ["./assets/js/planilha.js"],
