@@ -12,8 +12,8 @@ function resposta() {
 }
 
 test("/api/equipamentos devolve o catálogo no GET e recusa outros métodos", () => {
-  const handler = require("../api/equipamentos.js");
-  const catalogo = require("../data/equipamentos.json");
+  const handler = require("../../api/equipamentos.js");
+  const catalogo = require("../../data/equipamentos.json");
   const get = resposta();
   handler({ method: "GET" }, get);
   assert.equal(get.statusCode, 200);
@@ -26,7 +26,7 @@ test("/api/equipamentos devolve o catálogo no GET e recusa outros métodos", ()
 });
 
 test("/api/auth-config só responde com as variáveis configuradas", () => {
-  const handler = require("../api/auth-config.js");
+  const handler = require("../../api/auth-config.js");
   const antes = { url: process.env.SUPABASE_URL, key: process.env.SUPABASE_PUBLISHABLE_KEY };
   try {
     delete process.env.SUPABASE_URL;

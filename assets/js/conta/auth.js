@@ -323,24 +323,24 @@
   var EDITOR_SCRIPTS = [
     ["https://cdn.jsdelivr.net/npm/@viz-js/viz@3.31.0/dist/viz-global.js", "sha384-iX6VK6ib27dxYB4T470zbHOsDDoLewuYvrIgv2B3XXe8kgfKsGMf8QIleFy6VPi4"],
     ["./assets/vendor/zod-3.25.76.min.js"],
-    ["./assets/js/esquema.js"],
-    ["./assets/js/planilha.js"],
-    ["./assets/js/app.js"]
+    ["./assets/js/comum/esquema.js"],
+    ["./assets/js/recursos/planilha.js"],
+    ["./assets/js/editor/app.js"]
   ];
 
   async function loadApp() {
     if (appLoaded) return;
     for (var i = 0; i < EDITOR_SCRIPTS.length; i++) await loadScript(EDITOR_SCRIPTS[i][0], EDITOR_SCRIPTS[i][1]);
     appLoaded = true;
-    loadScript("./assets/js/primeiros-passos.js").catch(function (error) { console.error(error); });
+    loadScript("./assets/js/recursos/primeiros-passos.js").catch(function (error) { console.error(error); });
     // Etiquetas exportam um PDF: valem também sem login.
-    loadScript("./assets/js/etiquetas.js").catch(function (error) { console.error(error); });
+    loadScript("./assets/js/recursos/etiquetas.js").catch(function (error) { console.error(error); });
     if (convidado) { prepararBotoesQuePedemLogin(); return; }
     if (equipe) equipe.iniciarInterface();
     // Opcional: sem ele o editor funciona, só não há o botão "Compartilhar".
-    loadScript("./assets/js/compartilhar.js").catch(function (error) { console.error(error); });
+    loadScript("./assets/js/recursos/compartilhar.js").catch(function (error) { console.error(error); });
     // Opcional: sem ele não há o botão "Histórico".
-    loadScript("./assets/js/historico.js").catch(function (error) { console.error(error); });
+    loadScript("./assets/js/recursos/historico.js").catch(function (error) { console.error(error); });
   }
 
   // ---- Sem login -------------------------------------------------------------
@@ -510,7 +510,7 @@
   function keepEditorOffline() {
     if (!("serviceWorker" in navigator) || !navigator.serviceWorker.controller) return;
     var urls = EDITOR_SCRIPTS.map(function (script) { return script[0]; })
-      .concat(["./assets/js/primeiros-passos.js", "./assets/js/compartilhar.js", "./assets/js/historico.js", "./assets/js/etiquetas.js"]);
+      .concat(["./assets/js/recursos/primeiros-passos.js", "./assets/js/recursos/compartilhar.js", "./assets/js/recursos/historico.js", "./assets/js/recursos/etiquetas.js"]);
     if (window.GrafoApp && window.GrafoApp.arquivosParaGuardar) urls = urls.concat(window.GrafoApp.arquivosParaGuardar());
     navigator.serviceWorker.controller.postMessage({ tipo: "guardar", urls: urls });
   }

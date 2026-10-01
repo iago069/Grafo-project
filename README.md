@@ -4,7 +4,7 @@
 
 **Acesse:** https://thegrafo.vercel.app
 
-![Diagrama de exemplo no Grafo](docs/Layout1.png)
+![Diagrama de exemplo no Grafo](docs/imagens/layout.png)
 
 ## Sumário
 
@@ -122,7 +122,7 @@ Cada tipo também põe primeiro, na lista de **Tipo**, os equipamentos que fazem
 
 ### Projeto em JSON
 
-**Projeto → Exportar projeto (.json)** e **Importar projeto (.json)** na barra lateral. A importação cria um projeto novo. Também dá para colar o JSON em **Editar em lista → Importar / exportar JSON e CSV → Aplicar JSON acima** (isso substitui o projeto aberto; o ↶ desfaz).
+**Projeto → Exportar projeto (.json)** e **Importar projeto (.json)** na barra lateral. A importação cria um projeto novo. Também dá para colar o JSON em **Projeto → JSON e CSV → Aplicar JSON** (isso substitui o projeto aberto; o ↶ desfaz).
 
 Formato:
 
@@ -158,7 +158,7 @@ Limites: **35 equipamentos por diagrama**, 2000 cabos e 100 projetos. Um arquivo
 
 ### CSV
 
-Em **Editar em lista → Importar / exportar JSON e CSV → Importar CSV** (o botão **Baixar modelo CSV** gera um exemplo). Uma linha por cabo; os equipamentos são criados pelos nomes. Linha sem `destino` cadastra só o equipamento. A importação substitui o projeto aberto — o ↶ desfaz.
+Em **Projeto → JSON e CSV → Importar CSV** (o botão **Modelo CSV** gera um exemplo). Uma linha por cabo; os equipamentos são criados pelos nomes. Linha sem `destino` cadastra só o equipamento. A importação substitui o projeto aberto — o ↶ desfaz.
 
 | Coluna | Também aceita | Exemplo |
 |---|---|---|
@@ -222,11 +222,11 @@ O ícone é escolhido pelo tipo ou nome do equipamento, ou manualmente no editor
 | VOLT | `VOLT.png` | "volt" |
 | Câmera | `CAMERA.png` | "câmera", "camera" |
 
-Além desses, o quadro de símbolos tem um tipo e um ícone para: Conversor de fibra, Concentrador Hotspot, CX, Decoder, DIO, AP WiFi, POE, UniFi, NVR, DWDM, MUX, DEMUX, Bateria, Switch POE, Conversor de mídia, Controle de acesso, Aligera, Dream Machine e Nuvem VPLS (arquivos com o mesmo nome em `assets/images/`, lista em `SIMBOLOS` de `src/app/00-catalogo.js`). O tipo é reconhecido por palavra inteira, e o nome mais específico ganha: "Switch POE 24p" usa o ícone de Switch POE, e "Rádio" não vira DIO.
+Além desses, o quadro de símbolos tem um tipo e um ícone para: Conversor de fibra, Concentrador Hotspot, CX, Decoder, DIO, AP WiFi, POE, UniFi, NVR, DWDM, MUX, DEMUX, Bateria, Switch POE, Conversor de mídia, Controle de acesso, Aligera, Dream Machine e Nuvem VPLS (arquivos com o mesmo nome em `assets/images/equipamentos/`, lista em `SIMBOLOS` de `src/app/00-catalogo.js`). O tipo é reconhecido por palavra inteira, e o nome mais específico ganha: "Switch POE 24p" usa o ícone de Switch POE, e "Rádio" não vira DIO.
 
 Também dá para usar um emoji ou enviar uma imagem própria pelo campo **Imagem** (é reduzida para 256 px).
 
-A lista de tipos sugeridos vem de `data/equipamentos.json` — **edite ali** para adicionar tipos. Ao adicionar ou trocar uma imagem em `assets/images/`, rode `npm run icones` para atualizar `assets/js/icones-embutidos.js`, que a exportação usa para colocar os ícones dentro do PNG/SVG.
+A lista de tipos sugeridos vem de `data/equipamentos.json` — **edite ali** para adicionar tipos. Ao adicionar ou trocar uma imagem em `assets/images/equipamentos/`, rode `npm run icones` para atualizar `assets/js/editor/icones-embutidos.js`, que a exportação usa para colocar os ícones dentro do PNG/SVG.
 
 ## Modelos de equipamento e portas
 
@@ -251,7 +251,7 @@ Os modelos ficam em `data/equipamentos.json`, na lista `"modelos"`:
 { "nome": "CRS326-24G-2S+", "fabricante": "MikroTik", "tipo": "Switch", "portas": ["ether1-24", "sfp-sfpplus1-2"] }
 ```
 
-Em `portas`, uma faixa termina em `início-fim` e vira uma porta para cada número: `ether1-24` → `ether1` … `ether24`; `gpon1/1/1-8` → `gpon1/1/1` … `gpon1/1/8`. Sem faixa, o nome vale como está (`pon`, `combo1`). Os nomes das portas seguem a nomenclatura mais comum de cada fabricante; confira com o seu equipamento e ajuste se precisar. O teste `tests/modelos.test.js` confere se o arquivo continua válido.
+Em `portas`, uma faixa termina em `início-fim` e vira uma porta para cada número: `ether1-24` → `ether1` … `ether24`; `gpon1/1/1-8` → `gpon1/1/1` … `gpon1/1/8`. Sem faixa, o nome vale como está (`pon`, `combo1`). Os nomes das portas seguem a nomenclatura mais comum de cada fabricante; confira com o seu equipamento e ajuste se precisar. O teste `tests/unidade/modelos.test.js` confere se o arquivo continua válido.
 
 ## Etiquetas com QR code
 
@@ -275,7 +275,7 @@ O login usa **Supabase Auth** (e-mail e senha). Os projetos ficam na tabela `gra
      - `2026-09-28-compartilhar.sql`: sem ele, o botão **Compartilhar** não aparece.
      - `2026-09-29-equipes.sql`: sem ele, o botão **Equipe** não aparece (o resto funciona normalmente).
      - `2026-09-29-historico.sql` (depois do de equipes): sem ele, a janela **Histórico** explica que o histórico ainda não está ativado. As versões começam a ser guardadas a partir da instalação.
-     - `2026-09-30-erros.sql`: registro de erros. Quando algo quebra no navegador de alguém logado, `assets/js/erros.js` grava a mensagem em `grafo_erros` (no máximo 30 por pessoa por hora; apagados após 90 dias). Veja em **Table Editor → grafo_erros** ou, agrupados, com `select * from grafo_erros_resumo;` no SQL Editor. Sem ele, os erros simplesmente não são guardados.
+     - `2026-09-30-erros.sql`: registro de erros. Quando algo quebra no navegador de alguém logado, `assets/js/comum/erros.js` grava a mensagem em `grafo_erros` (no máximo 30 por pessoa por hora; apagados após 90 dias). Veja em **Table Editor → grafo_erros** ou, agrupados, com `select * from grafo_erros_resumo;` no SQL Editor. Sem ele, os erros simplesmente não são guardados.
 3. **Authentication → Sign In / Providers**: deixe **Email** ligado. A opção **Confirm email** exige confirmar o e-mail antes do primeiro login — pode desligar para testes, mas mantenha ligada em produção.
 4. **Authentication → URL Configuration**:
    - **Site URL**: `https://thegrafo.vercel.app`
@@ -308,18 +308,18 @@ Depois:
 npm start        # http://localhost:3000
 ```
 
-O `servidor-local.js` lê o `.env` sozinho ao iniciar — se mudar o arquivo, pare o servidor (`Ctrl+C`) e rode `npm start` de novo. O `.env` não vai para o Git nem para a Vercel.
+O `scripts/servidor-local.js` lê o `.env` sozinho ao iniciar — se mudar o arquivo, pare o servidor (`Ctrl+C`) e rode `npm start` de novo. O `.env` não vai para o Git nem para a Vercel.
 
 | Script | O que faz |
 |---|---|
-| `npm start` | Sobe o servidor local (`servidor-local.js`) |
-| `npm run dev` | Igual ao `start`, reiniciando ao salvar o `servidor-local.js` |
-| `npm run icones` | Gera `assets/js/icones-embutidos.js` |
-| `npm test` | Roda os testes da pasta `tests/` (requer Node.js 22+) |
+| `npm start` | Sobe o servidor local (`scripts/servidor-local.js`) |
+| `npm run dev` | Igual ao `start`, reiniciando ao salvar o `scripts/servidor-local.js` |
+| `npm run icones` | Gera `assets/js/editor/icones-embutidos.js` |
+| `npm test` | Roda os testes da pasta `tests/unidade/` (requer Node.js 22+) |
 | `npm run test:navegador` | Abre o site num navegador de verdade e testa página inicial, editor, PDF, celular e tutorial (`tests/navegador/`) |
-| `npm run montar` | Monta `assets/js/app.js` a partir das partes em `src/app/` |
+| `npm run montar` | Monta `assets/js/editor/app.js` a partir das partes em `src/app/` |
 
-**Para mudar o editor, edite os arquivos de `src/app/`**, não o `assets/js/app.js`, e depois rode `npm run montar`. As partes são fatias, em ordem, de um único bloco de código com estado compartilhado (por isso uma parte sozinha não é um arquivo JavaScript completo). O `npm test` avisa se o `app.js` ficou desatualizado.
+**Para mudar o editor, edite os arquivos de `src/app/`**, não o `assets/js/editor/app.js`, e depois rode `npm run montar`. As partes são fatias, em ordem, de um único bloco de código com estado compartilhado (por isso uma parte sozinha não é um arquivo JavaScript completo). O `npm test` avisa se o `app.js` ficou desatualizado.
 
 Os testes também rodam sozinhos no GitHub a cada envio (`.github/workflows/testes.yml`) e na Vercel antes de publicar (`buildCommand` no `vercel.json`): se algum falhar, o deploy é cancelado e o site continua na versão anterior.
 
@@ -348,7 +348,7 @@ Para conferir, abra `https://thegrafo.vercel.app/api/auth-config`: deve mostrar 
 
 Também é possível publicar direto do computador com a Vercel CLI: `npx vercel deploy --prod`.
 
-**Segurança.** O `vercel.json` envia cabeçalhos de segurança em todas as páginas (o `servidor-local.js` envia os mesmos): um CSP que só aceita scripts do próprio site e do jsDelivr, bloqueia scripts embutidos no HTML e impede que o Grafo seja aberto dentro de outro site; além de `nosniff`, `Referrer-Policy`, `Permissions-Policy` e HSTS. Por isso não há `<script>` embutido nas páginas: o código fica em arquivos (`assets/js/sessao.js`, `assets/js/ver.js`). As bibliotecas do jsDelivr têm versão fixa e `integrity` (SRI): o navegador recusa o arquivo se o CDN entregar outro conteúdo. Ao atualizar uma delas, recalcule o hash (`sha384`). O teste `tests/seguranca.test.js` confere tudo isso.
+**Segurança.** O `vercel.json` envia cabeçalhos de segurança em todas as páginas (o `servidor-local.js` envia os mesmos): um CSP que só aceita scripts do próprio site e do jsDelivr, bloqueia scripts embutidos no HTML e impede que o Grafo seja aberto dentro de outro site; além de `nosniff`, `Referrer-Policy`, `Permissions-Policy` e HSTS. Por isso não há `<script>` embutido nas páginas: o código fica em arquivos (`assets/js/conta/sessao.js`, `assets/js/ver.js`). As bibliotecas do jsDelivr têm versão fixa e `integrity` (SRI): o navegador recusa o arquivo se o CDN entregar outro conteúdo. Ao atualizar uma delas, recalcule o hash (`sha384`). O teste `tests/unidade/seguranca.test.js` confere tudo isso.
 
 ### Problemas comuns
 
@@ -366,37 +366,49 @@ Também é possível publicar direto do computador com a Vercel CLI: `npx vercel
 
 ## Estrutura do projeto
 
-| Caminho | Conteúdo |
-|---|---|
-| `index.html` | Página única da aplicação (tela de login + editor) |
-| `assets/js/auth.js` | Login, cadastro, recuperação de senha e sincronização com o Supabase |
-| `assets/js/app.js` | Editor: estado, formulários, geração do DOT, roteamento dos cabos, exportação. **Gerado** por `npm run montar` |
-| `src/app/` | Partes do editor, uma por assunto (`00-catalogo.js` … `12-pagina-e-pdf.js`). É aqui que se edita |
-| `scripts/montar-app.js` | Junta as partes de `src/app/` no `assets/js/app.js` |
-| `assets/js/equipe.js` | Projetos de equipe: carrega, grava cada um na própria linha, recebe as alterações dos colegas em tempo real e controla a janela **Equipe** |
-| `assets/js/compartilhar.js` | Botão **Compartilhar**: cria, atualiza e desativa os links só para visualizar |
-| `assets/js/historico.js` | Janela **Histórico**: lista as versões guardadas pelo banco, restaura, recupera projeto excluído e guarda versão na hora |
-| `assets/js/planilha.js` | **Relatório de inventário**: monta o .xlsx no navegador (ZIP + XML, sem biblioteca externa) |
-| `ver.html` | Página aberta pelo link compartilhado (`/ver?t=...`): mostra o desenho, sem login |
-| `assets/js/esquema.js` | Validação dos dados (formulários, JSON, CSV e o que está salvo) |
-| `assets/js/icones-embutidos.js` | Ícones em base64 para a exportação — **gerado** por `npm run icones` |
-| `assets/css/styles.css` | Estilos, temas e animações |
-| `assets/images/` | Ícones dos equipamentos e logo |
-| `assets/vendor/` | Zod (validação), servido localmente |
-| `data/equipamentos.json` | Catálogo de tipos de equipamento |
-| `api/equipamentos.js` | Função da Vercel que serve o catálogo |
-| `api/auth-config.js` | Função da Vercel que entrega a URL e a chave pública do Supabase |
-| `supabase/schema.sql` | Tabelas de projetos, links compartilhados, equipes e histórico de versões; regras de acesso por usuário e exclusão da própria conta |
-| `supabase/migracoes/` | SQL para atualizar um banco criado com uma versão anterior do `schema.sql` |
-| `servidor-local.js` | Servidor Express para rodar localmente; lê o `.env` |
-| `sw.js`, `manifest.webmanifest` | Funcionar sem internet e instalar como aplicativo. Se mudar a forma de guardar, troque o nome `grafo-offline-v1` no `sw.js` (o antigo é apagado) |
-| `assets/js/erros.js` | Envia os erros do navegador para a tabela `grafo_erros` do Supabase |
-| `assets/js/etiquetas.js` | PDF de etiquetas com QR code e abertura do equipamento pelo endereço do QR code |
-| `.env.example` | Modelo do `.env` |
-| `scripts/gerar-icones-embutidos.js` | Gera o `icones-embutidos.js` |
-| `tests/` | Testes automáticos (`npm test`): validação, anotações, modelos e portas, planilha de inventário, rotas da API, conflito entre abas, exclusão de conta, projetos de equipe e montagem do `app.js`. `simulador.js` é o navegador simulado que os testes usam. `tests/navegador/` tem os testes num navegador de verdade (`npm run test:navegador`) |
-| `docs/` | Imagens deste README |
+```
+index.html, ver.html        páginas: o app (login + editor) e o link compartilhado (/ver?t=...)
+manifest.webmanifest, sw.js instalar como aplicativo e funcionar sem internet
+assets/
+  css/styles.css            estilos, temas e animações
+  images/
+    app/                    logo, favicon e ícones do aplicativo
+    equipamentos/           ícones dos equipamentos (quadro de símbolos)
+  js/
+    editor/                 app.js e icones-embutidos.js — GERADOS, não edite à mão
+    conta/                  auth.js (login, cadastro, sincronização), sessao.js (abre o editor rápido)
+    recursos/               compartilhar, equipe, historico, etiquetas, planilha (inventário),
+                            primeiros-passos, instalar
+    comum/                  esquema.js (validação), erros.js (registro de erros), interface.js (menus)
+    ver.js                  página do link compartilhado
+  vendor/                   Zod (validação), servido localmente
+src/app/                    partes do editor (00-catalogo.js … 12-pagina-e-pdf.js) — É AQUI QUE SE EDITA
+data/equipamentos.json      catálogo de tipos e modelos de equipamento
+api/                        funções da Vercel: catálogo e configuração pública do Supabase
+supabase/                   schema.sql e migracoes/ (SQL para bancos criados antes)
+scripts/                    montar-app.js, gerar-icones-embutidos.js, servidor-local.js
+tests/
+  unidade/                  testes rápidos (npm test) e simulador.js (navegador simulado)
+  navegador/                testes num navegador de verdade (npm run test:navegador)
+docs/imagens/               imagens deste README
+```
 
+| Arquivo | Conteúdo |
+|---|---|
+| `assets/js/editor/app.js` | Editor: estado, formulários, geração do DOT, roteamento dos cabos, exportação. **Gerado** por `npm run montar` a partir de `src/app/` |
+| `assets/js/editor/icones-embutidos.js` | Ícones em base64 para a exportação. **Gerado** por `npm run icones` a partir de `assets/images/equipamentos/` |
+| `assets/js/conta/auth.js` | Login, cadastro, recuperação de senha, uso sem login e sincronização com o Supabase |
+| `assets/js/recursos/equipe.js` | Projetos de equipe: grava cada um na própria linha, recebe as alterações dos colegas em tempo real e controla a janela **Equipe** |
+| `assets/js/recursos/compartilhar.js` | Botão **Compartilhar**: cria, atualiza e desativa os links só para visualizar |
+| `assets/js/recursos/historico.js` | Janela **Histórico**: versões guardadas pelo banco, restaurar e recuperar projeto excluído |
+| `assets/js/recursos/planilha.js` | **Relatório de inventário**: monta o .xlsx no navegador (ZIP + XML, sem biblioteca externa) |
+| `assets/js/recursos/etiquetas.js` | PDF de etiquetas com QR code e abertura do equipamento pelo endereço do QR code |
+| `assets/js/comum/esquema.js` | Validação dos dados (formulários, JSON, CSV e o que está salvo) |
+| `assets/js/comum/erros.js` | Envia os erros do navegador para a tabela `grafo_erros` do Supabase |
+| `scripts/servidor-local.js` | Servidor Express para rodar localmente; lê o `.env` da raiz |
+| `sw.js` | Se mudar a forma de guardar, troque o nome `grafo-offline-v2` (o antigo é apagado) |
+
+Projetos salvos com os caminhos antigos dos ícones (`assets/images/OLT.jpeg`, `assets/images/OLT.png`) continuam abrindo: o editor troca pelo caminho atual.
 > O catálogo fica em `data/`, fora de `api/`, porque na Vercel `api/equipamentos.js` e `api/equipamentos.json` colidiriam na mesma rota. O servidor local se chama `servidor-local.js` (e não `server.js`) para a Vercel não tratar o projeto como app Express.
 
 ## Tecnologias

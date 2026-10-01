@@ -7,7 +7,7 @@
 // Nada do Supabase passa por aqui: login e projetos continuam indo direto ao servidor.
 "use strict";
 
-var CACHE = "grafo-offline-v1";
+var CACHE = "grafo-offline-v2";
 var CDN = "https://cdn.jsdelivr.net/";
 var FONTES = /^https:\/\/fonts\.(googleapis|gstatic)\.com\//;
 var APIS_GUARDADAS = ["/api/auth-config", "/api/equipamentos"];

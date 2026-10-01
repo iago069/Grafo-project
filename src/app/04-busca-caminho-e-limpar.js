@@ -1,4 +1,4 @@
-  // ==== 04-busca-caminho-e-limpar.js: busca, rastrear caminho e limpar diagrama (parte de assets/js/app.js; npm run montar) ====
+  // ==== 04-busca-caminho-e-limpar.js: busca, rastrear caminho e limpar diagrama (parte de assets/js/editor/app.js; npm run montar) ====
   // Busca por nome, IP ou modelo: destaca quem bate, apaga o resto.
   // Reaplicada a cada renderização, porque o SVG é recriado.
   var elBusca = document.getElementById("buscaEquip");

@@ -2,7 +2,7 @@
 (function () {
   "use strict";
 
-  // Regras de validação/normalização (assets/js/esquema.js): as mesmas para
+  // Regras de validação/normalização (assets/js/comum/esquema.js): as mesmas para
   // formulários, importação de JSON/CSV e o que está salvo no navegador.
   var Esquema = window.GrafoEsquema;
   var LIMITES = Esquema.LIMITES;
@@ -32,7 +32,7 @@
     return String(valor || "").trim().replace(/\\/g, "/").replace(/^\.\//, "").toLowerCase();
   }
 
-  var ASSET_BASE = "./assets/images/";
+  var ASSET_BASE = "./assets/images/equipamentos/";
   var ASSET_FALLBACK_BASE = "./";
 
   function caminhoImagem(nomeArquivo) {
@@ -110,11 +110,14 @@
     return item.icone || item.arquivo || item.imagem || item.iconeArquivo || item.icon || "";
   }
 
-  // Os ícones antigos eram .jpeg com fundo branco; hoje são .png sem fundo.
+  // Caminhos antigos dos ícones, que projetos salvos ainda usam: os .jpeg com
+  // fundo branco viraram .png sem fundo, e os ícones saíram de assets/images/
+  // para assets/images/equipamentos/.
   function nomeAtualDaImagem(valor) {
-    return typeof valor === "string" && !/^data:/i.test(valor)
-      ? valor.replace(/(^|\/)(AR|CAMERA|NOBREAK|OLT|RETIFICADOR|SWITCH|VOLT)\.jpe?g$/i, function (_, antes, nome) { return antes + nome.toUpperCase() + ".png"; })
-      : valor;
+    if (typeof valor !== "string" || /^data:/i.test(valor)) return valor;
+    return valor
+      .replace(/(^|\/)(AR|CAMERA|NOBREAK|OLT|RETIFICADOR|SWITCH|VOLT)\.jpe?g$/i, function (_, antes, nome) { return antes + nome.toUpperCase() + ".png"; })
+      .replace(/(^|\/)assets\/images\/([^/]+\.(png|svg))$/i, "$1assets/images/equipamentos/$2");
   }
 
   function imagemDoIcone(valor) {
@@ -431,7 +434,7 @@
   renderizarTiposSugeridos();
   carregarTiposDeEquipamento();
 
-  // ==== 01-estado-e-vista.js: estado do editor, elementos da página, zoom/arraste da vista e viewBox (parte de assets/js/app.js; npm run montar) ====
+  // ==== 01-estado-e-vista.js: estado do editor, elementos da página, zoom/arraste da vista e viewBox (parte de assets/js/editor/app.js; npm run montar) ====
   var contadorId = 1;
   function novoId() { return "eq" + (contadorId++) + "_" + Math.random().toString(36).slice(2, 6); }
 
@@ -779,7 +782,7 @@
     return encontrado;
   }
 
-  // ==== 02-posicoes-e-portas.js: posições absolutas dos equipamentos e lado das portas (parte de assets/js/app.js; npm run montar) ====
+  // ==== 02-posicoes-e-portas.js: posições absolutas dos equipamentos e lado das portas (parte de assets/js/editor/app.js; npm run montar) ====
   // ---- Posições absolutas ---------------------------------------------------
   // eq.posicao guarda o centro do equipamento nas coordenadas do grupo g.graph,
   // que não dependem do layout do Graphviz. O transform de cada nó
@@ -882,7 +885,7 @@
     return pontos;
   }
 
-  // ==== 03-cabos-grupos-e-arraste.js: rota dos cabos, caixas dos grupos e arrastar equipamentos/cabos (parte de assets/js/app.js; npm run montar) ====
+  // ==== 03-cabos-grupos-e-arraste.js: rota dos cabos, caixas dos grupos e arrastar equipamentos/cabos (parte de assets/js/editor/app.js; npm run montar) ====
   // ---- Cabos ----------------------------------------------------------------
   var CONFIG_ROTEAMENTO_CABOS = {
     espaco: 12,     // distância mínima entre trilhas paralelas
@@ -1981,7 +1984,7 @@
     });
   }
 
-  // ==== 04-busca-caminho-e-limpar.js: busca, rastrear caminho e limpar diagrama (parte de assets/js/app.js; npm run montar) ====
+  // ==== 04-busca-caminho-e-limpar.js: busca, rastrear caminho e limpar diagrama (parte de assets/js/editor/app.js; npm run montar) ====
   // Busca por nome, IP ou modelo: destaca quem bate, apaga o resto.
   // Reaplicada a cada renderização, porque o SVG é recriado.
   var elBusca = document.getElementById("buscaEquip");
@@ -2258,7 +2261,7 @@
     if (event.key === "Escape") { elBusca.value = ""; busca.atual = -1; aplicarBusca(); }
   });
 
-  // ==== 05-zoom-modais-e-editor.js: zoom, toque, barra lateral, modais e editor de equipamento/cabo (parte de assets/js/app.js; npm run montar) ====
+  // ==== 05-zoom-modais-e-editor.js: zoom, toque, barra lateral, modais e editor de equipamento/cabo (parte de assets/js/editor/app.js; npm run montar) ====
   // Duplo clique (ou Enter com o cabo focado) abre o editor do cabo.
   function ativarEdicaoDosCabos() {
     var svg = elCanvas.querySelector("svg");
@@ -2668,7 +2671,7 @@
     if (event.key === "Escape") { event.preventDefault(); fecharEditor(); }
   });
 
-  // ==== 06-projetos-historico-e-backup.js: projetos, desfazer/refazer, exportar/importar e lembrete de backup (parte de assets/js/app.js; npm run montar) ====
+  // ==== 06-projetos-historico-e-backup.js: projetos, desfazer/refazer, exportar/importar e lembrete de backup (parte de assets/js/editor/app.js; npm run montar) ====
   function clonarDados(dados) { return JSON.parse(JSON.stringify(dados)); }
   function projetoVazio() { return { equipamentos: [], conexoes: [] }; }
 
@@ -3151,7 +3154,7 @@
     leitor.readAsText(arquivo, "UTF-8");
   });
 
-  // ==== 07-temas.js: temas de cores (parte de assets/js/app.js; npm run montar) ====
+  // ==== 07-temas.js: temas de cores (parte de assets/js/editor/app.js; npm run montar) ====
   var themePresets = { "theme-nord": { bg: "#2E3440", bgPanel: "rgba(32, 38, 48, 0.95)", bgPanel2: "#3B4252", line: "rgba(136, 192, 208, 0.22)", lineSoft: "rgba(129, 161, 193, 0.18)", text: "#ECEFF4", textDim: "#D8DEE9", accent: "#88C0D0", accentInk: "#2E3440", teal: "#8FBCBB", paper: "#F4F6FA", paperLine: "#D8DEE9", ink: "#2E3440", danger: "#FF7D6C", fieldBg: "rgba(236,239,244,0.05)", fieldText: "#ECEFF4", fieldBorder: "rgba(136,192,208,0.22)", ghostBg: "rgba(236,239,244,0.04)", ghostText: "#D8DEE9", ghostBorder: "rgba(136,192,208,0.22)", optionBg: "#F4F6FA", optionText: "#2E3440", optionActiveBg: "#88C0D0", optionActiveText: "#2E3440", shadowSoft: "0 10px 30px rgba(5, 12, 20, 0.25)", shadowCard: "0 12px 28px rgba(6, 15, 22, 0.22)" }, "theme-dark-modern": { bg: "#1F1F1F", bgPanel: "rgba(33, 33, 33, 0.94)", bgPanel2: "#2B2B2B", line: "rgba(124, 124, 124, 0.2)", lineSoft: "rgba(170, 170, 170, 0.14)", text: "#F3F3F3", textDim: "#C9C9C9", accent: "#5AA9FF", accentInk: "#0F172A", teal: "#7CE6D8", paper: "#F8F8F8", paperLine: "#E2E2E2", ink: "#1D1D1D", danger: "#FF7D6C", fieldBg: "rgba(255,255,255,0.03)", fieldText: "#F3F3F3", fieldBorder: "rgba(170,170,170,0.18)", ghostBg: "rgba(255,255,255,0.02)", ghostText: "#C9C9C9", ghostBorder: "rgba(170,170,170,0.18)", optionBg: "#F8F8F8", optionText: "#1D1D1D", optionActiveBg: "#5AA9FF", optionActiveText: "#0F172A", shadowSoft: "0 10px 30px rgba(0, 0, 0, 0.24)", shadowCard: "0 12px 28px rgba(0, 0, 0, 0.18)" }, "theme-dracula": { bg: "#282A36", bgPanel: "rgba(40, 42, 54, 0.95)", bgPanel2: "#1E2029", line: "rgba(255, 121, 198, 0.18)", lineSoft: "rgba(189, 147, 249, 0.18)", text: "#F8F8F2", textDim: "#BD93F9", accent: "#FF79C6", accentInk: "#282A36", teal: "#8BE9FD", paper: "#F7F7F7", paperLine: "#E5E5E5", ink: "#282A36", danger: "#FF5555", fieldBg: "rgba(248,248,242,0.04)", fieldText: "#F8F8F2", fieldBorder: "rgba(255,121,198,0.2)", ghostBg: "rgba(248,248,242,0.03)", ghostText: "#BD93F9", ghostBorder: "rgba(255,121,198,0.2)", optionBg: "#F7F7F7", optionText: "#282A36", optionActiveBg: "#FF79C6", optionActiveText: "#282A36", shadowSoft: "0 10px 30px rgba(0, 0, 0, 0.28)", shadowCard: "0 12px 28px rgba(0, 0, 0, 0.2)" }, "theme-dark-plus": { bg: "#0D1117", bgPanel: "rgba(13, 17, 23, 0.94)", bgPanel2: "#161B22", line: "rgba(110, 118, 129, 0.18)", lineSoft: "rgba(110, 118, 129, 0.14)", text: "#C9D1D9", textDim: "#8B949E", accent: "#58A6FF", accentInk: "#0D1117", teal: "#39D353", paper: "#F6F8FA", paperLine: "#D0D7DE", ink: "#0D1117", danger: "#F85149", fieldBg: "rgba(201,209,217,0.04)", fieldText: "#C9D1D9", fieldBorder: "rgba(110,118,129,0.22)", ghostBg: "rgba(201,209,217,0.03)", ghostText: "#8B949E", ghostBorder: "rgba(110,118,129,0.22)", optionBg: "#F6F8FA", optionText: "#0D1117", optionActiveBg: "#58A6FF", optionActiveText: "#0D1117", shadowSoft: "0 10px 30px rgba(0, 0, 0, 0.3)", shadowCard: "0 12px 28px rgba(0, 0, 0, 0.22)" }, "theme-catppuccin-mocha": { bg: "#1E1E2E", bgPanel: "rgba(30, 30, 46, 0.94)", bgPanel2: "#302D41", line: "rgba(203, 166, 247, 0.18)", lineSoft: "rgba(137, 180, 250, 0.16)", text: "#CDD6F4", textDim: "#BAC2DE", accent: "#F38BA8", accentInk: "#1E1E2E", teal: "#94E2D5", paper: "#F4F3F8", paperLine: "#D9E0EC", ink: "#1E1E2E", danger: "#F38BA8", fieldBg: "rgba(205,214,244,0.05)", fieldText: "#CDD6F4", fieldBorder: "rgba(203,166,247,0.22)", ghostBg: "rgba(205,214,244,0.04)", ghostText: "#BAC2DE", ghostBorder: "rgba(203,166,247,0.22)", optionBg: "#F4F3F8", optionText: "#1E1E2E", optionActiveBg: "#F38BA8", optionActiveText: "#1E1E2E", shadowSoft: "0 10px 30px rgba(0, 0, 0, 0.25)", shadowCard: "0 12px 28px rgba(0, 0, 0, 0.2)" }, "theme-github-light": { bg: "#F6F8FA", bgPanel: "rgba(255, 255, 255, 0.96)", bgPanel2: "#FFFFFF", line: "rgba(208, 215, 222, 0.65)", lineSoft: "rgba(208, 215, 222, 0.8)", text: "#24292F", textDim: "#57606A", accent: "#0969DA", accentInk: "#FFFFFF", teal: "#1A7F37", paper: "#FFFFFF", paperLine: "#D0D7DE", ink: "#24292F", danger: "#CF222E", fieldBg: "rgba(36,41,47,0.03)", fieldText: "#24292F", fieldBorder: "rgba(208,215,222,0.9)", ghostBg: "rgba(36,41,47,0.02)", ghostText: "#57606A", ghostBorder: "rgba(208,215,222,0.9)", optionBg: "#FFFFFF", optionText: "#24292F", optionActiveBg: "#0969DA", optionActiveText: "#FFFFFF", shadowSoft: "0 18px 36px rgba(16, 33, 46, 0.12)", shadowCard: "0 12px 24px rgba(16, 33, 46, 0.08)" }, "theme-solarized-light": { bg: "#FDF6E3", bgPanel: "rgba(255, 250, 240, 0.96)", bgPanel2: "#F5E6C5", line: "rgba(147, 161, 161, 0.4)", lineSoft: "rgba(147, 161, 161, 0.3)", text: "#002B36", textDim: "#586E75", accent: "#B58900", accentInk: "#002B36", teal: "#2AA198", paper: "#FFFDF7", paperLine: "#EEE8D5", ink: "#073642", danger: "#DC322F", fieldBg: "rgba(0,43,54,0.04)", fieldText: "#002B36", fieldBorder: "rgba(147,161,161,0.5)", ghostBg: "rgba(0,43,54,0.03)", ghostText: "#586E75", ghostBorder: "rgba(147,161,161,0.5)", optionBg: "#FFFDF7", optionText: "#073642", optionActiveBg: "#B58900", optionActiveText: "#FDF6E3", shadowSoft: "0 18px 36px rgba(7, 54, 66, 0.12)", shadowCard: "0 12px 24px rgba(7, 54, 66, 0.08)" }, "theme-light-plus": { bg: "#F3F3F3", bgPanel: "rgba(255, 255, 255, 0.96)", bgPanel2: "#F7F7F7", line: "rgba(201, 201, 201, 0.7)", lineSoft: "rgba(201, 201, 201, 0.55)", text: "#1F1F1F", textDim: "#5B5B5B", accent: "#2F80ED", accentInk: "#FFFFFF", teal: "#00A39D", paper: "#FFFFFF", paperLine: "#E5E5E5", ink: "#1F1F1F", danger: "#D64545", fieldBg: "rgba(31,31,31,0.04)", fieldText: "#1F1F1F", fieldBorder: "rgba(201,201,201,0.9)", ghostBg: "rgba(31,31,31,0.03)", ghostText: "#5B5B5B", ghostBorder: "rgba(201,201,201,0.9)", optionBg: "#FFFFFF", optionText: "#1F1F1F", optionActiveBg: "#2F80ED", optionActiveText: "#FFFFFF", shadowSoft: "0 18px 36px rgba(31, 31, 31, 0.08)", shadowCard: "0 12px 24px rgba(31, 31, 31, 0.06)" }, "theme-alto-contraste": { bg: "#000000", bgPanel: "rgba(0, 0, 0, 0.98)", bgPanel2: "#111111", line: "rgba(255, 255, 255, 0.46)", lineSoft: "rgba(255, 255, 255, 0.28)", text: "#FFFFFF", textDim: "#E6E6E6", accent: "#FFFF00", accentInk: "#000000", teal: "#00FFFF", paper: "#FFFFFF", paperLine: "#DADADA", ink: "#000000", danger: "#FF0000", fieldBg: "rgba(255,255,255,0.06)", fieldText: "#FFFFFF", fieldBorder: "rgba(255,255,255,0.5)", ghostBg: "rgba(255,255,255,0.04)", ghostText: "#E6E6E6", ghostBorder: "rgba(255,255,255,0.5)", optionBg: "#FFFFFF", optionText: "#000000", optionActiveBg: "#FFFF00", optionActiveText: "#000000", shadowSoft: "0 0 0 2px rgba(255,255,255,0.25)", shadowCard: "0 0 0 2px rgba(255,255,255,0.22)" } };
 
   var temaSelect = document.getElementById("temaSelect");
@@ -3245,7 +3248,7 @@
     aplicarTemaSelecionado(event.target.value);
   });
 
-  // ==== 08-listas-e-formularios.js: listas de equipamentos/cabos, formulários e painéis da barra lateral (parte de assets/js/app.js; npm run montar) ====
+  // ==== 08-listas-e-formularios.js: listas de equipamentos/cabos, formulários e painéis da barra lateral (parte de assets/js/editor/app.js; npm run montar) ====
   function escapar(s) { return String(s == null ? "" : s).replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\r?\n/g, "\\n"); }
   function escaparHtml(s) {
     return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -3804,7 +3807,7 @@
     abrirFormularioCabemamento();
   });
 
-  // ==== 09-csv-e-mensagens.js: importação CSV, JSON avançado, avisos e mensagens de erro (parte de assets/js/app.js; npm run montar) ====
+  // ==== 09-csv-e-mensagens.js: importação CSV, JSON avançado, avisos e mensagens de erro (parte de assets/js/editor/app.js; npm run montar) ====
   // ---- Importação CSV --------------------------------------------------------
   // Uma linha por cabo; os equipamentos são criados a partir dos nomes em
   // origem/destino. Linha sem destino cadastra só o equipamento. Cada campo
@@ -4076,7 +4079,7 @@
   }
 
   // ---- Relatório de inventário (.xlsx) ------------------------------------------
-  // Abas Resumo, Equipamentos, Cabos e Portas (assets/js/planilha.js). As portas
+  // Abas Resumo, Equipamentos, Cabos e Portas (assets/js/recursos/planilha.js). As portas
   // livres vêm do catálogo de modelos: equipamento sem modelo conhecido lista só
   // as portas que os cabos usam.
   function exportarInventario() {
@@ -4096,7 +4099,7 @@
   }
   document.getElementById("btnInventario").addEventListener("click", exportarInventario);
 
-  // ==== 10-diagrama-e-layout.js: geração do DOT, imagens no SVG, organizar/grade e renderização (parte de assets/js/app.js; npm run montar) ====
+  // ==== 10-diagrama-e-layout.js: geração do DOT, imagens no SVG, organizar/grade e renderização (parte de assets/js/editor/app.js; npm run montar) ====
   // Linhas de texto do cabeçalho do equipamento (acima do ícone), conforme o
   // modo do projeto. aplicarImagensNoSvg usa a quantidade para achar o ícone.
   //   Topologia: nome, modelo, tipo, IP.
@@ -4757,7 +4760,7 @@
     // embutida deles (exportação).
     arquivosParaGuardar: function () {
       var icones = CATALOGO_ICONES.map(function (item) { return item.arquivo; });
-      return [URL_JSPDF, URL_SVG2PDF, "./assets/js/icones-embutidos.js"].concat(icones);
+      return [URL_JSPDF, URL_SVG2PDF, "./assets/js/editor/icones-embutidos.js"].concat(icones);
     },
     resumoAtual: function () { return { equipamentos: estado.equipamentos.length, conexoes: estado.conexoes.length }; },
     carregarExemplo: function () { carregarExemplo(); },
@@ -4930,7 +4933,7 @@
     } catch (e) {}
   });
 
-  // ==== 11-exportacao-svg-png.js: imagens embutidas, moldura e exportação SVG/PNG (parte de assets/js/app.js; npm run montar) ====
+  // ==== 11-exportacao-svg-png.js: imagens embutidas, moldura e exportação SVG/PNG (parte de assets/js/editor/app.js; npm run montar) ====
   function blobParaDataUrl(blob) {
     return new Promise(function (resolver, rejeitar) {
       var leitor = new FileReader();
@@ -4940,7 +4943,7 @@
     });
   }
 
-  // Cópia dos ícones em base64 (assets/js/icones-embutidos.js), carregada só
+  // Cópia dos ícones em base64 (assets/js/editor/icones-embutidos.js), carregada só
   // na hora de exportar. Com o app aberto direto do disco (file://) o
   // navegador bloqueia o fetch das imagens e o canvas do PNG; sem esta cópia
   // os ícones sumiam da exportação.
@@ -4950,7 +4953,7 @@
     if (!promessaIconesEmbutidos) {
       promessaIconesEmbutidos = new Promise(function (resolver) {
         var script = document.createElement("script");
-        script.src = "./assets/js/icones-embutidos.js";
+        script.src = "./assets/js/editor/icones-embutidos.js";
         script.onload = function () { resolver(window.ICONES_EMBUTIDOS || {}); };
         script.onerror = function () { promessaIconesEmbutidos = null; resolver({}); };
         document.head.appendChild(script);
@@ -5386,7 +5389,7 @@
     }
   });
 
-  // ==== 12-pagina-e-pdf.js: página, prévia e PDF; inicialização do editor (parte de assets/js/app.js; npm run montar) ====
+  // ==== 12-pagina-e-pdf.js: página, prévia e PDF; inicialização do editor (parte de assets/js/editor/app.js; npm run montar) ====
   // ---- Página, área de desenho e PDF ------------------------------------------
   // Barra lateral direita. A configuração vale para a conta neste navegador.
   var FORMATOS_PAGINA = { A0: [841, 1189], A1: [594, 841], A2: [420, 594], A3: [297, 420], A4: [210, 297], A5: [148, 210] };

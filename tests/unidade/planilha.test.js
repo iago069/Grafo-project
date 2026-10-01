@@ -1,4 +1,4 @@
-// Relatório de inventário em .xlsx (assets/js/planilha.js).
+// Relatório de inventário em .xlsx (assets/js/recursos/planilha.js).
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("fs");
@@ -6,11 +6,11 @@ const path = require("path");
 const vm = require("vm");
 const zlib = require("zlib");
 
-const raiz = path.join(__dirname, "..");
+const raiz = path.join(__dirname, "..", "..");
 const ctx = { console, TextEncoder };
 ctx.window = ctx;
 vm.createContext(ctx);
-vm.runInContext(fs.readFileSync(path.join(raiz, "assets", "js", "planilha.js"), "utf8"), ctx);
+vm.runInContext(fs.readFileSync(path.join(raiz, "assets", "js", "recursos", "planilha.js"), "utf8"), ctx);
 const P = ctx.GrafoPlanilha;
 
 // Lê um ZIP gravado sem compressão (método 0): { nome: { texto, crcOk } }.

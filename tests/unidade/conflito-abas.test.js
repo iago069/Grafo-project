@@ -1,5 +1,5 @@
 // Duas abas (ou computadores) da mesma conta salvando no mesmo banco:
-// assets/js/auth.js roda num navegador simulado, com um Supabase falso.
+// assets/js/conta/auth.js roda num navegador simulado, com um Supabase falso.
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { novoBanco, abrirAba, esperar } = require("./simulador");

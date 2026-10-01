@@ -1,17 +1,17 @@
-// Anotações livres no diagrama: regras de validação (assets/js/esquema.js).
+// Anotações livres no diagrama: regras de validação (assets/js/comum/esquema.js).
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
-const assets = path.join(__dirname, "..", "assets");
+const assets = path.join(__dirname, "..", "..", "assets");
 const ctx = { console };
 ctx.window = ctx;
 vm.createContext(ctx);
 const zod = fs.readdirSync(path.join(assets, "vendor")).find(f => /^zod-.*\.min\.js$/.test(f));
 vm.runInContext(fs.readFileSync(path.join(assets, "vendor", zod), "utf8"), ctx);
-vm.runInContext(fs.readFileSync(path.join(assets, "js", "esquema.js"), "utf8"), ctx);
+vm.runInContext(fs.readFileSync(path.join(assets, "js", "comum", "esquema.js"), "utf8"), ctx);
 const E = ctx.GrafoEsquema;
 const simples = v => JSON.parse(JSON.stringify(v));
 const base = { equipamentos: [{ id: "a", nome: "SW" }], conexoes: [] };

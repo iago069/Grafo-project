@@ -1,4 +1,4 @@
-  // ==== 03-cabos-grupos-e-arraste.js: rota dos cabos, caixas dos grupos e arrastar equipamentos/cabos (parte de assets/js/app.js; npm run montar) ====
+  // ==== 03-cabos-grupos-e-arraste.js: rota dos cabos, caixas dos grupos e arrastar equipamentos/cabos (parte de assets/js/editor/app.js; npm run montar) ====
   // ---- Cabos ----------------------------------------------------------------
   var CONFIG_ROTEAMENTO_CABOS = {
     espaco: 12,     // distância mínima entre trilhas paralelas

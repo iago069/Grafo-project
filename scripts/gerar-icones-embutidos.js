@@ -1,4 +1,4 @@
-// Gera assets/js/icones-embutidos.js com os ícones de assets/images em base64.
+// Gera assets/js/editor/icones-embutidos.js com os ícones de assets/images/equipamentos em base64.
 //
 // A exportação PNG/SVG precisa das imagens como data: URL. Quando o app é
 // aberto direto do disco (file://), o navegador bloqueia a leitura dos
@@ -11,15 +11,14 @@ const fs = require('fs');
 const path = require('path');
 
 const raiz = path.join(__dirname, '..');
-const pastaImagens = path.join(raiz, 'assets', 'images');
-const destino = path.join(raiz, 'assets', 'js', 'icones-embutidos.js');
-const IGNORAR = new Set(['grafo.png', 'grafo-160.png', 'favicon-64.png', 'apple-touch-icon.png', 'icone-192.png', 'icone-512.png']); // logo/ícones do app, não de equipamento
+const pastaImagens = path.join(raiz, 'assets', 'images', 'equipamentos');
+const destino = path.join(raiz, 'assets', 'js', 'editor', 'icones-embutidos.js');
 const TIPOS = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml' };
 
 const icones = {};
 for (const arquivo of fs.readdirSync(pastaImagens).sort()) {
   const tipo = TIPOS[path.extname(arquivo).toLowerCase()];
-  if (!tipo || IGNORAR.has(arquivo)) continue;
+  if (!tipo) continue;
   const base64 = fs.readFileSync(path.join(pastaImagens, arquivo)).toString('base64');
   icones[arquivo] = 'data:' + tipo + ';base64,' + base64;
 }

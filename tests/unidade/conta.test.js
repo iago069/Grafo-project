@@ -1,4 +1,4 @@
-// "Minha conta" (LGPD): exclusão da conta pela própria pessoa (assets/js/auth.js).
+// "Minha conta" (LGPD): exclusão da conta pela própria pessoa (assets/js/conta/auth.js).
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { novoBanco, abrirAba, esperar, USUARIO } = require("./simulador");

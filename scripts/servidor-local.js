@@ -4,7 +4,7 @@ const path = require('path');
 
 // Lê o .env (se existir) para rodar localmente sem precisar definir variáveis
 // no terminal. Variáveis já definidas no ambiente têm prioridade.
-const envPath = path.join(__dirname, '.env');
+const envPath = path.join(__dirname, '..', '.env');
 if (fs.existsSync(envPath)) {
   fs.readFileSync(envPath, 'utf8').split(/\r?\n/).forEach((linha) => {
     const m = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/.exec(linha);
@@ -16,7 +16,7 @@ if (fs.existsSync(envPath)) {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const rootDir = __dirname;
+const rootDir = path.join(__dirname, '..');
 const apiPath = path.join(rootDir, 'data', 'equipamentos.json');
 
 app.disable('x-powered-by');

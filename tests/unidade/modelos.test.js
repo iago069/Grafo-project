@@ -1,17 +1,17 @@
-// Modelos de equipamento e portas (assets/js/esquema.js + data/equipamentos.json).
+// Modelos de equipamento e portas (assets/js/comum/esquema.js + data/equipamentos.json).
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
-const raiz = path.join(__dirname, "..");
+const raiz = path.join(__dirname, "..", "..");
 const ctx = { console };
 ctx.window = ctx;
 vm.createContext(ctx);
 const zod = fs.readdirSync(path.join(raiz, "assets", "vendor")).find(f => /^zod-.*\.min\.js$/.test(f));
 vm.runInContext(fs.readFileSync(path.join(raiz, "assets", "vendor", zod), "utf8"), ctx);
-vm.runInContext(fs.readFileSync(path.join(raiz, "assets", "js", "esquema.js"), "utf8"), ctx);
+vm.runInContext(fs.readFileSync(path.join(raiz, "assets", "js", "comum", "esquema.js"), "utf8"), ctx);
 const E = ctx.GrafoEsquema;
 const simples = v => JSON.parse(JSON.stringify(v));
 

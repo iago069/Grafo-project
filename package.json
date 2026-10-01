@@ -4,9 +4,9 @@
   "private": true,
   "description": "Grafo - gerador de diagramas com API de equipamentos",
   "scripts": {
-    "start": "node servidor-local.js",
-    "dev": "node --watch servidor-local.js",
-    "test": "node --test \"tests/*.test.js\"",
+    "start": "node scripts/servidor-local.js",
+    "dev": "node --watch scripts/servidor-local.js",
+    "test": "node --test \"tests/unidade/*.test.js\"",
     "test:navegador": "node --test --test-concurrency=1 \"tests/navegador/*.test.js\"",
     "icones": "node scripts/gerar-icones-embutidos.js",
     "montar": "node scripts/montar-app.js"

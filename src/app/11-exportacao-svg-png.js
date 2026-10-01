@@ -1,4 +1,4 @@
-  // ==== 11-exportacao-svg-png.js: imagens embutidas, moldura e exportação SVG/PNG (parte de assets/js/app.js; npm run montar) ====
+  // ==== 11-exportacao-svg-png.js: imagens embutidas, moldura e exportação SVG/PNG (parte de assets/js/editor/app.js; npm run montar) ====
   function blobParaDataUrl(blob) {
     return new Promise(function (resolver, rejeitar) {
       var leitor = new FileReader();
@@ -8,7 +8,7 @@
     });
   }
 
-  // Cópia dos ícones em base64 (assets/js/icones-embutidos.js), carregada só
+  // Cópia dos ícones em base64 (assets/js/editor/icones-embutidos.js), carregada só
   // na hora de exportar. Com o app aberto direto do disco (file://) o
   // navegador bloqueia o fetch das imagens e o canvas do PNG; sem esta cópia
   // os ícones sumiam da exportação.
@@ -18,7 +18,7 @@
     if (!promessaIconesEmbutidos) {
       promessaIconesEmbutidos = new Promise(function (resolver) {
         var script = document.createElement("script");
-        script.src = "./assets/js/icones-embutidos.js";
+        script.src = "./assets/js/editor/icones-embutidos.js";
         script.onload = function () { resolver(window.ICONES_EMBUTIDOS || {}); };
         script.onerror = function () { promessaIconesEmbutidos = null; resolver({}); };
         document.head.appendChild(script);

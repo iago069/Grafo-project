@@ -1,4 +1,4 @@
-// Projetos de equipe (assets/js/equipe.js + auth.js): duas contas no mesmo banco.
+// Projetos de equipe (assets/js/recursos/equipe.js + auth.js): duas contas no mesmo banco.
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { novoBanco, abrirAba, esperar, USUARIO } = require("./simulador");

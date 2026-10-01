@@ -2,7 +2,7 @@
 (function () {
   "use strict";
 
-  // Regras de validação/normalização (assets/js/esquema.js): as mesmas para
+  // Regras de validação/normalização (assets/js/comum/esquema.js): as mesmas para
   // formulários, importação de JSON/CSV e o que está salvo no navegador.
   var Esquema = window.GrafoEsquema;
   var LIMITES = Esquema.LIMITES;
@@ -32,7 +32,7 @@
     return String(valor || "").trim().replace(/\\/g, "/").replace(/^\.\//, "").toLowerCase();
   }
 
-  var ASSET_BASE = "./assets/images/";
+  var ASSET_BASE = "./assets/images/equipamentos/";
   var ASSET_FALLBACK_BASE = "./";
 
   function caminhoImagem(nomeArquivo) {
@@ -110,11 +110,14 @@
     return item.icone || item.arquivo || item.imagem || item.iconeArquivo || item.icon || "";
   }
 
-  // Os ícones antigos eram .jpeg com fundo branco; hoje são .png sem fundo.
+  // Caminhos antigos dos ícones, que projetos salvos ainda usam: os .jpeg com
+  // fundo branco viraram .png sem fundo, e os ícones saíram de assets/images/
+  // para assets/images/equipamentos/.
   function nomeAtualDaImagem(valor) {
-    return typeof valor === "string" && !/^data:/i.test(valor)
-      ? valor.replace(/(^|\/)(AR|CAMERA|NOBREAK|OLT|RETIFICADOR|SWITCH|VOLT)\.jpe?g$/i, function (_, antes, nome) { return antes + nome.toUpperCase() + ".png"; })
-      : valor;
+    if (typeof valor !== "string" || /^data:/i.test(valor)) return valor;
+    return valor
+      .replace(/(^|\/)(AR|CAMERA|NOBREAK|OLT|RETIFICADOR|SWITCH|VOLT)\.jpe?g$/i, function (_, antes, nome) { return antes + nome.toUpperCase() + ".png"; })
+      .replace(/(^|\/)assets\/images\/([^/]+\.(png|svg))$/i, "$1assets/images/equipamentos/$2");
   }
 
   function imagemDoIcone(valor) {

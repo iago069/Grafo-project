@@ -216,15 +216,38 @@ test("quadro de símbolos: todos os tipos na lista, com ícone, e o tipo certo p
 test("projeto salvo com os ícones antigos (.jpeg) abre com os novos, sem fundo (.png)", async () => {
   const projetos = { "Antigo": { equipamentos: [
     { id: "a", nome: "OLT-ANTIGA", tipo: "OLT", icone: "./assets/images/OLT.jpeg" },
-    { id: "b", nome: "NB-ANTIGO", tipo: "UPS", icone: "", imagem: "./assets/images/NOBREAK.jpeg" }
+    { id: "b", nome: "NB-ANTIGO", tipo: "UPS", icone: "", imagem: "./assets/images/NOBREAK.jpeg" },
+    // Caminho de antes da pasta assets/images/equipamentos/.
+    { id: "c", nome: "SW-ANTIGO", tipo: "Switch", icone: "./assets/images/SWITCH.png" }
   ], conexoes: [] } };
   const pagina = await abrirPagina(navegador, site, { projetos });
   await esperarDiagrama(pagina);
-  await pagina.waitForFunction(() => document.querySelectorAll("#canvas svg image").length >= 2, null, { timeout: 20000 });
+  await pagina.waitForFunction(() => document.querySelectorAll("#canvas svg image").length >= 3, null, { timeout: 20000 });
   const hrefs = await pagina.$$eval("#canvas svg image", l => l.map(i => i.getAttribute("href") || i.getAttribute("xlink:href")));
-  assert.ok(hrefs.some(h => /OLT\.png$/.test(h)), hrefs.join(", "));
-  assert.ok(hrefs.some(h => /NOBREAK\.png$/.test(h)), hrefs.join(", "));
+  assert.ok(hrefs.some(h => /\/equipamentos\/OLT\.png$/.test(h)), hrefs.join(", "));
+  assert.ok(hrefs.some(h => /\/equipamentos\/NOBREAK\.png$/.test(h)), hrefs.join(", "));
+  assert.ok(hrefs.some(h => /\/equipamentos\/SWITCH\.png$/.test(h)), hrefs.join(", "));
+  // As imagens existem de verdade.
+  const quebradas = await pagina.evaluate(async hs => (await Promise.all(hs.map(h => fetch(h).then(r => r.ok ? "" : h)))).filter(Boolean), hrefs);
+  assert.deepEqual(quebradas, []);
   assert.ok(!hrefs.some(h => /\.jpeg$/.test(h)), "nenhum .jpeg");
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});
+
+test("JSON e CSV fica na seção Projeto da barra lateral (e não mais em Editar em lista)", async () => {
+  const pagina = await abrirPagina(navegador, site);
+  await esperarDiagrama(pagina);
+  assert.equal(await pagina.$("#painelDados #jsonAvancado"), null, "saiu de Editar em lista");
+  assert.ok(await pagina.$('.nav-section:has(#btnExportarProjeto) [data-nav-panel="navJsonCsv"]'), "item na seção Projeto");
+  await pagina.click('[data-nav-panel="navJsonCsv"]');
+  await pagina.waitForSelector("#jsonAvancado", { state: "visible" });
+  const json = JSON.parse(await pagina.inputValue("#jsonAvancado"));
+  assert.ok(json.equipamentos.length > 0, "mostra o projeto atual");
+  json.equipamentos[0].nome = "NOME-PELO-JSON";
+  await pagina.fill("#jsonAvancado", JSON.stringify(json));
+  await pagina.click("#btnAplicarJson");
+  await pagina.waitForFunction(() => document.getElementById("canvas").textContent.includes("NOME-PELO-JSON"), null, { timeout: 20000 });
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });

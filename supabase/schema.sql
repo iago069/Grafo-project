@@ -344,7 +344,7 @@ revoke all on function public.grafo_versionar_pessoais(), public.grafo_versionar
 revoke all on function public.grafo_listar_versoes(text, uuid), public.grafo_salvar_versao_atual(text, uuid, jsonb, text) from public, anon;
 grant execute on function public.grafo_listar_versoes(text, uuid), public.grafo_salvar_versao_atual(text, uuid, jsonb, text) to authenticated;
 
--- Registro de erros do navegador (assets/js/erros.js). Só quem mantém o Grafo
+-- Registro de erros do navegador (assets/js/comum/erros.js). Só quem mantém o Grafo
 -- vê, pelo painel do Supabase (tabela grafo_erros ou visão grafo_erros_resumo).
 -- O site só grava pela função, limitada a 30 erros por pessoa por hora; o que
 -- tiver mais de 90 dias é apagado. Sai junto com a conta (on delete cascade).

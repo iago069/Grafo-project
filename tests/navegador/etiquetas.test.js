@@ -1,4 +1,4 @@
-// Etiquetas com QR code (assets/js/etiquetas.js) num navegador de verdade.
+// Etiquetas com QR code (assets/js/recursos/etiquetas.js) num navegador de verdade.
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { iniciarServidor, abrirNavegador, abrirPagina, esperarDiagrama } = require("./ajuda");

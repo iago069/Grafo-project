@@ -1,4 +1,4 @@
-  // ==== 09-csv-e-mensagens.js: importação CSV, JSON avançado, avisos e mensagens de erro (parte de assets/js/app.js; npm run montar) ====
+  // ==== 09-csv-e-mensagens.js: importação CSV, JSON avançado, avisos e mensagens de erro (parte de assets/js/editor/app.js; npm run montar) ====
   // ---- Importação CSV --------------------------------------------------------
   // Uma linha por cabo; os equipamentos são criados a partir dos nomes em
   // origem/destino. Linha sem destino cadastra só o equipamento. Cada campo
@@ -270,7 +270,7 @@
   }
 
   // ---- Relatório de inventário (.xlsx) ------------------------------------------
-  // Abas Resumo, Equipamentos, Cabos e Portas (assets/js/planilha.js). As portas
+  // Abas Resumo, Equipamentos, Cabos e Portas (assets/js/recursos/planilha.js). As portas
   // livres vêm do catálogo de modelos: equipamento sem modelo conhecido lista só
   // as portas que os cabos usam.
   function exportarInventario() {

@@ -1,5 +1,5 @@
 -- Para projetos Supabase criados antes de 30/09/2026: execute uma vez no SQL Editor.
--- Registro de erros do navegador (assets/js/erros.js): quando algo quebra no site
+-- Registro de erros do navegador (assets/js/comum/erros.js): quando algo quebra no site
 -- de alguém logado, a mensagem fica aqui para quem mantém o Grafo ver no painel
 -- do Supabase (Table Editor > grafo_erros, ou a visão grafo_erros_resumo).
 -- Ninguém lê nem grava a tabela pelo site: só pela função abaixo, que limita a

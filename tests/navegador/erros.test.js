@@ -1,4 +1,4 @@
-// Registro de erros (assets/js/erros.js) num navegador de verdade.
+// Registro de erros (assets/js/comum/erros.js) num navegador de verdade.
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { iniciarServidor, abrirNavegador, abrirPagina, esperarDiagrama } = require("./ajuda");

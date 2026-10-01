@@ -1,12 +1,12 @@
-// Navegador simulado para testar assets/js/auth.js (e equipe.js) sem o Supabase
+// Navegador simulado para testar assets/js/conta/auth.js (e equipe.js) sem o Supabase
 // de verdade. Usado pelos arquivos *.test.js desta pasta (este não é um teste).
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
-const ler = nome => fs.readFileSync(path.join(__dirname, "..", "assets", "js", nome), "utf8");
-const codigoAuth = ler("auth.js");
-const codigoEquipe = ler("equipe.js");
+const ler = nome => fs.readFileSync(path.join(__dirname, "..", "..", "assets", "js", nome), "utf8");
+const codigoAuth = ler("conta/auth.js");
+const codigoEquipe = ler("recursos/equipe.js");
 const USUARIO = { id: "u1", email: "teste@exemplo.com" };
 const esperar = ms => new Promise(r => setTimeout(r, ms));
 const copia = v => JSON.parse(JSON.stringify(v));

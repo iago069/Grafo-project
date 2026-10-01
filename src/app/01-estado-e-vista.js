@@ -1,4 +1,4 @@
-  // ==== 01-estado-e-vista.js: estado do editor, elementos da página, zoom/arraste da vista e viewBox (parte de assets/js/app.js; npm run montar) ====
+  // ==== 01-estado-e-vista.js: estado do editor, elementos da página, zoom/arraste da vista e viewBox (parte de assets/js/editor/app.js; npm run montar) ====
   var contadorId = 1;
   function novoId() { return "eq" + (contadorId++) + "_" + Math.random().toString(36).slice(2, 6); }
 

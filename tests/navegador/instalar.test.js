@@ -1,4 +1,4 @@
-// Botão "Instalar app" (assets/js/instalar.js) num navegador de verdade.
+// Botão "Instalar app" (assets/js/recursos/instalar.js) num navegador de verdade.
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { iniciarServidor, abrirNavegador, abrirPagina, esperarDiagrama } = require("./ajuda");

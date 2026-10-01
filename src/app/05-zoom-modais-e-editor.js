@@ -1,4 +1,4 @@
-  // ==== 05-zoom-modais-e-editor.js: zoom, toque, barra lateral, modais e editor de equipamento/cabo (parte de assets/js/app.js; npm run montar) ====
+  // ==== 05-zoom-modais-e-editor.js: zoom, toque, barra lateral, modais e editor de equipamento/cabo (parte de assets/js/editor/app.js; npm run montar) ====
   // Duplo clique (ou Enter com o cabo focado) abre o editor do cabo.
   function ativarEdicaoDosCabos() {
     var svg = elCanvas.querySelector("svg");

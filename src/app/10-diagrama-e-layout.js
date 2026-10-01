@@ -1,4 +1,4 @@
-  // ==== 10-diagrama-e-layout.js: geração do DOT, imagens no SVG, organizar/grade e renderização (parte de assets/js/app.js; npm run montar) ====
+  // ==== 10-diagrama-e-layout.js: geração do DOT, imagens no SVG, organizar/grade e renderização (parte de assets/js/editor/app.js; npm run montar) ====
   // Linhas de texto do cabeçalho do equipamento (acima do ícone), conforme o
   // modo do projeto. aplicarImagensNoSvg usa a quantidade para achar o ícone.
   //   Topologia: nome, modelo, tipo, IP.
@@ -659,7 +659,7 @@
     // embutida deles (exportação).
     arquivosParaGuardar: function () {
       var icones = CATALOGO_ICONES.map(function (item) { return item.arquivo; });
-      return [URL_JSPDF, URL_SVG2PDF, "./assets/js/icones-embutidos.js"].concat(icones);
+      return [URL_JSPDF, URL_SVG2PDF, "./assets/js/editor/icones-embutidos.js"].concat(icones);
     },
     resumoAtual: function () { return { equipamentos: estado.equipamentos.length, conexoes: estado.conexoes.length }; },
     carregarExemplo: function () { carregarExemplo(); },

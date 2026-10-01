@@ -1,4 +1,4 @@
-// Uso sem login, cadastro com nome e o nome da conta (assets/js/auth.js).
+// Uso sem login, cadastro com nome e o nome da conta (assets/js/conta/auth.js).
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { novoBanco, abrirAba } = require("./simulador");

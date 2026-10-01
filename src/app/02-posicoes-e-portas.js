@@ -1,4 +1,4 @@
-  // ==== 02-posicoes-e-portas.js: posições absolutas dos equipamentos e lado das portas (parte de assets/js/app.js; npm run montar) ====
+  // ==== 02-posicoes-e-portas.js: posições absolutas dos equipamentos e lado das portas (parte de assets/js/editor/app.js; npm run montar) ====
   // ---- Posições absolutas ---------------------------------------------------
   // eq.posicao guarda o centro do equipamento nas coordenadas do grupo g.graph,
   // que não dependem do layout do Graphviz. O transform de cada nó

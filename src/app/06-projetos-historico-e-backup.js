@@ -1,4 +1,4 @@
-  // ==== 06-projetos-historico-e-backup.js: projetos, desfazer/refazer, exportar/importar e lembrete de backup (parte de assets/js/app.js; npm run montar) ====
+  // ==== 06-projetos-historico-e-backup.js: projetos, desfazer/refazer, exportar/importar e lembrete de backup (parte de assets/js/editor/app.js; npm run montar) ====
   function clonarDados(dados) { return JSON.parse(JSON.stringify(dados)); }
   function projetoVazio() { return { equipamentos: [], conexoes: [] }; }
 
