@@ -18,6 +18,7 @@
 <meta property="og:description" content="Desenhe a topologia da sua rede direto no navegador. Exporte em PDF, PNG ou SVG e compartilhe por link.">
 <script src="./assets/js/sessao.js"></script>
 <script src="./assets/js/erros.js"></script>
+<script src="./assets/js/instalar.js"></script>
 <link rel="icon" type="image/png" href="./assets/images/favicon-64.png">
 <link rel="apple-touch-icon" href="./assets/images/apple-touch-icon.png">
 <link rel="manifest" href="./manifest.webmanifest">
@@ -36,6 +37,7 @@
     <header class="landing-topo">
       <span class="landing-marca"><img src="./assets/images/grafo-160.png" alt="" width="34" height="34"><span>Grafo</span></span>
       <div class="landing-topo-acoes">
+        <button type="button" class="landing-link" data-instalar hidden>Instalar app</button>
         <button type="button" class="landing-link" data-ir-para="login">Entrar</button>
         <button type="button" class="landing-botao" data-ir-para="signup">Criar conta</button>
       </div>
@@ -52,7 +54,7 @@
             <button type="button" class="landing-botao-secundario grande" data-ir-para="login">Já tenho conta</button>
           </div>
           <ul class="landing-destaques">
-            <li>Nada para instalar</li>
+            <li>Funciona direto no navegador</li>
             <li>Salvo na nuvem automaticamente</li>
             <li>PDF pronto para imprimir</li>
           </ul>
@@ -79,6 +81,27 @@
       </section>
     </main>
   </div>
+
+  <!-- Instalar no iPhone/iPad, onde o Safari não tem botão de instalar (instalar.js).
+       Fora do .app-shell para abrir também na página inicial. -->
+  <div id="instalarModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="instalarTitulo">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="instalarTitulo">Instalar o Grafo</h3>
+        <button type="button" class="ghost small" data-instalar-fechar aria-label="Fechar">×</button>
+      </div>
+      <ol class="instalar-passos">
+        <li>No Safari, toque em <strong>Compartilhar</strong> (o quadrado com a seta para cima).</li>
+        <li>Escolha <strong>Adicionar à Tela de Início</strong>.</li>
+        <li>Toque em <strong>Adicionar</strong>. O Grafo aparece na tela como um aplicativo.</li>
+      </ol>
+      <p>Depois de entrar na conta uma vez com internet, ele abre mesmo sem conexão.</p>
+      <div class="modal-actions">
+        <button type="button" class="primary" data-instalar-fechar>Entendi</button>
+      </div>
+    </div>
+  </div>
+
   <div class="app-shell">
     <div id="appModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
       <div class="modal-box">
@@ -467,6 +490,7 @@
             <div id="accountTools" class="account-tools" hidden>
               <span id="accountEmail"></span>
               <button type="button" class="ghost small" id="accountOpen" aria-haspopup="dialog">Conta</button>
+              <button type="button" class="ghost small" data-instalar hidden title="Instalar o Grafo como aplicativo neste aparelho">Instalar app</button>
               <button type="button" class="ghost small" id="accountLogout">Sair</button>
               <span id="cloudStatus" role="status" aria-live="polite"></span>
               <button type="button" class="ghost small" id="cloudRetry" hidden>Tentar novamente</button>
