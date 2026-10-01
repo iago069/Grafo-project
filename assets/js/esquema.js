@@ -23,6 +23,7 @@
     tipo: 40,
     grupo: 40,
     ip: 45,
+    rede: 40,
     icone: 300,
     imagem: 400000, // ~300 KB de imagem em base64 (as enviadas são reduzidas para 256 px)
     porta: 30,
@@ -106,6 +107,13 @@
     { "em manutencao": "manutencao", online: "ativo", "on-line": "ativo", "off-line": "offline" },
     "ativo", 'use "ativo", "manutencao" ou "offline"');
 
+  // Modo do projeto: o que o diagrama destaca. Sem modo = topologia.
+  var MODOS = ["topologia", "redes", "monitoramento"];
+  var ESQUEMA_MODO = enumTolerante(MODOS,
+    { rede: "redes", "diagrama de redes": "redes", "diagrama de rede": "redes", "topologia de rede": "topologia",
+      monitorar: "monitoramento", "diagrama de monitoramento": "monitoramento" },
+    "topologia", 'use "topologia", "redes" ou "monitoramento"');
+
   var ESQUEMA_ESTILO = enumTolerante(["solid", "dashed", "dotted"],
     { continuo: "solid", solido: "solid", tracejado: "dashed", pontilhado: "dotted" },
     "solid", 'use "solid" (contínuo), "dashed" (tracejado) ou "dotted" (pontilhado)');
@@ -156,6 +164,8 @@
     tipo: { rotulo: "Tipo", esquema: texto(LIMITES.tipo), reparar: truncar(LIMITES.tipo) },
     modelo: { rotulo: "Modelo", esquema: texto(LIMITES.modelo), reparar: truncar(LIMITES.modelo) },
     ip: { rotulo: "IP", esquema: ESQUEMA_IP, reparar: constante("") },
+    // VLAN / sub-rede (texto livre), destacada no modo "Diagrama de redes".
+    rede: { rotulo: "VLAN / rede", esquema: texto(LIMITES.rede), opcional: true },
     grupo: { rotulo: "Grupo", esquema: texto(LIMITES.grupo), reparar: truncar(LIMITES.grupo) },
     status: { rotulo: "Status", esquema: ESQUEMA_STATUS, reparar: constante("ativo") },
     icone: { rotulo: "Ícone", esquema: ESQUEMA_ICONE, reparar: constante("") },
@@ -317,6 +327,13 @@
     });
 
     var dados = { equipamentos: equipamentos, conexoes: conexoes };
+    // Modo é opcional (projetos antigos não têm). Desconhecido não recusa o
+    // arquivo: vira Topologia, com aviso.
+    if (entrada.modo != null) {
+      var modoProjeto = ESQUEMA_MODO.safeParse(entrada.modo);
+      dados.modo = modoProjeto.success ? modoProjeto.data : "topologia";
+      if (!modoProjeto.success) relatorio.ajustes.push({ onde: "modo", mensagem: modoProjeto.error.issues[0].message + " — usado Topologia" });
+    }
     // Anotações são opcionais: projetos sem elas continuam só com as duas listas.
     if (entrada.anotacoes != null) {
       var anotacoesBrutas = entrada.anotacoes;
@@ -494,6 +511,7 @@
     ipValido: ipValido,
     normalizarCapacidade: normalizarCapacidade,
     validarProjeto: validarProjeto,
+    MODOS: MODOS,
     validarEquipamento: validarEquipamento,
     validarConexao: validarConexao,
     validarNomeProjeto: validarNomeProjeto,

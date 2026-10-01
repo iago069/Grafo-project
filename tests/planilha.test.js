@@ -38,7 +38,7 @@ const MODELOS = {
 };
 const DADOS = {
   equipamentos: [
-    { id: "sw", nome: "SW-CORE", tipo: "Switch", modelo: "CRS326", ip: "10.0.0.2", grupo: "POP", status: "ativo" },
+    { id: "sw", nome: "SW-CORE", tipo: "Switch", modelo: "CRS326", ip: "10.0.0.2", rede: "VLAN 10", grupo: "POP", status: "ativo" },
     { id: "olt", nome: "OLT <1> & cia", tipo: "OLT", ip: "10.0.0.10", grupo: "POP", status: "manutencao" },
     { id: "x", nome: "=SOMA(1;2)", tipo: "", status: "offline" }
   ],
@@ -53,8 +53,9 @@ test("o inventário tem as 4 abas com os dados do projeto", () => {
   const abas = JSON.parse(JSON.stringify(inventario()));
   assert.deepEqual(abas.map(a => a.nome), ["Resumo", "Equipamentos", "Cabos", "Portas"]);
   const eq = abas[1].linhas;
-  assert.deepEqual(eq[0], ["SW-CORE", "Switch", "CRS326", "MikroTik", "10.0.0.2", "POP", "Ativo", 2, 4, 3]); // 4 portas, sfp em uso
-  assert.equal(eq[1][6], "Manutenção");
+  assert.deepEqual(eq[0], ["SW-CORE", "Switch", "CRS326", "MikroTik", "10.0.0.2", "VLAN 10", "POP", "Ativo", 2, 4, 3]); // 4 portas, sfp em uso
+  assert.equal(eq[1][5], "", "sem VLAN: célula vazia");
+  assert.equal(eq[1][7], "Manutenção");
   assert.deepEqual(abas[2].linhas[1], ["SW-CORE", "ether9", "=SOMA(1;2)", "eth0", "Cobre", "1G", "Tracejado"]);
   const portasSw = abas[3].linhas.filter(l => l[0] === "SW-CORE");
   assert.deepEqual(portasSw.map(l => l[1] + ":" + l[2]), ["ether1:Livre", "ether2:Livre", "ether3:Livre", "sfp-sfpplus1:Em uso", "ether9:Em uso (fora do modelo)"]);
@@ -82,9 +83,9 @@ test("textos especiais são escapados e nunca viram fórmula; números ficam num
   assert.ok(eq.includes("OLT &lt;1&gt; &amp; cia"), "< > & escapados");
   assert.ok(eq.includes('t="inlineStr"><is><t xml:space="preserve">=SOMA(1;2)</t>'), "=SOMA como texto");
   assert.ok(!/<f>/.test(eq), "sem fórmulas");
-  assert.match(eq, /<c r="H2"><v>2<\/v><\/c>/, "Cabos como número");
+  assert.match(eq, /<c r="I2"><v>2<\/v><\/c>/, "Cabos como número");
   assert.match(eq, /<pane ySplit="1"/, "título congelado");
-  assert.match(eq, /<autoFilter ref="A1:J4"\/>/, "filtro nas colunas");
+  assert.match(eq, /<autoFilter ref="A1:K4"\/>/, "filtro nas colunas");
 });
 
 test("nomes de aba inválidos ou repetidos são corrigidos", () => {

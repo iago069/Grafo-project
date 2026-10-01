@@ -300,6 +300,7 @@
     campoEditor("editEquipIp").setCustomValidity("");
     campoEditor("editEquipMensagem").textContent = "";
     campoEditor("editEquipGrupo").value = eq.grupo || "";
+    campoEditor("editEquipRede").value = eq.rede || "";
     selecionarOpcao(campoEditor("editEquipStatus"), eq.status || "ativo");
     campoEditor("editEquipIcone").innerHTML = '<option value="">— sem ícone —</option>' + CATALOGO_ICONES.map(function (icone) {
       return '<option value="' + escaparHtml(icone.valor) + '">' + escaparHtml(icone.nome) + '</option>';
@@ -346,6 +347,7 @@
       nome: campoEditor("editEquipNome").value, tipo: tipo, icone: icone,
       modelo: campoEditor("editEquipModelo").value, ip: campoEditor("editEquipIp").value,
       grupo: campoEditor("editEquipGrupo").value, status: campoEditor("editEquipStatus").value,
+      rede: campoEditor("editEquipRede").value,
       corFonte: campoEditor("editEquipCor").value
     }));
     if (!validacao.ok) { campoEditor("editEquipMensagem").textContent = textoDosErros(validacao.erros); return; }

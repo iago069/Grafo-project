@@ -1228,3 +1228,40 @@ button.requer-login:hover { opacity: 1; }
 /* Nome em "Minha conta". */
 .conta-nome-form { display: flex; align-items: flex-end; gap: 8px; }
 .conta-nome-form .modal-field { flex: 1; margin-bottom: 0; }
+/* ---------- Tipo de diagrama (modo do projeto) ----------
+   Seletor no lugar do título "Topologia"; cartões no "Novo projeto"; campos que
+   só aparecem num modo (ex.: VLAN / rede, no Diagrama de redes). */
+.seletor-modo {
+  appearance: none; -webkit-appearance: none; border: 1px solid transparent; border-radius: 10px; background-color: transparent;
+  color: var(--text); font: 600 1rem var(--sans); padding: 4px 26px 4px 8px; margin-left: -8px; cursor: pointer; field-sizing: content;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23889' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 7px center; background-size: 14px;
+  transition: background-color var(--dur-rapida) ease, border-color var(--dur-rapida) ease;
+}
+.seletor-modo:hover, .seletor-modo:focus-visible { background-color: color-mix(in srgb, var(--text) 7%, transparent); border-color: var(--line-soft); }
+.seletor-modo option { color: #14212B; background: #fff; }
+body:not([data-modo-diagrama="redes"]) .so-modo-redes { display: none; }
+
+.modal-novo-projeto { width: min(520px, 100%); }
+.modos-diagrama { border: 0; margin: 4px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.modos-diagrama legend { padding: 0; margin-bottom: 6px; color: var(--text-dim); font: 0.66rem var(--mono); }
+.modo-opcao {
+  position: relative; display: grid !important; justify-items: center; text-align: center; gap: 4px !important; padding: 12px 8px 10px;
+  border: 1px solid var(--line-soft); border-radius: 12px; cursor: pointer; color: var(--text) !important; font-family: var(--sans) !important;
+  transition: border-color var(--dur-rapida) ease, background-color var(--dur-rapida) ease, transform var(--dur-rapida) var(--ease-out);
+}
+.modo-opcao:hover { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+.modo-opcao:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); box-shadow: inset 0 0 0 1px var(--accent); }
+.modo-opcao:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.modo-opcao input { position: absolute; opacity: 0; pointer-events: none; }
+.modo-opcao strong { font-size: 0.82rem; }
+.modo-opcao small { font-size: 0.68rem; color: var(--text-dim); line-height: 1.3; }
+.modo-icone { width: 30px; height: 30px; background: var(--accent); -webkit-mask: var(--icone-modo) center / contain no-repeat; mask: var(--icone-modo) center / contain no-repeat; }
+.modo-icone[data-modo="topologia"] { --icone-modo: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='2' width='6' height='5' rx='1'/%3E%3Crect x='2' y='17' width='6' height='5' rx='1'/%3E%3Crect x='16' y='17' width='6' height='5' rx='1'/%3E%3Cpath d='M12 7v5M5 17v-3h14v3'/%3E%3C/svg%3E"); }
+.modo-icone[data-modo="redes"] { --icone-modo: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20'/%3E%3C/svg%3E"); }
+.modo-icone[data-modo="monitoramento"] { --icone-modo: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 12h-4l-3 9L9 3l-3 9H2'/%3E%3C/svg%3E"); }
+@media (max-width: 560px) { .modos-diagrama { grid-template-columns: 1fr; } .modo-opcao { justify-items: start; text-align: left; grid-template-columns: auto 1fr; } .modo-opcao .modo-icone { grid-row: span 2; } }
+
+/* Legenda do Monitoramento: contagem por status, com bolinhas. */
+.legenda.legenda-status i { border-radius: 50%; }
+.legenda.legenda-status span { font-weight: 600; }

@@ -130,6 +130,37 @@
       </div>
     </div>
 
+    <!-- Novo projeto: nome e tipo de diagrama (06-projetos). -->
+    <div id="novoProjetoModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="novoProjetoTitulo">
+      <div class="modal-box modal-novo-projeto">
+        <div class="modal-header">
+          <h3 id="novoProjetoTitulo">Novo projeto</h3>
+          <button type="button" class="ghost small" data-novo-projeto-fechar aria-label="Fechar">×</button>
+        </div>
+        <form class="nav-form" id="novoProjetoForm">
+          <label class="full">Nome do projeto<input id="novoProjetoNome" data-limite="nomeProjeto" required autocomplete="off" placeholder="Ex.: POP Centro"></label>
+          <fieldset class="modos-diagrama">
+            <legend>Tipo de diagrama</legend>
+            <label class="modo-opcao"><input type="radio" name="modoProjeto" value="topologia" checked>
+              <span class="modo-icone" data-modo="topologia" aria-hidden="true"></span>
+              <strong>Topologia</strong><small>Equipamentos, portas e cabos.</small></label>
+            <label class="modo-opcao"><input type="radio" name="modoProjeto" value="redes">
+              <span class="modo-icone" data-modo="redes" aria-hidden="true"></span>
+              <strong>Diagrama de redes</strong><small>IP, VLAN e sub-rede em destaque.</small></label>
+            <label class="modo-opcao"><input type="radio" name="modoProjeto" value="monitoramento">
+              <span class="modo-icone" data-modo="monitoramento" aria-hidden="true"></span>
+              <strong>Monitoramento</strong><small>Status de cada equipamento, com cores.</small></label>
+          </fieldset>
+          <p class="nav-dica">Dá para trocar depois, na barra do diagrama.</p>
+          <div class="nav-panel-message" id="novoProjetoMensagem" aria-live="polite"></div>
+          <div class="nav-form-actions">
+            <button class="ghost" type="button" data-novo-projeto-fechar>Cancelar</button>
+            <button class="primary" type="submit">Criar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Editor aberto com duplo clique (ou Enter) num equipamento ou cabo do diagrama. -->
     <div id="editorModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="editorTitulo">
       <div class="modal-box">
@@ -147,6 +178,7 @@
             <label>IP<input id="editEquipIp" data-limite="ip" inputmode="decimal" autocomplete="off" spellcheck="false"></label>
             <label>Grupo / rack / sala<input id="editEquipGrupo" data-limite="grupo" list="grupos-sugeridos" autocomplete="off"></label>
           </div>
+          <label class="full so-modo-redes">VLAN / rede<input id="editEquipRede" data-limite="rede" placeholder="Ex.: VLAN 10 · 10.0.0.0/24" autocomplete="off" spellcheck="false"></label>
           <div class="nav-form-grid">
             <label>Status<select id="editEquipStatus"><option value="ativo">Ativo</option><option value="manutencao">Manutenção</option><option value="offline">Offline</option></select></label>
             <label>Ícone<select id="editEquipIcone"></select></label>
@@ -449,6 +481,7 @@
                 <label>Tipo<input id="navEquipTipo" data-limite="tipo" list="tipos-sugeridos" placeholder="Tipo"></label>
               </div>
               <label class="full">IP<input id="navEquipIp" data-limite="ip" placeholder="Ex.: 10.0.0.1" inputmode="decimal" autocomplete="off" spellcheck="false"></label>
+              <label class="full so-modo-redes">VLAN / rede<input id="navEquipRede" data-limite="rede" placeholder="Ex.: VLAN 10 · 10.0.0.0/24" autocomplete="off" spellcheck="false"></label>
               <div class="nav-form-grid">
                 <label>Grupo / rack / sala<input id="navEquipGrupo" data-limite="grupo" list="grupos-sugeridos" placeholder="Ex.: Rack 01" autocomplete="off"></label>
                 <label>Status<select id="navEquipStatus"><option value="ativo">Ativo</option><option value="manutencao">Manutenção</option><option value="offline">Offline</option></select></label>
@@ -716,7 +749,12 @@
         <section class="panel render-panel" aria-label="Diagrama gerado">
           <h2>Diagrama</h2>
           <div class="render-toolbar">
-            <div class="panel-title panel-title-inline">Topologia
+            <div class="panel-title panel-title-inline">
+              <select id="modoDiagrama" class="seletor-modo" aria-label="Tipo de diagrama" title="Tipo de diagrama: muda o que os equipamentos mostram, a legenda e o título da exportação">
+                <option value="topologia">Topologia</option>
+                <option value="redes">Diagrama de redes</option>
+                <option value="monitoramento">Monitoramento</option>
+              </select>
               <span class="contador-equip" id="contadorEquip" role="status" aria-live="polite" title="Equipamentos no diagrama (máximo 35)">0/35</span>
             </div>
             <div class="busca-diagrama">

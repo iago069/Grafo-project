@@ -130,11 +130,14 @@
   }
 
   // Nome do arquivo exportado: projeto + data, ex.: "projeto-principal-2026-09-26.png".
+  // Diagrama de redes e de monitoramento levam o tipo no nome ("…-monitoramento-…").
   function nomeArquivoExportacao(extensao) {
     var base = normalizarTextoEquipamento(projetoAtual).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "diagrama";
+    var modo = modoAtual();
+    var sufixo = modo === "redes" ? "-rede" : modo === "monitoramento" ? "-monitoramento" : "";
     var hoje = new Date();
     var data = hoje.getFullYear() + "-" + String(hoje.getMonth() + 1).padStart(2, "0") + "-" + String(hoje.getDate()).padStart(2, "0");
-    return base + "-" + data + "." + extensao;
+    return base + sufixo + "-" + data + "." + extensao;
   }
 
   // Emoldura a cópia exportada: cabeçalho (projeto, data, totais), rodapé com a
@@ -167,20 +170,18 @@
     var moldura = el("g", { "class": "moldura-exportacao", "font-family": fonte, fill: tinta });
     moldura.appendChild(el("text", { x: x0 + MARGEM, y: y0 + 28, "font-size": 16, "font-weight": "bold" }, projetoAtual));
     moldura.appendChild(el("text", { x: x0 + MARGEM, y: y0 + 45, "font-size": 9.5, "fill-opacity": 0.65 },
-      "Topologia de rede · " + data + " · " + plural(estado.equipamentos.length, "equipamento", "equipamentos") + " · " + plural(estado.conexoes.length, "cabo", "cabos")));
+      MODOS_DIAGRAMA[modoAtual()].exportacao + " · " + data + " · " + plural(estado.equipamentos.length, "equipamento", "equipamentos") + " · " + plural(estado.conexoes.length, "cabo", "cabos")));
     moldura.appendChild(el("line", { x1: x0 + MARGEM, x2: x0 + larguraNova - MARGEM, y1: y0 + TOPO - 8, y2: y0 + TOPO - 8, stroke: tinta, "stroke-opacity": 0.15 }));
     moldura.appendChild(el("line", { x1: x0 + MARGEM, x2: x0 + larguraNova - MARGEM, y1: baseRodape + 12, y2: baseRodape + 12, stroke: tinta, "stroke-opacity": 0.15 }));
 
-    // Legenda: um quadrado colorido por tipo, como a legenda da tela.
-    var tipos = [];
-    estado.equipamentos.forEach(function (eq) { var t = eq.tipo || "outro"; if (tipos.indexOf(t) < 0) tipos.push(t); });
+    // Legenda: a mesma da tela (por tipo; no Monitoramento, por status).
     var xLegenda = x0 + MARGEM;
     var yLegenda = baseRodape + 30;
-    tipos.forEach(function (tipo) {
-      moldura.appendChild(el("rect", { x: xLegenda, y: yLegenda - 7.5, width: 8, height: 8, rx: 1.5, fill: corPorTipo(tipo) }));
-      var rotulo = el("text", { x: xLegenda + 12, y: yLegenda, "font-size": 9, "fill-opacity": 0.8 }, tipo);
+    itensDaLegenda(estado).forEach(function (item) {
+      moldura.appendChild(el("rect", { x: xLegenda, y: yLegenda - 7.5, width: 8, height: 8, rx: item.status ? 4 : 1.5, fill: item.cor }));
+      var rotulo = el("text", { x: xLegenda + 12, y: yLegenda, "font-size": 9, "fill-opacity": 0.8 }, item.texto);
       moldura.appendChild(rotulo);
-      xLegenda += 12 + tipo.length * 5.2 + 16;
+      xLegenda += 12 + item.texto.length * 5.2 + 16;
     });
     moldura.appendChild(el("text", { x: x0 + larguraNova - MARGEM, y: yLegenda, "font-size": 8.5, "fill-opacity": 0.5, "text-anchor": "end" }, "Gerado com Grafo"));
 

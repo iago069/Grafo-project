@@ -1,5 +1,41 @@
   // ==== 10-diagrama-e-layout.js: geração do DOT, imagens no SVG, organizar/grade e renderização (parte de assets/js/app.js; npm run montar) ====
+  // Linhas de texto do cabeçalho do equipamento (acima do ícone), conforme o
+  // modo do projeto. aplicarImagensNoSvg usa a quantidade para achar o ícone.
+  //   Topologia: nome, modelo, tipo, IP.
+  //   Redes: nome, IP (em destaque), VLAN / rede, tipo.
+  //   Monitoramento: nome, tipo, IP.
+  function linhasDoCabecalho(eq, modo) {
+    function fonte(tamanho, cor, texto, opcoes) {
+      opcoes = opcoes || {};
+      var conteudo = escaparHtmlDot(texto);
+      if (opcoes.negrito) conteudo = "<B>" + conteudo + "</B>";
+      return '<FONT FACE="' + (opcoes.mono ? "Courier" : "Helvetica") + '" POINT-SIZE="' + tamanho + '" COLOR="' + cor + '">' + conteudo + '</FONT>';
+    }
+    var nome = fonte(11, "#14212B", eq.nome || eq.id, { negrito: true });
+    var modelo = String(eq.modelo || "").trim();
+    var tipo = fonte(8, "#405363", eq.tipo || "Equipamento");
+    var ip = String(eq.ip || "").trim();
+    var rede = String(eq.rede || "").trim();
+    if (modo === "redes") {
+      return [nome]
+        .concat(ip ? [fonte(10, "#1F5F8B", ip, { mono: true, negrito: true })] : [])
+        .concat(rede ? [fonte(9, "#6A3FB5", rede, { negrito: true })] : [])
+        .concat([tipo]);
+    }
+    if (modo === "monitoramento") {
+      return [nome, tipo].concat(ip ? [fonte(8, "#1F5F8B", ip, { mono: true })] : []);
+    }
+    return [nome]
+      .concat(modelo ? [fonte(9, "#14212B", modelo)] : [])
+      .concat([tipo])
+      .concat(ip ? [fonte(8, "#1F5F8B", ip, { mono: true })] : []);
+  }
+
+  // Monitoramento: fundo claro na cor do status, atrás do "● ATIVO".
+  var FUNDO_STATUS = { ativo: "#E3F5EA", manutencao: "#FBEFD5", offline: "#FBE1E4" };
+
   function gerarDot(dados, direcao) {
+    var modo = modoAtual();
     var contagemPortas = {};
     dados.equipamentos.forEach(function (eq) { contagemPortas[eq.id] = 0; });
     dados.conexoes.forEach(function (c) {
@@ -94,10 +130,6 @@
       var status = eq.status || "ativo";
       var corStatus = corPorStatus(status);
       var corFonte = corValida(eq.corFonte, "#16323D");
-      var nome = escaparHtmlDot(eq.nome || eq.id);
-      var modelo = escaparHtmlDot(eq.modelo || "");
-      var tipo = escaparHtmlDot(eq.tipo || "Equipamento");
-      var ip = escaparHtmlDot(String(eq.ip || "").trim());
       var portas = portasPorEquipamento[eq.id];
       var layoutLateral = calcularLayoutPortas(Math.max(portas.esquerda.length, portas.direita.length));
       var layoutTopo = calcularLayoutPortas(Math.max(portas.cima.length, portas.baixo.length));
@@ -124,15 +156,13 @@
       // cima, (cabeçalho), esquerda, direita, (status), baixo.
       var rotulo = '<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="0">' +
         linhaPortas(portas.cima) +
-        '<TR><TD COLSPAN="3" CELLPADDING="3" ALIGN="CENTER"><FONT FACE="Helvetica" POINT-SIZE="11" COLOR="#14212B"><B>' + nome + '</B></FONT><BR/>' +
-        (modelo ? '<FONT FACE="Helvetica" POINT-SIZE="9" COLOR="#14212B">' + modelo + '</FONT><BR/>' : "") +
-        '<FONT FACE="Helvetica" POINT-SIZE="8" COLOR="#405363">' + tipo + '</FONT>' +
-        (ip ? '<BR/><FONT FACE="Courier" POINT-SIZE="8" COLOR="#1F5F8B">' + ip + '</FONT>' : "") +
-        '</TD></TR>' +
+        '<TR><TD COLSPAN="3" CELLPADDING="3" ALIGN="CENTER">' + linhasDoCabecalho(eq, modo).join("<BR/>") + '</TD></TR>' +
         '<TR>' + colunaPortas(portas.esquerda) +
         '<TD BORDER="0" CELLPADDING="0" WIDTH="120" HEIGHT="' + alturaMeio + '"></TD>' +
         colunaPortas(portas.direita) + '</TR>' +
-        '<TR><TD COLSPAN="3" CELLPADDING="4" ALIGN="CENTER"><FONT FACE="Helvetica" POINT-SIZE="9" COLOR="' + corStatus + '"><B>' + escaparHtmlDot(marcadorStatus(status) + " " + rotuloStatus(status)) + '</B></FONT></TD></TR>' +
+        (modo === "monitoramento"
+          ? '<TR><TD COLSPAN="3" CELLPADDING="2" ALIGN="CENTER"><TABLE BORDER="0" CELLPADDING="4" STYLE="rounded" BGCOLOR="' + (FUNDO_STATUS[status] || FUNDO_STATUS.ativo) + '"><TR><TD><FONT FACE="Helvetica" POINT-SIZE="11" COLOR="' + corStatus + '"><B>' + escaparHtmlDot(marcadorStatus(status) + " " + rotuloStatus(status)) + '</B></FONT></TD></TR></TABLE></TD></TR>'
+          : '<TR><TD COLSPAN="3" CELLPADDING="4" ALIGN="CENTER"><FONT FACE="Helvetica" POINT-SIZE="9" COLOR="' + corStatus + '"><B>' + escaparHtmlDot(marcadorStatus(status) + " " + rotuloStatus(status)) + '</B></FONT></TD></TR>') +
         linhaPortas(portas.baixo) +
         '</TABLE>>';
       return '    "' + escapar(eq.id) + '" [id="equip_' + dados.equipamentos.indexOf(eq) + '", label=' + rotulo + ', shape=plain, color="transparent", fontcolor="' + corFonte + '"];';
@@ -157,7 +187,13 @@
     dados.conexoes.forEach(function (c, indice) {
       var corConexao = corValida(c.cor, "#5A7284");
       var grossura = Math.min(10, Number(c.grossura) || 2);
-      var estilo = c.estilo && c.estilo !== "solid" ? ', style="' + escapar(c.estilo) + '"' : "";
+      var estiloCabo = c.estilo;
+      // Monitoramento: cabo que chega a um equipamento offline fica vermelho e tracejado.
+      if (modo === "monitoramento" && [c.de, c.para].some(function (id) { return equipamentoPorId[id] && equipamentoPorId[id].status === "offline"; })) {
+        corConexao = corPorStatus("offline");
+        estiloCabo = "dashed";
+      }
+      var estilo = estiloCabo && estiloCabo !== "solid" ? ', style="' + escapar(estiloCabo) + '"' : "";
       var portaDirecao = direcao === "TB" ? ', tailport="n", headport="s"' : ', tailport="e", headport="w"';
       var portas = ', tailport="out_' + indice + '", headport="in_' + indice + '"';
       if (direcao === "TB") portas = portaDirecao;
@@ -171,14 +207,30 @@
     return linhas.join("\n");
   }
 
+  // Itens da legenda (tela e exportação): por tipo; no Monitoramento, a
+  // contagem por status ("3 ativos", "1 offline").
+  function itensDaLegenda(dados) {
+    if (modoAtual() === "monitoramento") {
+      var contagem = { ativo: 0, manutencao: 0, offline: 0 };
+      dados.equipamentos.forEach(function (eq) { contagem[contagem[eq.status] != null ? eq.status : "ativo"]++; });
+      return [["ativo", "ativo", "ativos"], ["manutencao", "em manutenção", "em manutenção"], ["offline", "offline", "offline"]].map(function (s) {
+        var n = contagem[s[0]];
+        return { cor: corPorStatus(s[0]), texto: n + " " + (n === 1 ? s[1] : s[2]), status: s[0] };
+      });
+    }
+    var tipos = [];
+    dados.equipamentos.forEach(function (eq) { var t = eq.tipo || "outro"; if (tipos.indexOf(t) < 0) tipos.push(t); });
+    return tipos.map(function (t) { return { cor: corPorTipo(t), texto: t }; });
+  }
+
   function atualizarLegenda(dados) {
-    var tipos = {};
-    dados.equipamentos.forEach(function (eq) { tipos[eq.tipo || "outro"] = true; });
     elLegenda.innerHTML = "";
-    Object.keys(tipos).forEach(function (tipo) {
+    elLegenda.classList.toggle("legenda-status", modoAtual() === "monitoramento");
+    itensDaLegenda(dados).forEach(function (item) {
       var span = document.createElement("span");
-      var i = document.createElement("i"); i.style.background = corPorTipo(tipo);
-      span.appendChild(i); span.appendChild(document.createTextNode(tipo));
+      if (item.status) span.setAttribute("data-status", item.status);
+      var i = document.createElement("i"); i.style.background = item.cor;
+      span.appendChild(i); span.appendChild(document.createTextNode(item.texto));
       elLegenda.appendChild(span);
     });
   }
@@ -222,7 +274,7 @@
         // Comparar pelo texto falhava quando uma porta tinha o mesmo nome do modelo.
         var textos = Array.prototype.slice.call(g.querySelectorAll("text"));
         var infoPortas = portasRenderizadas[id] || { nCima: 0, nBaixo: 0 };
-        var linhasCabecalho = 2 + (normalizarTexto(equipamento.modelo || "") ? 1 : 0) + (normalizarTexto(equipamento.ip || "") ? 1 : 0);
+        var linhasCabecalho = linhasDoCabecalho(equipamento, modoAtual()).length;
         var cabecalho = textos.slice(infoPortas.nCima, infoPortas.nCima + linhasCabecalho);
         var statusTexto = textos[textos.length - 1 - infoPortas.nBaixo] || null;
 

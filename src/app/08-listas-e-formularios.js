@@ -52,6 +52,9 @@
               '<input type="text" data-field="ip" data-limite="ip" value="' + escaparHtml(eq.ip || "") + '" placeholder="IP (ex.: 10.0.0.1)" aria-label="IP" aria-invalid="' + (ipValido(eq.ip) ? "false" : "true") + '" inputmode="decimal" autocomplete="off" spellcheck="false">' +
               '<input type="text" data-field="grupo" data-limite="grupo" value="' + escaparHtml(eq.grupo || "") + '" placeholder="Grupo / rack / sala" aria-label="Grupo / rack / sala">' +
             '</div>' +
+            '<div class="equip-row2">' +
+              '<input type="text" data-field="rede" data-limite="rede" value="' + escaparHtml(eq.rede || "") + '" placeholder="VLAN / rede (ex.: VLAN 10 · 10.0.0.0/24)" aria-label="VLAN / rede" autocomplete="off" spellcheck="false">' +
+            '</div>' +
             '<div class="equip-row3">' +
               '<label class="color-picker">Fonte <input type="color" data-field="corFonte" value="' + corValida(eq.corFonte, "#16323D") + '"></label>' +
               '<label class="color-picker">Status <select data-field="status"><option value="ativo"' + ((eq.status || "ativo") === "ativo" ? " selected" : "") + '>Ativo</option><option value="manutencao"' + (eq.status === "manutencao" ? " selected" : "") + '>Manutenção</option><option value="offline"' + (eq.status === "offline" ? " selected" : "") + '>Offline</option></select></label>' +
@@ -163,7 +166,7 @@
     }, 120);
   }
 
-  function renderTudo() { renderEquipamentos(); renderConexoes(); renderSidebarPanels(); atualizarJsonAvancado(); atualizarContadorEquipamentos(); salvarLocal(); solicitarAtualizacaoDiagrama(); }
+  function renderTudo() { aplicarModoNaTela(); renderEquipamentos(); renderConexoes(); renderSidebarPanels(); atualizarJsonAvancado(); atualizarContadorEquipamentos(); salvarLocal(); solicitarAtualizacaoDiagrama(); }
 
   // Contador "n/35" na barra do diagrama. Perto do limite fica em alerta; no
   // limite, os botões de adicionar são bloqueados e aparece um aviso (uma vez).
@@ -401,7 +404,8 @@
     var iconeInformado = document.getElementById("navEquipIcone").value.trim();
     var validacao = Esquema.validarEquipamento({ id: novoId(), nome: document.getElementById("navEquipNome").value, modelo: document.getElementById("navEquipModelo").value,
       ip: document.getElementById("navEquipIp").value, tipo: tipo, icone: iconeInformado || iconePorTipo(tipo), imagem: "", corFonte: "#16323D",
-      grupo: document.getElementById("navEquipGrupo").value, status: document.getElementById("navEquipStatus").value });
+      grupo: document.getElementById("navEquipGrupo").value, status: document.getElementById("navEquipStatus").value,
+      rede: document.getElementById("navEquipRede").value });
     if (!validacao.ok) { mensagem.textContent = textoDosErros(validacao.erros); return; }
     var novoEquipamento = validacao.dados;
     function concluir(imagem) {

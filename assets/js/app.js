@@ -141,18 +141,29 @@
     return "";
   }
 
+  // Tipos que aparecem primeiro na lista, conforme o modo do projeto; os demais vêm depois.
+  var TIPOS_PRIMEIRO_POR_MODO = {
+    redes: ["RB / CCR", "Switch", "OLT", "ONU", "Switch POE", "Conversor de fibra", "Conversor de mídia", "DIO", "DWDM", "MUX", "DEMUX",
+      "Servidor", "Concentrador Hotspot", "AP WiFi", "UniFi", "Dream Machine", "Nuvem VPLS"],
+    monitoramento: ["Câmera", "NVR", "Decoder", "Controle de acesso", "Switch POE", "POE", "Nobreak", "Bateria", "Retificador",
+      "Volt POP Protect", "Ar condicionado", "Aligera", "Servidor"]
+  };
+
   function renderizarTiposSugeridos() {
     var datalist = document.getElementById("tipos-sugeridos");
     if (!datalist) return;
+    var primeiro = TIPOS_PRIMEIRO_POR_MODO[modoAtual()] || [];
+    var posicao = function (item) { var i = primeiro.indexOf(extrairNomeTipo(item)); return i < 0 ? primeiro.length : i; };
     var itens = [];
     catalogoTiposEquipamentos.forEach(function (tipo) {
       var nome = extrairNomeTipo(tipo);
       if (!nome || tipo.apelido) return;
       var chave = normalizarTextoEquipamento(nome);
       if (!itens.some(function (entry) { return normalizarTextoEquipamento(entry.nome) === chave; })) {
-        itens.push({ nome: nome, icone: extrairIconeTipo(tipo) });
+        itens.push({ nome: nome, icone: extrairIconeTipo(tipo), ordem: posicao(tipo) * 1000 + itens.length });
       }
     });
+    itens.sort(function (a, b) { return a.ordem - b.ordem; });
     datalist.innerHTML = itens.map(function (tipo) {
       return '<option value="' + escaparHtml(tipo.nome) + '"></option>';
     }).join("");
@@ -2549,6 +2560,7 @@
     campoEditor("editEquipIp").setCustomValidity("");
     campoEditor("editEquipMensagem").textContent = "";
     campoEditor("editEquipGrupo").value = eq.grupo || "";
+    campoEditor("editEquipRede").value = eq.rede || "";
     selecionarOpcao(campoEditor("editEquipStatus"), eq.status || "ativo");
     campoEditor("editEquipIcone").innerHTML = '<option value="">— sem ícone —</option>' + CATALOGO_ICONES.map(function (icone) {
       return '<option value="' + escaparHtml(icone.valor) + '">' + escaparHtml(icone.nome) + '</option>';
@@ -2595,6 +2607,7 @@
       nome: campoEditor("editEquipNome").value, tipo: tipo, icone: icone,
       modelo: campoEditor("editEquipModelo").value, ip: campoEditor("editEquipIp").value,
       grupo: campoEditor("editEquipGrupo").value, status: campoEditor("editEquipStatus").value,
+      rede: campoEditor("editEquipRede").value,
       corFonte: campoEditor("editEquipCor").value
     }));
     if (!validacao.ok) { campoEditor("editEquipMensagem").textContent = textoDosErros(validacao.erros); return; }
@@ -2781,6 +2794,7 @@
   function carregarExemplo() {
     var exemplo = clonarDados(PROJETO_EXEMPLO);
     exemplo.equipamentos.forEach(function (eq) { eq.icone = iconePorTipo(eq.tipo); eq.imagem = ""; eq.status = eq.status || "ativo"; });
+    if (estado.modo) exemplo.modo = estado.modo;
     estado = exemplo;
     ajustarNaProximaRenderizacao = true;
     renderTudo();
@@ -2846,33 +2860,75 @@
   }
 
   elProjetoSelect.addEventListener("change", function (event) { abrirProjeto(event.target.value); });
+
+  // ---- Modo do projeto (tipo de diagrama) ------------------------------------
+  // Muda o que os equipamentos mostram (gerarDot), a legenda, a ordem dos tipos
+  // sugeridos e o título da exportação. Projeto sem "modo" é Topologia.
+  var MODOS_DIAGRAMA = {
+    topologia: { titulo: "Topologia", exportacao: "Topologia de rede" },
+    redes: { titulo: "Diagrama de redes", exportacao: "Diagrama de redes" },
+    monitoramento: { titulo: "Monitoramento", exportacao: "Diagrama de monitoramento" }
+  };
+  var elModoDiagrama = document.getElementById("modoDiagrama");
+  var modoNaTela = null;
+  // (Seguro mesmo antes de estas variáveis existirem: 00-catalogo chama cedo.)
+  function modoAtual() { return MODOS_DIAGRAMA && estado && MODOS_DIAGRAMA[estado.modo] ? estado.modo : "topologia"; }
+  // Chamado a cada renderTudo: só refaz o que depende do modo quando ele muda.
+  function aplicarModoNaTela() {
+    var modo = modoAtual();
+    if (modo === modoNaTela) return;
+    modoNaTela = modo;
+    if (elModoDiagrama) elModoDiagrama.value = modo;
+    document.body.setAttribute("data-modo-diagrama", modo);
+    renderizarTiposSugeridos();
+  }
+  if (elModoDiagrama) elModoDiagrama.addEventListener("change", function () {
+    var modo = elModoDiagrama.value;
+    if (!MODOS_DIAGRAMA[modo] || modo === modoAtual()) return;
+    estado.modo = modo;
+    renderTudo();
+    avisar("Tipo de diagrama: " + MODOS_DIAGRAMA[modo].titulo + ".");
+  });
+
+  var novoProjeto = {
+    backdrop: document.getElementById("novoProjetoModal"),
+    form: document.getElementById("novoProjetoForm"),
+    nome: document.getElementById("novoProjetoNome"),
+    mensagem: document.getElementById("novoProjetoMensagem")
+  };
+  function fecharNovoProjeto() { esconderModal(novoProjeto.backdrop); }
   document.getElementById("btnNovoProjeto").addEventListener("click", function () {
-    abrirModal({
-      title: "Novo projeto",
-      message: "Digite o nome do novo projeto:",
-      confirmText: "Criar",
-      cancelText: "Cancelar",
-      kind: "prompt"
-    }).then(function (valor) {
-      if (!valor || !String(valor).trim()) return;
-      var validacaoNome = Esquema.validarNomeProjeto(valor);
-      if (!validacaoNome.ok) { mostrarErro("Nome de projeto inválido: " + validacaoNome.mensagem + "."); return; }
-      var nome = validacaoNome.dados;
-      if (projetos[nome]) { mostrarErro("Escolha um nome novo para o projeto."); return; }
-      if (Object.keys(projetos).length >= LIMITES.projetos) { mostrarErro("Limite de " + LIMITES.projetos + " projetos atingido. Exclua algum antes."); return; }
-      salvarLocal();
-      projetos[nome] = { equipamentos: [], conexoes: [] };
-      projetoAtual = nome;
-      estado = clonarDados(projetos[nome]);
-      historicoDesfazer = [];
-      historicoRefazer = [];
-      ultimoEstadoHistorico = JSON.stringify(estado);
-      salvarLocal();
-      renderProjetos();
-      renderTudo();
-      limparDiagrama();
-      avisar("Projeto \"" + nome + "\" criado.");
-    });
+    novoProjeto.form.reset();
+    novoProjeto.mensagem.textContent = "";
+    mostrarModalBackdrop(novoProjeto.backdrop);
+    novoProjeto.nome.focus();
+  });
+  novoProjeto.backdrop.querySelectorAll("[data-novo-projeto-fechar]").forEach(function (b) { b.addEventListener("click", fecharNovoProjeto); });
+  novoProjeto.backdrop.addEventListener("click", function (event) { if (event.target === novoProjeto.backdrop) fecharNovoProjeto(); });
+  novoProjeto.backdrop.addEventListener("keydown", function (event) { if (event.key === "Escape") { event.preventDefault(); fecharNovoProjeto(); } });
+  novoProjeto.form.addEventListener("submit", function (event) {
+    event.preventDefault();
+    var validacaoNome = Esquema.validarNomeProjeto(novoProjeto.nome.value);
+    var erro = !validacaoNome.ok ? "Nome inválido: " + validacaoNome.mensagem + "."
+      : projetos[validacaoNome.dados] ? "Já existe um projeto com esse nome."
+      : Object.keys(projetos).length >= LIMITES.projetos ? "Limite de " + LIMITES.projetos + " projetos atingido. Exclua algum antes." : "";
+    if (erro) { novoProjeto.mensagem.textContent = erro; novoProjeto.nome.focus(); return; }
+    var nome = validacaoNome.dados;
+    var escolhido = novoProjeto.form.querySelector('input[name="modoProjeto"]:checked');
+    var modo = escolhido && MODOS_DIAGRAMA[escolhido.value] ? escolhido.value : "topologia";
+    fecharNovoProjeto();
+    salvarLocal();
+    projetos[nome] = { equipamentos: [], conexoes: [], modo: modo };
+    projetoAtual = nome;
+    estado = clonarDados(projetos[nome]);
+    historicoDesfazer = [];
+    historicoRefazer = [];
+    ultimoEstadoHistorico = JSON.stringify(estado);
+    salvarLocal();
+    renderProjetos();
+    renderTudo();
+    limparDiagrama();
+    avisar("Projeto \"" + nome + "\" criado (" + MODOS_DIAGRAMA[modo].titulo + ").");
   });
 
   // Tira um projeto da lista (excluído, ou a pessoa saiu da equipe) e abre outro.
@@ -2924,7 +2980,9 @@
 
   function exportarProjeto() {
     salvarLocal();
-    var conteudo = JSON.stringify({ projeto: projetoAtual, equipamentos: estado.equipamentos, conexoes: estado.conexoes }, null, 2);
+    var arquivoJson = { projeto: projetoAtual, equipamentos: estado.equipamentos, conexoes: estado.conexoes };
+    if (estado.modo) arquivoJson.modo = estado.modo;
+    var conteudo = JSON.stringify(arquivoJson, null, 2);
     var arquivo = projetoAtual.replace(/[^\wÀ-ſ-]+/g, "-").replace(/^-+|-+$/g, "") || "projeto";
     baixarBlob(new Blob([conteudo], { type: "application/json" }), "grafo-" + arquivo + ".json");
     registrarBackup(projetoAtual);
@@ -3241,6 +3299,9 @@
               '<input type="text" data-field="ip" data-limite="ip" value="' + escaparHtml(eq.ip || "") + '" placeholder="IP (ex.: 10.0.0.1)" aria-label="IP" aria-invalid="' + (ipValido(eq.ip) ? "false" : "true") + '" inputmode="decimal" autocomplete="off" spellcheck="false">' +
               '<input type="text" data-field="grupo" data-limite="grupo" value="' + escaparHtml(eq.grupo || "") + '" placeholder="Grupo / rack / sala" aria-label="Grupo / rack / sala">' +
             '</div>' +
+            '<div class="equip-row2">' +
+              '<input type="text" data-field="rede" data-limite="rede" value="' + escaparHtml(eq.rede || "") + '" placeholder="VLAN / rede (ex.: VLAN 10 · 10.0.0.0/24)" aria-label="VLAN / rede" autocomplete="off" spellcheck="false">' +
+            '</div>' +
             '<div class="equip-row3">' +
               '<label class="color-picker">Fonte <input type="color" data-field="corFonte" value="' + corValida(eq.corFonte, "#16323D") + '"></label>' +
               '<label class="color-picker">Status <select data-field="status"><option value="ativo"' + ((eq.status || "ativo") === "ativo" ? " selected" : "") + '>Ativo</option><option value="manutencao"' + (eq.status === "manutencao" ? " selected" : "") + '>Manutenção</option><option value="offline"' + (eq.status === "offline" ? " selected" : "") + '>Offline</option></select></label>' +
@@ -3352,7 +3413,7 @@
     }, 120);
   }
 
-  function renderTudo() { renderEquipamentos(); renderConexoes(); renderSidebarPanels(); atualizarJsonAvancado(); atualizarContadorEquipamentos(); salvarLocal(); solicitarAtualizacaoDiagrama(); }
+  function renderTudo() { aplicarModoNaTela(); renderEquipamentos(); renderConexoes(); renderSidebarPanels(); atualizarJsonAvancado(); atualizarContadorEquipamentos(); salvarLocal(); solicitarAtualizacaoDiagrama(); }
 
   // Contador "n/35" na barra do diagrama. Perto do limite fica em alerta; no
   // limite, os botões de adicionar são bloqueados e aparece um aviso (uma vez).
@@ -3590,7 +3651,8 @@
     var iconeInformado = document.getElementById("navEquipIcone").value.trim();
     var validacao = Esquema.validarEquipamento({ id: novoId(), nome: document.getElementById("navEquipNome").value, modelo: document.getElementById("navEquipModelo").value,
       ip: document.getElementById("navEquipIp").value, tipo: tipo, icone: iconeInformado || iconePorTipo(tipo), imagem: "", corFonte: "#16323D",
-      grupo: document.getElementById("navEquipGrupo").value, status: document.getElementById("navEquipStatus").value });
+      grupo: document.getElementById("navEquipGrupo").value, status: document.getElementById("navEquipStatus").value,
+      rede: document.getElementById("navEquipRede").value });
     if (!validacao.ok) { mensagem.textContent = textoDosErros(validacao.erros); return; }
     var novoEquipamento = validacao.dados;
     function concluir(imagem) {
@@ -3756,16 +3818,18 @@
     capacidade: ["capacidade", "potencia", "velocidade"],
     ip_origem: ["ip_origem", "ip", "ip_de"],
     ip_destino: ["ip_destino", "ip_para"],
+    vlan_origem: ["vlan_origem", "vlan", "rede_origem", "rede"],
+    vlan_destino: ["vlan_destino", "rede_destino"],
     modelo_origem: ["modelo_origem", "modelo"],
     modelo_destino: ["modelo_destino"],
     tipo_origem: ["tipo_origem", "tipo_equipamento"],
     tipo_destino: ["tipo_destino"]
   };
   var MODELO_CSV =
-    "origem;ip_origem;modelo_origem;porta_origem;destino;ip_destino;modelo_destino;porta_destino;tipo;capacidade\r\n" +
-    "OLT-01;10.0.0.2;Huawei MA5800;xe1/1/1;SW-CORE;10.0.0.1;DM4270;ge1/1;Fibra;10G\r\n" +
-    "RB-BORDA;10.0.0.254;MikroTik CCR;eth1;SW-CORE;10.0.0.1;DM4270;ge1/2;Cobre;1G\r\n" +
-    "NOBREAK-01;;;;;;;;;\r\n";
+    "origem;ip_origem;vlan_origem;modelo_origem;porta_origem;destino;ip_destino;vlan_destino;modelo_destino;porta_destino;tipo;capacidade\r\n" +
+    "OLT-01;10.0.0.2;VLAN 20;Huawei MA5800;xe1/1/1;SW-CORE;10.0.0.1;VLAN 10;DM4270;ge1/1;Fibra;10G\r\n" +
+    "RB-BORDA;10.0.0.254;VLAN 10;MikroTik CCR;eth1;SW-CORE;10.0.0.1;VLAN 10;DM4270;ge1/2;Cobre;1G\r\n" +
+    "NOBREAK-01;;;;;;;;;;;\r\n";
 
   function normalizarCabecalhoCsv(texto) { return normalizarTextoEquipamento(texto).replace(/[\s-]+/g, "_"); }
 
@@ -3828,7 +3892,7 @@
     var erros = [];
     var porNome = {};
     var linhaDoEquipamento = [], linhaDoCabo = [];
-    function obterEquipamento(nome, ip, modelo, tipo, numeroLinha) {
+    function obterEquipamento(nome, ip, modelo, tipo, rede, numeroLinha) {
       var chave = normalizarTextoEquipamento(nome);
       var eq = porNome[chave];
       if (!eq) {
@@ -3843,6 +3907,7 @@
       }
       if (modelo && !eq.modelo) eq.modelo = modelo;
       if (tipo && !eq.tipo) eq.tipo = tipo;
+      if (rede && !eq.rede) eq.rede = rede;
       return eq;
     }
 
@@ -3850,9 +3915,9 @@
       var linha = linhas[n], numeroLinha = n + 1;
       var nomeOrigem = valor(linha, "origem"), nomeDestino = valor(linha, "destino");
       if (!nomeOrigem) { erros.push({ onde: "Linha " + numeroLinha, mensagem: 'coluna "origem" vazia' }); continue; }
-      var de = obterEquipamento(nomeOrigem, valor(linha, "ip_origem"), valor(linha, "modelo_origem"), valor(linha, "tipo_origem"), numeroLinha);
+      var de = obterEquipamento(nomeOrigem, valor(linha, "ip_origem"), valor(linha, "modelo_origem"), valor(linha, "tipo_origem"), valor(linha, "vlan_origem"), numeroLinha);
       if (!nomeDestino) continue;
-      var para = obterEquipamento(nomeDestino, valor(linha, "ip_destino"), valor(linha, "modelo_destino"), valor(linha, "tipo_destino"), numeroLinha);
+      var para = obterEquipamento(nomeDestino, valor(linha, "ip_destino"), valor(linha, "modelo_destino"), valor(linha, "tipo_destino"), valor(linha, "vlan_destino"), numeroLinha);
       if (de === para) { erros.push({ onde: "Linha " + numeroLinha + " (" + nomeOrigem + ")", mensagem: "origem e destino são o mesmo equipamento" }); continue; }
       linhaDoCabo.push(numeroLinha);
       dados.conexoes.push({
@@ -3890,6 +3955,8 @@
       try { resultado = importarCsv(texto); }
       catch (erroCsv) { mostrarErro('Não foi possível importar "' + arquivo.name + '".', [{ onde: "CSV", mensagem: erroCsv.message }]); return; }
       if (!resultado.ok) { mostrarErrosDeValidacao('"' + arquivo.name + '"', resultado); return; }
+      // O CSV só traz equipamentos e cabos: o tipo de diagrama continua o do projeto.
+      if (estado.modo) resultado.dados.modo = estado.modo;
       estado = resultado.dados;
       ajustarNaProximaRenderizacao = true;
       mostrarAvisosDaImportacao('"' + arquivo.name + '"', resultado);
@@ -4030,7 +4097,43 @@
   document.getElementById("btnInventario").addEventListener("click", exportarInventario);
 
   // ==== 10-diagrama-e-layout.js: geração do DOT, imagens no SVG, organizar/grade e renderização (parte de assets/js/app.js; npm run montar) ====
+  // Linhas de texto do cabeçalho do equipamento (acima do ícone), conforme o
+  // modo do projeto. aplicarImagensNoSvg usa a quantidade para achar o ícone.
+  //   Topologia: nome, modelo, tipo, IP.
+  //   Redes: nome, IP (em destaque), VLAN / rede, tipo.
+  //   Monitoramento: nome, tipo, IP.
+  function linhasDoCabecalho(eq, modo) {
+    function fonte(tamanho, cor, texto, opcoes) {
+      opcoes = opcoes || {};
+      var conteudo = escaparHtmlDot(texto);
+      if (opcoes.negrito) conteudo = "<B>" + conteudo + "</B>";
+      return '<FONT FACE="' + (opcoes.mono ? "Courier" : "Helvetica") + '" POINT-SIZE="' + tamanho + '" COLOR="' + cor + '">' + conteudo + '</FONT>';
+    }
+    var nome = fonte(11, "#14212B", eq.nome || eq.id, { negrito: true });
+    var modelo = String(eq.modelo || "").trim();
+    var tipo = fonte(8, "#405363", eq.tipo || "Equipamento");
+    var ip = String(eq.ip || "").trim();
+    var rede = String(eq.rede || "").trim();
+    if (modo === "redes") {
+      return [nome]
+        .concat(ip ? [fonte(10, "#1F5F8B", ip, { mono: true, negrito: true })] : [])
+        .concat(rede ? [fonte(9, "#6A3FB5", rede, { negrito: true })] : [])
+        .concat([tipo]);
+    }
+    if (modo === "monitoramento") {
+      return [nome, tipo].concat(ip ? [fonte(8, "#1F5F8B", ip, { mono: true })] : []);
+    }
+    return [nome]
+      .concat(modelo ? [fonte(9, "#14212B", modelo)] : [])
+      .concat([tipo])
+      .concat(ip ? [fonte(8, "#1F5F8B", ip, { mono: true })] : []);
+  }
+
+  // Monitoramento: fundo claro na cor do status, atrás do "● ATIVO".
+  var FUNDO_STATUS = { ativo: "#E3F5EA", manutencao: "#FBEFD5", offline: "#FBE1E4" };
+
   function gerarDot(dados, direcao) {
+    var modo = modoAtual();
     var contagemPortas = {};
     dados.equipamentos.forEach(function (eq) { contagemPortas[eq.id] = 0; });
     dados.conexoes.forEach(function (c) {
@@ -4125,10 +4228,6 @@
       var status = eq.status || "ativo";
       var corStatus = corPorStatus(status);
       var corFonte = corValida(eq.corFonte, "#16323D");
-      var nome = escaparHtmlDot(eq.nome || eq.id);
-      var modelo = escaparHtmlDot(eq.modelo || "");
-      var tipo = escaparHtmlDot(eq.tipo || "Equipamento");
-      var ip = escaparHtmlDot(String(eq.ip || "").trim());
       var portas = portasPorEquipamento[eq.id];
       var layoutLateral = calcularLayoutPortas(Math.max(portas.esquerda.length, portas.direita.length));
       var layoutTopo = calcularLayoutPortas(Math.max(portas.cima.length, portas.baixo.length));
@@ -4155,15 +4254,13 @@
       // cima, (cabeçalho), esquerda, direita, (status), baixo.
       var rotulo = '<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="0">' +
         linhaPortas(portas.cima) +
-        '<TR><TD COLSPAN="3" CELLPADDING="3" ALIGN="CENTER"><FONT FACE="Helvetica" POINT-SIZE="11" COLOR="#14212B"><B>' + nome + '</B></FONT><BR/>' +
-        (modelo ? '<FONT FACE="Helvetica" POINT-SIZE="9" COLOR="#14212B">' + modelo + '</FONT><BR/>' : "") +
-        '<FONT FACE="Helvetica" POINT-SIZE="8" COLOR="#405363">' + tipo + '</FONT>' +
-        (ip ? '<BR/><FONT FACE="Courier" POINT-SIZE="8" COLOR="#1F5F8B">' + ip + '</FONT>' : "") +
-        '</TD></TR>' +
+        '<TR><TD COLSPAN="3" CELLPADDING="3" ALIGN="CENTER">' + linhasDoCabecalho(eq, modo).join("<BR/>") + '</TD></TR>' +
         '<TR>' + colunaPortas(portas.esquerda) +
         '<TD BORDER="0" CELLPADDING="0" WIDTH="120" HEIGHT="' + alturaMeio + '"></TD>' +
         colunaPortas(portas.direita) + '</TR>' +
-        '<TR><TD COLSPAN="3" CELLPADDING="4" ALIGN="CENTER"><FONT FACE="Helvetica" POINT-SIZE="9" COLOR="' + corStatus + '"><B>' + escaparHtmlDot(marcadorStatus(status) + " " + rotuloStatus(status)) + '</B></FONT></TD></TR>' +
+        (modo === "monitoramento"
+          ? '<TR><TD COLSPAN="3" CELLPADDING="2" ALIGN="CENTER"><TABLE BORDER="0" CELLPADDING="4" STYLE="rounded" BGCOLOR="' + (FUNDO_STATUS[status] || FUNDO_STATUS.ativo) + '"><TR><TD><FONT FACE="Helvetica" POINT-SIZE="11" COLOR="' + corStatus + '"><B>' + escaparHtmlDot(marcadorStatus(status) + " " + rotuloStatus(status)) + '</B></FONT></TD></TR></TABLE></TD></TR>'
+          : '<TR><TD COLSPAN="3" CELLPADDING="4" ALIGN="CENTER"><FONT FACE="Helvetica" POINT-SIZE="9" COLOR="' + corStatus + '"><B>' + escaparHtmlDot(marcadorStatus(status) + " " + rotuloStatus(status)) + '</B></FONT></TD></TR>') +
         linhaPortas(portas.baixo) +
         '</TABLE>>';
       return '    "' + escapar(eq.id) + '" [id="equip_' + dados.equipamentos.indexOf(eq) + '", label=' + rotulo + ', shape=plain, color="transparent", fontcolor="' + corFonte + '"];';
@@ -4188,7 +4285,13 @@
     dados.conexoes.forEach(function (c, indice) {
       var corConexao = corValida(c.cor, "#5A7284");
       var grossura = Math.min(10, Number(c.grossura) || 2);
-      var estilo = c.estilo && c.estilo !== "solid" ? ', style="' + escapar(c.estilo) + '"' : "";
+      var estiloCabo = c.estilo;
+      // Monitoramento: cabo que chega a um equipamento offline fica vermelho e tracejado.
+      if (modo === "monitoramento" && [c.de, c.para].some(function (id) { return equipamentoPorId[id] && equipamentoPorId[id].status === "offline"; })) {
+        corConexao = corPorStatus("offline");
+        estiloCabo = "dashed";
+      }
+      var estilo = estiloCabo && estiloCabo !== "solid" ? ', style="' + escapar(estiloCabo) + '"' : "";
       var portaDirecao = direcao === "TB" ? ', tailport="n", headport="s"' : ', tailport="e", headport="w"';
       var portas = ', tailport="out_' + indice + '", headport="in_' + indice + '"';
       if (direcao === "TB") portas = portaDirecao;
@@ -4202,14 +4305,30 @@
     return linhas.join("\n");
   }
 
+  // Itens da legenda (tela e exportação): por tipo; no Monitoramento, a
+  // contagem por status ("3 ativos", "1 offline").
+  function itensDaLegenda(dados) {
+    if (modoAtual() === "monitoramento") {
+      var contagem = { ativo: 0, manutencao: 0, offline: 0 };
+      dados.equipamentos.forEach(function (eq) { contagem[contagem[eq.status] != null ? eq.status : "ativo"]++; });
+      return [["ativo", "ativo", "ativos"], ["manutencao", "em manutenção", "em manutenção"], ["offline", "offline", "offline"]].map(function (s) {
+        var n = contagem[s[0]];
+        return { cor: corPorStatus(s[0]), texto: n + " " + (n === 1 ? s[1] : s[2]), status: s[0] };
+      });
+    }
+    var tipos = [];
+    dados.equipamentos.forEach(function (eq) { var t = eq.tipo || "outro"; if (tipos.indexOf(t) < 0) tipos.push(t); });
+    return tipos.map(function (t) { return { cor: corPorTipo(t), texto: t }; });
+  }
+
   function atualizarLegenda(dados) {
-    var tipos = {};
-    dados.equipamentos.forEach(function (eq) { tipos[eq.tipo || "outro"] = true; });
     elLegenda.innerHTML = "";
-    Object.keys(tipos).forEach(function (tipo) {
+    elLegenda.classList.toggle("legenda-status", modoAtual() === "monitoramento");
+    itensDaLegenda(dados).forEach(function (item) {
       var span = document.createElement("span");
-      var i = document.createElement("i"); i.style.background = corPorTipo(tipo);
-      span.appendChild(i); span.appendChild(document.createTextNode(tipo));
+      if (item.status) span.setAttribute("data-status", item.status);
+      var i = document.createElement("i"); i.style.background = item.cor;
+      span.appendChild(i); span.appendChild(document.createTextNode(item.texto));
       elLegenda.appendChild(span);
     });
   }
@@ -4253,7 +4372,7 @@
         // Comparar pelo texto falhava quando uma porta tinha o mesmo nome do modelo.
         var textos = Array.prototype.slice.call(g.querySelectorAll("text"));
         var infoPortas = portasRenderizadas[id] || { nCima: 0, nBaixo: 0 };
-        var linhasCabecalho = 2 + (normalizarTexto(equipamento.modelo || "") ? 1 : 0) + (normalizarTexto(equipamento.ip || "") ? 1 : 0);
+        var linhasCabecalho = linhasDoCabecalho(equipamento, modoAtual()).length;
         var cabecalho = textos.slice(infoPortas.nCima, infoPortas.nCima + linhasCabecalho);
         var statusTexto = textos[textos.length - 1 - infoPortas.nBaixo] || null;
 
@@ -4943,11 +5062,14 @@
   }
 
   // Nome do arquivo exportado: projeto + data, ex.: "projeto-principal-2026-09-26.png".
+  // Diagrama de redes e de monitoramento levam o tipo no nome ("…-monitoramento-…").
   function nomeArquivoExportacao(extensao) {
     var base = normalizarTextoEquipamento(projetoAtual).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "diagrama";
+    var modo = modoAtual();
+    var sufixo = modo === "redes" ? "-rede" : modo === "monitoramento" ? "-monitoramento" : "";
     var hoje = new Date();
     var data = hoje.getFullYear() + "-" + String(hoje.getMonth() + 1).padStart(2, "0") + "-" + String(hoje.getDate()).padStart(2, "0");
-    return base + "-" + data + "." + extensao;
+    return base + sufixo + "-" + data + "." + extensao;
   }
 
   // Emoldura a cópia exportada: cabeçalho (projeto, data, totais), rodapé com a
@@ -4980,20 +5102,18 @@
     var moldura = el("g", { "class": "moldura-exportacao", "font-family": fonte, fill: tinta });
     moldura.appendChild(el("text", { x: x0 + MARGEM, y: y0 + 28, "font-size": 16, "font-weight": "bold" }, projetoAtual));
     moldura.appendChild(el("text", { x: x0 + MARGEM, y: y0 + 45, "font-size": 9.5, "fill-opacity": 0.65 },
-      "Topologia de rede · " + data + " · " + plural(estado.equipamentos.length, "equipamento", "equipamentos") + " · " + plural(estado.conexoes.length, "cabo", "cabos")));
+      MODOS_DIAGRAMA[modoAtual()].exportacao + " · " + data + " · " + plural(estado.equipamentos.length, "equipamento", "equipamentos") + " · " + plural(estado.conexoes.length, "cabo", "cabos")));
     moldura.appendChild(el("line", { x1: x0 + MARGEM, x2: x0 + larguraNova - MARGEM, y1: y0 + TOPO - 8, y2: y0 + TOPO - 8, stroke: tinta, "stroke-opacity": 0.15 }));
     moldura.appendChild(el("line", { x1: x0 + MARGEM, x2: x0 + larguraNova - MARGEM, y1: baseRodape + 12, y2: baseRodape + 12, stroke: tinta, "stroke-opacity": 0.15 }));
 
-    // Legenda: um quadrado colorido por tipo, como a legenda da tela.
-    var tipos = [];
-    estado.equipamentos.forEach(function (eq) { var t = eq.tipo || "outro"; if (tipos.indexOf(t) < 0) tipos.push(t); });
+    // Legenda: a mesma da tela (por tipo; no Monitoramento, por status).
     var xLegenda = x0 + MARGEM;
     var yLegenda = baseRodape + 30;
-    tipos.forEach(function (tipo) {
-      moldura.appendChild(el("rect", { x: xLegenda, y: yLegenda - 7.5, width: 8, height: 8, rx: 1.5, fill: corPorTipo(tipo) }));
-      var rotulo = el("text", { x: xLegenda + 12, y: yLegenda, "font-size": 9, "fill-opacity": 0.8 }, tipo);
+    itensDaLegenda(estado).forEach(function (item) {
+      moldura.appendChild(el("rect", { x: xLegenda, y: yLegenda - 7.5, width: 8, height: 8, rx: item.status ? 4 : 1.5, fill: item.cor }));
+      var rotulo = el("text", { x: xLegenda + 12, y: yLegenda, "font-size": 9, "fill-opacity": 0.8 }, item.texto);
       moldura.appendChild(rotulo);
-      xLegenda += 12 + tipo.length * 5.2 + 16;
+      xLegenda += 12 + item.texto.length * 5.2 + 16;
     });
     moldura.appendChild(el("text", { x: x0 + larguraNova - MARGEM, y: yLegenda, "font-size": 8.5, "fill-opacity": 0.5, "text-anchor": "end" }, "Gerado com Grafo"));
 
@@ -5577,7 +5697,7 @@
     try {
       trocarTextosSemFontePorImagem(svg);
       var doc = new JsPdf({ orientation: configPagina.orientacao === "retrato" ? "portrait" : "landscape", unit: "mm", format: configPagina.formato.toLowerCase(), compress: true });
-      doc.setProperties({ title: projetoAtual, subject: "Topologia de rede", creator: "Grafo" });
+      doc.setProperties({ title: projetoAtual, subject: MODOS_DIAGRAMA[modoAtual()].exportacao, creator: "Grafo" });
       for (var lin = 0, i = 0; lin < plano.linhas; lin++) {
         for (var col = 0; col < plano.colunas; col++, i++) {
           if (i > 0) doc.addPage();
@@ -5620,7 +5740,7 @@
     if (plano.total > MAX_PAGINAS_PDF) throw new Error("O PDF teria " + plano.total + " páginas (máximo " + MAX_PAGINAS_PDF + "). Use uma escala menor ou um formato maior.");
     var paginas = paginasDoPlano(r.canvas, plano);
     var doc = new JsPdf({ orientation: configPagina.orientacao === "retrato" ? "portrait" : "landscape", unit: "mm", format: configPagina.formato.toLowerCase(), compress: true });
-    doc.setProperties({ title: projetoAtual, subject: "Topologia de rede", creator: "Grafo" });
+    doc.setProperties({ title: projetoAtual, subject: MODOS_DIAGRAMA[modoAtual()].exportacao, creator: "Grafo" });
     paginas.forEach(function (p, i) {
       if (i > 0) doc.addPage();
       doc.addImage(p.canvas, "PNG", p.x, p.y, p.w, p.h, undefined, "FAST");

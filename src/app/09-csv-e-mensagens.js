@@ -12,16 +12,18 @@
     capacidade: ["capacidade", "potencia", "velocidade"],
     ip_origem: ["ip_origem", "ip", "ip_de"],
     ip_destino: ["ip_destino", "ip_para"],
+    vlan_origem: ["vlan_origem", "vlan", "rede_origem", "rede"],
+    vlan_destino: ["vlan_destino", "rede_destino"],
     modelo_origem: ["modelo_origem", "modelo"],
     modelo_destino: ["modelo_destino"],
     tipo_origem: ["tipo_origem", "tipo_equipamento"],
     tipo_destino: ["tipo_destino"]
   };
   var MODELO_CSV =
-    "origem;ip_origem;modelo_origem;porta_origem;destino;ip_destino;modelo_destino;porta_destino;tipo;capacidade\r\n" +
-    "OLT-01;10.0.0.2;Huawei MA5800;xe1/1/1;SW-CORE;10.0.0.1;DM4270;ge1/1;Fibra;10G\r\n" +
-    "RB-BORDA;10.0.0.254;MikroTik CCR;eth1;SW-CORE;10.0.0.1;DM4270;ge1/2;Cobre;1G\r\n" +
-    "NOBREAK-01;;;;;;;;;\r\n";
+    "origem;ip_origem;vlan_origem;modelo_origem;porta_origem;destino;ip_destino;vlan_destino;modelo_destino;porta_destino;tipo;capacidade\r\n" +
+    "OLT-01;10.0.0.2;VLAN 20;Huawei MA5800;xe1/1/1;SW-CORE;10.0.0.1;VLAN 10;DM4270;ge1/1;Fibra;10G\r\n" +
+    "RB-BORDA;10.0.0.254;VLAN 10;MikroTik CCR;eth1;SW-CORE;10.0.0.1;VLAN 10;DM4270;ge1/2;Cobre;1G\r\n" +
+    "NOBREAK-01;;;;;;;;;;;\r\n";
 
   function normalizarCabecalhoCsv(texto) { return normalizarTextoEquipamento(texto).replace(/[\s-]+/g, "_"); }
 
@@ -84,7 +86,7 @@
     var erros = [];
     var porNome = {};
     var linhaDoEquipamento = [], linhaDoCabo = [];
-    function obterEquipamento(nome, ip, modelo, tipo, numeroLinha) {
+    function obterEquipamento(nome, ip, modelo, tipo, rede, numeroLinha) {
       var chave = normalizarTextoEquipamento(nome);
       var eq = porNome[chave];
       if (!eq) {
@@ -99,6 +101,7 @@
       }
       if (modelo && !eq.modelo) eq.modelo = modelo;
       if (tipo && !eq.tipo) eq.tipo = tipo;
+      if (rede && !eq.rede) eq.rede = rede;
       return eq;
     }
 
@@ -106,9 +109,9 @@
       var linha = linhas[n], numeroLinha = n + 1;
       var nomeOrigem = valor(linha, "origem"), nomeDestino = valor(linha, "destino");
       if (!nomeOrigem) { erros.push({ onde: "Linha " + numeroLinha, mensagem: 'coluna "origem" vazia' }); continue; }
-      var de = obterEquipamento(nomeOrigem, valor(linha, "ip_origem"), valor(linha, "modelo_origem"), valor(linha, "tipo_origem"), numeroLinha);
+      var de = obterEquipamento(nomeOrigem, valor(linha, "ip_origem"), valor(linha, "modelo_origem"), valor(linha, "tipo_origem"), valor(linha, "vlan_origem"), numeroLinha);
       if (!nomeDestino) continue;
-      var para = obterEquipamento(nomeDestino, valor(linha, "ip_destino"), valor(linha, "modelo_destino"), valor(linha, "tipo_destino"), numeroLinha);
+      var para = obterEquipamento(nomeDestino, valor(linha, "ip_destino"), valor(linha, "modelo_destino"), valor(linha, "tipo_destino"), valor(linha, "vlan_destino"), numeroLinha);
       if (de === para) { erros.push({ onde: "Linha " + numeroLinha + " (" + nomeOrigem + ")", mensagem: "origem e destino são o mesmo equipamento" }); continue; }
       linhaDoCabo.push(numeroLinha);
       dados.conexoes.push({
@@ -146,6 +149,8 @@
       try { resultado = importarCsv(texto); }
       catch (erroCsv) { mostrarErro('Não foi possível importar "' + arquivo.name + '".', [{ onde: "CSV", mensagem: erroCsv.message }]); return; }
       if (!resultado.ok) { mostrarErrosDeValidacao('"' + arquivo.name + '"', resultado); return; }
+      // O CSV só traz equipamentos e cabos: o tipo de diagrama continua o do projeto.
+      if (estado.modo) resultado.dados.modo = estado.modo;
       estado = resultado.dados;
       ajustarNaProximaRenderizacao = true;
       mostrarAvisosDaImportacao('"' + arquivo.name + '"', resultado);

@@ -309,7 +309,7 @@
     try {
       trocarTextosSemFontePorImagem(svg);
       var doc = new JsPdf({ orientation: configPagina.orientacao === "retrato" ? "portrait" : "landscape", unit: "mm", format: configPagina.formato.toLowerCase(), compress: true });
-      doc.setProperties({ title: projetoAtual, subject: "Topologia de rede", creator: "Grafo" });
+      doc.setProperties({ title: projetoAtual, subject: MODOS_DIAGRAMA[modoAtual()].exportacao, creator: "Grafo" });
       for (var lin = 0, i = 0; lin < plano.linhas; lin++) {
         for (var col = 0; col < plano.colunas; col++, i++) {
           if (i > 0) doc.addPage();
@@ -352,7 +352,7 @@
     if (plano.total > MAX_PAGINAS_PDF) throw new Error("O PDF teria " + plano.total + " páginas (máximo " + MAX_PAGINAS_PDF + "). Use uma escala menor ou um formato maior.");
     var paginas = paginasDoPlano(r.canvas, plano);
     var doc = new JsPdf({ orientation: configPagina.orientacao === "retrato" ? "portrait" : "landscape", unit: "mm", format: configPagina.formato.toLowerCase(), compress: true });
-    doc.setProperties({ title: projetoAtual, subject: "Topologia de rede", creator: "Grafo" });
+    doc.setProperties({ title: projetoAtual, subject: MODOS_DIAGRAMA[modoAtual()].exportacao, creator: "Grafo" });
     paginas.forEach(function (p, i) {
       if (i > 0) doc.addPage();
       doc.addImage(p.canvas, "PNG", p.x, p.y, p.w, p.h, undefined, "FAST");

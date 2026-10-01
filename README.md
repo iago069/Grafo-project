@@ -11,6 +11,7 @@
 - [Recursos](#recursos)
 - [Como usar](#como-usar)
 - [Atalhos](#atalhos)
+- [Tipos de diagrama](#tipos-de-diagrama)
 - [Importar e exportar](#importar-e-exportar)
 - [Onde ficam os dados](#onde-ficam-os-dados)
 - [Ícones dos equipamentos](#ícones-dos-equipamentos)
@@ -105,6 +106,18 @@ Esqueceu a senha? Na tela de login, clique em **Esqueci minha senha** e siga o l
 | Busca | `Esc` | Limpar a busca |
 | Janelas | `Esc` | Fechar |
 
+## Tipos de diagrama
+
+Ao criar um projeto (botão **+**), escolha o tipo de diagrama. Dá para trocar depois no seletor que fica no lugar do título, na barra do diagrama. O tipo fica salvo no projeto (`"modo"` no JSON: `topologia`, `redes` ou `monitoramento`); projetos sem ele são Topologia.
+
+| Tipo | O equipamento mostra | Legenda | Destaques |
+|---|---|---|---|
+| **Topologia** | nome, modelo, tipo, IP, portas e status | por tipo | — |
+| **Diagrama de redes** | nome, **IP**, **VLAN / rede**, tipo | por tipo | campo **VLAN / rede** nos formulários |
+| **Monitoramento** | nome, tipo, IP e uma faixa colorida com o status | contagem por status ("3 ativos · 1 offline") | cabo ligado a equipamento offline fica vermelho e tracejado |
+
+Cada tipo também põe primeiro, na lista de **Tipo**, os equipamentos que fazem sentido para ele (Monitoramento: câmera, NVR, controle de acesso…; Redes: RB/CCR, switch, OLT…). O PDF/PNG/SVG exportado mostra o tipo no cabeçalho, e o nome do arquivo leva `-rede` ou `-monitoramento`. O status é o que você marca em cada equipamento (ativo, manutenção, offline); o Grafo não testa os IPs sozinho.
+
 ## Importar e exportar
 
 ### Projeto em JSON
@@ -153,6 +166,7 @@ Em **Editar em lista → Importar / exportar JSON e CSV → Importar CSV** (o bo
 | `destino` | `para` | `SW-CORE` |
 | `porta_origem` / `porta_destino` | `saida` / `chegada` | `xe1/1/1` |
 | `ip_origem` / `ip_destino` | `ip` | `10.0.0.2` |
+| `vlan_origem` / `vlan_destino` | `vlan`, `rede` | `VLAN 10 · 10.0.0.0/24` |
 | `modelo_origem` / `modelo_destino` | `modelo` | `DM4270` |
 | `tipo_origem` / `tipo_destino` | `tipo_equipamento` | `OLT` |
 | `tipo` | `enlace`, `cabo` | `Fibra` |

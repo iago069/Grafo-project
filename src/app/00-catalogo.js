@@ -141,18 +141,29 @@
     return "";
   }
 
+  // Tipos que aparecem primeiro na lista, conforme o modo do projeto; os demais vêm depois.
+  var TIPOS_PRIMEIRO_POR_MODO = {
+    redes: ["RB / CCR", "Switch", "OLT", "ONU", "Switch POE", "Conversor de fibra", "Conversor de mídia", "DIO", "DWDM", "MUX", "DEMUX",
+      "Servidor", "Concentrador Hotspot", "AP WiFi", "UniFi", "Dream Machine", "Nuvem VPLS"],
+    monitoramento: ["Câmera", "NVR", "Decoder", "Controle de acesso", "Switch POE", "POE", "Nobreak", "Bateria", "Retificador",
+      "Volt POP Protect", "Ar condicionado", "Aligera", "Servidor"]
+  };
+
   function renderizarTiposSugeridos() {
     var datalist = document.getElementById("tipos-sugeridos");
     if (!datalist) return;
+    var primeiro = TIPOS_PRIMEIRO_POR_MODO[modoAtual()] || [];
+    var posicao = function (item) { var i = primeiro.indexOf(extrairNomeTipo(item)); return i < 0 ? primeiro.length : i; };
     var itens = [];
     catalogoTiposEquipamentos.forEach(function (tipo) {
       var nome = extrairNomeTipo(tipo);
       if (!nome || tipo.apelido) return;
       var chave = normalizarTextoEquipamento(nome);
       if (!itens.some(function (entry) { return normalizarTextoEquipamento(entry.nome) === chave; })) {
-        itens.push({ nome: nome, icone: extrairIconeTipo(tipo) });
+        itens.push({ nome: nome, icone: extrairIconeTipo(tipo), ordem: posicao(tipo) * 1000 + itens.length });
       }
     });
+    itens.sort(function (a, b) { return a.ordem - b.ordem; });
     datalist.innerHTML = itens.map(function (tipo) {
       return '<option value="' + escaparHtml(tipo.nome) + '"></option>';
     }).join("");

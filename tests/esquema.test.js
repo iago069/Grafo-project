@@ -122,3 +122,23 @@ test("formulários de equipamento, cabo e nome de projeto", () => {
   assert.deepEqual(simples(E.validarNomeProjeto("  Rede  ")), { ok: true, dados: "Rede" });
   assert.equal(E.validarNomeProjeto("x".repeat(E.LIMITES.nomeProjeto + 1)).ok, false);
 });
+
+test("modo do projeto: aceita os três (e nomes comuns); desconhecido vira topologia com aviso; sem modo continua sem", () => {
+  const proj = modo => simples(E.validarProjeto({ equipamentos: [], conexoes: [], modo }, "estrito"));
+  assert.equal(proj("redes").dados.modo, "redes");
+  assert.equal(proj("Monitoramento").dados.modo, "monitoramento");
+  assert.equal(proj("Diagrama de redes").dados.modo, "redes");
+  const estranho = proj("planta-baixa");
+  assert.equal(estranho.ok, true, "não recusa o arquivo");
+  assert.equal(estranho.dados.modo, "topologia");
+  assert.match(estranho.ajustes[0].mensagem, /usado Topologia/);
+  assert.equal("modo" in simples(E.validarProjeto({ equipamentos: [], conexoes: [] }, "estrito")).dados, false);
+  assert.deepEqual(simples(E.MODOS), ["topologia", "redes", "monitoramento"]);
+});
+
+test("equipamento: VLAN / rede é opcional, com limite de tamanho", () => {
+  const eq = extra => simples(E.validarEquipamento(Object.assign({ id: "a", nome: "SW" }, extra)));
+  assert.equal(eq({ rede: "  VLAN 10 · 10.0.0.0/24 " }).dados.rede, "VLAN 10 · 10.0.0.0/24");
+  assert.equal("rede" in eq({}).dados, false, "sem rede, o campo não aparece");
+  assert.equal(eq({ rede: "x".repeat(41) }).dados.rede, undefined, "grande demais: descartado");
+});

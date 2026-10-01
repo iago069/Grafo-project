@@ -188,7 +188,7 @@
       var emUso = Object.keys(mapa).length;
       var total = modelo ? modelo.portas.length : null;
       var emUsoNoModelo = modelo ? modelo.portas.filter(function (p) { return mapa[p.toLowerCase()]; }).length : null;
-      linhasEq.push([eq.nome || eq.id, eq.tipo || "", eq.modelo || "", modelo ? modelo.fabricante || "" : "", eq.ip || "", eq.grupo || "",
+      linhasEq.push([eq.nome || eq.id, eq.tipo || "", eq.modelo || "", modelo ? modelo.fabricante || "" : "", eq.ip || "", eq.rede || "", eq.grupo || "",
         ROTULO_STATUS[eq.status] || ROTULO_STATUS.ativo, cabosPorEq[eq.id] || 0,
         total == null ? "" : total, total == null ? "" : total - emUsoNoModelo]);
       var vistas = {};
@@ -224,7 +224,7 @@
 
     return [
       { nome: "Resumo", colunas: ["Item", "Valor"], linhas: resumo },
-      { nome: "Equipamentos", colunas: ["Nome", "Tipo", "Modelo", "Fabricante", "IP", "Grupo", "Status", "Cabos", "Portas do modelo", "Portas livres"], linhas: linhasEq },
+      { nome: "Equipamentos", colunas: ["Nome", "Tipo", "Modelo", "Fabricante", "IP", "VLAN / rede", "Grupo", "Status", "Cabos", "Portas do modelo", "Portas livres"], linhas: linhasEq },
       { nome: "Cabos", colunas: ["Origem", "Porta de origem", "Destino", "Porta de destino", "Tipo de enlace", "Capacidade", "Estilo"], linhas: linhasCabos },
       { nome: "Portas", colunas: ["Equipamento", "Porta", "Situação", "Ligada a", "Porta do outro lado", "Cabo"], linhas: linhasPortas }
     ];

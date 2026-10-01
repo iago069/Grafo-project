@@ -124,6 +124,7 @@
   function carregarExemplo() {
     var exemplo = clonarDados(PROJETO_EXEMPLO);
     exemplo.equipamentos.forEach(function (eq) { eq.icone = iconePorTipo(eq.tipo); eq.imagem = ""; eq.status = eq.status || "ativo"; });
+    if (estado.modo) exemplo.modo = estado.modo;
     estado = exemplo;
     ajustarNaProximaRenderizacao = true;
     renderTudo();
@@ -189,33 +190,75 @@
   }
 
   elProjetoSelect.addEventListener("change", function (event) { abrirProjeto(event.target.value); });
+
+  // ---- Modo do projeto (tipo de diagrama) ------------------------------------
+  // Muda o que os equipamentos mostram (gerarDot), a legenda, a ordem dos tipos
+  // sugeridos e o título da exportação. Projeto sem "modo" é Topologia.
+  var MODOS_DIAGRAMA = {
+    topologia: { titulo: "Topologia", exportacao: "Topologia de rede" },
+    redes: { titulo: "Diagrama de redes", exportacao: "Diagrama de redes" },
+    monitoramento: { titulo: "Monitoramento", exportacao: "Diagrama de monitoramento" }
+  };
+  var elModoDiagrama = document.getElementById("modoDiagrama");
+  var modoNaTela = null;
+  // (Seguro mesmo antes de estas variáveis existirem: 00-catalogo chama cedo.)
+  function modoAtual() { return MODOS_DIAGRAMA && estado && MODOS_DIAGRAMA[estado.modo] ? estado.modo : "topologia"; }
+  // Chamado a cada renderTudo: só refaz o que depende do modo quando ele muda.
+  function aplicarModoNaTela() {
+    var modo = modoAtual();
+    if (modo === modoNaTela) return;
+    modoNaTela = modo;
+    if (elModoDiagrama) elModoDiagrama.value = modo;
+    document.body.setAttribute("data-modo-diagrama", modo);
+    renderizarTiposSugeridos();
+  }
+  if (elModoDiagrama) elModoDiagrama.addEventListener("change", function () {
+    var modo = elModoDiagrama.value;
+    if (!MODOS_DIAGRAMA[modo] || modo === modoAtual()) return;
+    estado.modo = modo;
+    renderTudo();
+    avisar("Tipo de diagrama: " + MODOS_DIAGRAMA[modo].titulo + ".");
+  });
+
+  var novoProjeto = {
+    backdrop: document.getElementById("novoProjetoModal"),
+    form: document.getElementById("novoProjetoForm"),
+    nome: document.getElementById("novoProjetoNome"),
+    mensagem: document.getElementById("novoProjetoMensagem")
+  };
+  function fecharNovoProjeto() { esconderModal(novoProjeto.backdrop); }
   document.getElementById("btnNovoProjeto").addEventListener("click", function () {
-    abrirModal({
-      title: "Novo projeto",
-      message: "Digite o nome do novo projeto:",
-      confirmText: "Criar",
-      cancelText: "Cancelar",
-      kind: "prompt"
-    }).then(function (valor) {
-      if (!valor || !String(valor).trim()) return;
-      var validacaoNome = Esquema.validarNomeProjeto(valor);
-      if (!validacaoNome.ok) { mostrarErro("Nome de projeto inválido: " + validacaoNome.mensagem + "."); return; }
-      var nome = validacaoNome.dados;
-      if (projetos[nome]) { mostrarErro("Escolha um nome novo para o projeto."); return; }
-      if (Object.keys(projetos).length >= LIMITES.projetos) { mostrarErro("Limite de " + LIMITES.projetos + " projetos atingido. Exclua algum antes."); return; }
-      salvarLocal();
-      projetos[nome] = { equipamentos: [], conexoes: [] };
-      projetoAtual = nome;
-      estado = clonarDados(projetos[nome]);
-      historicoDesfazer = [];
-      historicoRefazer = [];
-      ultimoEstadoHistorico = JSON.stringify(estado);
-      salvarLocal();
-      renderProjetos();
-      renderTudo();
-      limparDiagrama();
-      avisar("Projeto \"" + nome + "\" criado.");
-    });
+    novoProjeto.form.reset();
+    novoProjeto.mensagem.textContent = "";
+    mostrarModalBackdrop(novoProjeto.backdrop);
+    novoProjeto.nome.focus();
+  });
+  novoProjeto.backdrop.querySelectorAll("[data-novo-projeto-fechar]").forEach(function (b) { b.addEventListener("click", fecharNovoProjeto); });
+  novoProjeto.backdrop.addEventListener("click", function (event) { if (event.target === novoProjeto.backdrop) fecharNovoProjeto(); });
+  novoProjeto.backdrop.addEventListener("keydown", function (event) { if (event.key === "Escape") { event.preventDefault(); fecharNovoProjeto(); } });
+  novoProjeto.form.addEventListener("submit", function (event) {
+    event.preventDefault();
+    var validacaoNome = Esquema.validarNomeProjeto(novoProjeto.nome.value);
+    var erro = !validacaoNome.ok ? "Nome inválido: " + validacaoNome.mensagem + "."
+      : projetos[validacaoNome.dados] ? "Já existe um projeto com esse nome."
+      : Object.keys(projetos).length >= LIMITES.projetos ? "Limite de " + LIMITES.projetos + " projetos atingido. Exclua algum antes." : "";
+    if (erro) { novoProjeto.mensagem.textContent = erro; novoProjeto.nome.focus(); return; }
+    var nome = validacaoNome.dados;
+    var escolhido = novoProjeto.form.querySelector('input[name="modoProjeto"]:checked');
+    var modo = escolhido && MODOS_DIAGRAMA[escolhido.value] ? escolhido.value : "topologia";
+    fecharNovoProjeto();
+    salvarLocal();
+    projetos[nome] = { equipamentos: [], conexoes: [], modo: modo };
+    projetoAtual = nome;
+    estado = clonarDados(projetos[nome]);
+    historicoDesfazer = [];
+    historicoRefazer = [];
+    ultimoEstadoHistorico = JSON.stringify(estado);
+    salvarLocal();
+    renderProjetos();
+    renderTudo();
+    limparDiagrama();
+    avisar("Projeto \"" + nome + "\" criado (" + MODOS_DIAGRAMA[modo].titulo + ").");
   });
 
   // Tira um projeto da lista (excluído, ou a pessoa saiu da equipe) e abre outro.
@@ -267,7 +310,9 @@
 
   function exportarProjeto() {
     salvarLocal();
-    var conteudo = JSON.stringify({ projeto: projetoAtual, equipamentos: estado.equipamentos, conexoes: estado.conexoes }, null, 2);
+    var arquivoJson = { projeto: projetoAtual, equipamentos: estado.equipamentos, conexoes: estado.conexoes };
+    if (estado.modo) arquivoJson.modo = estado.modo;
+    var conteudo = JSON.stringify(arquivoJson, null, 2);
     var arquivo = projetoAtual.replace(/[^\wÀ-ſ-]+/g, "-").replace(/^-+|-+$/g, "") || "projeto";
     baixarBlob(new Blob([conteudo], { type: "application/json" }), "grafo-" + arquivo + ".json");
     registrarBackup(projetoAtual);
