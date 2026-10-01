@@ -4282,10 +4282,17 @@
           lista.map(function (p) { return '<TR>' + celulaPorta(p, layoutLateral) + '</TR>'; }).join("") +
           '</TABLE></TD>';
       }
-      function linhaPortas(lista) {
-        if (!lista.length) return "";
-        return '<TR><TD COLSPAN="3"><TABLE BORDER="0" CELLSPACING="0" CELLPADDING="0" FIXEDSIZE="TRUE" WIDTH="' + lista.length * layoutTopo.alturaPorta + '" HEIGHT="' + CONFIG_PORTA.largura + '"><TR>' +
-          lista.map(function (p) { return celulaPorta(p, layoutTopo, true); }).join("") +
+      function tabelaPortasEmPe(lista) {
+        return '<TABLE BORDER="0" CELLSPACING="0" CELLPADDING="0" FIXEDSIZE="TRUE" WIDTH="' + lista.length * layoutTopo.alturaPorta + '" HEIGHT="' + CONFIG_PORTA.largura + '"><TR>' +
+          lista.map(function (p) { return celulaPorta(p, layoutTopo, true); }).join("") + '</TR></TABLE>';
+      }
+      // Portas de cima/baixo coladas no equipamento: o texto que ficaria entre elas
+      // e o ícone (nome em cima, status embaixo) vai para o lado direito delas. Uma
+      // célula vazia do mesmo tamanho à esquerda mantém as portas centralizadas.
+      function linhaPortasComTexto(lista, texto, largura, alinhamento) {
+        return '<TR><TD COLSPAN="3"><TABLE BORDER="0" CELLSPACING="0" CELLPADDING="0"><TR>' +
+          '<TD WIDTH="' + largura + '"></TD><TD>' + tabelaPortasEmPe(lista) + '</TD>' +
+          '<TD WIDTH="' + largura + '" CELLPADDING="3" ALIGN="LEFT" VALIGN="' + alinhamento + '">' + texto + '</TD>' +
           '</TR></TABLE></TD></TR>';
       }
       var alturaPortasLaterais = Math.max(portas.esquerda.length, portas.direita.length) * layoutLateral.alturaPorta;
@@ -4293,16 +4300,36 @@
 
       // Ordem das linhas = ordem em que o Graphviz desenha as portas:
       // cima, (cabeçalho), esquerda, direita, (status), baixo.
+      var cabecalho = linhasDoCabecalho(eq, modo).join("<BR/>");
+      var textoStatus = escaparHtmlDot(marcadorStatus(status) + " " + rotuloStatus(status));
+      var htmlStatus = modo === "monitoramento"
+        ? '<TABLE BORDER="0" CELLPADDING="4" STYLE="rounded" BGCOLOR="' + (FUNDO_STATUS[status] || FUNDO_STATUS.ativo) + '"><TR><TD><FONT FACE="Helvetica" POINT-SIZE="11" COLOR="' + corStatus + '"><B>' + textoStatus + '</B></FONT></TD></TR></TABLE>'
+        : '<FONT FACE="Helvetica" POINT-SIZE="9" COLOR="' + corStatus + '"><B>' + textoStatus + '</B></FONT>';
+      // Largura aproximada do texto (pt) para a célula ao lado das portas.
+      var larguraCabecalho = Math.ceil(Math.max(
+        String(eq.nome || eq.id).length * 7, String(eq.modelo || "").length * 5.5, String(eq.tipo || "").length * 5,
+        String(eq.ip || "").length * 5, String(eq.rede || "").length * 5.5) + 8);
+      var larguraStatus = Math.ceil(textoStatus.length * (modo === "monitoramento" ? 8 : 6.5) + 12);
+      var infoPortas = portasRenderizadas[eq.id];
+      infoPortas.cabecalhoAoLado = portas.cima.length > 0;
+      infoPortas.statusAoLado = portas.baixo.length > 0;
+
+      // Ordem dos textos = ordem em que o Graphviz desenha: portas de cima,
+      // cabeçalho, portas laterais, portas de baixo e status (ou status antes
+      // das portas de baixo, quando não há portas embaixo).
       var rotulo = '<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="0">' +
-        linhaPortas(portas.cima) +
-        '<TR><TD COLSPAN="3" CELLPADDING="3" ALIGN="CENTER">' + linhasDoCabecalho(eq, modo).join("<BR/>") + '</TD></TR>' +
-        '<TR>' + colunaPortas(portas.esquerda) +
-        '<TD BORDER="0" CELLPADDING="0" WIDTH="96" HEIGHT="' + alturaMeio + '"></TD>' +
-        colunaPortas(portas.direita) + '</TR>' +
-        (modo === "monitoramento"
-          ? '<TR><TD COLSPAN="3" CELLPADDING="2" ALIGN="CENTER"><TABLE BORDER="0" CELLPADDING="4" STYLE="rounded" BGCOLOR="' + (FUNDO_STATUS[status] || FUNDO_STATUS.ativo) + '"><TR><TD><FONT FACE="Helvetica" POINT-SIZE="11" COLOR="' + corStatus + '"><B>' + escaparHtmlDot(marcadorStatus(status) + " " + rotuloStatus(status)) + '</B></FONT></TD></TR></TABLE></TD></TR>'
-          : '<TR><TD COLSPAN="3" CELLPADDING="4" ALIGN="CENTER"><FONT FACE="Helvetica" POINT-SIZE="9" COLOR="' + corStatus + '"><B>' + escaparHtmlDot(marcadorStatus(status) + " " + rotuloStatus(status)) + '</B></FONT></TD></TR>') +
-        linhaPortas(portas.baixo) +
+        (portas.cima.length
+          ? linhaPortasComTexto(portas.cima, cabecalho, larguraCabecalho, "BOTTOM")
+          : '<TR><TD COLSPAN="3" CELLPADDING="3" ALIGN="CENTER">' + cabecalho + '</TD></TR>') +
+        // Portas laterais e área do ícone num bloco só: se o nome ao lado das
+        // portas de cima alargar o equipamento, a sobra fica por fora do bloco e
+        // as portas laterais continuam coladas no ícone.
+        '<TR><TD COLSPAN="3"><TABLE BORDER="0" CELLSPACING="0" CELLPADDING="0" FIXEDSIZE="TRUE" WIDTH="' + (2 * CONFIG_PORTA.largura + 88) + '" HEIGHT="' + alturaMeio + '"><TR>' + colunaPortas(portas.esquerda) +
+        '<TD BORDER="0" CELLPADDING="0" WIDTH="88" HEIGHT="' + alturaMeio + '"></TD>' +
+        colunaPortas(portas.direita) + '</TR></TABLE></TD></TR>' +
+        (portas.baixo.length
+          ? linhaPortasComTexto(portas.baixo, htmlStatus, larguraStatus, "TOP")
+          : '<TR><TD COLSPAN="3" CELLPADDING="' + (modo === "monitoramento" ? 2 : 4) + '" ALIGN="CENTER">' + htmlStatus + '</TD></TR>') +
         '</TABLE>>';
       return '    "' + escapar(eq.id) + '" [id="equip_' + dados.equipamentos.indexOf(eq) + '", label=' + rotulo + ', shape=plain, color="transparent", fontcolor="' + corFonte + '"];';
     }
@@ -4389,7 +4416,8 @@
       });
       var pares = [];
       for (var i = 0; i < info.nCima; i++) pares.push([textos[i], caixas[i]]);
-      for (var j = 1; j <= info.nBaixo; j++) pares.push([textos[textos.length - j], caixas[info.ordem.length - j]]);
+      var fim = textos.length - (info.statusAoLado ? 1 : 0);
+      for (var j = 1; j <= info.nBaixo; j++) pares.push([textos[fim - j], caixas[info.ordem.length - j]]);
       pares.forEach(function (par) {
         var texto = par[0], caixa = par[1];
         if (!texto || !caixa) return;
@@ -4446,7 +4474,7 @@
         var infoPortas = portasRenderizadas[id] || { nCima: 0, nBaixo: 0 };
         var linhasCabecalho = linhasDoCabecalho(equipamento, modoAtual()).length;
         var cabecalho = textos.slice(infoPortas.nCima, infoPortas.nCima + linhasCabecalho);
-        var statusTexto = textos[textos.length - 1 - infoPortas.nBaixo] || null;
+        var statusTexto = (infoPortas.statusAoLado ? textos[textos.length - 1] : textos[textos.length - 1 - infoPortas.nBaixo]) || null;
 
         var fundoCabecalho = bboxNode.y + Math.min(36, bboxNode.height * 0.28);
         cabecalho.forEach(function (texto) {
