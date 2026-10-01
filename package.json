@@ -7,10 +7,14 @@
     "start": "node servidor-local.js",
     "dev": "node --watch servidor-local.js",
     "test": "node --test \"tests/*.test.js\"",
+    "test:navegador": "node --test --test-concurrency=1 \"tests/navegador/*.test.js\"",
     "icones": "node scripts/gerar-icones-embutidos.js",
     "montar": "node scripts/montar-app.js"
   },
   "dependencies": {
     "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
   }
 }

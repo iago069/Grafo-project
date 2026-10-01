@@ -288,11 +288,14 @@ O `servidor-local.js` lê o `.env` sozinho ao iniciar — se mudar o arquivo, pa
 | `npm run dev` | Igual ao `start`, reiniciando ao salvar o `servidor-local.js` |
 | `npm run icones` | Gera `assets/js/icones-embutidos.js` |
 | `npm test` | Roda os testes da pasta `tests/` (requer Node.js 22+) |
+| `npm run test:navegador` | Abre o site num navegador de verdade e testa página inicial, editor, PDF, celular e tutorial (`tests/navegador/`) |
 | `npm run montar` | Monta `assets/js/app.js` a partir das partes em `src/app/` |
 
 **Para mudar o editor, edite os arquivos de `src/app/`**, não o `assets/js/app.js`, e depois rode `npm run montar`. As partes são fatias, em ordem, de um único bloco de código com estado compartilhado (por isso uma parte sozinha não é um arquivo JavaScript completo). O `npm test` avisa se o `app.js` ficou desatualizado.
 
 Os testes também rodam sozinhos no GitHub a cada envio (`.github/workflows/testes.yml`) e na Vercel antes de publicar (`buildCommand` no `vercel.json`): se algum falhar, o deploy é cancelado e o site continua na versão anterior.
+
+Os testes de navegador rodam só no GitHub (job `navegador`), num Chromium com o Supabase simulado. Para rodar no computador: `npm install`, depois `npx playwright install chromium` (ou deixe sem: eles usam o Edge ou o Chrome instalados) e `npm run test:navegador`.
 
 A porta pode ser trocada com a variável `PORT`. Depois de atualizar os arquivos, recarregue a página com **Ctrl+F5**.
 
@@ -360,7 +363,7 @@ Também é possível publicar direto do computador com a Vercel CLI: `npx vercel
 | `servidor-local.js` | Servidor Express para rodar localmente; lê o `.env` |
 | `.env.example` | Modelo do `.env` |
 | `scripts/gerar-icones-embutidos.js` | Gera o `icones-embutidos.js` |
-| `tests/` | Testes automáticos (`npm test`): validação, anotações, modelos e portas, planilha de inventário, rotas da API, conflito entre abas, exclusão de conta, projetos de equipe e montagem do `app.js`. `simulador.js` é o navegador simulado que os testes usam |
+| `tests/` | Testes automáticos (`npm test`): validação, anotações, modelos e portas, planilha de inventário, rotas da API, conflito entre abas, exclusão de conta, projetos de equipe e montagem do `app.js`. `simulador.js` é o navegador simulado que os testes usam. `tests/navegador/` tem os testes num navegador de verdade (`npm run test:navegador`) |
 | `docs/` | Imagens deste README |
 
 > O catálogo fica em `data/`, fora de `api/`, porque na Vercel `api/equipamentos.js` e `api/equipamentos.json` colidiriam na mesma rota. O servidor local se chama `servidor-local.js` (e não `server.js`) para a Vercel não tratar o projeto como app Express.

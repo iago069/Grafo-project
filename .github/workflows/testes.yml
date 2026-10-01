@@ -13,3 +13,16 @@ jobs:
         with:
           node-version: 22
       - run: npm test
+
+  # Abre o site num Chromium de verdade: página inicial, editor, PDF, celular e tutorial.
+  navegador:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:navegador
