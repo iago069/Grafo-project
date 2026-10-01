@@ -11,7 +11,6 @@ test("sem login: o editor abre sem conta e nada vai para a nuvem", async () => {
   const aba = await abrirAba(banco, { semSessao: true, armazenamento: { "grafo-modo": "convidado" } });
   assert.equal(aba.auth.logado(), false);
   assert.equal(aba.els.sidebarUsuarioNome.textContent, "Sem login");
-  assert.match(aba.els.sidebarUsuarioDetalhe.textContent, /só neste navegador/);
   assert.equal(aba.els.btnEntrarConvidado.hidden, false);
   assert.equal(aba.auth.storageKey("grafo-projetos"), "grafo-projetos:convidado");
   aba.auth.scheduleSave({ "Meu POP": projeto("SW") }, "Meu POP");
@@ -54,26 +53,22 @@ test("ao entrar, os projetos feitos sem login vão para a conta (nome repetido g
   assert.equal(aba.auth.logado(), true);
 });
 
-test("o nome da conta aparece no botão (com o e-mail à parte) e em destaque na barra lateral", async () => {
+test("a barra lateral mostra só o nome; o botão da conta continua com o e-mail", async () => {
   const aba = await abrirAba(novoBanco(), { usuario: pessoa({ user_metadata: { nome: "Iago Ariel Barbosa" } }) });
-  assert.equal(aba.els.accountEmail.textContent, "Iago Ariel Barbosa");
-  assert.equal(aba.els.accountEmail.getAttribute("data-email"), "iago@exemplo.com");
+  assert.equal(aba.els.accountEmail.textContent, "iago@exemplo.com");
   assert.equal(aba.els.sidebarUsuarioNome.textContent, "Iago");
-  assert.equal(aba.els.sidebarUsuarioDetalhe.textContent, "Iago Ariel Barbosa · iago@exemplo.com");
-  assert.equal(aba.els.sidebarUsuarioInicial.textContent, "I");
   assert.equal(aba.auth.nome(), "Iago Ariel Barbosa");
 });
 
 test("conta sem nome: mostra o começo do e-mail e o nome pode ser salvo em Minha conta", async () => {
   const aba = await abrirAba(novoBanco(), { usuario: pessoa() });
   assert.equal(aba.els.sidebarUsuarioNome.textContent, "iago");
-  assert.match(aba.els.sidebarUsuarioDetalhe.textContent, /Adicione seu nome/);
   await aba.els.accountOpen.disparar("click");
   aba.els.contaNome.value = "  Iago   Barbosa ";
   aba.els.contaNomeForm.querySelector = () => ({ disabled: false });
   await aba.els.contaNomeForm.disparar("submit");
   assert.equal(aba.els.contaNomeMensagem.textContent, "Nome salvo.");
-  assert.equal(aba.els.accountEmail.textContent, "Iago Barbosa");
+  assert.equal(aba.els.accountEmail.textContent, "iago@exemplo.com");
   assert.equal(aba.els.sidebarUsuarioNome.textContent, "Iago");
 });
 

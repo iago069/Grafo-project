@@ -618,6 +618,9 @@
       var item = document.querySelector('.nav-item[data-nav-panel="' + id + '"]');
       if (!painel || !item) return;
       if (elSidebar.classList.contains("collapsed")) definirSidebarRecolhida(false);
+      // Seção do menu fechada pelo título (interface.js): abre antes.
+      var secao = item.closest(".nav-section");
+      if (secao && secao.classList.contains("fechada")) secao.querySelector(".nav-label").click();
       fecharPaineisLaterais();
       painel.classList.add("open");
       item.classList.add("active");

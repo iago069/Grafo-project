@@ -70,15 +70,13 @@
     });
   }
 
-  // Inicial e e-mail no menu, a partir do que auth.js preenche: o texto é o
-  // nome da pessoa (ou o e-mail, sem nome) e o data-email é o e-mail.
+  // Inicial e e-mail completo no menu, a partir do e-mail que auth.js preenche.
   function atualizarConta() {
     var texto = (email && email.textContent || "").trim();
-    var endereco = (email && email.getAttribute("data-email") || texto).trim();
     var inicial = (texto.match(/[a-z0-9À-ÿ]/i) || ["?"])[0].toUpperCase();
     document.querySelectorAll("[data-conta-inicial]").forEach(function (el) { el.textContent = inicial; });
-    document.querySelectorAll("[data-conta-email]").forEach(function (el) { el.textContent = endereco; });
-    if (botao) botao.title = texto ? "Conta: " + texto + (endereco !== texto ? " (" + endereco + ")" : "") : "Sua conta";
+    document.querySelectorAll("[data-conta-email]").forEach(function (el) { el.textContent = texto; });
+    if (botao) botao.title = texto ? "Conta: " + texto : "Sua conta";
   }
   if (email) {
     new MutationObserver(atualizarConta).observe(email, { childList: true, characterData: true, subtree: true });
@@ -309,4 +307,28 @@
     sidebar.addEventListener("click", esconderLegenda);
     window.addEventListener("scroll", esconderLegenda, true);
   }
+
+  // ---- Seções do menu lateral que abrem e fecham pelo título -------------------
+  // As fechadas ficam guardadas neste navegador (só uma conveniência).
+  var CHAVE_SECOES = "grafo-menu-fechado";
+  var fechadas = [];
+  try { fechadas = JSON.parse(localStorage.getItem(CHAVE_SECOES) || "[]") || []; } catch (e) {}
+  document.querySelectorAll(".nav-section > .nav-label").forEach(function (titulo) {
+    var secao = titulo.parentNode;
+    var nome = titulo.textContent.trim();
+    function definir(aberta, guardar) {
+      secao.classList.toggle("fechada", !aberta);
+      titulo.setAttribute("aria-expanded", aberta ? "true" : "false");
+      if (!guardar) return;
+      fechadas = fechadas.filter(function (n) { return n !== nome; });
+      if (!aberta) fechadas.push(nome);
+      try { localStorage.setItem(CHAVE_SECOES, JSON.stringify(fechadas)); } catch (e) {}
+    }
+    definir(fechadas.indexOf(nome) < 0, false);
+    titulo.addEventListener("click", function () { definir(secao.classList.contains("fechada"), true); });
+    // Um formulário aberto por outro caminho (ex.: atalho) reabre a seção.
+    secao.addEventListener("focusin", function (event) {
+      if (event.target !== titulo && secao.classList.contains("fechada")) definir(true, true);
+    });
+  });
 })();

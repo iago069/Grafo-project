@@ -149,3 +149,25 @@ test("menu lateral: formulário abre deslizando e o menu recolhido mostra legend
   assert.equal(await pagina.textContent(".nav-legenda"), "Etiquetas com QR code");
   await pagina.context().close();
 });
+
+test("menu lateral: seção fecha pelo título, continua fechada ao recarregar e o recolhido mostra tudo", async () => {
+  const pagina = await abrirPagina(navegador, site);
+  await esperarDiagrama(pagina);
+  const titulo = ".nav-section:has(#btnEtiquetas) > .nav-label";
+  assert.equal(await pagina.getAttribute(titulo, "aria-expanded"), "true");
+  await pagina.click(titulo);
+  assert.equal(await pagina.getAttribute(titulo, "aria-expanded"), "false");
+  assert.equal(await pagina.isVisible("#btnEtiquetas"), false);
+  await pagina.reload();
+  await esperarDiagrama(pagina);
+  assert.equal(await pagina.isVisible("#btnEtiquetas"), false, "continua fechada");
+  // Recolhido, todos os ícones aparecem, mesmo os de seção fechada.
+  await pagina.click("#btnSidebarCollapse");
+  await pagina.waitForFunction(() => document.querySelector(".sidebar").classList.contains("collapsed"));
+  assert.equal(await pagina.isVisible("#btnEtiquetas"), true);
+  await pagina.click("#btnSidebarCollapse");
+  await pagina.click(titulo);
+  assert.equal(await pagina.isVisible("#btnEtiquetas"), true);
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

@@ -47,11 +47,11 @@ test("usar sem login: editor abre, exporta, guarda no navegador e pede login par
 test("com conta: o pé da barra lateral mostra quem está usando", async () => {
   const pagina = await abrirPagina(navegador, site);
   await esperarDiagrama(pagina);
-  const barra = await pagina.$eval("#sidebarUsuario", el => ({ visivel: !el.hidden, nome: el.querySelector("strong").textContent, detalhe: el.querySelector("span:not(.sidebar-usuario-avatar)").textContent }));
+  const barra = await pagina.$eval("#sidebarUsuario", el => ({ visivel: !el.hidden, texto: el.textContent.trim() }));
   assert.equal(barra.visivel, true);
-  // A sessão simulada não tem nome: mostra o começo do e-mail e pede o nome.
-  assert.equal(barra.nome, "teste");
-  assert.match(barra.detalhe, /Adicione seu nome/);
+  // Só o nome (a sessão simulada não tem nome: o começo do e-mail). O e-mail fica no botão da conta.
+  assert.equal(barra.texto, "teste");
+  assert.match(await pagina.textContent("#accountEmail"), /@/);
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });

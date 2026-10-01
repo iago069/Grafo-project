@@ -1135,31 +1135,70 @@ button.ghost:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 6
 #listaConex .conex-row { content-visibility: auto; contain-intrinsic-size: auto 58px; }
 
 /* ---------- Usuário no pé da barra lateral (auth.js) ----------
-   Primeiro nome em destaque; nome completo e e-mail embaixo. Fica no fim do
-   menu (margin-top: auto), no espaço que sobra abaixo dos itens. */
+   Só o nome, em destaque. Fica no fim do menu (margin-top: auto), no espaço
+   que sobra abaixo dos itens; o e-mail continua no botão da conta. */
 .sidebar-usuario {
-  margin-top: auto; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px;
-  padding: 14px 10px 6px; border-top: 1px solid var(--line-soft); animation: surgir var(--dur-media) var(--ease-out);
+  margin-top: auto; padding: 14px 10px 6px; border-top: 1px solid var(--line-soft);
+  animation: surgir var(--dur-media) var(--ease-out);
 }
 .sidebar-usuario[hidden] { display: none; }
-.sidebar-usuario-avatar {
-  display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 72%, #fff), var(--accent));
-  color: var(--accent-ink); font: 700 1rem var(--sans);
+.sidebar-usuario strong {
+  display: block; font-size: 1.6rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;
+  line-height: 1.15; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.sidebar-usuario-texto { display: grid; min-width: 0; line-height: 1.2; }
-.sidebar-usuario-texto strong {
-  font-size: 1.35rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+.sidebar-usuario.convidado strong { font-size: 1.1rem; color: var(--text-dim); }
+/* Barra recolhida: não cabe o nome. */
+.sidebar.collapsed .sidebar-usuario { display: none; }
+
+/* Computador: o menu lateral começa e termina na mesma linha do painel do
+   diagrama (topo = cabeçalho 68px + 20px do .workspace; base = os 28px de baixo). */
+@media (min-width: 901px) {
+  .sidebar:not(.collapsed) .brand { min-height: 70px; }
+  .sidebar { padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px)); }
 }
-.sidebar-usuario-texto span { font-size: 0.72rem; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sidebar-usuario button.ghost.small { padding: 5px 10px; }
-.sidebar-usuario.convidado .sidebar-usuario-avatar { background: color-mix(in srgb, var(--text) 14%, transparent); color: var(--text); }
-.sidebar-usuario.convidado .sidebar-usuario-texto strong { font-size: 1rem; letter-spacing: 0.02em; }
-.sidebar-usuario.convidado button.ghost.small { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-/* Barra recolhida: só a inicial. */
-.sidebar.collapsed .sidebar-usuario { grid-template-columns: 1fr; justify-items: center; padding: 12px 0 4px; }
-.sidebar.collapsed .sidebar-usuario-texto, .sidebar.collapsed .sidebar-usuario button { display: none; }
+
+/* ---------- Modelo da barra lateral ----------
+   Logo menor fora do painel; botão de recolher dentro do painel, no canto;
+   títulos de seção em blocos com seta (abrem e fecham, interface.js); item
+   ativo preenchido na cor de destaque; nome centralizado no pé. */
+.sidebar:not(.collapsed) .brand { font-size: 1.7rem; gap: 12px; padding-left: 18px; }
+.sidebar:not(.collapsed) .brand-mark { width: 40px; height: 40px; }
+@media (min-width: 901px) {
+  .sidebar:not(.collapsed) .sidebar-collapse {
+    top: 98px; right: 14px; width: 32px; height: 32px; border: 0; border-radius: 8px;
+    background: transparent; box-shadow: none; color: var(--text);
+  }
+  .sidebar:not(.collapsed) .sidebar-collapse:hover { background: color-mix(in srgb, var(--text) 10%, transparent); color: var(--text); }
+  .sidebar:not(.collapsed) .nav { padding-top: 46px; }
+}
+.nav { gap: 10px; padding-left: 8px; padding-right: 8px; }
+.nav-label {
+  display: flex; align-items: center; justify-content: space-between; width: 100%; margin: 0 0 4px; padding: 13px 16px;
+  border: 0; border-radius: 12px; background: color-mix(in srgb, var(--text) 6%, transparent);
+  color: color-mix(in srgb, var(--text) 72%, transparent); font: 800 0.7rem var(--sans); letter-spacing: 0.16em;
+  text-transform: uppercase; text-align: left; opacity: 1; cursor: pointer;
+  transition: background-color var(--dur-rapida) ease, color var(--dur-rapida) ease;
+}
+.nav-label:hover { background: color-mix(in srgb, var(--text) 10%, transparent); color: var(--text); }
+.nav-label::after {
+  content: ""; flex: 0 0 14px; width: 14px; height: 14px; background: currentColor; transition: transform var(--dur-media) var(--ease-out);
+  -webkit-mask: var(--seta) center / contain no-repeat; mask: var(--seta) center / contain no-repeat;
+  --seta: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m18 15-6-6-6 6'/%3E%3C/svg%3E");
+}
+.nav-section.fechada .nav-label { margin-bottom: 0; }
+.nav-section.fechada .nav-label::after { transform: rotate(180deg); }
+.sidebar:not(.collapsed) .nav-section.fechada > :not(.nav-label) { display: none; }
+.sidebar:not(.collapsed) .nav-item { padding-left: 20px; }
+.nav-item.active, .nav-item.active:hover {
+  background: var(--accent); border-color: var(--accent); color: var(--accent-ink); box-shadow: none;
+}
+.nav-item.active::before { background-color: currentColor; }
+.sidebar-usuario { padding: 16px 10px 4px; text-align: center; }
+.sidebar-usuario strong {
+  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 55%, var(--text)));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.sidebar-usuario.convidado strong { background: none; color: var(--text-dim); }
 
 /* ---------- Sem login ---------- */
 /* Recursos que precisam de conta: aparecem com cadeado e pedem login ao clicar. */

@@ -399,29 +399,18 @@
     notice("");
   }
 
-  // Pé da barra lateral: quem está usando (ou "Sem login", com o botão Entrar).
+  // Pé da barra lateral: só o nome de quem está usando (ou "Sem login").
   function atualizarUsuarioNaBarra() {
     var caixa = document.getElementById("sidebarUsuario");
     if (!caixa) return;
     var nome = convidado ? "" : nomeDoUsuario(user);
     var email = !convidado && user && user.email || "";
-    // Em destaque, o primeiro nome (ou o começo do e-mail, para quem ainda não tem nome).
-    var destaque = convidado ? "Sem login" : (nome ? nome.split(" ")[0] : email.split("@")[0]);
-    document.getElementById("sidebarUsuarioNome").textContent = destaque;
-    document.getElementById("sidebarUsuarioDetalhe").textContent = convidado ? "Projetos salvos só neste navegador"
-      : nome ? (nome.indexOf(" ") > 0 ? nome + " · " : "") + email : "Adicione seu nome em Minha conta";
-    document.getElementById("sidebarUsuarioInicial").textContent = convidado ? "?" : ((destaque || "?").match(/[a-z0-9À-ÿ]/i) || ["?"])[0].toUpperCase();
-    caixa.title = convidado ? "Usando sem login" : (nome || email);
-    var acao = document.getElementById("sidebarUsuarioAcao");
-    acao.textContent = convidado ? "Entrar" : "Conta";
-    acao.title = convidado ? "Entrar ou criar conta para salvar na nuvem" : "Minha conta";
+    // O primeiro nome (ou o começo do e-mail, para quem ainda não tem nome).
+    document.getElementById("sidebarUsuarioNome").textContent = convidado ? "Sem login" : (nome ? nome.split(" ")[0] : email.split("@")[0]);
+    caixa.title = convidado ? "Usando sem login" : (nome || "Adicione seu nome em Minha conta");
     caixa.classList.toggle("convidado", convidado);
     caixa.hidden = false;
   }
-  document.getElementById("sidebarUsuarioAcao").addEventListener("click", function () {
-    if (convidado) irParaLogin("login");
-    else openAccount();
-  });
   document.getElementById("btnEntrarConvidado").addEventListener("click", function () { irParaLogin("login"); });
   document.querySelectorAll("[data-usar-sem-login]").forEach(function (b) {
     b.addEventListener("click", function () { activateGuest(); });
@@ -456,11 +445,7 @@
   }
 
   function showEditor() {
-    // Botão da conta: o nome (ou o e-mail, se não houver nome); o e-mail fica no
-    // data-email para o menu (interface.js) mostrar "Conectado como".
-    var elConta = document.getElementById("accountEmail");
-    elConta.setAttribute("data-email", user.email || "");
-    elConta.textContent = nomeDoUsuario(user) || user.email || "Minha conta";
+    document.getElementById("accountEmail").textContent = user.email || "Minha conta";
     try { localStorage.removeItem(CHAVE_MODO); } catch (e) {}
     atualizarUsuarioNaBarra();
     account.hidden = false;
@@ -756,8 +741,6 @@
       var r = await client.auth.updateUser({ data: { nome: nome, full_name: nome } });
       if (r.error) throw r.error;
       user = r.data.user || user;
-      var elConta = document.getElementById("accountEmail");
-      elConta.textContent = nomeDoUsuario(user) || user.email;
       atualizarUsuarioNaBarra();
       aviso.textContent = "Nome salvo.";
     } catch (error) {
