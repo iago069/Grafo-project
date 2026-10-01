@@ -1143,7 +1143,7 @@ button.ghost:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 6
 }
 .sidebar-usuario[hidden] { display: none; }
 .sidebar-usuario strong {
-  display: block; font-size: 1.6rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;
+  display: block; font-size: 1.6rem; font-weight: 800; letter-spacing: 0.01em; text-transform: lowercase;
   line-height: 1.15; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .sidebar-usuario.convidado strong { font-size: 1.1rem; color: var(--text-dim); }
