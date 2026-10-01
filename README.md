@@ -208,6 +208,8 @@ O ícone é escolhido pelo tipo ou nome do equipamento, ou manualmente no editor
 | VOLT | `VOLT.jpeg` | "volt" |
 | Câmera | `CAMERA.jpeg` | "câmera", "camera" |
 
+Além desses, o quadro de símbolos tem um tipo e um ícone para: Conversor de fibra, Concentrador Hotspot, CX, Decoder, DIO, AP WiFi, POE, UniFi, NVR, DWDM, MUX, DEMUX, Bateria, Switch POE, Conversor de mídia, Controle de acesso, Aligera, Dream Machine e Nuvem VPLS (arquivos com o mesmo nome em `assets/images/`, lista em `SIMBOLOS` de `src/app/00-catalogo.js`). O tipo é reconhecido por palavra inteira, e o nome mais específico ganha: "Switch POE 24p" usa o ícone de Switch POE, e "Rádio" não vira DIO.
+
 Também dá para usar um emoji ou enviar uma imagem própria pelo campo **Imagem** (é reduzida para 256 px).
 
 A lista de tipos sugeridos vem de `data/equipamentos.json` — **edite ali** para adicionar tipos. Ao adicionar ou trocar uma imagem em `assets/images/`, rode `npm run icones` para atualizar `assets/js/icones-embutidos.js`, que a exportação usa para colocar os ícones dentro do PNG/SVG.

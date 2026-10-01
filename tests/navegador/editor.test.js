@@ -171,3 +171,40 @@ test("menu lateral: seção fecha pelo título, continua fechada ao recarregar e
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("quadro de símbolos: todos os tipos na lista, com ícone, e o tipo certo para cada nome", async () => {
+  const pagina = await abrirPagina(navegador, site);
+  await esperarDiagrama(pagina);
+  const tipos = await pagina.$$eval("#tipos-sugeridos option", l => l.map(o => o.value));
+  for (const t of ["Volt POP Protect", "RB / CCR", "Switch", "Retificador", "Câmera", "Nobreak", "Conversor de fibra", "Concentrador Hotspot", "CX",
+    "Decoder", "DIO", "AP WiFi", "OLT", "ONU", "POE", "UniFi", "NVR", "Servidor", "DWDM", "MUX", "DEMUX", "Ar condicionado", "Bateria",
+    "Switch POE", "Conversor de mídia", "Controle de acesso", "Aligera", "Dream Machine", "Nuvem VPLS"]) assert.ok(tipos.includes(t), t + " na lista de tipos");
+  // Todas as imagens existem.
+  const quebradas = await pagina.evaluate(async () => {
+    const urls = [...new Set(window.apiEquipamentos.listar().map(t => t.icone).filter(Boolean))];
+    const r = await Promise.all(urls.map(u => fetch(u).then(x => x.ok ? "" : u)));
+    return r.filter(Boolean);
+  });
+  assert.deepEqual(quebradas, []);
+  // Tipo digitado -> ícone: o nome mais específico ganha, e só palavra inteira conta.
+  for (const [nome, tipo] of [["SWP-01", "Switch POE 24p"], ["DIO-01", "DIO"], ["RADIO-01", "Rádio"], ["DMX-01", "DEMUX"]]) {
+    // O formulário fecha depois de adicionar.
+    await pagina.click('[data-nav-panel="navAddEquip"]');
+    await pagina.waitForSelector("#navEquipNome", { state: "visible" });
+    await pagina.fill("#navEquipNome", nome);
+    await pagina.fill("#navEquipTipo", tipo);
+    await pagina.click('#navEquipForm button[type="submit"]');
+    await pagina.waitForFunction(n => document.getElementById("canvas").textContent.includes(n), nome, { timeout: 20000 });
+  }
+  const icone = await pagina.evaluate(() => {
+    const projetos = JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k => k.indexOf("grafo-projetos") === 0)));
+    const atual = Object.values(projetos).find(p => p.equipamentos.some(e => e.nome === "SWP-01"));
+    return Object.fromEntries(atual.equipamentos.map(e => [e.nome, (e.icone || "").split("/").pop()]));
+  });
+  assert.equal(icone["SWP-01"], "SWITCH-POE.png");
+  assert.equal(icone["DIO-01"], "DIO.png");
+  assert.notEqual(icone["RADIO-01"], "DIO.png");
+  assert.equal(icone["DMX-01"], "DEMUX.png");
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

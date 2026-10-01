@@ -54,30 +54,43 @@
     }) || caminhoPadrao;
   }
 
-  var TIPOS_BASE = [
-    { nome: "OLT", icone: caminhoImagem("OLT.jpeg") },
-    { nome: "Switch", icone: caminhoImagem("SWITCH.jpeg") },
-    { nome: "VOLT", icone: caminhoImagem("VOLT.jpeg") },
-    { nome: "MikroTik", icone: caminhoImagem("MIKROTIK.png") },
-    { nome: "UPS", icone: caminhoImagem("NOBREAK.jpeg") },
-    { nome: "AR", icone: caminhoImagem("AR.jpeg") },
-    { nome: "RPS", icone: caminhoImagem("RETIFICADOR.jpeg") },
-    { nome: "Camera IP", icone: caminhoImagem("CAMERA.jpeg") },
-    { nome: "ONU", icone: caminhoImagem("ONU.svg") },
-    { nome: "Servidor", icone: caminhoImagem("SERVIDOR.svg") }
+  // Quadro de símbolos para diagramas: [tipo sugerido, arquivo em assets/images,
+  // nome do ícone na lista "Ícone"]. A ordem é a da lista de tipos.
+  var SIMBOLOS = [
+    ["Volt POP Protect", "VOLT.jpeg", "Volt POP Protect"],
+    ["RB / CCR", "MIKROTIK.png", "RB / CCR (MikroTik)"],
+    ["Switch", "SWITCH.jpeg", "Switch"],
+    ["Retificador", "RETIFICADOR.jpeg", "Retificador / RPS"],
+    ["Câmera", "CAMERA.jpeg", "Câmera"],
+    ["Nobreak", "NOBREAK.jpeg", "Nobreak"],
+    ["Conversor de fibra", "CONVERSOR-FIBRA.png", "Conversor de fibra"],
+    ["Concentrador Hotspot", "CONCENTRADOR-HOTSPOT.png", "Concentrador Hotspot"],
+    ["CX", "CX.png", "CX"],
+    ["Decoder", "DECODER.png", "Decoder"],
+    ["DIO", "DIO.png", "DIO (Distribuidor Interno Óptico)"],
+    ["AP WiFi", "AP-WIFI.png", "AP WiFi"],
+    ["OLT", "OLT.jpeg", "OLT"],
+    ["ONU", "ONU.svg", "ONU / ONT"],
+    ["POE", "POE.png", "POE"],
+    ["UniFi", "UNIFI.png", "UniFi"],
+    ["NVR", "NVR.png", "NVR"],
+    ["Servidor", "SERVIDOR.svg", "Servidor"],
+    ["DWDM", "DWDM.png", "DWDM"],
+    ["MUX", "MUX.png", "MUX"],
+    ["DEMUX", "DEMUX.png", "DEMUX"],
+    ["Ar condicionado", "AR.jpeg", "Ar condicionado"],
+    ["Bateria", "BATERIA.png", "Bateria"],
+    ["Switch POE", "SWITCH-POE.png", "Switch POE"],
+    ["Conversor de mídia", "CONVERSOR-MIDIA.png", "Conversor de mídia"],
+    ["Controle de acesso", "CONTROLE-ACESSO.png", "Controle de acesso"],
+    ["Aligera", "ALIGERA.png", "Aligera"],
+    ["Dream Machine", "DREAM-MACHINE.png", "Dream Machine"],
+    ["Nuvem VPLS", "NUVEM-VPLS.png", "Nuvem VPLS"]
   ];
-  var CATALOGO_ICONES = [
-    { valor: caminhoImagem("MIKROTIK.png"), nome: "MikroTik / RB", arquivo: caminhoImagem("MIKROTIK.png") },
-    { valor: caminhoImagem("OLT.jpeg"), nome: "OLT", arquivo: caminhoImagem("OLT.jpeg") },
-    { valor: caminhoImagem("SWITCH.jpeg"), nome: "Switch", arquivo: caminhoImagem("SWITCH.jpeg") },
-    { valor: caminhoImagem("RETIFICADOR.jpeg"), nome: "Retificador / RPS", arquivo: caminhoImagem("RETIFICADOR.jpeg") },
-    { valor: caminhoImagem("NOBREAK.jpeg"), nome: "Nobreak", arquivo: caminhoImagem("NOBREAK.jpeg") },
-    { valor: caminhoImagem("AR.jpeg"), nome: "AR", arquivo: caminhoImagem("AR.jpeg") },
-    { valor: caminhoImagem("VOLT.jpeg"), nome: "Volt", arquivo: caminhoImagem("VOLT.jpeg") },
-    { valor: caminhoImagem("CAMERA.jpeg"), nome: "Câmera", arquivo: caminhoImagem("CAMERA.jpeg") },
-    { valor: caminhoImagem("ONU.svg"), nome: "ONU / ONT", arquivo: caminhoImagem("ONU.svg") },
-    { valor: caminhoImagem("SERVIDOR.svg"), nome: "Servidor", arquivo: caminhoImagem("SERVIDOR.svg") }
-  ];
+  // Nomes antigos dos tipos, que projetos já salvos usam.
+  var TIPOS_ANTIGOS = [["MikroTik", "MIKROTIK.png"], ["VOLT", "VOLT.jpeg"], ["UPS", "NOBREAK.jpeg"], ["AR", "AR.jpeg"], ["RPS", "RETIFICADOR.jpeg"], ["Camera IP", "CAMERA.jpeg"]];
+  var TIPOS_BASE = SIMBOLOS.concat(TIPOS_ANTIGOS).map(function (s) { return { nome: s[0], icone: caminhoImagem(s[1]) }; });
+  var CATALOGO_ICONES = SIMBOLOS.map(function (s) { return { valor: caminhoImagem(s[1]), nome: s[2], arquivo: caminhoImagem(s[1]) }; });
   var catalogoTiposEquipamentos = TIPOS_BASE.slice();
 
   function normalizarTextoEquipamento(valor) {
@@ -134,13 +147,26 @@
     }).join("");
   }
 
+  // Tipo do catálogo para o texto digitado: o nome igual; senão, o nome mais
+  // longo que aparece no texto como palavra inteira ("Switch POE 24p" -> Switch
+  // POE, e não Switch); senão, o mais curto que contém o texto ("conversor").
+  // Palavra inteira para "DIO" não pegar "Rádio" nem "MUX" pegar "DEMUX".
   function buscarTipoNoCatalogo(tipo) {
-    var chave = normalizarTextoEquipamento(tipo);
+    var chave = palavrasDoTipo(tipo);
     if (!chave) return null;
-    return catalogoTiposEquipamentos.find(function (item) {
-      var nome = normalizarTextoEquipamento(extrairNomeTipo(item));
-      return nome === chave || nome.indexOf(chave) >= 0 || chave.indexOf(nome) >= 0;
-    }) || null;
+    var melhor = null, pontos = 0;
+    catalogoTiposEquipamentos.forEach(function (item) {
+      var nome = palavrasDoTipo(extrairNomeTipo(item));
+      if (!nome) return;
+      var p = nome === chave ? 3000
+        : (" " + chave + " ").indexOf(" " + nome + " ") >= 0 ? 2000 + nome.length
+        : (" " + nome + " ").indexOf(" " + chave + " ") >= 0 ? 1000 - nome.length : 0;
+      if (p > pontos) { melhor = item; pontos = p; }
+    });
+    return melhor;
+  }
+  function palavrasDoTipo(valor) {
+    return normalizarTextoEquipamento(valor).replace(/[^a-z0-9]+/g, " ").trim();
   }
 
   function registrarTipoEquipamento(nome, opcoes) {
