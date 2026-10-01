@@ -161,7 +161,15 @@
     border: 1px solid var(--line-soft); border-radius: 50%; background: var(--bg-panel-2); color: var(--text);
     font-size: 1.7rem; line-height: 1; box-shadow: 0 8px 18px color-mix(in srgb, var(--bg) 32%, transparent);
   }
-  .sidebar-collapse:hover { background: var(--accent); color: var(--accent-ink); }
+  .sidebar-collapse:hover { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  /* Ícone desenhado no lugar do caractere que app.js escreve (‹ › ☰ ×). */
+  .sidebar-collapse { font-size: 0 !important; display: grid; place-items: center; transition: background-color var(--dur-rapida) ease, color var(--dur-rapida) ease, transform var(--dur-media) var(--ease-out); }
+  .sidebar-collapse::before {
+    content: ""; width: 18px; height: 18px; background: currentColor; transition: transform 0.3s var(--ease-out);
+    -webkit-mask: var(--icone-recolher) center / contain no-repeat; mask: var(--icone-recolher) center / contain no-repeat;
+    --icone-recolher: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m15 18-6-6 6-6'/%3E%3C/svg%3E");
+  }
+  .sidebar.collapsed .sidebar-collapse::before { transform: rotate(180deg); }
   .sidebar.collapsed { width: 92px; }
   .sidebar.collapsed .sidebar-collapse { right: 8px; }
   .brand {
@@ -184,16 +192,31 @@
       box-shadow var(--dur-media) var(--ease-out), transform var(--dur-rapida) var(--ease-out);
   }
   .nav-item:active { transform: scale(0.98); }
+  .nav-item::before { transition: transform var(--dur-media) var(--ease-mola), opacity var(--dur-rapida) ease; }
+  .nav-item:hover::before { transform: scale(1.1); opacity: 1; }
+  /* Item com o formulário aberto: fundo suave na cor de destaque e uma barra à esquerda. */
   .nav-item.active {
-    background: var(--accent); border-color: var(--accent); color: var(--accent-ink); box-shadow: 0 8px 20px color-mix(in srgb, var(--accent) 22%, transparent);
+    background: color-mix(in srgb, var(--accent) 15%, transparent); border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+    color: var(--text); box-shadow: inset 3px 0 0 var(--accent);
   }
-  .nav-item:hover { background: color-mix(in srgb, var(--text) 9%, transparent); }
-  .nav-item.active:hover { background: var(--accent); }
+  .nav-item.active::before { background-color: var(--accent); opacity: 1; }
+  .nav-item:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
+  .nav-item.active:hover { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+  /* Formulários do menu abrem e fecham deslizando (altura animada por grid 0fr → 1fr).
+     Fechado, fica invisível também para o teclado (visibility). */
   .nav-panel {
-    display: none; margin: 4px 0 6px; padding: 10px; border: 1px solid var(--line-soft);
-    border-left: 2px solid var(--teal); border-radius: 4px 10px 10px 4px; background: color-mix(in srgb, var(--bg) 70%, transparent);
+    display: grid; grid-template-rows: 0fr; margin: 0; padding: 0 10px; opacity: 0; visibility: hidden;
+    border: 0 solid transparent; border-radius: 12px; background: color-mix(in srgb, var(--bg) 55%, transparent);
+    transition: grid-template-rows 0.28s var(--ease-out), margin 0.28s var(--ease-out), padding 0.28s var(--ease-out),
+      opacity 0.2s ease, border-color 0.2s ease, visibility 0s linear 0.28s;
   }
-  .nav-panel.open { display: block; animation: surgir var(--dur-media) var(--ease-out); }
+  /* clip (e não hidden): com hidden, o foco num campo durante o deslize rolava o
+     conteúdo por dentro e o formulário ficava deslocado. A margem mostra o contorno de foco. */
+  .nav-panel > * { min-height: 0; overflow: hidden; overflow: clip; overflow-clip-margin: 4px; }
+  .nav-panel.open {
+    grid-template-rows: 1fr; margin: 6px 0 8px; padding: 12px 10px; opacity: 1; visibility: visible;
+    border-width: 1px; border-color: var(--line-soft); transition-delay: 0s;
+  }
   .nav-form { display: grid; gap: 8px; }
   .nav-form label { display: grid; gap: 4px; color: var(--text-dim); font: 0.66rem var(--mono); }
   .nav-form input, .nav-form select { width: 100%; min-width: 0; font-size: 0.76rem; padding: 7px 8px; border-radius: 5px; }
@@ -229,10 +252,22 @@
   .sidebar.collapsed .nav-label { display: none; }
   .sidebar.collapsed .nav-section { gap: 8px; }
   .sidebar.collapsed .nav-item {
-    justify-content: center; width: 90px; min-height: 58px; margin: 0; padding: 12px 8px; border-radius: 0 16px 16px 0;
+    justify-content: center; width: 54px; min-height: 50px; margin: 0 auto; padding: 0; border-radius: 14px;
     font-size: 0; letter-spacing: 0;
   }
+  .sidebar.collapsed .nav-item.active { box-shadow: none; }
   .sidebar.collapsed .nav-item::before { flex-basis: 22px; width: 22px; height: 22px; opacity: 1; }
+  /* Legenda do ícone com o menu recolhido (interface.js). */
+  .nav-legenda {
+    position: fixed; z-index: 9500; transform: translate(-4px, -50%); opacity: 0; pointer-events: none;
+    padding: 6px 10px; border-radius: 8px; background: var(--text); color: var(--bg); font: 600 0.78rem var(--sans); white-space: nowrap;
+    box-shadow: 0 8px 20px color-mix(in srgb, #000 25%, transparent);
+    transition: opacity var(--dur-rapida) ease, transform var(--dur-media) var(--ease-out);
+  }
+  .nav-legenda.visivel { opacity: 1; transform: translate(0, -50%); }
+  .nav-legenda::before {
+    content: ""; position: absolute; left: -4px; top: 50%; width: 8px; height: 8px; background: inherit; transform: translateY(-50%) rotate(45deg); border-radius: 2px;
+  }
   .sidebar.collapsed .nav-panel { display: none !important; }
   /* Recolhida: fica só a logo, com o botão de expandir logo abaixo. */
   .sidebar.collapsed .brand { justify-content: center; min-height: 64px; padding: 12px 0 0; }
@@ -616,6 +651,11 @@
   }
 /* A aplicação só aparece depois de carregar a sessão e os projetos da conta. */
 body.auth-locked .app-shell { display: none !important; }
+/* Entrada do editor depois do login: menu e área de trabalho chegam em sequência. */
+body:not(.auth-locked) .sidebar { animation: entrarLado 0.42s var(--ease-out) both; }
+body:not(.auth-locked) .app-main { animation: entrarBaixo 0.46s var(--ease-out) 0.06s both; }
+@keyframes entrarLado { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
+@keyframes entrarBaixo { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 body:not(.auth-locked) .landing { display: none; }
 
 /* ---------- Página inicial (quem não está logado) ---------- */
@@ -689,11 +729,97 @@ html.com-sessao body.auth-locked .carregando-editor {
 .auth-message.error { color: #a32e2e; }
 .auth-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 16px; margin-top: 12px; }
 .auth-links button { border: 0; background: transparent; color: #205b6a; cursor: pointer; text-decoration: underline; font: inherit; font-size: 13px; }
-.account-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 12px; }
+/* ---------- Conta (topo do editor) ---------- */
+/* Fica por último na barra (à direita); o selo mostra o salvamento. */
+.account-tools { display: flex; align-items: center; gap: 8px; font-size: 12px; order: 10; }
 .account-tools[hidden] { display: none; }
-#accountEmail { max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#cloudStatus { min-width: 105px; color: var(--text-dim); }
-@media (max-width: 650px) { .auth-card { padding: 24px; } .account-tools { order: 3; width: 100%; } }
+
+.nuvem-status {
+  display: inline-flex; align-items: center; gap: 7px; max-width: 260px; padding: 6px 11px 6px 9px; border-radius: 999px;
+  border: 1px solid var(--line-soft); background: color-mix(in srgb, var(--bg-panel-2) 80%, transparent);
+  color: var(--text-dim); font-size: 0.74rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: color var(--dur-media) ease, border-color var(--dur-media) ease, background-color var(--dur-media) ease;
+}
+.nuvem-status[hidden] { display: none; }
+.nuvem-status::before {
+  content: ""; flex: 0 0 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--text-dim);
+  transition: background-color var(--dur-media) ease, box-shadow var(--dur-media) ease;
+}
+.nuvem-status[data-estado="ok"]::before { background: var(--teal); box-shadow: 0 0 0 3px color-mix(in srgb, var(--teal) 22%, transparent); }
+.nuvem-status[data-estado="ocupado"] { color: var(--text); }
+.nuvem-status[data-estado="ocupado"]::before { background: var(--accent); animation: pulsoStatus 1.1s ease-in-out infinite; }
+.nuvem-status[data-estado="aviso"] { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); background: color-mix(in srgb, var(--danger) 9%, var(--bg-panel-2)); }
+.nuvem-status[data-estado="aviso"]::before { background: var(--danger); }
+@keyframes pulsoStatus {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); }
+  50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 0%, transparent); }
+}
+
+.conta-menu { position: relative; }
+.conta-botao {
+  display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 4px 10px 4px 4px; border-radius: 999px;
+  border: 1px solid var(--line-soft); background: var(--bg-panel-2); color: var(--text); font: 600 0.8rem var(--sans); cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+  transition: border-color var(--dur-rapida) ease, box-shadow var(--dur-media) var(--ease-out), transform var(--dur-rapida) var(--ease-out);
+}
+.conta-botao:hover { border-color: color-mix(in srgb, var(--accent) 60%, var(--line-soft)); transform: translateY(-1px); box-shadow: 0 8px 18px color-mix(in srgb, var(--bg) 30%, transparent); }
+.conta-botao[aria-expanded="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); transform: none; }
+.conta-avatar {
+  display: inline-grid; place-items: center; flex: 0 0 32px; width: 32px; height: 32px; border-radius: 50%;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 72%, #fff), var(--accent));
+  color: var(--accent-ink); font: 700 0.9rem var(--sans); letter-spacing: 0; text-transform: uppercase;
+}
+.conta-avatar.grande { flex-basis: 40px; width: 40px; height: 40px; font-size: 1.05rem; }
+.conta-nome { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; color: var(--text-dim); }
+.conta-seta {
+  width: 10px; height: 10px; background: currentColor; opacity: 0.7; transition: transform var(--dur-media) var(--ease-out);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.conta-botao[aria-expanded="true"] .conta-seta { transform: rotate(180deg); }
+
+.conta-lista {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 9000; width: 260px; padding: 6px;
+  border-radius: 14px; border: 1px solid var(--line-soft); background: var(--bg-panel-2);
+  box-shadow: 0 22px 48px color-mix(in srgb, #000 28%, transparent), inset 0 1px 0 rgba(255,255,255,0.05);
+  transform-origin: top right; animation: menuEntrar 0.18s var(--ease-out);
+}
+.conta-lista[hidden] { display: none; }
+.conta-lista.saindo { animation: menuSair 0.12s var(--ease-in) forwards; pointer-events: none; }
+@keyframes menuEntrar { from { opacity: 0; transform: translateY(-6px) scale(0.96); } to { opacity: 1; transform: none; } }
+@keyframes menuSair { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-4px) scale(0.97); } }
+.conta-lista-topo { display: flex; align-items: center; gap: 10px; padding: 10px 10px 12px; margin-bottom: 4px; border-bottom: 1px solid var(--line-soft); }
+.conta-lista-id { display: grid; min-width: 0; line-height: 1.3; }
+.conta-lista-id strong { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); }
+.conta-lista-id span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.85rem; color: var(--text); }
+.conta-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 0; border-radius: 9px; background: transparent;
+  color: var(--text); font: 500 0.86rem var(--sans); text-align: left; cursor: pointer; box-shadow: none;
+  transition: background-color var(--dur-rapida) ease, color var(--dur-rapida) ease;
+}
+.conta-item[hidden] { display: none; }
+.conta-item:hover, .conta-item:focus-visible { background: color-mix(in srgb, var(--text) 8%, transparent); outline: none; }
+.conta-item:active:not(:disabled) { transform: none; background: color-mix(in srgb, var(--text) 12%, transparent); }
+.conta-item.perigo { color: var(--danger); }
+.conta-item.perigo:hover, .conta-item.perigo:focus-visible { background: color-mix(in srgb, var(--danger) 12%, transparent); }
+.conta-item::before {
+  content: ""; flex: 0 0 18px; width: 18px; height: 18px; background: currentColor; opacity: 0.85;
+  -webkit-mask: var(--icone) center / contain no-repeat; mask: var(--icone) center / contain no-repeat;
+}
+.conta-item[data-icone="usuario"] { --icone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 21a8 8 0 0 1 16 0'/%3E%3C/svg%3E"); }
+.conta-item[data-icone="instalar"] { --icone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='6' y='2' width='12' height='20' rx='2'/%3E%3Cpath d='M12 7v7M9 11l3 3 3-3M10 18h4'/%3E%3C/svg%3E"); }
+.conta-item[data-icone="sair"] { --icone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9'/%3E%3C/svg%3E"); }
+.conta-separador { height: 1px; margin: 4px 6px; background: var(--line-soft); }
+
+@media (max-width: 650px) {
+  .auth-card { padding: 24px; }
+  .conta-nome, .conta-seta { display: none; }
+  /* Conta no canto direito da linha, para o menu abrir dentro da tela. */
+  .account-tools { margin-left: auto; }
+  .conta-botao { padding: 4px; width: 42px; justify-content: center; }
+  .nuvem-status { max-width: 150px; }
+  .conta-lista { width: min(280px, calc(100vw - 20px)); }
+}
 
 /* ---------- Celular ---------- */
 /* Menu recolhido por padrão (app.js: definirSidebarRecolhida), barras que
@@ -706,6 +832,10 @@ html.com-sessao body.auth-locked .carregando-editor {
   .sidebar-collapse, .sidebar.collapsed .sidebar-collapse { top: 10px; right: 10px; font-size: 1.3rem; }
   .sidebar.collapsed .nav { display: none; }
   .nav { max-height: none; overflow: visible; }
+  .sidebar:not(.collapsed) .nav { animation: surgir 0.24s var(--ease-out); }
+  .sidebar-collapse::before, .sidebar.collapsed .sidebar-collapse::before { transform: none; }
+  .sidebar-collapse::before { --icone-recolher: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M6 6l12 12M18 6 6 18'/%3E%3C/svg%3E"); }
+  .sidebar.collapsed .sidebar-collapse::before { --icone-recolher: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M4 7h16M4 12h16M4 17h16'/%3E%3C/svg%3E"); }
 
   .workspace { padding: 12px 10px calc(24px + env(safe-area-inset-bottom, 0px)); gap: 12px; }
   .panel { padding: 14px 12px; }

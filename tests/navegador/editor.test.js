@@ -60,12 +60,54 @@ test("celular: editor sem rolagem para os lados e menu abre", async () => {
   await pagina.context().close();
 });
 
-test("modal Conta abre e fecha com Esc", async () => {
+test("menu da conta: inicial do e-mail, abre a janela Minha conta e fecha com Esc", async () => {
   const pagina = await abrirPagina(navegador, site);
   await esperarDiagrama(pagina);
+  assert.equal(await pagina.textContent("#contaMenuBotao .conta-avatar"), "T");
+  assert.equal(await pagina.getAttribute("#cloudStatus", "data-estado") !== null, true);
+  await pagina.click("#contaMenuBotao");
+  await pagina.waitForSelector("#contaMenuLista", { state: "visible" });
+  assert.equal(await pagina.getAttribute("#contaMenuBotao", "aria-expanded"), "true");
+  assert.match(await pagina.textContent("#contaMenuLista"), /teste@grafo/);
   await pagina.click("#accountOpen");
+  await pagina.waitForSelector("#contaMenuLista", { state: "hidden" });
   await pagina.waitForSelector("#contaModal", { state: "visible" });
   await pagina.keyboard.press("Escape");
   await pagina.waitForSelector("#contaModal", { state: "hidden" });
+  // Foco volta ao botão da conta (visível), não ao item do menu fechado.
+  assert.equal(await pagina.evaluate(() => document.activeElement.id), "contaMenuBotao");
+
+  // Teclado: seta para baixo abre e foca o primeiro item; Esc fecha e volta ao botão.
+  await pagina.focus("#contaMenuBotao");
+  await pagina.keyboard.press("ArrowDown");
+  await pagina.waitForFunction(() => document.activeElement.id === "accountOpen");
+  await pagina.keyboard.press("Escape");
+  await pagina.waitForSelector("#contaMenuLista", { state: "hidden" });
+  // Clique fora fecha.
+  await pagina.click("#contaMenuBotao");
+  await pagina.waitForSelector("#contaMenuLista", { state: "visible" });
+  await pagina.mouse.click(700, 500);
+  await pagina.waitForSelector("#contaMenuLista", { state: "hidden" });
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});
+
+test("menu lateral: formulário abre deslizando e o menu recolhido mostra legendas", async () => {
+  const pagina = await abrirPagina(navegador, site);
+  await esperarDiagrama(pagina);
+  assert.equal(await pagina.isVisible("#navEquipNome"), false);
+  await pagina.click('[data-nav-panel="navAddEquip"]');
+  await pagina.waitForFunction(() => document.getElementById("navAddEquip").getBoundingClientRect().height > 200);
+  assert.equal(await pagina.isVisible("#navEquipNome"), true);
+  await pagina.click('#navAddEquip [data-nav-close]');
+  await pagina.waitForFunction(() => document.getElementById("navAddEquip").getBoundingClientRect().height < 1);
+  // Fechado, os campos saem também do alcance do teclado (visibility: hidden).
+  await pagina.waitForSelector("#navEquipNome", { state: "hidden", timeout: 2000 });
+
+  await pagina.click("#btnSidebarCollapse");
+  await pagina.waitForFunction(() => document.querySelector(".sidebar").classList.contains("collapsed"));
+  await pagina.hover("#btnEtiquetas");
+  await pagina.waitForSelector(".nav-legenda.visivel");
+  assert.equal(await pagina.textContent(".nav-legenda"), "Etiquetas com QR code");
   await pagina.context().close();
 });

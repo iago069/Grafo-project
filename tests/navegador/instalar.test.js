@@ -41,6 +41,8 @@ test("com o aviso do navegador: botão também no editor", async () => {
   const pagina = await abrirPagina(navegador, site);
   await esperarDiagrama(pagina);
   await avisarQuePodeInstalar(pagina);
+  // No editor, fica dentro do menu da conta.
+  await pagina.click("#contaMenuBotao");
   assert.equal(await visiveis(pagina), 1);
   await pagina.click("#accountTools [data-instalar]");
   assert.equal(await pagina.evaluate(() => window.__pediuInstalacao), true);

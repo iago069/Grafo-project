@@ -487,13 +487,27 @@
             </div>
           </div>
           <div class="theme-toolbar">
+            <!-- Conta: selo de salvamento + botão com a inicial, que abre o menu (interface.js). -->
             <div id="accountTools" class="account-tools" hidden>
-              <span id="accountEmail"></span>
-              <button type="button" class="ghost small" id="accountOpen" aria-haspopup="dialog">Conta</button>
-              <button type="button" class="ghost small" data-instalar hidden title="Instalar o Grafo como aplicativo neste aparelho">Instalar app</button>
-              <button type="button" class="ghost small" id="accountLogout">Sair</button>
-              <span id="cloudStatus" role="status" aria-live="polite"></span>
+              <span id="cloudStatus" class="nuvem-status" role="status" aria-live="polite"></span>
               <button type="button" class="ghost small" id="cloudRetry" hidden>Tentar novamente</button>
+              <div class="conta-menu">
+                <button type="button" class="conta-botao" id="contaMenuBotao" aria-haspopup="menu" aria-expanded="false" aria-controls="contaMenuLista" title="Sua conta">
+                  <span class="conta-avatar" data-conta-inicial aria-hidden="true"></span>
+                  <span class="conta-nome" id="accountEmail"></span>
+                  <span class="conta-seta" aria-hidden="true"></span>
+                </button>
+                <div class="conta-lista" id="contaMenuLista" role="menu" aria-labelledby="contaMenuBotao" hidden>
+                  <div class="conta-lista-topo">
+                    <span class="conta-avatar grande" data-conta-inicial aria-hidden="true"></span>
+                    <span class="conta-lista-id"><strong>Conectado como</strong><span data-conta-email></span></span>
+                  </div>
+                  <button type="button" role="menuitem" class="conta-item" id="accountOpen" data-icone="usuario" aria-haspopup="dialog">Minha conta</button>
+                  <button type="button" role="menuitem" class="conta-item" data-instalar data-icone="instalar" hidden title="Instalar o Grafo como aplicativo neste aparelho">Instalar app</button>
+                  <div class="conta-separador" role="separator"></div>
+                  <button type="button" role="menuitem" class="conta-item perigo" id="accountLogout" data-icone="sair">Sair</button>
+                </div>
+              </div>
             </div>
             <div class="project-tools" aria-label="Projetos salvos">
               <select id="projetoSelect" title="Trocar projeto" aria-label="Trocar projeto"></select>
@@ -813,5 +827,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok" crossorigin="anonymous"></script>
 <script src="./assets/js/equipe.js"></script>
 <script src="./assets/js/auth.js"></script>
+<script src="./assets/js/interface.js"></script>
 </body>
 </html>
