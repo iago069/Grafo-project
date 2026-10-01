@@ -4581,6 +4581,26 @@
       return r.ajustes.length;
     },
     // Usados por primeiros-passos.js.
+    // Abre o projeto e a janela do equipamento (QR code das etiquetas). false se não achar.
+    mostrarEquipamento: function (projeto, id) {
+      if (projeto && projeto !== projetoAtual) {
+        if (!projetos[projeto]) return false;
+        abrirProjeto(projeto);
+        elProjetoSelect.value = projeto;
+      }
+      var eq = estado.equipamentos.find(function (item) { return item.id === id; });
+      if (!eq) return false;
+      abrirEditorEquipamento(eq);
+      return true;
+    },
+    carregarJsPdf: function () { return carregarJsPdf(); },
+    // O que o editor pode precisar depois de aberto, para guardar no aparelho e
+    // funcionar sem internet: gerador de PDF, ícones dos equipamentos e a cópia
+    // embutida deles (exportação).
+    arquivosParaGuardar: function () {
+      var icones = CATALOGO_ICONES.map(function (item) { return item.arquivo; });
+      return [URL_JSPDF, URL_SVG2PDF, "./assets/js/icones-embutidos.js"].concat(icones);
+    },
     resumoAtual: function () { return { equipamentos: estado.equipamentos.length, conexoes: estado.conexoes.length }; },
     carregarExemplo: function () { carregarExemplo(); },
     // Abre um formulário da barra lateral ("navAddEquip" ou "navAddCable"),
@@ -5409,6 +5429,9 @@
   }
 
   // ---- PDF --------------------------------------------------------------------
+  // Também guardados no aparelho para exportar sem internet (GrafoApp.arquivosParaGuardar).
+  var URL_JSPDF = "https://cdn.jsdelivr.net/npm/jspdf@4.2.1/dist/jspdf.umd.min.js";
+  var URL_SVG2PDF = "https://cdn.jsdelivr.net/npm/svg2pdf.js@2.8.1/dist/svg2pdf.umd.min.js";
   var promessaJsPdf = null;
   function carregarJsPdf() {
     if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
@@ -5416,7 +5439,7 @@
       promessaJsPdf = new Promise(function (resolver, rejeitar) {
         var script = document.createElement("script");
         // integrity: o navegador recusa o arquivo se o CDN entregar outro conteúdo.
-        script.src = "https://cdn.jsdelivr.net/npm/jspdf@4.2.1/dist/jspdf.umd.min.js";
+        script.src = URL_JSPDF;
         script.integrity = "sha384-qovJwSBbRDPP5cEjCp8S0UP66wrvnjaa60XMOGzTNanrThcrGfXfnZkvgY8N1KT3";
         script.crossOrigin = "anonymous";
         script.onload = function () { window.jspdf && window.jspdf.jsPDF ? resolver(window.jspdf.jsPDF) : rejeitar(new Error("jsPDF indisponível.")); };
@@ -5435,7 +5458,7 @@
     if (!promessaSvg2Pdf) {
       promessaSvg2Pdf = new Promise(function (resolver, rejeitar) {
         var script = document.createElement("script");
-        script.src = "https://cdn.jsdelivr.net/npm/svg2pdf.js@2.8.1/dist/svg2pdf.umd.min.js";
+        script.src = URL_SVG2PDF;
         script.integrity = "sha384-7hc/mtl4lyRUMzYFqHxwNbYZwh27MESE5AWa2nEuVChLn8bCQcrn18OgGv9uHgzz";
         script.crossOrigin = "anonymous";
         script.onload = function () { window.svg2pdf && window.svg2pdf.svg2pdf ? resolver() : rejeitar(new Error("svg2pdf indisponível.")); };

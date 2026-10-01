@@ -72,7 +72,7 @@
       projetos = {};
       disponivel = false;
       avisosPendentes.push("Não foi possível carregar os projetos de equipe agora. Recarregue a página para tentar de novo.");
-      return { projetos: {}, abrir: null };
+      return { projetos: {}, abrir: null, falhou: true };
     }
   }
 
@@ -158,6 +158,45 @@
       var chave = chavePorId(linha.id);
       if (chave) { projetos[chave].versao = linha.atualizado_em; projetos[chave].enviado = null; }
     });
+  }
+
+  // ---- Sem internet (auth.js) ------------------------------------------------
+  // Versões que este aparelho conhece, guardadas junto com a cópia local:
+  // { chave: { id, versao } }.
+  function versoesConhecidas() {
+    var saida = {};
+    Object.keys(projetos).forEach(function (chave) { saida[chave] = { id: projetos[chave].id, versao: projetos[chave].versao }; });
+    return saida;
+  }
+
+  // Editor aberto sem internet: refaz a lista de projetos de equipe a partir do
+  // que ficou guardado, para eles não serem tratados como pessoais. sincronizado:
+  // a cópia local é igual à do servidor (nada pendente).
+  function restaurarOffline(salvo, locais, sincronizado, c, u) {
+    client = c;
+    usuario = u;
+    disponivel = false;
+    projetos = {};
+    Object.keys(salvo || {}).forEach(function (chave) {
+      if (!salvo[chave] || !salvo[chave].id) return;
+      projetos[chave] = { id: salvo[chave].id, dono: null, versao: salvo[chave].versao,
+        enviado: sincronizado && locais[chave] ? JSON.stringify(locais[chave]) : null };
+    });
+  }
+
+  // Retomando alterações feitas sem internet: nos projetos alterados neste
+  // aparelho, volta a versão que ele conhecia, para a gravação perceber se um
+  // colega salvou nesse meio-tempo (e mostrar o aviso de conflito).
+  // Retorna { chaveAntiga: chaveAtual, ou null se a pessoa saiu da equipe }.
+  function usarVersoesBase(salvo, locais) {
+    var mapa = {};
+    Object.keys(salvo || {}).forEach(function (antiga) {
+      var chave = salvo[antiga] && chavePorId(salvo[antiga].id);
+      mapa[antiga] = chave || null;
+      if (!chave || !locais[antiga] || !salvo[antiga].versao) return;
+      if (JSON.stringify(locais[antiga]) !== projetos[chave].enviado) projetos[chave].versao = salvo[antiga].versao;
+    });
+    return mapa;
   }
 
   // ---- Alterações dos colegas (tempo real) --------------------------------
@@ -398,6 +437,9 @@
     temAlteracao: temAlteracao,
     gravar: gravar,
     assumirVersoesAtuais: assumirVersoesAtuais,
+    versoesConhecidas: versoesConhecidas,
+    restaurarOffline: restaurarOffline,
+    usarVersoesBase: usarVersoesBase,
     ehEquipe: ehEquipe,
     // id (uuid) do projeto de equipe, para o histórico de versões; null se for pessoal.
     idDaEquipe: function (chave) { return ehEquipe(chave) ? projetos[chave].id : null; },

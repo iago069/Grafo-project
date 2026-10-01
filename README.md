@@ -15,6 +15,7 @@
 - [Onde ficam os dados](#onde-ficam-os-dados)
 - [Ícones dos equipamentos](#ícones-dos-equipamentos)
 - [Modelos de equipamento e portas](#modelos-de-equipamento-e-portas)
+- [Etiquetas com QR code](#etiquetas-com-qr-code)
 - [Configuração (para quem mantém o projeto)](#configuração-para-quem-mantém-o-projeto)
   - [1. Supabase (login e banco)](#1-supabase-login-e-banco)
   - [2. Rodar localmente](#2-rodar-localmente)
@@ -188,6 +189,7 @@ Os projetos ficam na sua conta, no Supabase, e são salvos automaticamente pouco
 - **Baixar todos os projetos** (barra lateral ou botão **Conta**) gera um arquivo só com todos os projetos. **Importar projeto** aceita esse arquivo e traz todos de volta; se algum projeto tiver erro, nada é importado.
 - Em **Conta → Excluir conta**, a pessoa apaga a própria conta e todos os projetos, sem volta. Para confirmar, é preciso digitar o e-mail da conta.
 - Se a mesma conta salvar em outra aba ou computador, o Grafo avisa ("Projeto alterado em outro lugar") em vez de sobrescrever: dá para baixar o projeto aberto, manter a versão desta aba ou carregar a mais recente. O aviso também aparece ao voltar para uma aba que ficou desatualizada.
+- **Sem internet**: depois de entrar uma vez com internet, o Grafo abre no mesmo aparelho mesmo sem conexão (útil em sala de equipamentos sem sinal), com os projetos daquele aparelho. Dá para ver, editar e exportar PDF/PNG/SVG; o topo mostra "Sem internet: as alterações ficam neste aparelho". Quando a conexão volta, a página recarrega e envia o que foi feito — se alguém tiver salvo o mesmo projeto nesse meio-tempo, aparece o aviso de conflito em vez de uma versão apagar a outra. Compartilhar, Equipe e Histórico precisam de internet. **Sair** fica bloqueado enquanto houver alteração por enviar (sair apaga a cópia do aparelho). O site também pode ser **instalado** como aplicativo (no celular: menu do navegador → "Adicionar à tela inicial"). Quem faz isso é o `sw.js` (service worker), junto com `manifest.webmanifest`.
 
 ## Ícones dos equipamentos
 
@@ -235,6 +237,15 @@ Os modelos ficam em `data/equipamentos.json`, na lista `"modelos"`:
 
 Em `portas`, uma faixa termina em `início-fim` e vira uma porta para cada número: `ether1-24` → `ether1` … `ether24`; `gpon1/1/1-8` → `gpon1/1/1` … `gpon1/1/8`. Sem faixa, o nome vale como está (`pon`, `combo1`). Os nomes das portas seguem a nomenclatura mais comum de cada fabricante; confira com o seu equipamento e ajuste se precisar. O teste `tests/modelos.test.js` confere se o arquivo continua válido.
 
+## Etiquetas com QR code
+
+**Etiquetas com QR code** (barra lateral) gera um PDF para imprimir em folha A4 de etiquetas adesivas, em três tamanhos: 63,5 × 38,1 mm (21 por folha), 99,1 × 38,1 mm (14) e 38,1 × 21,2 mm (65). Imprima em **tamanho real (100%)**, sem "ajustar à página", para cair certo nas etiquetas.
+
+- **Equipamentos**: QR code, nome, tipo/modelo, IP e grupo. Ler o QR code com a câmera do celular abre o Grafo direto na janela daquele equipamento (é preciso entrar na conta que tem o projeto; em projetos de equipe, qualquer membro).
+- **Cabos**: duas etiquetas por cabo, uma para cada ponta, com o equipamento e a porta daquela ponta primeiro e, embaixo, para onde o cabo vai.
+
+O QR code leva a `/?abrir=<id do equipamento>&projeto=<nome>` (ou `&equipe=<id>` em projeto de equipe). Renomear o projeto pessoal invalida as etiquetas impressas dele; as de equipe continuam valendo. O gerador de QR code é o `qrcode-generator` (MIT), carregado do jsDelivr com versão fixa e integrity.
+
 ## Configuração (para quem mantém o projeto)
 
 O login usa **Supabase Auth** (e-mail e senha). Os projetos ficam na tabela `grafo_user_data`, protegida por Row Level Security: cada pessoa só lê e grava a própria linha. O navegador recebe a URL e a chave pública do Supabase pela rota `/api/auth-config`; sem elas, o app mostra um erro de configuração e mantém o editor fechado.
@@ -248,6 +259,7 @@ O login usa **Supabase Auth** (e-mail e senha). Os projetos ficam na tabela `gra
      - `2026-09-28-compartilhar.sql`: sem ele, o botão **Compartilhar** não aparece.
      - `2026-09-29-equipes.sql`: sem ele, o botão **Equipe** não aparece (o resto funciona normalmente).
      - `2026-09-29-historico.sql` (depois do de equipes): sem ele, a janela **Histórico** explica que o histórico ainda não está ativado. As versões começam a ser guardadas a partir da instalação.
+     - `2026-09-30-erros.sql`: registro de erros. Quando algo quebra no navegador de alguém logado, `assets/js/erros.js` grava a mensagem em `grafo_erros` (no máximo 30 por pessoa por hora; apagados após 90 dias). Veja em **Table Editor → grafo_erros** ou, agrupados, com `select * from grafo_erros_resumo;` no SQL Editor. Sem ele, os erros simplesmente não são guardados.
 3. **Authentication → Sign In / Providers**: deixe **Email** ligado. A opção **Confirm email** exige confirmar o e-mail antes do primeiro login — pode desligar para testes, mas mantenha ligada em produção.
 4. **Authentication → URL Configuration**:
    - **Site URL**: `https://thegrafo.vercel.app`
@@ -361,6 +373,9 @@ Também é possível publicar direto do computador com a Vercel CLI: `npx vercel
 | `supabase/schema.sql` | Tabelas de projetos, links compartilhados, equipes e histórico de versões; regras de acesso por usuário e exclusão da própria conta |
 | `supabase/migracoes/` | SQL para atualizar um banco criado com uma versão anterior do `schema.sql` |
 | `servidor-local.js` | Servidor Express para rodar localmente; lê o `.env` |
+| `sw.js`, `manifest.webmanifest` | Funcionar sem internet e instalar como aplicativo. Se mudar a forma de guardar, troque o nome `grafo-offline-v1` no `sw.js` (o antigo é apagado) |
+| `assets/js/erros.js` | Envia os erros do navegador para a tabela `grafo_erros` do Supabase |
+| `assets/js/etiquetas.js` | PDF de etiquetas com QR code e abertura do equipamento pelo endereço do QR code |
 | `.env.example` | Modelo do `.env` |
 | `scripts/gerar-icones-embutidos.js` | Gera o `icones-embutidos.js` |
 | `tests/` | Testes automáticos (`npm test`): validação, anotações, modelos e portas, planilha de inventário, rotas da API, conflito entre abas, exclusão de conta, projetos de equipe e montagem do `app.js`. `simulador.js` é o navegador simulado que os testes usam. `tests/navegador/` tem os testes num navegador de verdade (`npm run test:navegador`) |

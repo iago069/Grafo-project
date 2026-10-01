@@ -35,6 +35,8 @@
   var conflictModal = document.getElementById("conflitoModal");
   var conflictText = document.getElementById("conflitoTexto");
   var deleting = false;
+  // Editor aberto sem internet, com a cópia deste aparelho (activateOffline).
+  var offline = false;
 
   function notice(text, error) {
     message.textContent = text || "";
@@ -91,6 +93,77 @@
     return { projects: equipe ? equipe.separar(snapshot.projects) : snapshot.projects, current_project: snapshot.current_project };
   }
 
+  // ---- Sem internet ----------------------------------------------------------
+  // grafo-sincronia:<usuário> guarda as versões do servidor que este aparelho
+  // conhece e se há alteração ainda não enviada. Com isso o editor abre sem
+  // internet (com a cópia local, que app.js grava a cada alteração) e, quando a
+  // conexão volta, envia o que ficou pendente com a mesma proteção contra
+  // conflito de sempre. Também cobre a aba fechada antes de terminar de salvar.
+  function readSync() {
+    try { return JSON.parse(localStorage.getItem(storageKey("grafo-sincronia")) || "null"); } catch (e) { return null; }
+  }
+  function writeSync(unsent) {
+    try {
+      localStorage.setItem(storageKey("grafo-sincronia"), JSON.stringify({
+        versao: serverVersion, pendente: !!unsent, equipe: equipe ? equipe.versoesConhecidas() : {}
+      }));
+    } catch (e) {}
+  }
+  function readLocalCopy() {
+    try {
+      var projects = JSON.parse(localStorage.getItem(storageKey("grafo-projetos")) || "null");
+      if (!projects || typeof projects !== "object" || Array.isArray(projects) || !Object.keys(projects).length) return null;
+      var current = localStorage.getItem(storageKey("grafo-projeto-atual"));
+      return { projects: projects, current_project: projects[current] ? current : Object.keys(projects)[0] };
+    } catch (e) { return null; }
+  }
+  function isNetworkError(error) {
+    return navigator.onLine === false || /failed to fetch|networkerror|network request failed|load failed|fetch failed|AuthRetryableFetchError/i.test(
+      (error && (error.name + " " + error.message)) || "");
+  }
+
+  // Alterações que não chegaram ao servidor (feitas sem internet ou com a aba
+  // fechada antes de salvar) voltam como pendentes, comparadas com a versão que
+  // o aparelho conhecia: se alguém salvou depois disso, a gravação falha e
+  // aparece o aviso de conflito, em vez de uma versão apagar a outra.
+  function resumePending(copy, sync) {
+    var projects = Object.assign({}, copy.projects);
+    var savedTeam = sync.equipe || {};
+    if (equipe) {
+      // Projeto pessoal criado aqui com o nome de um projeto de equipe novo: renomeia.
+      Object.keys(projects).forEach(function (key) {
+        if (!savedTeam[key] && equipe.ehEquipe(key)) {
+          var name = key + " (este aparelho)";
+          for (var n = 2; projects[name] || equipe.ehEquipe(name); n++) name = key + " (este aparelho " + n + ")";
+          projects[name] = projects[key];
+          delete projects[key];
+        }
+      });
+      // Projetos de equipe: acompanha renomeações e tira os de equipes que a pessoa deixou.
+      // (Duas passadas: apagar todas antes de recolocar, para nomes trocados não se sobreporem.)
+      var keys = equipe.usarVersoesBase(savedTeam, copy.projects);
+      Object.keys(keys).forEach(function (old) { delete projects[old]; });
+      Object.keys(keys).forEach(function (old) {
+        if (keys[old] && copy.projects[old]) projects[keys[old]] = copy.projects[old];
+      });
+      // Equipes em que a pessoa entrou por outro aparelho: vêm do servidor.
+      Object.keys(localState ? localState.projects : {}).forEach(function (key) {
+        if (equipe.ehEquipe(key) && !projects[key]) projects[key] = localState.projects[key];
+      });
+    }
+    if (!Object.keys(projects).length) return;
+    var current = projects[copy.current_project] ? copy.current_project : Object.keys(projects)[0];
+    var snapshot = { projects: projects, current_project: current };
+    // Só volta à versão antiga se os projetos pessoais mudaram aqui; senão o
+    // servidor já tem o que importa e a versão atual dele vale.
+    if (JSON.stringify(personalSnapshot(snapshot)) !== lastSaved) serverVersion = sync.versao || null;
+    localStorage.setItem(storageKey("grafo-projetos"), JSON.stringify(projects));
+    localStorage.setItem(storageKey("grafo-projeto-atual"), current);
+    localState = snapshot;
+    pending = snapshot;
+    writeSync(true);
+  }
+
   // team: { projetos: {chave: dados}, abrir: chave|null } vindo de equipe.carregar().
   function prepareLocal(row, team) {
     var personal = row && row.projects && typeof row.projects === "object" && !Array.isArray(row.projects) ? row.projects : {};
@@ -110,6 +183,7 @@
       localState = null;
       lastSaved = null;
     }
+    writeSync(false);
   }
 
   // Sempre maior que a versão atual, mesmo com o relógio deste computador atrasado.
@@ -139,7 +213,8 @@
     return true;
   }
 
-  async function loadProjects() {
+  // resume: { copy, sync } com alterações deste aparelho ainda não enviadas.
+  async function loadProjects(resume) {
     var response = await client.from("grafo_user_data")
       .select("projects,current_project,updated_at")
       .eq("user_id", user.id).maybeSingle();
@@ -165,7 +240,15 @@
     var occupied = {};
     if (row && row.projects && typeof row.projects === "object") Object.keys(row.projects).forEach(function (k) { occupied[k] = true; });
     var team = equipe ? await equipe.carregar(client, user, occupied) : null;
+    // Há alteração de projeto de equipe por enviar, mas as equipes não carregaram:
+    // segue com a cópia deste aparelho (activate) em vez de substituí-la.
+    if (resume && team && team.falhou && Object.keys(resume.sync.equipe || {}).length) {
+      var keep = new Error("Projetos de equipe indisponíveis.");
+      keep.keepLocal = true;
+      throw keep;
+    }
     prepareLocal(row, team);
+    if (resume) resumePending(resume.copy, resume.sync);
   }
 
   function loadScript(src, integrity) {
@@ -199,6 +282,8 @@
     loadScript("./assets/js/compartilhar.js").catch(function (error) { console.error(error); });
     // Opcional: sem ele não há o botão "Histórico".
     loadScript("./assets/js/historico.js").catch(function (error) { console.error(error); });
+    // Opcional: sem ele não há o botão "Etiquetas com QR code".
+    loadScript("./assets/js/etiquetas.js").catch(function (error) { console.error(error); });
   }
 
   async function activate(session) {
@@ -208,13 +293,18 @@
       user = session.user;
       notice("Carregando seus projetos...");
       try {
-        await loadProjects();
+        var sync = readSync();
+        var copy = sync && sync.pendente ? readLocalCopy() : null;
+        await loadProjects(copy && { copy: copy, sync: sync });
         await loadApp();
-        document.getElementById("accountEmail").textContent = user.email || "Minha conta";
-        account.hidden = false;
-        document.body.classList.remove("auth-locked");
-        notice("");
+        showEditor();
+        // Alterações deste aparelho que ficaram por enviar.
+        if (pending) {
+          status.textContent = "Enviando alterações feitas neste aparelho...";
+          flush().catch(logSaveError);
+        }
       } catch (error) {
+        if ((isNetworkError(error) || error.keepLocal) && await activateOffline(session.user)) return;
         user = null;
         notice("Não foi possível carregar os projetos. Verifique a conexão e tente novamente. " + (error.message || ""), true);
       } finally {
@@ -222,6 +312,82 @@
       }
     })();
     return activation;
+  }
+
+  function showEditor() {
+    document.getElementById("accountEmail").textContent = user.email || "Minha conta";
+    account.hidden = false;
+    document.body.classList.remove("auth-locked");
+    notice("");
+    keepEditorOffline();
+  }
+
+  // Sem internet: abre o editor com a cópia deste aparelho. As alterações ficam
+  // guardadas aqui (grafo-sincronia marca o que falta enviar) e, quando a
+  // conexão volta, a página recarrega e activate() as envia.
+  async function activateOffline(sessionUser) {
+    if (!sessionUser || !sessionUser.id) return false;
+    user = sessionUser;
+    var copy = readLocalCopy();
+    if (!copy) { user = null; return false; }
+    var sync = readSync() || { pendente: true };
+    offline = true;
+    serverVersion = sync.versao || null;
+    if (equipe) equipe.restaurarOffline(sync.equipe || {}, copy.projects, !sync.pendente, client, user);
+    localState = copy;
+    lastSaved = sync.pendente ? null : JSON.stringify(personalSnapshot(copy));
+    try {
+      await loadApp();
+    } catch (error) {
+      offline = false;
+      user = null;
+      return false;
+    }
+    showEditor();
+    status.textContent = "Sem internet: as alterações ficam neste aparelho";
+    // Sem recarregar sozinho: se o servidor estiver fora do ar com a internet
+    // funcionando, a página ficaria recarregando sem parar. O botão tenta de novo.
+    retry.hidden = false;
+    return true;
+  }
+
+  // Conexão de volta com o editor aberto sem internet: recarrega para enviar as
+  // alterações (sem atrapalhar quem está no meio de um formulário).
+  var reloading = false;
+  function reloadWhenIdle() {
+    if (reloading) return;
+    reloading = true;
+    status.textContent = "Conexão de volta. Sincronizando...";
+    var field = document.activeElement;
+    if (field && /^(INPUT|TEXTAREA|SELECT)$/.test(field.tagName) && field.closest("form, .modal-backdrop")) {
+      field.addEventListener("blur", function () { location.reload(); }, { once: true });
+      return;
+    }
+    location.reload();
+  }
+  window.addEventListener("online", function () {
+    if (offline) { setTimeout(reloadWhenIdle, 1500); return; }
+    if (pending && !conflict && user) flush().catch(logSaveError);
+  });
+  window.addEventListener("offline", function () {
+    if (user && !offline) status.textContent = "Sem internet: as alterações ficam neste aparelho";
+  });
+
+  // Guarda neste aparelho o que o editor carrega depois do login (sw.js), para
+  // abrir e exportar sem internet.
+  function keepEditorOffline() {
+    if (!("serviceWorker" in navigator) || !navigator.serviceWorker.controller) return;
+    var urls = EDITOR_SCRIPTS.map(function (script) { return script[0]; })
+      .concat(["./assets/js/primeiros-passos.js", "./assets/js/compartilhar.js", "./assets/js/historico.js", "./assets/js/etiquetas.js"]);
+    if (window.GrafoApp && window.GrafoApp.arquivosParaGuardar) urls = urls.concat(window.GrafoApp.arquivosParaGuardar());
+    navigator.serviceWorker.controller.postMessage({ tipo: "guardar", urls: urls });
+  }
+  // Primeira visita: o service worker só assume a página depois de instalado.
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.addEventListener("controllerchange", function () { if (appLoaded && user) keepEditorOffline(); });
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("/sw.js").catch(function (error) { console.error("Falha ao registrar o service worker:", error); });
+    });
   }
 
   function showConflict(unsaved) {
@@ -237,6 +403,8 @@
 
   async function flush() {
     if (!client || !user) return false;
+    // Sem internet, as alterações ficam no aparelho até a página recarregar online.
+    if (offline) return !pending;
     if (timer) { clearTimeout(timer); timer = null; }
     if (inFlight) { await inFlight; if (!pending) return true; }
     if (!pending) return true;
@@ -269,6 +437,7 @@
         status.textContent = "Salvo na nuvem";
         retry.hidden = true;
       }
+      writeSync(false);
     })();
     try { await inFlight; return true; }
     finally { inFlight = null; }
@@ -287,6 +456,8 @@
       localState = snapshot;
       if (unchanged && !pending) return;
       pending = snapshot;
+      writeSync(true);
+      if (offline) { status.textContent = "Sem internet: alteração guardada neste aparelho"; return; }
       // Com o conflito aberto, guarda a alteração e espera a escolha da pessoa.
       if (conflict) return;
       status.textContent = "Alterações pendentes";
@@ -301,13 +472,14 @@
   };
 
   retry.addEventListener("click", function () {
+    if (offline) { reloadWhenIdle(); return; }
     if (pending) flush().catch(logSaveError);
   });
 
   // Ao voltar para a aba, confere se outra aba ou computador salvou nesse meio-tempo,
   // para avisar antes de a pessoa editar uma versão desatualizada.
   async function checkRemote() {
-    if (!client || !user || conflict || pending || inFlight || Date.now() - lastCheck < 5000) return;
+    if (!client || !user || offline || conflict || pending || inFlight || Date.now() - lastCheck < 5000) return;
     lastCheck = Date.now();
     var known = serverVersion;
     var response = await client.from("grafo_user_data").select("updated_at").eq("user_id", user.id).maybeSingle();
@@ -323,6 +495,7 @@
   document.getElementById("conflitoRecarregar").addEventListener("click", function () {
     // Ao recarregar, loadProjects busca a versão do servidor e substitui a local.
     pending = null;
+    writeSync(false);
     location.reload();
   });
 
@@ -370,10 +543,12 @@
   document.getElementById("accountLogout").addEventListener("click", async function () {
     try {
       await flush();
+      // Sair apaga a cópia deste aparelho: nada pode ficar sem enviar.
+      if (pending || offline) throw new Error("Alterações ainda não enviadas.");
       var leavingUserId = user.id;
       var result = await client.auth.signOut();
       if (result.error) throw result.error;
-      ["grafo-projetos", "grafo-projeto-atual", "diagrama-estado", "grafo-backup"].forEach(function (key) {
+      ["grafo-projetos", "grafo-projeto-atual", "diagrama-estado", "grafo-backup", "grafo-sincronia"].forEach(function (key) {
         localStorage.removeItem(key + ":" + leavingUserId);
       });
       location.reload();
@@ -433,7 +608,7 @@
       var result = await client.rpc("excluir_minha_conta");
       if (result.error) throw result.error;
       var leavingUserId = user.id;
-      ["grafo-projetos", "grafo-projeto-atual", "diagrama-estado", "grafo-backup", "grafo-pagina"].forEach(function (key) {
+      ["grafo-projetos", "grafo-projeto-atual", "diagrama-estado", "grafo-backup", "grafo-pagina", "grafo-sincronia"].forEach(function (key) {
         localStorage.removeItem(key + ":" + leavingUserId);
       });
       // A sessão pertence a um usuário que não existe mais; sair só limpa o navegador.
@@ -509,6 +684,17 @@
     }
   });
 
+  // Usuário da sessão guardada pelo Supabase (sb-<projeto>-auth-token), para abrir
+  // sem internet quando ela não pode ser renovada.
+  function storedUser(url) {
+    try {
+      var ref = new URL(url).hostname.split(".")[0];
+      var saved = JSON.parse(localStorage.getItem("sb-" + ref + "-auth-token") || "null");
+      var found = saved && (saved.user || (saved.currentSession && saved.currentSession.user));
+      return found && found.id ? found : null;
+    } catch (e) { return null; }
+  }
+
   // Link de recuperação de senha. O Supabase abre a sessão ao processar o link
   // e só depois dispara PASSWORD_RECOVERY; sem olhar a URL antes, o app via a
   // sessão e entrava direto no editor, sem pedir a senha nova.
@@ -557,8 +743,16 @@
         }
       });
       var initial = await client.auth.getSession();
+      // Sem internet com o login vencido (dura 1 hora): o Supabase não consegue
+      // renovar, mas a sessão continua guardada. Abre a cópia deste aparelho.
+      if (initial.error && isNetworkError(initial.error) && !erroLink && mode !== "reset" &&
+          await activateOffline(storedUser(config.url))) {
+        initial = { data: { session: null }, error: null };
+      }
       if (initial.error) throw initial.error;
-      if (erroLink) {
+      if (appLoaded) {
+        // Já aberto sem internet.
+      } else if (erroLink) {
         notice("O link expirou ou já foi usado. Digite seu e-mail para receber um novo.", true);
       } else if (mode === "reset") {
         notice(initial.data.session ? "" : "Link inválido ou expirado. Volte ao login e peça um novo em \"Esqueci minha senha\".", !initial.data.session);

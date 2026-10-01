@@ -50,10 +50,19 @@ test("scripts de CDN têm versão fixa e integrity (SRI)", () => {
     assert.match(tag, /@\d+\.\d+\.\d+/, "sem versão exata: " + tag);
   });
   const app = ler("assets/js/app.js");
+  // Gerador de PDF: a URL fica numa constante (também usada pelo modo sem internet);
+  // o <script> que a carrega precisa ter integrity.
   for (const lib of ["jspdf@", "svg2pdf.js@"]) {
-    const i = app.indexOf(lib);
-    assert.ok(i > 0, lib + " não encontrado no app.js");
-    assert.match(app.slice(i, i + 400), /integrity = "sha384-/, lib + " sem integrity");
+    const constante = (app.match(new RegExp("var (\\w+) = \"https://cdn\\.jsdelivr\\.net/npm/" + lib.replace(/\./g, "\\.") + "\\d+\\.\\d+\\.\\d+/")) || [])[1];
+    assert.ok(constante, lib + " com versão exata não encontrado no app.js");
+    const i = app.indexOf("script.src = " + constante + ";");
+    assert.ok(i > 0, constante + " não é carregado no app.js");
+    assert.match(app.slice(i, i + 300), /integrity = "sha384-/, lib + " sem integrity");
   }
   assert.doesNotMatch(app, /jspdf@2\./, "jsPDF 2.x tem falhas de segurança conhecidas");
+  // Gerador de QR code das etiquetas.
+  const etiquetas = ler("assets/js/etiquetas.js");
+  assert.match(etiquetas, /var URL_QR = "https:\/\/cdn\.jsdelivr\.net\/npm\/qrcode-generator@\d+\.\d+\.\d+\//);
+  assert.match(etiquetas, /var INTEGRITY_QR = "sha384-[A-Za-z0-9+/=]+"/);
+  assert.match(etiquetas, /script\.integrity = INTEGRITY_QR/);
 });

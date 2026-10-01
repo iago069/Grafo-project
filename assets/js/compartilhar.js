@@ -164,7 +164,8 @@
       disponivel = true;
     } catch (erro) {
       disponivel = !erroTabelaAusente(erro);
-      if (disponivel) console.error("Falha ao carregar links compartilhados:", erro);
+      // Sem internet é esperado (o editor abre com a cópia do aparelho).
+      if (disponivel && navigator.onLine !== false) console.error("Falha ao carregar links compartilhados:", erro);
     }
     botao.hidden = !disponivel;
     // Primeira sincronização: garante que o link mostre o desenho atual.

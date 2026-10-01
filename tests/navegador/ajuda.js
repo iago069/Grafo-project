@@ -72,11 +72,18 @@ function projetoExemplo(n = 6) {
 }
 
 // Script que substitui o supabase-js: sessão opcional, a linha de grafo_user_data
-// em memória e respostas vazias para as demais tabelas, RPCs e realtime.
-function supabaseSimulado({ sessao = true, projetos = projetoExemplo() } = {}) {
+// (guardada no localStorage em "__simulado_linha", para valer entre recarregamentos,
+// como num servidor) e respostas vazias para as demais tabelas, RPCs e realtime.
+// Sem internet (navigator.onLine false), responde como o real: "Failed to fetch".
+// vencida: o login venceu, então sem internet getSession não consegue renová-lo.
+function supabaseSimulado({ sessao = true, projetos = projetoExemplo(), vencida = false } = {}) {
   const linha = { user_id: "u1", projects: projetos, current_project: Object.keys(projetos)[0], updated_at: "2026-09-28T10:00:00.000+00:00" };
   return `(function(){
-  var linha = ${JSON.stringify(linha)};
+  var GUARDADA = "__simulado_linha";
+  var linha = JSON.parse(localStorage.getItem(GUARDADA) || "null") || ${JSON.stringify(linha)};
+  function guardar(){ localStorage.setItem(GUARDADA, JSON.stringify(linha)); }
+  function semRede(){ return navigator.onLine === false; }
+  var FALHA_REDE = { message: "TypeError: Failed to fetch", details: "", hint: "", code: "" };
   var METODOS = ["select","eq","neq","is","in","order","limit","range","insert","update","upsert","delete","match","filter"];
   function consulta(tabela){
     var q = { op: "select", f: [], um: false };
@@ -88,10 +95,11 @@ function supabaseSimulado({ sessao = true, projetos = projetoExemplo() } = {}) {
     b.maybeSingle = b.single = function(){ q.um = true; return b; };
     b.then = function(ok, err){
       var r;
-      if (tabela !== "grafo_user_data") r = { data: q.um ? null : [], error: null };
+      if (semRede()) r = { data: null, error: FALHA_REDE };
+      else if (tabela !== "grafo_user_data") r = { data: q.um ? null : [], error: null };
       else if (q.op === "update") {
         var confere = q.f.every(function(p){ return linha[p[0]] === p[1]; });
-        if (confere) Object.assign(linha, q.x);
+        if (confere) { Object.assign(linha, q.x); guardar(); }
         r = { data: confere ? [{ updated_at: linha.updated_at }] : [], error: null };
       } else r = { data: q.um ? JSON.parse(JSON.stringify(linha)) : [linha], error: null };
       return Promise.resolve(r).then(ok, err);
@@ -99,15 +107,24 @@ function supabaseSimulado({ sessao = true, projetos = projetoExemplo() } = {}) {
     return b;
   }
   var sessao = ${sessao ? '{ user: { id: "u1", email: "teste@grafo" } }' : "null"};
+  var vencida = ${vencida ? "true" : "false"};
+  // Como o real: a sessão fica guardada em sb-<projeto>-auth-token.
+  if (sessao) localStorage.setItem("sb-teste-auth-token", JSON.stringify({ access_token: "x", refresh_token: "y", expires_at: 1, user: sessao.user }));
   var canal = { on: function(){ return canal; }, subscribe: function(){ return canal; }, unsubscribe: function(){ return Promise.resolve(); } };
   window.supabase = { createClient: function(){ return {
     from: consulta,
-    rpc: function(){ return Promise.resolve({ data: [], error: null }); },
+    rpc: function(nome, args){
+      (window.__chamadasRpc = window.__chamadasRpc || []).push({ nome: nome, args: args });
+      return Promise.resolve(semRede() ? { data: null, error: FALHA_REDE } : { data: [], error: null });
+    },
     channel: function(){ return canal; },
     removeChannel: function(){ return Promise.resolve(); },
     auth: {
       onAuthStateChange: function(){ return { data: { subscription: { unsubscribe: function(){} } } }; },
-      getSession: function(){ return Promise.resolve({ data: { session: sessao }, error: null }); },
+      getSession: function(){
+        if (sessao && vencida && semRede()) return Promise.resolve({ data: { session: null }, error: { name: "AuthRetryableFetchError", message: "Failed to fetch", status: 0 } });
+        return Promise.resolve({ data: { session: sessao }, error: null });
+      },
       signOut: function(){ return Promise.resolve({ error: null }); }
     }
   }; } };
@@ -115,12 +132,12 @@ function supabaseSimulado({ sessao = true, projetos = projetoExemplo() } = {}) {
 }
 
 // Abre uma página nova com o Supabase simulado. Junta os erros do console em pagina.erros.
-async function abrirPagina(navegador, site, { viewport = { width: 1400, height: 900 }, celular = false, sessao = true, projetos, antes, caminho = "/" } = {}) {
+async function abrirPagina(navegador, site, { viewport = { width: 1400, height: 900 }, celular = false, sessao = true, projetos, vencida, antes, caminho = "/" } = {}) {
   const contexto = await navegador.newContext(Object.assign(
     { viewport, acceptDownloads: true },
     celular ? { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}
   ));
-  const script = supabaseSimulado({ sessao, projetos });
+  const script = supabaseSimulado({ sessao, projetos, vencida });
   await contexto.route("**/@supabase/supabase-js@*/**", r => r.fulfill({ contentType: "text/javascript", body: script }));
   if (antes) await contexto.addInitScript(antes);
   const pagina = await contexto.newPage();

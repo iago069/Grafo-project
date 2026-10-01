@@ -589,6 +589,26 @@
       return r.ajustes.length;
     },
     // Usados por primeiros-passos.js.
+    // Abre o projeto e a janela do equipamento (QR code das etiquetas). false se não achar.
+    mostrarEquipamento: function (projeto, id) {
+      if (projeto && projeto !== projetoAtual) {
+        if (!projetos[projeto]) return false;
+        abrirProjeto(projeto);
+        elProjetoSelect.value = projeto;
+      }
+      var eq = estado.equipamentos.find(function (item) { return item.id === id; });
+      if (!eq) return false;
+      abrirEditorEquipamento(eq);
+      return true;
+    },
+    carregarJsPdf: function () { return carregarJsPdf(); },
+    // O que o editor pode precisar depois de aberto, para guardar no aparelho e
+    // funcionar sem internet: gerador de PDF, ícones dos equipamentos e a cópia
+    // embutida deles (exportação).
+    arquivosParaGuardar: function () {
+      var icones = CATALOGO_ICONES.map(function (item) { return item.arquivo; });
+      return [URL_JSPDF, URL_SVG2PDF, "./assets/js/icones-embutidos.js"].concat(icones);
+    },
     resumoAtual: function () { return { equipamentos: estado.equipamentos.length, conexoes: estado.conexoes.length }; },
     carregarExemplo: function () { carregarExemplo(); },
     // Abre um formulário da barra lateral ("navAddEquip" ou "navAddCable"),
