@@ -4,7 +4,7 @@
 
 **Acesse:** https://thegrafo.vercel.app
 
-![Editor do Grafo com um POP de exemplo: roteador, switches, OLT, nobreak e câmera ligados por fibra e UTP](docs/imagens/layout.png)
+![Diagrama de exemplo no Grafo](docs/imagens/layout.png)
 
 ## Sumário
 

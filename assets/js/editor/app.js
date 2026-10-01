@@ -4256,9 +4256,11 @@
       return nome;
     }
 
-    function celulaPorta(porta, layout) {
+    // Portas de cima e de baixo ficam "em pé" (estreitas e altas); o nome é girado
+    // depois de desenhar (girarNomesDasPortasEmPe), porque o Graphviz não gira texto.
+    function celulaPorta(porta, layout, emPe) {
       var nome = escaparHtmlDot(limitarNomePorta(porta.nome));
-      return '<TD BORDER="1" COLOR="' + CONFIG_PORTA.borda + '" BGCOLOR="' + CONFIG_PORTA.fundo + '" WIDTH="' + CONFIG_PORTA.largura + '" HEIGHT="' + layout.alturaPorta + '" FIXEDSIZE="TRUE" CELLPADDING="' + layout.padding + '" ALIGN="CENTER" VALIGN="MIDDLE"><FONT FACE="Helvetica" POINT-SIZE="' + layout.fonte + '" COLOR="' + CONFIG_PORTA.texto + '">' + nome + '</FONT></TD>';
+      return '<TD BORDER="1" COLOR="' + CONFIG_PORTA.borda + '" BGCOLOR="' + CONFIG_PORTA.fundo + '" WIDTH="' + (emPe ? layout.alturaPorta : CONFIG_PORTA.largura) + '" HEIGHT="' + (emPe ? CONFIG_PORTA.largura : layout.alturaPorta) + '" FIXEDSIZE="TRUE" CELLPADDING="' + layout.padding + '" ALIGN="CENTER" VALIGN="MIDDLE"><FONT FACE="Helvetica" POINT-SIZE="' + layout.fonte + '" COLOR="' + CONFIG_PORTA.texto + '">' + nome + '</FONT></TD>';
     }
 
     function linhaEquipamento(eq) {
@@ -4274,17 +4276,19 @@
       // da área da imagem).
       function colunaPortas(lista) {
         if (!lista.length) return '<TD WIDTH="' + CONFIG_PORTA.largura + '"></TD>';
-        return '<TD VALIGN="MIDDLE" WIDTH="' + CONFIG_PORTA.largura + '"><TABLE BORDER="0" CELLSPACING="2" CELLPADDING="0">' +
+        // Tamanho travado (FIXEDSIZE): sem isto o Graphviz esticava a coluna até a
+        // altura do equipamento e abria um vão entre as portas.
+        return '<TD VALIGN="MIDDLE" WIDTH="' + CONFIG_PORTA.largura + '"><TABLE BORDER="0" CELLSPACING="0" CELLPADDING="0" FIXEDSIZE="TRUE" WIDTH="' + CONFIG_PORTA.largura + '" HEIGHT="' + lista.length * layoutLateral.alturaPorta + '">' +
           lista.map(function (p) { return '<TR>' + celulaPorta(p, layoutLateral) + '</TR>'; }).join("") +
           '</TABLE></TD>';
       }
       function linhaPortas(lista) {
         if (!lista.length) return "";
-        return '<TR><TD COLSPAN="3"><TABLE BORDER="0" CELLSPACING="4" CELLPADDING="0"><TR>' +
-          lista.map(function (p) { return celulaPorta(p, layoutTopo); }).join("") +
+        return '<TR><TD COLSPAN="3"><TABLE BORDER="0" CELLSPACING="0" CELLPADDING="0" FIXEDSIZE="TRUE" WIDTH="' + lista.length * layoutTopo.alturaPorta + '" HEIGHT="' + CONFIG_PORTA.largura + '"><TR>' +
+          lista.map(function (p) { return celulaPorta(p, layoutTopo, true); }).join("") +
           '</TR></TABLE></TD></TR>';
       }
-      var alturaPortasLaterais = Math.max(portas.esquerda.length, portas.direita.length) * (layoutLateral.alturaPorta + 2);
+      var alturaPortasLaterais = Math.max(portas.esquerda.length, portas.direita.length) * layoutLateral.alturaPorta;
       var alturaMeio = Math.max(ALTURA_BASE_EQUIPAMENTO, alturaPortasLaterais);
 
       // Ordem das linhas = ordem em que o Graphviz desenha as portas:
@@ -4293,7 +4297,7 @@
         linhaPortas(portas.cima) +
         '<TR><TD COLSPAN="3" CELLPADDING="3" ALIGN="CENTER">' + linhasDoCabecalho(eq, modo).join("<BR/>") + '</TD></TR>' +
         '<TR>' + colunaPortas(portas.esquerda) +
-        '<TD BORDER="0" CELLPADDING="0" WIDTH="120" HEIGHT="' + alturaMeio + '"></TD>' +
+        '<TD BORDER="0" CELLPADDING="0" WIDTH="96" HEIGHT="' + alturaMeio + '"></TD>' +
         colunaPortas(portas.direita) + '</TR>' +
         (modo === "monitoramento"
           ? '<TR><TD COLSPAN="3" CELLPADDING="2" ALIGN="CENTER"><TABLE BORDER="0" CELLPADDING="4" STYLE="rounded" BGCOLOR="' + (FUNDO_STATUS[status] || FUNDO_STATUS.ativo) + '"><TR><TD><FONT FACE="Helvetica" POINT-SIZE="11" COLOR="' + corStatus + '"><B>' + escaparHtmlDot(marcadorStatus(status) + " " + rotuloStatus(status)) + '</B></FONT></TD></TR></TABLE></TD></TR>'
@@ -4367,6 +4371,37 @@
       var i = document.createElement("i"); i.style.background = item.cor;
       span.appendChild(i); span.appendChild(document.createTextNode(item.texto));
       elLegenda.appendChild(span);
+    });
+  }
+
+  // Nomes das portas de cima e de baixo, na vertical (lidos de baixo para cima).
+  // Pela ordem do rótulo (gerarDot): os primeiros textos do nó são as portas de
+  // cima e os últimos, as de baixo; as caixas com borda seguem portasRenderizadas.
+  function girarNomesDasPortasEmPe(svgEl) {
+    if (!svgEl) return;
+    svgEl.querySelectorAll("g.node").forEach(function (no) {
+      var info = portasRenderizadas[idEquipamentoDoNode(no)];
+      if (!info || !(info.nCima || info.nBaixo)) return;
+      var textos = Array.prototype.slice.call(no.querySelectorAll("text"));
+      var caixas = Array.prototype.filter.call(no.querySelectorAll("polygon"), function (p) {
+        var s = String(p.getAttribute("stroke") || "").toLowerCase();
+        return s && s !== "none" && s !== "transparent";
+      });
+      var pares = [];
+      for (var i = 0; i < info.nCima; i++) pares.push([textos[i], caixas[i]]);
+      for (var j = 1; j <= info.nBaixo; j++) pares.push([textos[textos.length - j], caixas[info.ordem.length - j]]);
+      pares.forEach(function (par) {
+        var texto = par[0], caixa = par[1];
+        if (!texto || !caixa) return;
+        var b;
+        try { b = caixa.getBBox(); } catch (e) { return; }
+        var cx = b.x + b.width / 2, cy = b.y + b.height / 2;
+        var tamanho = parseFloat(texto.getAttribute("font-size")) || 9;
+        texto.setAttribute("x", cx.toFixed(2));
+        texto.setAttribute("y", (cy + tamanho * 0.35).toFixed(2));
+        texto.setAttribute("text-anchor", "middle");
+        texto.setAttribute("transform", "rotate(-90 " + cx.toFixed(2) + " " + cy.toFixed(2) + ")");
+      });
     });
   }
 
@@ -4895,6 +4930,7 @@
       aplicarBusca();
       aplicarCaminho();
       aplicarImagensNoSvg(estado);
+      girarNomesDasPortasEmPe(elCanvas.querySelector("svg"));
       atualizarLegenda(estado);
       btnCopiar.disabled = false;
       btnBaixar.disabled = false;
