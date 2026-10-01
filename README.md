@@ -197,16 +197,16 @@ O ícone é escolhido pelo tipo ou nome do equipamento, ou manualmente no editor
 
 | Tipo | Arquivo | Reconhece |
 |---|---|---|
-| OLT | `OLT.jpeg` | "olt" |
-| Switch | `SWITCH.jpeg` | "switch" |
+| OLT | `OLT.png` | "olt" |
+| Switch | `SWITCH.png` | "switch" |
 | Roteador / MikroTik | `MIKROTIK.png` | "mikrotik", "roteador", "rb/" |
 | ONU / ONT | `ONU.svg` | "onu", "ont" |
 | Servidor | `SERVIDOR.svg` | "servidor", "server" |
-| Nobreak / UPS | `NOBREAK.jpeg` | "nobreak" |
-| Retificador / RPS | `RETIFICADOR.jpeg` | "retificador", "rps" |
-| Ar-condicionado | `AR.jpeg` | "ar", "hvac", "climatiz…" |
-| VOLT | `VOLT.jpeg` | "volt" |
-| Câmera | `CAMERA.jpeg` | "câmera", "camera" |
+| Nobreak / UPS | `NOBREAK.png` | "nobreak" |
+| Retificador / RPS | `RETIFICADOR.png` | "retificador", "rps" |
+| Ar-condicionado | `AR.png` | "ar", "hvac", "climatiz…" |
+| VOLT | `VOLT.png` | "volt" |
+| Câmera | `CAMERA.png` | "câmera", "camera" |
 
 Além desses, o quadro de símbolos tem um tipo e um ícone para: Conversor de fibra, Concentrador Hotspot, CX, Decoder, DIO, AP WiFi, POE, UniFi, NVR, DWDM, MUX, DEMUX, Bateria, Switch POE, Conversor de mídia, Controle de acesso, Aligera, Dream Machine e Nuvem VPLS (arquivos com o mesmo nome em `assets/images/`, lista em `SIMBOLOS` de `src/app/00-catalogo.js`). O tipo é reconhecido por palavra inteira, e o nome mais específico ganha: "Switch POE 24p" usa o ícone de Switch POE, e "Rádio" não vira DIO.
 

@@ -189,7 +189,7 @@
 
     var porId = {};
     dados.equipamentos.forEach(function (eq) {
-      var imagem = eq.imagem || imagemDoIcone(eq.icone);
+      var imagem = nomeAtualDaImagem(eq.imagem) || imagemDoIcone(eq.icone);
       if (imagem) porId[eq.id] = imagem;
     });
 

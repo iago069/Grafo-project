@@ -1,15 +1,15 @@
 {
   "tipos": [
-    { "nome": "OLT", "icone": "OLT.jpeg" },
-    { "nome": "Switch", "icone": "SWITCH.jpeg" },
+    { "nome": "OLT", "icone": "OLT.png" },
+    { "nome": "Switch", "icone": "SWITCH.png" },
     { "nome": "MikroTik", "icone": "MIKROTIK.png" },
     { "nome": "ONU", "icone": "ONU.svg" },
-    { "nome": "RPS", "icone": "RETIFICADOR.jpeg" },
+    { "nome": "RPS", "icone": "RETIFICADOR.png" },
     { "nome": "Servidor", "icone": "SERVIDOR.svg" },
-    { "nome": "UPS", "icone": "NOBREAK.jpeg" },
-    { "nome": "HVAC", "icone": "AR.jpeg" },
-    { "nome": "VOLT", "icone": "VOLT.jpeg" },
-    { "nome": "Camera IP", "icone": "CAMERA.jpeg" }
+    { "nome": "UPS", "icone": "NOBREAK.png" },
+    { "nome": "HVAC", "icone": "AR.png" },
+    { "nome": "VOLT", "icone": "VOLT.png" },
+    { "nome": "Camera IP", "icone": "CAMERA.png" }
   ],
   "modelos": [
     { "nome": "CCR2004-16G-2S+", "fabricante": "MikroTik", "tipo": "Roteador", "portas": ["ether1-16", "sfp-sfpplus1-2"] },

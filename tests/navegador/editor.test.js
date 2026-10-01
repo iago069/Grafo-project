@@ -179,6 +179,9 @@ test("quadro de símbolos: todos os tipos na lista, com ícone, e o tipo certo p
   for (const t of ["Volt POP Protect", "RB / CCR", "Switch", "Retificador", "Câmera", "Nobreak", "Conversor de fibra", "Concentrador Hotspot", "CX",
     "Decoder", "DIO", "AP WiFi", "OLT", "ONU", "POE", "UniFi", "NVR", "Servidor", "DWDM", "MUX", "DEMUX", "Ar condicionado", "Bateria",
     "Switch POE", "Conversor de mídia", "Controle de acesso", "Aligera", "Dream Machine", "Nuvem VPLS"]) assert.ok(tipos.includes(t), t + " na lista de tipos");
+  // Outros nomes do mesmo equipamento não repetem na lista (VOLT = Volt POP Protect).
+  for (const t of ["VOLT", "UPS", "HVAC", "RPS", "AR", "MikroTik", "Camera IP"]) assert.ok(!tipos.includes(t), t + " não deve repetir na lista");
+  assert.equal(tipos.length, 29);
   // Todas as imagens existem.
   const quebradas = await pagina.evaluate(async () => {
     const urls = [...new Set(window.apiEquipamentos.listar().map(t => t.icone).filter(Boolean))];
@@ -187,7 +190,7 @@ test("quadro de símbolos: todos os tipos na lista, com ícone, e o tipo certo p
   });
   assert.deepEqual(quebradas, []);
   // Tipo digitado -> ícone: o nome mais específico ganha, e só palavra inteira conta.
-  for (const [nome, tipo] of [["SWP-01", "Switch POE 24p"], ["DIO-01", "DIO"], ["RADIO-01", "Rádio"], ["DMX-01", "DEMUX"]]) {
+  for (const [nome, tipo] of [["SWP-01", "Switch POE 24p"], ["DIO-01", "DIO"], ["RADIO-01", "Rádio"], ["DMX-01", "DEMUX"], ["VOLT-01", "VOLT"]]) {
     // O formulário fecha depois de adicionar.
     await pagina.click('[data-nav-panel="navAddEquip"]');
     await pagina.waitForSelector("#navEquipNome", { state: "visible" });
@@ -205,6 +208,23 @@ test("quadro de símbolos: todos os tipos na lista, com ícone, e o tipo certo p
   assert.equal(icone["DIO-01"], "DIO.png");
   assert.notEqual(icone["RADIO-01"], "DIO.png");
   assert.equal(icone["DMX-01"], "DEMUX.png");
+  assert.equal(icone["VOLT-01"], "VOLT.png");
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});
+
+test("projeto salvo com os ícones antigos (.jpeg) abre com os novos, sem fundo (.png)", async () => {
+  const projetos = { "Antigo": { equipamentos: [
+    { id: "a", nome: "OLT-ANTIGA", tipo: "OLT", icone: "./assets/images/OLT.jpeg" },
+    { id: "b", nome: "NB-ANTIGO", tipo: "UPS", icone: "", imagem: "./assets/images/NOBREAK.jpeg" }
+  ], conexoes: [] } };
+  const pagina = await abrirPagina(navegador, site, { projetos });
+  await esperarDiagrama(pagina);
+  await pagina.waitForFunction(() => document.querySelectorAll("#canvas svg image").length >= 2, null, { timeout: 20000 });
+  const hrefs = await pagina.$$eval("#canvas svg image", l => l.map(i => i.getAttribute("href") || i.getAttribute("xlink:href")));
+  assert.ok(hrefs.some(h => /OLT\.png$/.test(h)), hrefs.join(", "));
+  assert.ok(hrefs.some(h => /NOBREAK\.png$/.test(h)), hrefs.join(", "));
+  assert.ok(!hrefs.some(h => /\.jpeg$/.test(h)), "nenhum .jpeg");
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });

@@ -79,12 +79,13 @@
     // Avisa outros módulos (compartilhar.js) que o projeto pode ter mudado.
     document.dispatchEvent(new CustomEvent("grafo:alterado"));
   }
-  // Projetos salvos antes da correção dos nomes das imagens (MIROTIK/RTIFICADOR).
+  // Projetos salvos antes da correção dos nomes das imagens (MIROTIK/RTIFICADOR)
+  // e de os ícones .jpeg virarem .png sem fundo.
   function migrarImagensAntigas(eq) {
     if (!eq || typeof eq !== "object") return eq;
     ["icone", "imagem"].forEach(function (campo) {
       if (typeof eq[campo] !== "string" || /^data:/i.test(eq[campo])) return;
-      eq[campo] = eq[campo].replace(/MIROTIK\.(png|jpeg)$/i, "MIKROTIK.png").replace(/RTIFICADOR\.jpeg$/i, "RETIFICADOR.jpeg");
+      eq[campo] = nomeAtualDaImagem(eq[campo].replace(/MIROTIK\.(png|jpeg)$/i, "MIKROTIK.png").replace(/RTIFICADOR\.jpeg$/i, "RETIFICADOR.jpeg"));
     });
     return eq;
   }

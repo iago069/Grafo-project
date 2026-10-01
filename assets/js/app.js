@@ -57,19 +57,19 @@
   // Quadro de símbolos para diagramas: [tipo sugerido, arquivo em assets/images,
   // nome do ícone na lista "Ícone"]. A ordem é a da lista de tipos.
   var SIMBOLOS = [
-    ["Volt POP Protect", "VOLT.jpeg", "Volt POP Protect"],
+    ["Volt POP Protect", "VOLT.png", "Volt POP Protect"],
     ["RB / CCR", "MIKROTIK.png", "RB / CCR (MikroTik)"],
-    ["Switch", "SWITCH.jpeg", "Switch"],
-    ["Retificador", "RETIFICADOR.jpeg", "Retificador / RPS"],
-    ["Câmera", "CAMERA.jpeg", "Câmera"],
-    ["Nobreak", "NOBREAK.jpeg", "Nobreak"],
+    ["Switch", "SWITCH.png", "Switch"],
+    ["Retificador", "RETIFICADOR.png", "Retificador / RPS"],
+    ["Câmera", "CAMERA.png", "Câmera"],
+    ["Nobreak", "NOBREAK.png", "Nobreak"],
     ["Conversor de fibra", "CONVERSOR-FIBRA.png", "Conversor de fibra"],
     ["Concentrador Hotspot", "CONCENTRADOR-HOTSPOT.png", "Concentrador Hotspot"],
     ["CX", "CX.png", "CX"],
     ["Decoder", "DECODER.png", "Decoder"],
     ["DIO", "DIO.png", "DIO (Distribuidor Interno Óptico)"],
     ["AP WiFi", "AP-WIFI.png", "AP WiFi"],
-    ["OLT", "OLT.jpeg", "OLT"],
+    ["OLT", "OLT.png", "OLT"],
     ["ONU", "ONU.svg", "ONU / ONT"],
     ["POE", "POE.png", "POE"],
     ["UniFi", "UNIFI.png", "UniFi"],
@@ -78,7 +78,7 @@
     ["DWDM", "DWDM.png", "DWDM"],
     ["MUX", "MUX.png", "MUX"],
     ["DEMUX", "DEMUX.png", "DEMUX"],
-    ["Ar condicionado", "AR.jpeg", "Ar condicionado"],
+    ["Ar condicionado", "AR.png", "Ar condicionado"],
     ["Bateria", "BATERIA.png", "Bateria"],
     ["Switch POE", "SWITCH-POE.png", "Switch POE"],
     ["Conversor de mídia", "CONVERSOR-MIDIA.png", "Conversor de mídia"],
@@ -87,9 +87,12 @@
     ["Dream Machine", "DREAM-MACHINE.png", "Dream Machine"],
     ["Nuvem VPLS", "NUVEM-VPLS.png", "Nuvem VPLS"]
   ];
-  // Nomes antigos dos tipos, que projetos já salvos usam.
-  var TIPOS_ANTIGOS = [["MikroTik", "MIKROTIK.png"], ["VOLT", "VOLT.jpeg"], ["UPS", "NOBREAK.jpeg"], ["AR", "AR.jpeg"], ["RPS", "RETIFICADOR.jpeg"], ["Camera IP", "CAMERA.jpeg"]];
-  var TIPOS_BASE = SIMBOLOS.concat(TIPOS_ANTIGOS).map(function (s) { return { nome: s[0], icone: caminhoImagem(s[1]) }; });
+  // Outros nomes para o mesmo equipamento (VOLT = Volt POP Protect, UPS =
+  // Nobreak...), que projetos já salvos usam: reconhecidos, mas fora da lista.
+  var TIPOS_ANTIGOS = [["MikroTik", "MIKROTIK.png"], ["VOLT", "VOLT.png"], ["UPS", "NOBREAK.png"], ["AR", "AR.png"], ["RPS", "RETIFICADOR.png"], ["Camera IP", "CAMERA.png"]];
+  var TIPOS_BASE = SIMBOLOS.map(function (s) { return { nome: s[0], icone: caminhoImagem(s[1]) }; })
+    .concat(TIPOS_ANTIGOS.map(function (s) { return { nome: s[0], icone: caminhoImagem(s[1]), apelido: true }; }));
+  var ICONES_DOS_SIMBOLOS = SIMBOLOS.map(function (s) { return caminhoImagem(s[1]); });
   var CATALOGO_ICONES = SIMBOLOS.map(function (s) { return { valor: caminhoImagem(s[1]), nome: s[2], arquivo: caminhoImagem(s[1]) }; });
   var catalogoTiposEquipamentos = TIPOS_BASE.slice();
 
@@ -107,7 +110,15 @@
     return item.icone || item.arquivo || item.imagem || item.iconeArquivo || item.icon || "";
   }
 
+  // Os ícones antigos eram .jpeg com fundo branco; hoje são .png sem fundo.
+  function nomeAtualDaImagem(valor) {
+    return typeof valor === "string" && !/^data:/i.test(valor)
+      ? valor.replace(/(^|\/)(AR|CAMERA|NOBREAK|OLT|RETIFICADOR|SWITCH|VOLT)\.jpe?g$/i, function (_, antes, nome) { return antes + nome.toUpperCase() + ".png"; })
+      : valor;
+  }
+
   function imagemDoIcone(valor) {
+    valor = nomeAtualDaImagem(valor);
     if (!valor) return "";
     var valorNormalizado = normalizarNomeArquivoImagem(valor);
     var item = CATALOGO_ICONES.find(function (icone) {
@@ -118,15 +129,15 @@
 
     var valorEmTexto = String(valor || "").toLowerCase();
     if (valorEmTexto.indexOf("mikrotik") >= 0 || valorEmTexto.indexOf("rb/") >= 0 || valorEmTexto.indexOf("roteador") >= 0) return caminhoImagem("MIKROTIK.png");
-    if (valorEmTexto.indexOf("switch") >= 0) return caminhoImagem("SWITCH.jpeg");
-    if (valorEmTexto.indexOf("olt") >= 0) return caminhoImagem("OLT.jpeg");
-    if (/(^|[^a-z])ar([^a-z]|$)/.test(valorEmTexto) || valorEmTexto.indexOf("hvac") >= 0 || valorEmTexto.indexOf("climatiz") >= 0) return caminhoImagem("AR.jpeg");
-    if (/c[aâ]mera/.test(valorEmTexto)) return caminhoImagem("CAMERA.jpeg");
+    if (valorEmTexto.indexOf("switch") >= 0) return caminhoImagem("SWITCH.png");
+    if (valorEmTexto.indexOf("olt") >= 0) return caminhoImagem("OLT.png");
+    if (/(^|[^a-z])ar([^a-z]|$)/.test(valorEmTexto) || valorEmTexto.indexOf("hvac") >= 0 || valorEmTexto.indexOf("climatiz") >= 0) return caminhoImagem("AR.png");
+    if (/c[aâ]mera/.test(valorEmTexto)) return caminhoImagem("CAMERA.png");
     if (/(^|[^a-z])on[ut]([^a-z]|$)/.test(valorEmTexto)) return caminhoImagem("ONU.svg");
     if (valorEmTexto.indexOf("servidor") >= 0 || valorEmTexto.indexOf("server") >= 0) return caminhoImagem("SERVIDOR.svg");
-    if (valorEmTexto.indexOf("retificador") >= 0 || valorEmTexto.indexOf("rps") >= 0) return caminhoImagem("RETIFICADOR.jpeg");
-    if (valorEmTexto.indexOf("nobreak") >= 0 || valorEmTexto.indexOf("nobreack") >= 0) return caminhoImagem("NOBREAK.jpeg");
-    if (valorEmTexto.indexOf("volt") >= 0) return caminhoImagem("VOLT.jpeg");
+    if (valorEmTexto.indexOf("retificador") >= 0 || valorEmTexto.indexOf("rps") >= 0) return caminhoImagem("RETIFICADOR.png");
+    if (valorEmTexto.indexOf("nobreak") >= 0 || valorEmTexto.indexOf("nobreack") >= 0) return caminhoImagem("NOBREAK.png");
+    if (valorEmTexto.indexOf("volt") >= 0) return caminhoImagem("VOLT.png");
     return "";
   }
 
@@ -136,7 +147,7 @@
     var itens = [];
     catalogoTiposEquipamentos.forEach(function (tipo) {
       var nome = extrairNomeTipo(tipo);
-      if (!nome) return;
+      if (!nome || tipo.apelido) return;
       var chave = normalizarTextoEquipamento(nome);
       if (!itens.some(function (entry) { return normalizarTextoEquipamento(entry.nome) === chave; })) {
         itens.push({ nome: nome, icone: extrairIconeTipo(tipo) });
@@ -194,9 +205,10 @@
       var nome = String(extrairNomeTipo(item) || "").trim();
       if (!nome) return;
       var icone = extrairIconeTipo(item) || "";
-      // A API manda só o nome do arquivo ("OLT.jpeg"); emojis passam direto.
+      // A API manda só o nome do arquivo ("OLT.png"); emojis passam direto.
       if (/^[\w.-]+\.(png|jpe?g|gif|svg|webp)$/i.test(icone)) icone = caminhoImagem(icone);
-      merge.push({ nome: nome, icone: icone });
+      // Com o ícone de um símbolo do quadro, é outro nome para ele ("HVAC" = Ar condicionado).
+      merge.push({ nome: nome, icone: icone, apelido: ICONES_DOS_SIMBOLOS.indexOf(icone) >= 0 });
     });
     catalogoTiposEquipamentos = merge.filter(function (item, index, array) {
       var nome = String(extrairNomeTipo(item) || "").trim();
@@ -248,12 +260,12 @@
     if (itemCatalogo && itemCatalogo.icone) return itemCatalogo.icone;
 
     var chave = normalizarTextoEquipamento(tipo);
-    if (chave.indexOf("olt") >= 0) return ASSET_BASE + "OLT.jpeg";
-    if (chave.indexOf("switch") >= 0) return ASSET_BASE + "SWITCH.jpeg";
+    if (chave.indexOf("olt") >= 0) return ASSET_BASE + "OLT.png";
+    if (chave.indexOf("switch") >= 0) return ASSET_BASE + "SWITCH.png";
     if (chave.indexOf("roteador") >= 0 || chave.indexOf("mikrotik") >= 0 || chave.indexOf("rb/") >= 0) return ASSET_BASE + "MIKROTIK.png";
-    if (chave.indexOf("retificador") >= 0 || chave.indexOf("rps") >= 0) return ASSET_BASE + "RETIFICADOR.jpeg";
-    if (chave.indexOf("nobreak") >= 0 || chave.indexOf("nobreack") >= 0) return ASSET_BASE + "NOBREAK.jpeg";
-    if (chave.indexOf("conversor") >= 0 || chave.indexOf("modulo") >= 0 || chave.indexOf("volt") >= 0) return ASSET_BASE + "VOLT.jpeg";
+    if (chave.indexOf("retificador") >= 0 || chave.indexOf("rps") >= 0) return ASSET_BASE + "RETIFICADOR.png";
+    if (chave.indexOf("nobreak") >= 0 || chave.indexOf("nobreack") >= 0) return ASSET_BASE + "NOBREAK.png";
+    if (chave.indexOf("conversor") >= 0 || chave.indexOf("modulo") >= 0 || chave.indexOf("volt") >= 0) return ASSET_BASE + "VOLT.png";
     return "";
   }
 
@@ -2724,12 +2736,13 @@
     // Avisa outros módulos (compartilhar.js) que o projeto pode ter mudado.
     document.dispatchEvent(new CustomEvent("grafo:alterado"));
   }
-  // Projetos salvos antes da correção dos nomes das imagens (MIROTIK/RTIFICADOR).
+  // Projetos salvos antes da correção dos nomes das imagens (MIROTIK/RTIFICADOR)
+  // e de os ícones .jpeg virarem .png sem fundo.
   function migrarImagensAntigas(eq) {
     if (!eq || typeof eq !== "object") return eq;
     ["icone", "imagem"].forEach(function (campo) {
       if (typeof eq[campo] !== "string" || /^data:/i.test(eq[campo])) return;
-      eq[campo] = eq[campo].replace(/MIROTIK\.(png|jpeg)$/i, "MIKROTIK.png").replace(/RTIFICADOR\.jpeg$/i, "RETIFICADOR.jpeg");
+      eq[campo] = nomeAtualDaImagem(eq[campo].replace(/MIROTIK\.(png|jpeg)$/i, "MIKROTIK.png").replace(/RTIFICADOR\.jpeg$/i, "RETIFICADOR.jpeg"));
     });
     return eq;
   }
@@ -4207,7 +4220,7 @@
 
     var porId = {};
     dados.equipamentos.forEach(function (eq) {
-      var imagem = eq.imagem || imagemDoIcone(eq.icone);
+      var imagem = nomeAtualDaImagem(eq.imagem) || imagemDoIcone(eq.icone);
       if (imagem) porId[eq.id] = imagem;
     });
 
