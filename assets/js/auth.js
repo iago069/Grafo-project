@@ -37,6 +37,20 @@
   var deleting = false;
   // Editor aberto sem internet, com a cópia deste aparelho (activateOffline).
   var offline = false;
+  // Uso sem login (activateGuest): projetos só neste navegador, sem nuvem.
+  // Exportar funciona; compartilhar, histórico e equipe pedem login.
+  var convidado = false;
+  var CHAVE_MODO = "grafo-modo";
+  var nameInput = document.getElementById("authNome");
+  var nameLabel = document.getElementById("authNomeLabel");
+  var repeatInput = document.getElementById("authRepetir");
+  var repeatLabel = document.getElementById("authRepetirLabel");
+
+  // Nome guardado na conta (Supabase: user_metadata), ou "" se a pessoa não informou.
+  function nomeDoUsuario(u) {
+    var m = u && u.user_metadata || {};
+    return String(m.nome || m.full_name || m.name || "").trim();
+  }
 
   function notice(text, error) {
     message.textContent = text || "";
@@ -74,6 +88,13 @@
     passwordLabel.hidden = next === "recover";
     passwordInput.required = next !== "recover";
     passwordInput.autocomplete = next === "login" ? "current-password" : "new-password";
+    // Cadastro: nome e senha repetida. Nova senha (reset): só a repetição.
+    var pedeNome = next === "signup", pedeRepetir = next === "signup" || next === "reset";
+    nameInput.hidden = nameLabel.hidden = !pedeNome;
+    nameInput.required = pedeNome;
+    repeatInput.hidden = repeatLabel.hidden = !pedeRepetir;
+    repeatInput.required = pedeRepetir;
+    repeatInput.value = "";
     submit.textContent = next === "signup" ? "Cadastrar" : next === "recover" ? "Enviar link" : next === "reset" ? "Salvar nova senha" : "Entrar";
     toggle.hidden = next !== "login";
     recover.hidden = next !== "login";
@@ -81,8 +102,22 @@
   }
 
   function storageKey(key) {
+    if (convidado) return key + ":convidado";
     if (!user) throw new Error("É necessário entrar na conta antes de acessar os projetos.");
     return key + ":" + user.id;
+  }
+
+  // Projetos feitos sem login neste navegador (ou null).
+  function projetosSemLogin() {
+    try {
+      var p = JSON.parse(localStorage.getItem("grafo-projetos:convidado") || "null");
+      return p && typeof p === "object" && !Array.isArray(p) && Object.keys(p).length ? p : null;
+    } catch (e) { return null; }
+  }
+  function apagarProjetosSemLogin() {
+    ["grafo-projetos", "grafo-projeto-atual", "diagrama-estado", "grafo-backup", "grafo-pagina"].forEach(function (k) {
+      localStorage.removeItem(k + ":convidado");
+    });
   }
 
   // Projetos de equipe (equipe.js): ficam no mesmo mapa do editor, mas cada um
@@ -237,6 +272,27 @@
         localStorage.removeItem("diagrama-estado");
       }
     }
+    // Projetos feitos sem login neste navegador: a pessoa decide se vão para a
+    // conta. Nomes repetidos ganham "(2)". A cópia local só sai depois que a
+    // gravação na nuvem deu certo.
+    var semLogin = projetosSemLogin();
+    if (semLogin) {
+      var qtd = Object.keys(semLogin).length;
+      if (window.confirm((qtd === 1 ? "Há 1 projeto feito" : "Há " + qtd + " projetos feitos") + " sem login neste navegador. Deseja copiar para esta conta?")) {
+        var destino = Object.assign({}, row && row.projects || {});
+        var primeiro = null;
+        Object.keys(semLogin).forEach(function (nome) {
+          var final = nome;
+          for (var n = 2; destino[final]; n++) final = String(nome).slice(0, 50) + " (" + n + ")";
+          destino[final] = semLogin[nome];
+          if (!primeiro) primeiro = final;
+        });
+        var juntos = { projects: destino, current_project: primeiro };
+        if (!(await write(juntos))) throw new Error("Os projetos desta conta foram alterados em outra aba. Recarregue a página.");
+        row = { projects: destino, current_project: primeiro, updated_at: serverVersion };
+        apagarProjetosSemLogin();
+      }
+    }
     var occupied = {};
     if (row && row.projects && typeof row.projects === "object") Object.keys(row.projects).forEach(function (k) { occupied[k] = true; });
     var team = equipe ? await equipe.carregar(client, user, occupied) : null;
@@ -276,15 +332,100 @@
     if (appLoaded) return;
     for (var i = 0; i < EDITOR_SCRIPTS.length; i++) await loadScript(EDITOR_SCRIPTS[i][0], EDITOR_SCRIPTS[i][1]);
     appLoaded = true;
-    if (equipe) equipe.iniciarInterface();
     loadScript("./assets/js/primeiros-passos.js").catch(function (error) { console.error(error); });
+    // Etiquetas exportam um PDF: valem também sem login.
+    loadScript("./assets/js/etiquetas.js").catch(function (error) { console.error(error); });
+    if (convidado) { prepararBotoesQuePedemLogin(); return; }
+    if (equipe) equipe.iniciarInterface();
     // Opcional: sem ele o editor funciona, só não há o botão "Compartilhar".
     loadScript("./assets/js/compartilhar.js").catch(function (error) { console.error(error); });
     // Opcional: sem ele não há o botão "Histórico".
     loadScript("./assets/js/historico.js").catch(function (error) { console.error(error); });
-    // Opcional: sem ele não há o botão "Etiquetas com QR code".
-    loadScript("./assets/js/etiquetas.js").catch(function (error) { console.error(error); });
   }
+
+  // ---- Sem login -------------------------------------------------------------
+  // O editor abre com os projetos guardados só neste navegador. Compartilhar,
+  // Histórico e Equipe aparecem, mas pedem login (os módulos nem carregam).
+  var RECURSOS_COM_LOGIN = {
+    btnCompartilhar: "compartilhar um link do diagrama",
+    btnHistorico: "guardar e restaurar versões anteriores",
+    btnEquipe: "editar em equipe"
+  };
+  function prepararBotoesQuePedemLogin() {
+    Object.keys(RECURSOS_COM_LOGIN).forEach(function (id) {
+      var b = document.getElementById(id);
+      if (!b) return;
+      b.hidden = false;
+      b.classList.add("requer-login");
+      b.setAttribute("aria-haspopup", "dialog");
+      b.title = "Entre na sua conta para " + RECURSOS_COM_LOGIN[id];
+      b.addEventListener("click", function () { pedirLogin(RECURSOS_COM_LOGIN[id]); });
+    });
+  }
+
+  var loginModal = document.getElementById("loginNecessarioModal");
+  function pedirLogin(oQue) {
+    document.getElementById("loginNecessarioTexto").textContent =
+      "Para " + oQue + ", entre na sua conta ou crie uma (é grátis). Os projetos que você fez sem login podem ser copiados para a conta.";
+    loginModal.classList.remove("hidden", "saindo");
+    document.getElementById("loginNecessarioEntrar").focus();
+  }
+  function fecharPedidoLogin() { loginModal.classList.add("hidden"); }
+  // Vai para a página inicial, com o formulário aberto (o editor sem login fica para trás).
+  function irParaLogin(modo) {
+    location.href = location.pathname + "?" + (modo === "signup" ? "criar-conta" : "entrar") + "=1";
+  }
+  loginModal.querySelectorAll("[data-login-fechar]").forEach(function (b) { b.addEventListener("click", fecharPedidoLogin); });
+  loginModal.addEventListener("click", function (event) { if (event.target === loginModal) fecharPedidoLogin(); });
+  loginModal.addEventListener("keydown", function (event) { if (event.key === "Escape") { event.preventDefault(); fecharPedidoLogin(); } });
+  document.getElementById("loginNecessarioEntrar").addEventListener("click", function () { irParaLogin("login"); });
+  document.getElementById("loginNecessarioCriar").addEventListener("click", function () { irParaLogin("signup"); });
+
+  async function activateGuest() {
+    if (appLoaded || activation) return;
+    convidado = true;
+    try { localStorage.setItem(CHAVE_MODO, "convidado"); } catch (e) {}
+    try {
+      await loadApp();
+    } catch (error) {
+      convidado = false;
+      notice("Não foi possível abrir o editor. Verifique a conexão e tente novamente.", true);
+      return;
+    }
+    document.body.classList.add("modo-convidado");
+    document.getElementById("btnEntrarConvidado").hidden = false;
+    atualizarUsuarioNaBarra();
+    document.body.classList.remove("auth-locked");
+    notice("");
+  }
+
+  // Pé da barra lateral: quem está usando (ou "Sem login", com o botão Entrar).
+  function atualizarUsuarioNaBarra() {
+    var caixa = document.getElementById("sidebarUsuario");
+    if (!caixa) return;
+    var nome = convidado ? "" : nomeDoUsuario(user);
+    var email = !convidado && user && user.email || "";
+    // Em destaque, o primeiro nome (ou o começo do e-mail, para quem ainda não tem nome).
+    var destaque = convidado ? "Sem login" : (nome ? nome.split(" ")[0] : email.split("@")[0]);
+    document.getElementById("sidebarUsuarioNome").textContent = destaque;
+    document.getElementById("sidebarUsuarioDetalhe").textContent = convidado ? "Projetos salvos só neste navegador"
+      : nome ? (nome.indexOf(" ") > 0 ? nome + " · " : "") + email : "Adicione seu nome em Minha conta";
+    document.getElementById("sidebarUsuarioInicial").textContent = convidado ? "?" : ((destaque || "?").match(/[a-z0-9À-ÿ]/i) || ["?"])[0].toUpperCase();
+    caixa.title = convidado ? "Usando sem login" : (nome || email);
+    var acao = document.getElementById("sidebarUsuarioAcao");
+    acao.textContent = convidado ? "Entrar" : "Conta";
+    acao.title = convidado ? "Entrar ou criar conta para salvar na nuvem" : "Minha conta";
+    caixa.classList.toggle("convidado", convidado);
+    caixa.hidden = false;
+  }
+  document.getElementById("sidebarUsuarioAcao").addEventListener("click", function () {
+    if (convidado) irParaLogin("login");
+    else openAccount();
+  });
+  document.getElementById("btnEntrarConvidado").addEventListener("click", function () { irParaLogin("login"); });
+  document.querySelectorAll("[data-usar-sem-login]").forEach(function (b) {
+    b.addEventListener("click", function () { activateGuest(); });
+  });
 
   async function activate(session) {
     if (!session || !session.user) return;
@@ -315,7 +456,13 @@
   }
 
   function showEditor() {
-    document.getElementById("accountEmail").textContent = user.email || "Minha conta";
+    // Botão da conta: o nome (ou o e-mail, se não houver nome); o e-mail fica no
+    // data-email para o menu (interface.js) mostrar "Conectado como".
+    var elConta = document.getElementById("accountEmail");
+    elConta.setAttribute("data-email", user.email || "");
+    elConta.textContent = nomeDoUsuario(user) || user.email || "Minha conta";
+    try { localStorage.removeItem(CHAVE_MODO); } catch (e) {}
+    atualizarUsuarioNaBarra();
     account.hidden = false;
     document.body.classList.remove("auth-locked");
     notice("");
@@ -450,6 +597,7 @@
   window.GrafoAuth = {
     storageKey: storageKey,
     scheduleSave: function (projects, currentProject) {
+      if (convidado) return; // sem login: o app.js já guardou neste navegador
       if (!user || deleting) return;
       var snapshot = { projects: JSON.parse(JSON.stringify(projects)), current_project: currentProject };
       var unchanged = JSON.stringify(personalSnapshot(snapshot)) === lastSaved && !(equipe && equipe.temAlteracao(snapshot.projects));
@@ -468,7 +616,11 @@
     flush: flush,
     // Para módulos que falam com o Supabase por conta própria (compartilhar.js).
     client: function () { return client; },
-    userId: function () { return user && user.id; }
+    userId: function () { return user && user.id; },
+    // Sem login: projetos só neste navegador; recursos da nuvem pedem login.
+    logado: function () { return !!user && !convidado; },
+    pedirLogin: function (oQue) { pedirLogin(oQue || "usar este recurso"); },
+    nome: function () { return convidado ? "" : nomeDoUsuario(user); }
   };
 
   retry.addEventListener("click", function () {
@@ -569,8 +721,11 @@
     accountMessage.classList.toggle("erro", !!error);
   }
   function openAccount() {
+    if (!user || convidado) return;
     accountReturnFocus = document.activeElement;
     document.getElementById("contaEmail").textContent = user && user.email || "";
+    document.getElementById("contaNome").value = nomeDoUsuario(user);
+    document.getElementById("contaNomeMensagem").textContent = "";
     accountConfirm.value = "";
     accountDelete.disabled = true;
     accountNotice("");
@@ -585,6 +740,33 @@
   function confirmationMatches() {
     return !!user && !!user.email && accountConfirm.value.trim().toLowerCase() === user.email.toLowerCase();
   }
+
+  // Nome da conta: aparece na barra lateral e no menu da conta.
+  document.getElementById("contaNomeForm").addEventListener("submit", async function (event) {
+    event.preventDefault();
+    var campo = document.getElementById("contaNome");
+    var aviso = document.getElementById("contaNomeMensagem");
+    var nome = campo.value.trim().replace(/\s+/g, " ").slice(0, 60);
+    if (nome.length < 2) { aviso.textContent = "Digite seu nome."; aviso.classList.add("erro"); campo.focus(); return; }
+    var botaoSalvar = this.querySelector("button[type=submit]");
+    botaoSalvar.disabled = true;
+    aviso.classList.remove("erro");
+    aviso.textContent = "Salvando...";
+    try {
+      var r = await client.auth.updateUser({ data: { nome: nome, full_name: nome } });
+      if (r.error) throw r.error;
+      user = r.data.user || user;
+      var elConta = document.getElementById("accountEmail");
+      elConta.textContent = nomeDoUsuario(user) || user.email;
+      atualizarUsuarioNaBarra();
+      aviso.textContent = "Nome salvo.";
+    } catch (error) {
+      aviso.classList.add("erro");
+      aviso.textContent = "Não foi possível salvar o nome. " + traduzirErro(error);
+    } finally {
+      botaoSalvar.disabled = false;
+    }
+  });
 
   document.getElementById("accountOpen").addEventListener("click", openAccount);
   accountModal.querySelectorAll("[data-conta-fechar]").forEach(function (b) { b.addEventListener("click", closeAccount); });
@@ -635,9 +817,10 @@
   // Botões "Criar conta" / "Entrar" da página: abrem o formulário no modo certo.
   document.querySelectorAll("[data-ir-para]").forEach(function (botao) {
     botao.addEventListener("click", function () {
-      setMode(botao.getAttribute("data-ir-para") === "signup" ? "signup" : "login");
+      var cadastro = botao.getAttribute("data-ir-para") === "signup";
+      setMode(cadastro ? "signup" : "login");
       goToCard();
-      setTimeout(function () { emailInput.focus({ preventScroll: true }); }, 350);
+      setTimeout(function () { (cadastro ? nameInput : emailInput).focus({ preventScroll: true }); }, 350);
     });
   });
 
@@ -653,8 +836,18 @@
       var email = emailInput.value.trim();
       var password = passwordInput.value;
       var result;
+      if ((mode === "signup" || mode === "reset") && password !== repeatInput.value) {
+        notice("As senhas não são iguais. Digite a mesma senha nos dois campos.", true);
+        repeatInput.focus();
+        return;
+      }
       if (mode === "signup") {
-        result = await client.auth.signUp({ email: email, password: password, options: { emailRedirectTo: location.origin + location.pathname } });
+        var nome = nameInput.value.trim().replace(/\s+/g, " ");
+        if (nome.length < 2) { notice("Digite seu nome.", true); nameInput.focus(); return; }
+        // O nome fica na conta (user_metadata): aparece na barra lateral e no menu.
+        result = await client.auth.signUp({ email: email, password: password, options: {
+          emailRedirectTo: location.origin + location.pathname, data: { nome: nome.slice(0, 60), full_name: nome.slice(0, 60) }
+        } });
         if (result.error) throw result.error;
         notice(result.data.session ? "Conta criada. Carregando..." : "Cadastro recebido. Confirme o e-mail para entrar.");
         if (result.data.session) await activate(result.data.session);
@@ -708,10 +901,20 @@
     return hash.get("error_code") || hash.get("error") || "";
   }
 
+  // Quem escolheu "usar sem login" neste navegador (e não pediu para entrar).
+  function querUsarSemLogin(irPara) {
+    var salvo = null;
+    try { salvo = localStorage.getItem(CHAVE_MODO); } catch (e) {}
+    return salvo === "convidado" && !irPara && !(equipe && equipe.conviteNaUrl());
+  }
+
   (async function bootstrap() {
     notice("Preparando o login...");
     var accountDeleted = /[?&]conta-excluida=1(&|$)/.test(location.search);
     if (accountDeleted) history.replaceState(null, "", location.pathname);
+    // Vindo do editor sem login ("Entrar" / "Criar conta"): abre o formulário.
+    var irPara = /[?&]criar-conta=1(&|$)/.test(location.search) ? "signup" : /[?&]entrar=1(&|$)/.test(location.search) ? "login" : null;
+    if (irPara) { history.replaceState(null, "", location.pathname); setMode(irPara); }
     var erroLink = erroNoLink();
     if (erroLink) {
       history.replaceState(null, "", location.pathname);
@@ -759,6 +962,8 @@
         back.hidden = !!initial.data.session;
       } else if (initial.data.session) {
         await activate(initial.data.session);
+      } else if (querUsarSemLogin(irPara) && !accountDeleted) {
+        await activateGuest();
       } else {
         var invited = equipe && equipe.conviteNaUrl();
         notice(accountDeleted ? "Sua conta e todos os projetos foram excluídos."
@@ -768,12 +973,15 @@
       // "Failed to fetch" etc. viram mensagem em português (ERROS_CONHECIDOS).
       notice(traduzirErro(error), true);
       submit.disabled = true;
+      // Sem login não depende do servidor: abre mesmo sem internet.
+      if (querUsarSemLogin(irPara)) await activateGuest();
     }
     // Sem editor aberto (sem sessão, sessão vencida ou erro): mostra a página
     // inicial; se a pessoa veio de um link de e-mail, leva direto ao formulário.
     if (!appLoaded) {
       showLanding();
-      if (mode !== "login" || erroLink || accountDeleted || (equipe && equipe.conviteNaUrl())) goToCard();
+      if (mode !== "login" || irPara || erroLink || accountDeleted || (equipe && equipe.conviteNaUrl())) goToCard();
+      if (irPara) setTimeout(function () { (irPara === "signup" ? nameInput : emailInput).focus({ preventScroll: true }); }, 350);
     }
   })();
 })();

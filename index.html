@@ -53,6 +53,7 @@
             <button type="button" class="landing-botao grande" data-ir-para="signup">Criar minha conta</button>
             <button type="button" class="landing-botao-secundario grande" data-ir-para="login">Já tenho conta</button>
           </div>
+          <button type="button" class="landing-sem-login" data-usar-sem-login>Experimentar sem login →</button>
           <ul class="landing-destaques">
             <li>Funciona direto no navegador</li>
             <li>Salvo na nuvem automaticamente</li>
@@ -65,10 +66,14 @@
       <h2 id="authTitle">Entre no Grafo</h2>
       <p id="authIntro">Acesse seus diagramas com sua conta.</p>
       <form id="authForm">
+        <label for="authNome" id="authNomeLabel" hidden>Nome</label>
+        <input id="authNome" type="text" autocomplete="name" maxlength="60" placeholder="Como quer ser chamado" hidden>
         <label for="authEmail">E-mail</label>
         <input id="authEmail" type="email" autocomplete="email" required>
         <label for="authPassword" id="authPasswordLabel">Senha</label>
         <input id="authPassword" type="password" autocomplete="current-password" minlength="6" required>
+        <label for="authRepetir" id="authRepetirLabel" hidden>Repetir senha</label>
+        <input id="authRepetir" type="password" autocomplete="new-password" minlength="6" hidden>
         <button class="primary auth-submit" id="authSubmit" type="submit">Entrar</button>
       </form>
       <p id="authMessage" class="auth-message" role="status" aria-live="polite"></p>
@@ -76,6 +81,10 @@
         <button type="button" id="authToggle">Criar conta</button>
         <button type="button" id="authRecover">Esqueci minha senha</button>
         <button type="button" id="authBack" hidden>Voltar ao login</button>
+      </div>
+      <div class="auth-sem-login">
+        <button type="button" class="auth-sem-login-botao" data-usar-sem-login>Usar sem login</button>
+        <span>Os projetos ficam só neste navegador. Compartilhar, histórico e equipe pedem conta.</span>
       </div>
     </div>
       </section>
@@ -225,6 +234,22 @@
       </div>
     </div>
 
+    <!-- Recurso que precisa de conta, usado sem login (auth.js). -->
+    <div id="loginNecessarioModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="loginNecessarioTitulo">
+      <div class="modal-box">
+        <div class="modal-header">
+          <h3 id="loginNecessarioTitulo">Entre na sua conta</h3>
+          <button type="button" class="ghost small" data-login-fechar aria-label="Fechar">×</button>
+        </div>
+        <p id="loginNecessarioTexto"></p>
+        <div class="modal-actions">
+          <button type="button" class="ghost" data-login-fechar>Agora não</button>
+          <button type="button" class="ghost" id="loginNecessarioCriar">Criar conta</button>
+          <button type="button" class="primary" id="loginNecessarioEntrar">Entrar</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Dados da conta (LGPD): cópia de todos os projetos e exclusão da conta (auth.js). -->
     <div id="contaModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="contaTitulo">
       <div class="modal-box">
@@ -233,6 +258,14 @@
           <button type="button" class="ghost small" data-conta-fechar aria-label="Fechar">×</button>
         </div>
         <p>Conta: <strong id="contaEmail"></strong></p>
+        <form id="contaNomeForm" class="conta-nome-form">
+          <label class="modal-field">
+            <span>Seu nome (aparece na barra lateral)</span>
+            <input id="contaNome" type="text" autocomplete="name" maxlength="60" placeholder="Como quer ser chamado">
+          </label>
+          <button type="submit" class="ghost">Salvar nome</button>
+        </form>
+        <p id="contaNomeMensagem" class="conta-mensagem" role="status" aria-live="polite"></p>
         <h4 class="conta-secao">Seus dados</h4>
         <p>Baixe uma cópia de todos os seus projetos num arquivo só. Ele pode ser importado de volta em "Importar projeto".</p>
         <div class="modal-actions conta-acoes">
@@ -472,7 +505,15 @@
           <button class="nav-item" id="btnExportarTodos" type="button" data-icon="baixar" title="Baixar todos os projetos da conta num arquivo só (.json)">Baixar todos os projetos</button>
         </div>
 
-        
+        <!-- Quem está usando (auth.js): nome em destaque, ou "Sem login" com o botão Entrar. -->
+        <div class="sidebar-usuario" id="sidebarUsuario" hidden>
+          <span class="sidebar-usuario-avatar" id="sidebarUsuarioInicial" aria-hidden="true"></span>
+          <div class="sidebar-usuario-texto">
+            <strong id="sidebarUsuarioNome"></strong>
+            <span id="sidebarUsuarioDetalhe"></span>
+          </div>
+          <button type="button" class="ghost small" id="sidebarUsuarioAcao">Conta</button>
+        </div>
       </nav>
     </aside>
 
@@ -487,6 +528,8 @@
             </div>
           </div>
           <div class="theme-toolbar">
+            <!-- Sem login: leva ao formulário de entrar/criar conta (auth.js). -->
+            <button type="button" class="primary small" id="btnEntrarConvidado" title="Entre ou crie uma conta para salvar na nuvem, compartilhar e usar o histórico" hidden>Entrar ou criar conta</button>
             <!-- Conta: selo de salvamento + botão com a inicial, que abre o menu (interface.js). -->
             <div id="accountTools" class="account-tools" hidden>
               <span id="cloudStatus" class="nuvem-status" role="status" aria-live="polite"></span>

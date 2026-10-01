@@ -150,8 +150,12 @@ const COMECAM_ESCONDIDOS = ["conflitoModal", "contaModal", "equipeModal"];
 function elemento(id) {
   const ouvintes = {};
   const classes = new Set(COMECAM_ESCONDIDOS.includes(id) ? ["hidden"] : []);
+  const atributos = {};
   return {
     id, textContent: "", hidden: false, disabled: false, value: "", innerHTML: "",
+    setAttribute: (nome, valor) => { atributos[nome] = String(valor); },
+    getAttribute: nome => (nome in atributos ? atributos[nome] : null),
+    removeAttribute: nome => { delete atributos[nome]; },
     classList: {
       add: c => classes.add(c), remove: c => classes.delete(c), contains: c => classes.has(c),
       toggle: (c, sim) => (sim ? classes.add(c) : classes.delete(c))
@@ -168,12 +172,13 @@ function elemento(id) {
 
 // opcoes.equipe: carrega também equipe.js e um editor simulado (window.GrafoApp).
 // opcoes.usuario: outra conta (padrão u1). opcoes.busca: location.search inicial.
+// opcoes.semSessao: ninguém logado. opcoes.armazenamento: localStorage inicial.
 async function abrirAba(banco, opcoes) {
   opcoes = opcoes || {};
   const conta = opcoes.usuario || USUARIO;
   const els = {};
   const ouvintesJanela = {};
-  const armazenamento = {};
+  const armazenamento = Object.assign({}, opcoes.armazenamento || {});
   const avisos = [];
   let recarregou = false, navegouPara = null, saiu = false;
   const document = {
@@ -198,8 +203,13 @@ async function abrirAba(banco, opcoes) {
       createClient: () => Object.assign(banco.cliente(conta), {
         auth: {
           onAuthStateChange() {},
-          getSession: async () => ({ data: { session: { user: conta } }, error: null }),
-          signOut: async () => { saiu = true; return { error: null }; }
+          getSession: async () => ({ data: { session: opcoes.semSessao ? null : { user: conta } }, error: null }),
+          signOut: async () => { saiu = true; return { error: null }; },
+          signUp: async dados => { (banco.cadastros = banco.cadastros || []).push(copia(dados)); return { data: { session: null }, error: null }; },
+          updateUser: async dados => {
+            conta.user_metadata = Object.assign({}, conta.user_metadata, dados.data);
+            return { data: { user: conta }, error: null };
+          }
         }
       })
     },
@@ -246,10 +256,10 @@ async function abrirAba(banco, opcoes) {
     vm.runInContext(codigoEquipe, ctx);
   }
   vm.runInContext(codigoAuth, ctx);
-  // Espera o editor abrir (auth.js preenche o e-mail da conta no fim) ou o login falhar.
+  // Espera o editor abrir (auth.js preenche a conta, ou "Sem login", no fim) ou o login falhar.
   for (let i = 0; i < 100; i++) {
     await esperar(10);
-    const aberto = els.accountEmail && els.accountEmail.textContent;
+    const aberto = (els.accountEmail && els.accountEmail.textContent) || (els.sidebarUsuarioNome && els.sidebarUsuarioNome.textContent);
     const falhou = els.authMessage && els.authMessage.classList.contains("error");
     if (aberto || falhou) break;
   }
@@ -266,6 +276,7 @@ async function abrirAba(banco, opcoes) {
     armazenamento,
     get recarregou() { return recarregou; },
     get navegouPara() { return navegouPara; },
+    get endereco() { return ctx.location.href; },
     get saiu() { return saiu; },
     avisoAberto: () => !els.conflitoModal.classList.contains("hidden"),
     status: () => els.cloudStatus.textContent,

@@ -4,8 +4,11 @@
 // se a sessão não valer). Fica em arquivo, e não no HTML, por causa do CSP.
 (function () {
   try {
+    // Sessão salva, ou quem escolheu "usar sem login" neste navegador (e não
+    // veio pedir para entrar / criar conta).
+    var semLogin = localStorage.getItem("grafo-modo") === "convidado" && !/[?&](entrar|criar-conta|convite)=/.test(location.search);
     if (!/[?&#](recuperar=1|conta-excluida=1|error)|type=recovery/.test(location.search + location.hash) &&
-        Object.keys(localStorage).some(function (k) { return /^sb-.+-auth-token$/.test(k); })) {
+        (semLogin || Object.keys(localStorage).some(function (k) { return /^sb-.+-auth-token$/.test(k); }))) {
       document.documentElement.classList.add("com-sessao");
       // O editor vai abrir: começa já a baixar o que ele usa (auth.js carrega em ordem).
       [["https://cdn.jsdelivr.net/npm/@viz-js/viz@3.31.0/dist/viz-global.js", "sha384-iX6VK6ib27dxYB4T470zbHOsDDoLewuYvrIgv2B3XXe8kgfKsGMf8QIleFy6VPi4"],

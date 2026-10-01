@@ -1133,3 +1133,57 @@ button.ghost:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 6
    rolagem chegar neles (35 equipamentos abriam de uma vez, com travada). */
 #listaEquip .equip-card { content-visibility: auto; contain-intrinsic-size: auto 132px; }
 #listaConex .conex-row { content-visibility: auto; contain-intrinsic-size: auto 58px; }
+
+/* ---------- Usuário no pé da barra lateral (auth.js) ----------
+   Primeiro nome em destaque; nome completo e e-mail embaixo. Fica no fim do
+   menu (margin-top: auto), no espaço que sobra abaixo dos itens. */
+.sidebar-usuario {
+  margin-top: auto; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px;
+  padding: 14px 10px 6px; border-top: 1px solid var(--line-soft); animation: surgir var(--dur-media) var(--ease-out);
+}
+.sidebar-usuario[hidden] { display: none; }
+.sidebar-usuario-avatar {
+  display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 72%, #fff), var(--accent));
+  color: var(--accent-ink); font: 700 1rem var(--sans);
+}
+.sidebar-usuario-texto { display: grid; min-width: 0; line-height: 1.2; }
+.sidebar-usuario-texto strong {
+  font-size: 1.35rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sidebar-usuario-texto span { font-size: 0.72rem; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar-usuario button.ghost.small { padding: 5px 10px; }
+.sidebar-usuario.convidado .sidebar-usuario-avatar { background: color-mix(in srgb, var(--text) 14%, transparent); color: var(--text); }
+.sidebar-usuario.convidado .sidebar-usuario-texto strong { font-size: 1rem; letter-spacing: 0.02em; }
+.sidebar-usuario.convidado button.ghost.small { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+/* Barra recolhida: só a inicial. */
+.sidebar.collapsed .sidebar-usuario { grid-template-columns: 1fr; justify-items: center; padding: 12px 0 4px; }
+.sidebar.collapsed .sidebar-usuario-texto, .sidebar.collapsed .sidebar-usuario button { display: none; }
+
+/* ---------- Sem login ---------- */
+/* Recursos que precisam de conta: aparecem com cadeado e pedem login ao clicar. */
+button.requer-login { position: relative; opacity: 0.78; }
+button.requer-login::after {
+  content: ""; position: absolute; top: -4px; right: -4px; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--bg-panel-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffb454' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='11' width='14' height='10' rx='2'/%3E%3Cpath d='M8 11V7a4 4 0 0 1 8 0v4'/%3E%3C/svg%3E") center / 9px no-repeat;
+  border: 1px solid var(--line-soft);
+}
+button.requer-login:hover { opacity: 1; }
+#btnEntrarConvidado { white-space: nowrap; }
+.landing-sem-login {
+  display: inline-block; margin: -14px 0 24px; padding: 4px 0; border: 0; background: none; cursor: pointer;
+  color: var(--l-foco); font: 600 0.95rem var(--sans); text-decoration: underline; text-underline-offset: 3px;
+}
+.landing-sem-login:hover { filter: brightness(1.15); }
+.auth-sem-login { margin-top: 16px; padding-top: 14px; border-top: 1px solid #e3eaef; text-align: center; }
+.auth-sem-login-botao {
+  width: 100%; min-height: 40px; border-radius: 10px; border: 1px solid #b7c5ce; background: #fff; color: #14212b;
+  font: 600 0.92rem var(--sans); cursor: pointer; transition: border-color var(--dur-rapida) ease, background-color var(--dur-rapida) ease;
+}
+.auth-sem-login-botao:hover { border-color: #205b6a; background: #f3f8fa; }
+.auth-sem-login span { display: block; margin-top: 8px; font-size: 12px; color: #607585; line-height: 1.4; }
+
+/* Nome em "Minha conta". */
+.conta-nome-form { display: flex; align-items: flex-end; gap: 8px; }
+.conta-nome-form .modal-field { flex: 1; margin-bottom: 0; }

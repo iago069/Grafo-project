@@ -26,9 +26,13 @@ test("botões da página inicial levam ao cadastro e ao login", async () => {
   await pagina.waitForSelector(".landing-heroi", { state: "visible" });
   await pagina.click(".landing-ctas [data-ir-para=signup]");
   await pagina.waitForFunction(() => /Crie sua conta/.test(document.getElementById("authTitle").textContent));
-  await pagina.waitForFunction(() => document.activeElement.id === "authEmail", null, { timeout: 3000 });
+  // Cadastro: Nome (com o cursor), E-mail, Senha e Repetir senha.
+  await pagina.waitForFunction(() => document.activeElement.id === "authNome", null, { timeout: 3000 });
+  assert.deepEqual(await pagina.$$eval("#authForm input", l => l.filter(i => i.offsetParent).map(i => i.id)), ["authNome", "authEmail", "authPassword", "authRepetir"]);
   await pagina.click(".landing-topo [data-ir-para=login]");
   await pagina.waitForFunction(() => /Entre/.test(document.getElementById("authTitle").textContent));
+  // Login: só E-mail e Senha.
+  assert.deepEqual(await pagina.$$eval("#authForm input", l => l.filter(i => i.offsetParent).map(i => i.id)), ["authEmail", "authPassword"]);
   await pagina.context().close();
 });
 

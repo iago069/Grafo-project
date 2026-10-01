@@ -70,13 +70,15 @@
     });
   }
 
-  // Inicial e e-mail completo no menu, a partir do e-mail que auth.js preenche.
+  // Inicial e e-mail no menu, a partir do que auth.js preenche: o texto é o
+  // nome da pessoa (ou o e-mail, sem nome) e o data-email é o e-mail.
   function atualizarConta() {
     var texto = (email && email.textContent || "").trim();
+    var endereco = (email && email.getAttribute("data-email") || texto).trim();
     var inicial = (texto.match(/[a-z0-9À-ÿ]/i) || ["?"])[0].toUpperCase();
     document.querySelectorAll("[data-conta-inicial]").forEach(function (el) { el.textContent = inicial; });
-    document.querySelectorAll("[data-conta-email]").forEach(function (el) { el.textContent = texto; });
-    if (botao) botao.title = texto ? "Conta: " + texto : "Sua conta";
+    document.querySelectorAll("[data-conta-email]").forEach(function (el) { el.textContent = endereco; });
+    if (botao) botao.title = texto ? "Conta: " + texto + (endereco !== texto ? " (" + endereco + ")" : "") : "Sua conta";
   }
   if (email) {
     new MutationObserver(atualizarConta).observe(email, { childList: true, characterData: true, subtree: true });
