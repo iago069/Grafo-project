@@ -77,6 +77,8 @@ test("VLAN / rede: vem do CSV, aparece em Editar em lista e pode ser alterada al
   const csv = "origem;ip_origem;vlan_origem;destino;ip_destino;vlan_destino;tipo;capacidade\r\n" +
     "RB-1;10.0.0.1;VLAN 10;SW-1;10.0.0.2;VLAN 20;Fibra;10G\r\n";
   await pagina.setInputFiles("#arquivoCsv", { name: "rede.csv", mimeType: "text/csv", buffer: Buffer.from(csv, "utf8") });
+  // O projeto aberto tem equipamentos: confirma a substituição.
+  await pagina.click("#appModal [data-modal-confirm]");
   await pagina.waitForFunction(() => document.getElementById("canvas").textContent.includes("RB-1"), null, { timeout: 20000 });
   let salvo = await projetoSalvo(pagina);
   assert.deepEqual(salvo.equipamentos.map(e => e.rede), ["VLAN 10", "VLAN 20"]);
@@ -90,4 +92,28 @@ test("VLAN / rede: vem do CSV, aparece em Editar em lista e pode ser alterada al
   assert.equal(salvo.equipamentos[1].rede, "VLAN 30");
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
+});
+
+test("seletor de tipo do tamanho do texto também sem field-sizing (Firefox/Safari)", async () => {
+  const larguras = async semSuporte => {
+    const pagina = await abrirPagina(navegador, site, { antes: semSuporte ? () => {
+      const original = CSS.supports.bind(CSS);
+      CSS.supports = (...a) => String(a.join(":")).includes("field-sizing") ? false : original(...a);
+    } : undefined });
+    await esperarDiagrama(pagina);
+    await pagina.evaluate(() => document.fonts.ready);
+    const medir = () => pagina.$eval("#modoDiagrama", s => s.getBoundingClientRect().width);
+    const topologia = await medir();
+    await pagina.selectOption("#modoDiagrama", "redes");
+    await pagina.waitForFunction(() => document.body.getAttribute("data-modo-diagrama") === "redes");
+    const redes = await medir();
+    assert.deepEqual(pagina.erros, []);
+    await pagina.context().close();
+    return { topologia, redes };
+  };
+  const nativo = await larguras(false);
+  const medido = await larguras(true);
+  assert.ok(medido.redes > medido.topologia + 30, "acompanha o texto escolhido");
+  assert.ok(Math.abs(medido.topologia - nativo.topologia) <= 6, "Topologia: " + medido.topologia + " x " + nativo.topologia);
+  assert.ok(Math.abs(medido.redes - nativo.redes) <= 6, "Redes: " + medido.redes + " x " + nativo.redes);
 });

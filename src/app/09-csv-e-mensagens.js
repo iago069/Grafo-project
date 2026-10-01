@@ -149,13 +149,27 @@
       try { resultado = importarCsv(texto); }
       catch (erroCsv) { mostrarErro('Não foi possível importar "' + arquivo.name + '".', [{ onde: "CSV", mensagem: erroCsv.message }]); return; }
       if (!resultado.ok) { mostrarErrosDeValidacao('"' + arquivo.name + '"', resultado); return; }
-      // O CSV só traz equipamentos e cabos: o tipo de diagrama continua o do projeto.
-      if (estado.modo) resultado.dados.modo = estado.modo;
-      estado = resultado.dados;
-      ajustarNaProximaRenderizacao = true;
-      mostrarAvisosDaImportacao('"' + arquivo.name + '"', resultado);
-      renderTudo();
-      avisar("CSV importado: " + plural(estado.equipamentos.length, "equipamento", "equipamentos") + ", " + plural(estado.conexoes.length, "cabo", "cabos") + ".");
+      function aplicar() {
+        // O CSV só traz equipamentos e cabos: o tipo de diagrama continua o do projeto.
+        if (estado.modo) resultado.dados.modo = estado.modo;
+        estado = resultado.dados;
+        ajustarNaProximaRenderizacao = true;
+        mostrarAvisosDaImportacao('"' + arquivo.name + '"', resultado);
+        renderTudo();
+        avisar("CSV importado: " + plural(estado.equipamentos.length, "equipamento", "equipamentos") + ", " + plural(estado.conexoes.length, "cabo", "cabos") + ".");
+      }
+      // Projeto com conteúdo: pergunta antes de substituir (as anotações também saem).
+      var anotacoes = (estado.anotacoes || []).length;
+      if (!estado.equipamentos.length && !anotacoes) { aplicar(); return; }
+      var perde = [plural(estado.equipamentos.length, "equipamento", "equipamentos"), plural(estado.conexoes.length, "cabo", "cabos")]
+        .concat(anotacoes ? [plural(anotacoes, "anotação", "anotações")] : []);
+      abrirModal({
+        title: "Importar CSV",
+        message: 'O CSV substitui o projeto aberto "' + projetoAtual + '" (' + perde.join(", ") + "). Dá para voltar com o ↶ (desfazer). Para criar outro projeto, cancele e use o + antes.",
+        confirmText: "Substituir",
+        cancelText: "Cancelar",
+        kind: "confirm"
+      }).then(function (ok) { if (ok) aplicar(); });
     };
     leitor.readAsArrayBuffer(arquivo);
   });

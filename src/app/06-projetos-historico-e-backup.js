@@ -210,8 +210,26 @@
     modoNaTela = modo;
     if (elModoDiagrama) elModoDiagrama.value = modo;
     document.body.setAttribute("data-modo-diagrama", modo);
+    ajustarLarguraDoSeletorDeModo();
     renderizarTiposSugeridos();
   }
+  // O seletor tem a largura do texto escolhido. Chrome/Edge fazem isso pelo CSS
+  // (field-sizing); no Firefox e no Safari ele teria a largura da opção mais
+  // longa, com um vão antes da seta. Lá, mede o texto e ajusta.
+  function ajustarLarguraDoSeletorDeModo() {
+    if (!elModoDiagrama || (window.CSS && CSS.supports && CSS.supports("field-sizing", "content"))) return;
+    var estilo = getComputedStyle(elModoDiagrama);
+    var medida = document.createElement("span");
+    medida.style.cssText = "position:absolute;visibility:hidden;white-space:pre;font:" + estilo.font + ";letter-spacing:" + estilo.letterSpacing;
+    medida.textContent = elModoDiagrama.options[elModoDiagrama.selectedIndex].text;
+    document.body.appendChild(medida);
+    var largura = medida.getBoundingClientRect().width + parseFloat(estilo.paddingLeft) + parseFloat(estilo.paddingRight) +
+      parseFloat(estilo.borderLeftWidth) + parseFloat(estilo.borderRightWidth) + 2;
+    medida.remove();
+    elModoDiagrama.style.width = Math.ceil(largura) + "px";
+  }
+  // A fonte da página pode chegar depois: mede de novo quando ela carregar.
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(ajustarLarguraDoSeletorDeModo);
   if (elModoDiagrama) elModoDiagrama.addEventListener("change", function () {
     var modo = elModoDiagrama.value;
     if (!MODOS_DIAGRAMA[modo] || modo === modoAtual()) return;
@@ -312,6 +330,8 @@
     salvarLocal();
     var arquivoJson = { projeto: projetoAtual, equipamentos: estado.equipamentos, conexoes: estado.conexoes };
     if (estado.modo) arquivoJson.modo = estado.modo;
+    // Sem isto o backup perdia as caixas de texto (Importar projeto já as aceita).
+    if (estado.anotacoes && estado.anotacoes.length) arquivoJson.anotacoes = estado.anotacoes;
     var conteudo = JSON.stringify(arquivoJson, null, 2);
     var arquivo = projetoAtual.replace(/[^\wÀ-ſ-]+/g, "-").replace(/^-+|-+$/g, "") || "projeto";
     baixarBlob(new Blob([conteudo], { type: "application/json" }), "grafo-" + arquivo + ".json");

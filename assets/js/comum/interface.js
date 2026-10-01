@@ -308,6 +308,19 @@
     window.addEventListener("scroll", esconderLegenda, true);
   }
 
+  // ---- Botões de arquivo pelo teclado -------------------------------------------
+  // "Importar projeto" e "Importar CSV" são <label> com o <input type=file>
+  // escondido: o label recebe foco (tabindex) e Enter/Espaço abre o arquivo.
+  document.addEventListener("keydown", function (event) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    var botao = event.target.closest && event.target.closest("[data-botao-arquivo]");
+    if (!botao || event.target !== botao) return;
+    var campo = botao.querySelector('input[type="file"]');
+    if (!campo) return;
+    event.preventDefault();
+    campo.click();
+  });
+
   // ---- Seções do menu lateral que abrem e fecham pelo título -------------------
   // As fechadas ficam guardadas neste navegador (só uma conveniência).
   var CHAVE_SECOES = "grafo-menu-fechado";

@@ -2883,8 +2883,26 @@
     modoNaTela = modo;
     if (elModoDiagrama) elModoDiagrama.value = modo;
     document.body.setAttribute("data-modo-diagrama", modo);
+    ajustarLarguraDoSeletorDeModo();
     renderizarTiposSugeridos();
   }
+  // O seletor tem a largura do texto escolhido. Chrome/Edge fazem isso pelo CSS
+  // (field-sizing); no Firefox e no Safari ele teria a largura da opção mais
+  // longa, com um vão antes da seta. Lá, mede o texto e ajusta.
+  function ajustarLarguraDoSeletorDeModo() {
+    if (!elModoDiagrama || (window.CSS && CSS.supports && CSS.supports("field-sizing", "content"))) return;
+    var estilo = getComputedStyle(elModoDiagrama);
+    var medida = document.createElement("span");
+    medida.style.cssText = "position:absolute;visibility:hidden;white-space:pre;font:" + estilo.font + ";letter-spacing:" + estilo.letterSpacing;
+    medida.textContent = elModoDiagrama.options[elModoDiagrama.selectedIndex].text;
+    document.body.appendChild(medida);
+    var largura = medida.getBoundingClientRect().width + parseFloat(estilo.paddingLeft) + parseFloat(estilo.paddingRight) +
+      parseFloat(estilo.borderLeftWidth) + parseFloat(estilo.borderRightWidth) + 2;
+    medida.remove();
+    elModoDiagrama.style.width = Math.ceil(largura) + "px";
+  }
+  // A fonte da página pode chegar depois: mede de novo quando ela carregar.
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(ajustarLarguraDoSeletorDeModo);
   if (elModoDiagrama) elModoDiagrama.addEventListener("change", function () {
     var modo = elModoDiagrama.value;
     if (!MODOS_DIAGRAMA[modo] || modo === modoAtual()) return;
@@ -2985,6 +3003,8 @@
     salvarLocal();
     var arquivoJson = { projeto: projetoAtual, equipamentos: estado.equipamentos, conexoes: estado.conexoes };
     if (estado.modo) arquivoJson.modo = estado.modo;
+    // Sem isto o backup perdia as caixas de texto (Importar projeto já as aceita).
+    if (estado.anotacoes && estado.anotacoes.length) arquivoJson.anotacoes = estado.anotacoes;
     var conteudo = JSON.stringify(arquivoJson, null, 2);
     var arquivo = projetoAtual.replace(/[^\wÀ-ſ-]+/g, "-").replace(/^-+|-+$/g, "") || "projeto";
     baixarBlob(new Blob([conteudo], { type: "application/json" }), "grafo-" + arquivo + ".json");
@@ -3958,13 +3978,27 @@
       try { resultado = importarCsv(texto); }
       catch (erroCsv) { mostrarErro('Não foi possível importar "' + arquivo.name + '".', [{ onde: "CSV", mensagem: erroCsv.message }]); return; }
       if (!resultado.ok) { mostrarErrosDeValidacao('"' + arquivo.name + '"', resultado); return; }
-      // O CSV só traz equipamentos e cabos: o tipo de diagrama continua o do projeto.
-      if (estado.modo) resultado.dados.modo = estado.modo;
-      estado = resultado.dados;
-      ajustarNaProximaRenderizacao = true;
-      mostrarAvisosDaImportacao('"' + arquivo.name + '"', resultado);
-      renderTudo();
-      avisar("CSV importado: " + plural(estado.equipamentos.length, "equipamento", "equipamentos") + ", " + plural(estado.conexoes.length, "cabo", "cabos") + ".");
+      function aplicar() {
+        // O CSV só traz equipamentos e cabos: o tipo de diagrama continua o do projeto.
+        if (estado.modo) resultado.dados.modo = estado.modo;
+        estado = resultado.dados;
+        ajustarNaProximaRenderizacao = true;
+        mostrarAvisosDaImportacao('"' + arquivo.name + '"', resultado);
+        renderTudo();
+        avisar("CSV importado: " + plural(estado.equipamentos.length, "equipamento", "equipamentos") + ", " + plural(estado.conexoes.length, "cabo", "cabos") + ".");
+      }
+      // Projeto com conteúdo: pergunta antes de substituir (as anotações também saem).
+      var anotacoes = (estado.anotacoes || []).length;
+      if (!estado.equipamentos.length && !anotacoes) { aplicar(); return; }
+      var perde = [plural(estado.equipamentos.length, "equipamento", "equipamentos"), plural(estado.conexoes.length, "cabo", "cabos")]
+        .concat(anotacoes ? [plural(anotacoes, "anotação", "anotações")] : []);
+      abrirModal({
+        title: "Importar CSV",
+        message: 'O CSV substitui o projeto aberto "' + projetoAtual + '" (' + perde.join(", ") + "). Dá para voltar com o ↶ (desfazer). Para criar outro projeto, cancele e use o + antes.",
+        confirmText: "Substituir",
+        cancelText: "Cancelar",
+        kind: "confirm"
+      }).then(function (ok) { if (ok) aplicar(); });
     };
     leitor.readAsArrayBuffer(arquivo);
   });

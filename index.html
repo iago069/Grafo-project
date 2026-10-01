@@ -534,7 +534,7 @@
         <div class="nav-section">
           <button class="nav-label" type="button" aria-expanded="true">Projeto</button>
           <button class="nav-item" id="btnExportarProjeto" type="button" data-icon="baixar" title="Exportar projeto (.json) — atalho: Ctrl+S">Exportar projeto (.json)</button>
-          <label class="nav-item nav-item-file" data-icon="enviar" title="Importar projeto (.json) ou backup de todos os projetos">Importar projeto (.json)<input id="arquivoProjeto" type="file" accept=".json,application/json" hidden></label>
+          <label class="nav-item nav-item-file" data-icon="enviar" title="Importar projeto (.json) ou backup de todos os projetos" tabindex="0" role="button" data-botao-arquivo>Importar projeto (.json)<input id="arquivoProjeto" type="file" accept=".json,application/json" hidden></label>
           <button class="nav-item" id="btnExportarTodos" type="button" data-icon="baixar" title="Baixar todos os projetos da conta num arquivo só (.json)">Baixar todos os projetos</button>
           <button class="nav-item" type="button" data-nav-panel="navJsonCsv" data-icon="codigo" title="Ver e editar o projeto em JSON, ou importar uma planilha CSV">JSON e CSV</button>
           <div class="nav-panel" id="navJsonCsv">
@@ -545,7 +545,7 @@
                 <button class="ghost" id="btnAtualizarJson" type="button" title="Recarrega o JSON com o diagrama atual">Recarregar</button>
               </div>
               <div class="nav-form-actions">
-                <label class="ghost botao-arquivo" title="Cria o diagrama a partir de uma planilha CSV">Importar CSV<input id="arquivoCsv" type="file" accept=".csv,text/csv" hidden></label>
+                <label class="ghost botao-arquivo" title="Cria o diagrama a partir de uma planilha CSV" tabindex="0" role="button" data-botao-arquivo>Importar CSV<input id="arquivoCsv" type="file" accept=".csv,text/csv" hidden></label>
                 <button class="ghost" id="btnModeloCsv" type="button" title="Planilha de exemplo com as colunas aceitas">Modelo CSV</button>
               </div>
             </div>

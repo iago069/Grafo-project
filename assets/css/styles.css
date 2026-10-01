@@ -1278,3 +1278,5 @@ body:not([data-modo-diagrama="redes"]) .so-modo-redes { display: none; }
 }
 .nav-form .botao-arquivo:hover { color: var(--text); border-color: var(--text-dim); }
 .nav-form .botao-arquivo:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Botões de arquivo (label com tabindex): contorno de foco ao navegar pelo teclado. */
+[data-botao-arquivo]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

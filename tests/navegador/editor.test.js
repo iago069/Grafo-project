@@ -251,3 +251,57 @@ test("JSON e CSV fica na seção Projeto da barra lateral (e não mais em Editar
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("Exportar projeto (.json) leva as anotações; importar o arquivo traz de volta", async () => {
+  const projetos = { "Com notas": { equipamentos: [{ id: "a", nome: "SW-1", tipo: "Switch" }], conexoes: [],
+    anotacoes: [{ id: "n1", texto: "Trocar fonte em março", x: 10, y: 10, cor: "#FFF3B0" }] } };
+  const pagina = await abrirPagina(navegador, site, { projetos });
+  await esperarDiagrama(pagina);
+  const [download] = await Promise.all([pagina.waitForEvent("download"), pagina.click("#btnExportarProjeto")]);
+  const arquivo = JSON.parse(require("fs").readFileSync(await download.path(), "utf8"));
+  assert.equal(arquivo.anotacoes.length, 1);
+  assert.equal(arquivo.anotacoes[0].texto, "Trocar fonte em março");
+
+  await pagina.setInputFiles("#arquivoProjeto", { name: "copia.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(arquivo)) });
+  await pagina.waitForFunction(() => document.getElementById("canvas").textContent.includes("Trocar fonte em março"), null, { timeout: 20000 });
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});
+
+test("Importar CSV num projeto com conteúdo pergunta antes; Cancelar mantém o projeto", async () => {
+  const pagina = await abrirPagina(navegador, site);
+  await esperarDiagrama(pagina);
+  const antes = await pagina.locator("#canvas svg g.node").count();
+  const csv = "origem;destino\r\nNOVO-1;NOVO-2\r\n";
+  await pagina.setInputFiles("#arquivoCsv", { name: "novo.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
+  await pagina.waitForSelector("#appModal:not(.hidden)");
+  assert.match(await pagina.textContent("#modalMessage"), /substitui o projeto aberto/);
+  await pagina.click("#appModal [data-modal-cancel]");
+  await pagina.waitForTimeout(500);
+  assert.equal(await pagina.locator("#canvas svg g.node").count(), antes, "nada mudou");
+  assert.ok(!(await pagina.textContent("#canvas")).includes("NOVO-1"));
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});
+
+test("Importar projeto e Importar CSV abrem pelo teclado (Tab + Enter)", async () => {
+  const pagina = await abrirPagina(navegador, site);
+  await esperarDiagrama(pagina);
+  // A escuta vai antes: o Playwright leva um instante para passar a capturar o
+  // seletor de arquivos, e um Enter logo em seguida às vezes chegava antes.
+  const abertos = [];
+  pagina.on("filechooser", s => abertos.push(s));
+  await pagina.waitForTimeout(300);
+  await pagina.focus('label[data-botao-arquivo]:has(#arquivoProjeto)');
+  await pagina.keyboard.press("Enter");
+  await assert.doesNotReject(async () => { for (let t = 0; !abertos.length; t++) { if (t > 50) throw new Error("seletor não abriu"); await pagina.waitForTimeout(100); } });
+  assert.equal(await abertos[0].element().getAttribute("id"), "arquivoProjeto");
+  await pagina.click('[data-nav-panel="navJsonCsv"]');
+  await pagina.waitForSelector("label[data-botao-arquivo]:has(#arquivoCsv)", { state: "visible" });
+  await pagina.focus("label[data-botao-arquivo]:has(#arquivoCsv)");
+  await pagina.keyboard.press(" ");
+  await assert.doesNotReject(async () => { for (let t = 0; abertos.length < 2; t++) { if (t > 50) throw new Error("seletor não abriu"); await pagina.waitForTimeout(100); } });
+  assert.equal(await abertos[1].element().getAttribute("id"), "arquivoCsv");
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

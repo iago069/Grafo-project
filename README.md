@@ -158,7 +158,7 @@ Limites: **35 equipamentos por diagrama**, 2000 cabos e 100 projetos. Um arquivo
 
 ### CSV
 
-Em **Projeto → JSON e CSV → Importar CSV** (o botão **Modelo CSV** gera um exemplo). Uma linha por cabo; os equipamentos são criados pelos nomes. Linha sem `destino` cadastra só o equipamento. A importação substitui o projeto aberto — o ↶ desfaz.
+Em **Projeto → JSON e CSV → Importar CSV** (o botão **Modelo CSV** gera um exemplo). Uma linha por cabo; os equipamentos são criados pelos nomes. Linha sem `destino` cadastra só o equipamento. A importação substitui o projeto aberto (se ele já tiver conteúdo, o Grafo pergunta antes) — o ↶ desfaz.
 
 | Coluna | Também aceita | Exemplo |
 |---|---|---|
