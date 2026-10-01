@@ -90,6 +90,7 @@ test("exporta PDF sem internet", async () => {
   await pagina.context().setOffline(true);
   await pagina.reload();
   await esperarDiagrama(pagina);
+  await pagina.click("#btnExportarMenu");
   await pagina.click("#btnPaginaPdf");
   await pagina.waitForSelector("#btnExportarPdf:not([disabled])", { timeout: 30000 });
   const download = pagina.waitForEvent("download", { timeout: 60000 });

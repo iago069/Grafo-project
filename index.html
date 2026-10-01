@@ -511,15 +511,25 @@
             </div>
             <div class="project-tools" aria-label="Projetos salvos">
               <select id="projetoSelect" title="Trocar projeto" aria-label="Trocar projeto"></select>
-              <button class="ghost" id="btnNovoProjeto" type="button" title="Novo projeto" aria-label="Novo projeto">+</button>
-              <button class="ghost" id="btnExcluirProjeto" type="button" title="Excluir projeto atual" aria-label="Excluir projeto atual">×</button>
-              <button class="ghost equipe-botao" id="btnEquipe" type="button" aria-haspopup="dialog" title="Editar este projeto em equipe" hidden>Equipe</button>
-              <button class="ghost equipe-botao" id="btnHistorico" type="button" aria-haspopup="dialog" title="Versões anteriores deste projeto: restaurar a de ontem, recuperar projeto excluído" hidden>Histórico</button>
+              <button class="ghost ferramenta" id="btnNovoProjeto" type="button" data-icone="mais" data-dica="Novo projeto" aria-label="Novo projeto">+</button>
+              <button class="ghost ferramenta" id="btnExcluirProjeto" type="button" data-icone="lixeira" data-dica="Excluir projeto atual" aria-label="Excluir projeto atual">×</button>
+              <button class="ghost equipe-botao botao-com-icone" id="btnEquipe" type="button" data-icone="equipe" aria-haspopup="dialog" title="Editar este projeto em equipe" hidden>Equipe</button>
+              <button class="ghost equipe-botao botao-com-icone" id="btnHistorico" type="button" data-icone="historico" aria-haspopup="dialog" title="Versões anteriores deste projeto: restaurar a de ontem, recuperar projeto excluído" hidden>Histórico</button>
             </div>
-            <button class="theme-toggle" id="btnTema" type="button">Tema: Automático</button>
-            <span class="theme-select-wrap">
+            <!-- Tema: um botão só (ícone de sol/lua) com a lista de temas; o menu é
+                 montado a partir do #temaSelect, que continua sendo quem vale (07-temas.js). -->
+            <div class="menu-ancora">
+              <button class="ghost ferramenta tema-botao" id="temaMenuBotao" type="button" data-icone="tema-auto" data-dica="Tema" aria-haspopup="menu" aria-expanded="false" aria-controls="menuTema">Tema</button>
+              <div class="menu-flutuante" id="menuTema" role="menu" aria-labelledby="temaMenuBotao" hidden>
+                <div data-opcoes-de="temaSelect"></div>
+              </div>
+            </div>
+            <button class="theme-toggle" id="btnTema" type="button" hidden>Tema: Automático</button>
+            <span class="theme-select-wrap" hidden>
             <select class="theme-select" id="temaSelect" aria-label="Selecionar tema" title="Escolher tema">
               <option value="auto">Automático</option>
+              <option value="light">Claro</option>
+              <option value="dark">Escuro</option>
               <optgroup label="Escuro">
                 <option value="theme-nord">Nord</option>
                 <option value="theme-dark-modern">Dark Modern</option>
@@ -535,8 +545,6 @@
               <optgroup label="Acessibilidade">
                 <option value="theme-alto-contraste">Alto Contraste</option>
               </optgroup>
-              <option value="light">Claro</option>
-              <option value="dark">Escuro</option>
             </select>
             </span>
           </div>
@@ -686,23 +694,38 @@
                 <button class="ghost" id="btnZoomIn" type="button" title="Aumentar zoom" aria-label="Aumentar zoom">+</button>
                 <button class="ghost" id="btnZoomReset" type="button" title="Ajustar à tela" aria-label="Ajustar à tela">↺</button>
               </div>
-              <button class="ghost" id="btnBaixar" type="button" disabled>Baixar SVG</button>
-              <button class="ghost" id="btnBaixarPng" type="button" disabled>Baixar PNG</button>
-              <button class="ghost" id="btnPaginaPdf" type="button" aria-expanded="false" aria-controls="painelPagina" title="Formato da página, escala, prévia e exportação em PDF">PDF…</button>
-              <button class="ghost" id="btnCompartilhar" type="button" aria-haspopup="dialog" title="Link para ver o diagrama sem editar" hidden>Compartilhar</button>
+              <!-- Ferramentas em ícones (legenda ao passar o mouse: data-dica, interface.js). -->
+              <div class="ferramentas" role="group" aria-label="Ferramentas do diagrama">
+                <div class="menu-ancora">
+                  <button class="ghost ferramenta" id="btnLayoutMenu" type="button" data-icone="layout" data-dica="Organizar e sentido do diagrama" aria-haspopup="menu" aria-expanded="false" aria-controls="menuLayout">Organizar</button>
+                  <div class="menu-flutuante" id="menuLayout" role="menu" aria-labelledby="btnLayoutMenu" hidden>
+                    <button class="menu-item" id="btnOrganizarDiagrama" type="button" role="menuitem" data-icone="layout" title="Reposiciona todos os equipamentos automaticamente">Organizar agora</button>
+                    <div class="menu-separador" role="separator"></div>
+                    <div class="menu-rotulo">Sentido</div>
+                    <div data-opcoes-de="direcao"></div>
+                    <!-- O app lê o valor deste select; o menu acima só o preenche. -->
+                    <select id="direcao" title="Sentido do layout" aria-label="Sentido do layout" hidden>
+                      <option value="LR">Esquerda → Direita</option>
+                      <option value="TB">Cima → Baixo</option>
+                      <option value="LADO">Grupos lado a lado</option>
+                      <option value="GRADE">Grade por grupo</option>
+                    </select>
+                  </div>
+                </div>
+                <button class="ghost ferramenta" id="btnCaminho" type="button" data-icone="caminho" data-dica="Rastrear caminho entre dois equipamentos" aria-expanded="false" aria-controls="caminhoBar">Rastrear caminho</button>
+                <button class="ghost ferramenta" id="btnAnotacao" type="button" data-icone="anotacao" data-dica="Anotação: caixa de texto livre no diagrama">Anotação</button>
+                <button class="ghost ferramenta" id="btnLimpar" type="button" data-icone="limpar" data-dica="Limpar: tudo, só os cabos ou parte dos equipamentos">Limpar…</button>
+              </div>
+              <div class="menu-ancora">
+                <button class="ghost botao-com-icone" id="btnExportarMenu" type="button" data-icone="baixar" aria-haspopup="menu" aria-expanded="false" aria-controls="menuExportar">Exportar</button>
+                <div class="menu-flutuante" id="menuExportar" role="menu" aria-labelledby="btnExportarMenu" hidden>
+                  <button class="menu-item" id="btnPaginaPdf" type="button" role="menuitem" data-icone="pdf" aria-expanded="false" aria-controls="painelPagina" title="Formato da página, escala, prévia e exportação em PDF">PDF para imprimir…</button>
+                  <button class="menu-item" id="btnBaixarPng" type="button" role="menuitem" data-icone="imagem" disabled>Imagem PNG</button>
+                  <button class="menu-item" id="btnBaixar" type="button" role="menuitem" data-icone="vetor" disabled>Vetor SVG</button>
+                </div>
+              </div>
+              <button class="primary botao-com-icone" id="btnCompartilhar" type="button" data-icone="compartilhar" aria-haspopup="dialog" title="Link para ver o diagrama sem editar" hidden>Compartilhar</button>
             </div>
-          </div>
-          <div class="layout-toolbar">
-            <button class="ghost" id="btnOrganizarDiagrama" type="button" title="Reposiciona todos os equipamentos automaticamente">Organizar</button>
-            <select id="direcao" title="Sentido do layout" aria-label="Sentido do layout">
-              <option value="LR">Esquerda → Direita</option>
-              <option value="TB">Cima → Baixo</option>
-              <option value="LADO">Grupos lado a lado</option>
-              <option value="GRADE">Grade por grupo</option>
-            </select>
-            <button class="ghost" id="btnCaminho" type="button" aria-expanded="false" aria-controls="caminhoBar">Rastrear caminho</button>
-            <button class="ghost" id="btnAnotacao" type="button" title="Caixa de texto livre no diagrama (duplo clique na anotação para editar)">Anotação</button>
-            <button class="ghost" id="btnLimpar" type="button" title="Remover tudo, só os cabos ou os equipamentos de um tipo, grupo ou status">Limpar…</button>
           </div>
           <div class="caminho-bar hidden" id="caminhoBar">
             <label>De <select id="caminhoDe"></select></label>

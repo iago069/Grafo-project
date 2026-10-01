@@ -32,6 +32,7 @@ test("adicionar equipamento pela barra lateral aparece no diagrama", async () =>
 test("exporta um PDF válido", async () => {
   const pagina = await abrirPagina(navegador, site);
   await esperarDiagrama(pagina);
+  await pagina.click("#btnExportarMenu");
   await pagina.click("#btnPaginaPdf");
   await pagina.waitForSelector("#btnExportarPdf:not([disabled])", { timeout: 30000 });
   const download = pagina.waitForEvent("download", { timeout: 60000 });
@@ -88,6 +89,43 @@ test("menu da conta: inicial do e-mail, abre a janela Minha conta e fecha com Es
   await pagina.waitForSelector("#contaMenuLista", { state: "visible" });
   await pagina.mouse.click(700, 500);
   await pagina.waitForSelector("#contaMenuLista", { state: "hidden" });
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});
+
+test("barra do diagrama: menus Exportar, Organizar (sentido) e Tema", async () => {
+  const pagina = await abrirPagina(navegador, site);
+  await esperarDiagrama(pagina);
+  // Exportar ▾ → PNG baixa um arquivo.
+  await pagina.click("#btnExportarMenu");
+  await pagina.waitForSelector("#menuExportar", { state: "visible" });
+  const download = pagina.waitForEvent("download", { timeout: 30000 });
+  await pagina.click("#btnBaixarPng");
+  assert.match((await download).suggestedFilename(), /\.png$/);
+  await pagina.waitForSelector("#menuExportar", { state: "hidden" });
+
+  // Organizar ▾ → "Cima → Baixo" muda o select que o app lê e fica marcado.
+  await pagina.click("#btnLayoutMenu");
+  await pagina.click('#menuLayout [data-valor="TB"]');
+  assert.equal(await pagina.inputValue("#direcao"), "TB");
+  assert.equal(await pagina.evaluate(() => localStorage.getItem("grafo-direcao")), "TB");
+  await pagina.click("#btnLayoutMenu");
+  assert.equal(await pagina.getAttribute('#menuLayout [data-valor="TB"]', "aria-checked"), "true");
+  await pagina.keyboard.press("Escape");
+  await pagina.waitForSelector("#menuLayout", { state: "hidden" });
+  assert.equal(await pagina.evaluate(() => document.activeElement.id), "btnLayoutMenu");
+
+  // Tema ▾ → Escuro: aplica o tema e o ícone vira a lua.
+  await pagina.click("#temaMenuBotao");
+  await pagina.click('#menuTema [data-valor="dark"]');
+  assert.equal(await pagina.evaluate(() => document.documentElement.getAttribute("data-theme")), "dark");
+  assert.equal(await pagina.getAttribute("#temaMenuBotao", "data-icone"), "tema-escuro");
+  // Teclado: seta para baixo abre e vai para o primeiro item.
+  await pagina.focus("#temaMenuBotao");
+  await pagina.keyboard.press("ArrowDown");
+  await pagina.waitForFunction(() => document.activeElement.getAttribute("data-valor") === "auto");
+  await pagina.keyboard.press("Enter");
+  assert.equal(await pagina.getAttribute("#temaMenuBotao", "data-icone"), "tema-auto");
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
