@@ -57,14 +57,31 @@
     dados.equipamentos.forEach(function (eq) { portasPorEquipamento[eq.id] = { cima: [], esquerda: [], direita: [], baixo: [] }; });
     var padraoSaida = direcao === "TB" ? "baixo" : "direita";
     var padraoChegada = direcao === "TB" ? "cima" : "esquerda";
+    // Estrela: a regra própria (colunas e linha de baixo) só vale para os cabos do
+    // centro; nos ramos, que são camadas, vale a regra do Esquerda → Direita.
+    var centrosDaEstrela = {};
+    if (direcao === "ESTRELA") {
+      var vizinhosPorId = {};
+      dados.conexoes.forEach(function (c) {
+        if (c.de === c.para) return;
+        (vizinhosPorId[c.de] = vizinhosPorId[c.de] || {})[c.para] = true;
+        (vizinhosPorId[c.para] = vizinhosPorId[c.para] || {})[c.de] = true;
+      });
+      var maiorGrau = maiorNumeroDeVizinhos(dados);
+      Object.keys(vizinhosPorId).forEach(function (id) {
+        var grau = Object.keys(vizinhosPorId[id]).length;
+        if (grau === maiorGrau || grau >= LIGACOES_PARA_ESTRELA) centrosDaEstrela[id] = true;
+      });
+    }
     dados.conexoes.forEach(function (c, indice) {
       var de = equipamentoPorId[c.de], para = equipamentoPorId[c.para];
+      var direcaoDoCabo = direcao === "ESTRELA" && !centrosDaEstrela[c.de] && !centrosDaEstrela[c.para] ? "LR" : direcao;
       if (de) {
-        var ladoSaida = ladoVoltadoPara(de, para, padraoSaida, direcao);
+        var ladoSaida = ladoVoltadoPara(de, para, padraoSaida, direcaoDoCabo);
         portasPorEquipamento[c.de][ladoSaida].push({ indice: indice, ponta: "inicio", lado: ladoSaida, nome: c.saida || "P1", outro: para });
       }
       if (para) {
-        var ladoChegada = ladoVoltadoPara(para, de, padraoChegada, direcao);
+        var ladoChegada = ladoVoltadoPara(para, de, padraoChegada, direcaoDoCabo);
         portasPorEquipamento[c.para][ladoChegada].push({ indice: indice, ponta: "fim", lado: ladoChegada, nome: c.chegada || "P2", outro: de });
       }
     });
@@ -730,6 +747,21 @@
       var c0 = bruto[centro] || { x: 0, y: 0 };
       var r = {};
       ids.forEach(function (id) { if (bruto[id]) r[id] = { x: bruto[id].x - c0.x, y: bruto[id].y - c0.y }; });
+      // Cada camada alinhada pela borda voltada para o centro (o Graphviz centraliza
+      // pela largura, e nomes compridos deixavam a coluna torta).
+      var eixo = rankdir === "TB" ? "y" : "x", sinal = rankdir === "RL" ? -1 : 1;
+      var borda = {};
+      ids.forEach(function (id) {
+        if (!r[id]) return;
+        var meio = (eixo === "x" ? tam[id].w : tam[id].h) / 2;
+        var d = distancia[id];
+        borda[d] = Math.min(borda[d] == null ? Infinity : borda[d], sinal * r[id][eixo] - meio);
+      });
+      ids.forEach(function (id) {
+        if (!r[id]) return;
+        var meio = (eixo === "x" ? tam[id].w : tam[id].h) / 2;
+        r[id][eixo] = sinal * (borda[distancia[id]] + meio);
+      });
       return r;
     }
 
@@ -766,7 +798,7 @@
       // equilibrado entre esquerda e direita pelo número de equipamentos.
       var lados = { esquerda: [], direita: [], baixo: [] };
       var carga = { esquerda: 0, direita: 0, baixo: 0 };
-      var pesos = ramos.length >= 6 ? { direita: 0.4, esquerda: 0.4, baixo: 0.2 } : { direita: 0.5, esquerda: 0.5 };
+      var pesos = ramos.length >= 10 ? { direita: 0.4, esquerda: 0.4, baixo: 0.2 } : { direita: 0.5, esquerda: 0.5 };
       ramos.map(function (ramo, i) { return { ramo: ramo, i: i }; })
         .sort(function (a, b) { return b.ramo.length - a.ramo.length || a.i - b.i; })
         .forEach(function (item) {
@@ -802,7 +834,7 @@
           alturaColunas = Math.max(alturaColunas, alt);
           // Coluna centrada no centro e longe o bastante para os cabos de cima e
           // de baixo dela chegarem pela lateral (ladoVoltadoPara, regra da estrela).
-          var distancia0 = Math.max(metadeW + vao, alt / 4 + 60);
+          var distancia0 = Math.max(metadeW + vao, alt * 0.3 + 60);
           ids.forEach(function (id) { pos[id] = { x: p[id].x + cfg[2] * (distancia0 - perto), y: p[id].y - meio }; });
         });
         var idsBaixo = idsDoLado("baixo");
@@ -816,7 +848,7 @@
           var meioX = (minX + maxX) / 2, larg = maxX - minX;
           // Embaixo: os cabos descem (portas embaixo do centro). Mais largo que o
           // vão entre as colunas, a linha vai para baixo delas.
-          var topo = Math.max(metadeH + vao, larg);
+          var topo = Math.max(metadeH + vao, larg * 0.85);
           if (larg / 2 > metadeW + vao - 40) topo = Math.max(topo, alturaColunas / 2 + vao);
           idsBaixo.forEach(function (id) { pos[id] = { x: pb[id].x - meioX, y: pb[id].y + (topo - pertoY) }; });
         }
