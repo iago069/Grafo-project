@@ -56,6 +56,7 @@
 - **Busca** por nome, IP ou modelo, com destaque no diagrama.
 - **Rastrear caminho**: escolha dois equipamentos e o menor caminho de cabos entre eles é destacado.
 - **Organizar** refaz o layout respeitando os grupos, na direção escolhida (esquerda → direita ou cima → baixo).
+- **Centro (estrela)** (no mesmo seletor): o equipamento com mais ligações fica no meio; os vizinhos dele se dividem em colunas à esquerda e à direita e numa linha embaixo, e o que vem depois de cada vizinho segue para fora, em camadas (o que continua ligado entre si, como conversores que chegam no mesmo DIO, fica junto). **Automático**, o padrão, usa a estrela quando algum equipamento tem 8 ou mais vizinhos e Esquerda → Direita nos demais.
 - **Grupos lado a lado** (no mesmo seletor): cada grupo mantém a própria hierarquia (quem liga em quem, como no Esquerda → Direita), mas os grupos são arrumados em linhas na proporção da folha do PDF, em vez de um embaixo do outro. Com 35 equipamentos em 4 grupos, o desenho passa de alto e estreito para quase o formato da folha, e em A4 paisagem a escala vai de ~13% para ~23%.
 - **Grade por grupo** (no mesmo seletor) arruma cada grupo em linhas e colunas, com os equipamentos ligados entre si lado a lado, e distribui os grupos na proporção da folha do PDF. Com muitos equipamentos, aproveita bem melhor a página: com 35 equipamentos em A4, a escala vai de ~16% para ~32%.
 - Navegação fluida, animada a cada quadro e acelerada pela placa de vídeo:

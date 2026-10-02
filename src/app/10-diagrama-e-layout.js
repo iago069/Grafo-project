@@ -647,6 +647,210 @@
     return true;
   }
 
+  // Projeto "grande": algum equipamento com muitas ligações (um núcleo).
+  var LIGACOES_PARA_ESTRELA = 8;
+  function maiorNumeroDeVizinhos(dados) {
+    var vizinhos = {};
+    dados.conexoes.forEach(function (c) {
+      if (c.de === c.para) return;
+      (vizinhos[c.de] = vizinhos[c.de] || {})[c.para] = true;
+      (vizinhos[c.para] = vizinhos[c.para] || {})[c.de] = true;
+    });
+    return Object.keys(vizinhos).reduce(function (m, id) { return Math.max(m, Object.keys(vizinhos[id]).length); }, 0);
+  }
+
+  // Layout de fato usado: "Automático" vira estrela num projeto grande e
+  // Esquerda → Direita nos demais.
+  function direcaoEfetiva() {
+    var valor = selDirecao.value;
+    if (valor === "CENTRO") return "ESTRELA";
+    if (valor === "AUTO") return maiorNumeroDeVizinhos(estado) >= LIGACOES_PARA_ESTRELA ? "ESTRELA" : "LR";
+    return valor;
+  }
+
+  // "Centro (estrela)": o equipamento com mais ligações fica no meio; os
+  // vizinhos dele se dividem em colunas à esquerda e à direita e numa linha
+  // embaixo, e o que vem depois de cada vizinho segue para fora, em camadas.
+  // Cada parte desligada do resto é arrumada assim, e as partes vão para
+  // prateleiras na proporção da folha. Grava eq.posicao; false se não há o que medir.
+  function posicionarEmEstrela() {
+    var svg = elCanvas.querySelector("svg");
+    if (!svg || !vizInstancia) return false;
+    var tam = {}, somaX = 0, somaY = 0, n = 0;
+    estado.equipamentos.forEach(function (eq) {
+      var node = obterNodePorId(svg, eq.id);
+      var b;
+      try { b = node && node.getBBox(); } catch (e) { b = null; }
+      if (!b || !b.width) return;
+      tam[eq.id] = { w: b.width, h: b.height };
+      if (centrosBase[eq.id]) { somaX += centrosBase[eq.id].x; somaY += centrosBase[eq.id].y; n++; }
+    });
+    if (!n) return false;
+
+    var ordem = {}, vizinhos = {};
+    estado.equipamentos.forEach(function (eq, i) { if (tam[eq.id]) { ordem[eq.id] = i; vizinhos[eq.id] = []; } });
+    estado.conexoes.forEach(function (c) {
+      if (!vizinhos[c.de] || !vizinhos[c.para] || c.de === c.para) return;
+      if (vizinhos[c.de].indexOf(c.para) < 0) vizinhos[c.de].push(c.para);
+      if (vizinhos[c.para].indexOf(c.de) < 0) vizinhos[c.para].push(c.de);
+    });
+    function porOrdem(a, b) { return ordem[a] - ordem[b]; }
+
+    var ENTRE_PARTES = 90;
+    function aspas(t) { return '"' + String(t).replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"'; }
+    // Layout em camadas (Graphviz) de um lado da estrela, a partir do centro.
+    // Devolve { id: {x, y} } com o centro em (0, 0) e y para baixo.
+    function camadasDoLado(centro, ids, rankdir, vao) {
+      var dentro = {};
+      ids.forEach(function (id) { dentro[id] = true; });
+      var linhas = ["digraph G {", "  rankdir=" + rankdir + "; nodesep=0.4; ranksep=" + (vao / 72).toFixed(2) + "; splines=false; pad=0;",
+        '  node [shape=box, fixedsize=true, label=""];', "  " + aspas(centro) + " [width=0.1, height=0.1];"];
+      ids.forEach(function (id) {
+        linhas.push("  " + aspas(id) + " [width=" + (tam[id].w / 72).toFixed(3) + ", height=" + (tam[id].h / 72).toFixed(3) + "];");
+      });
+      // Cabos sempre "para fora" (do mais perto do centro para o mais longe).
+      var vistos = {};
+      estado.conexoes.forEach(function (c) {
+        var a = c.de, b = c.para;
+        var aDentro = dentro[a] || a === centro, bDentro = dentro[b] || b === centro;
+        if (!aDentro || !bDentro || a === b) return;
+        if (distancia[a] > distancia[b]) { var t = a; a = b; b = t; }
+        if (vistos[a + "\n" + b]) return;
+        vistos[a + "\n" + b] = true;
+        linhas.push("  " + aspas(a) + " -> " + aspas(b) + (distancia[a] === distancia[b] ? " [constraint=false]" : "") + ";");
+      });
+      linhas.push("}");
+      var json = JSON.parse(vizInstancia.renderString(linhas.join("\n"), { format: "json" }));
+      var bruto = {};
+      (json.objects || []).forEach(function (o) {
+        if (!o.pos) return;
+        var p = String(o.pos).split(",").map(Number);
+        bruto[o.name] = { x: p[0], y: -p[1] };
+      });
+      var c0 = bruto[centro] || { x: 0, y: 0 };
+      var r = {};
+      ids.forEach(function (id) { if (bruto[id]) r[id] = { x: bruto[id].x - c0.x, y: bruto[id].y - c0.y }; });
+      return r;
+    }
+
+    var restantes = Object.keys(vizinhos);
+    var blocos = [], distancia = {};
+    while (restantes.length) {
+      // Centro da parte: o mais ligado (empate: o que vem primeiro na lista).
+      var centro = restantes.slice().sort(function (a, b) { return vizinhos[b].length - vizinhos[a].length || porOrdem(a, b); })[0];
+      var visto = {}, fila = [centro];
+      visto[centro] = true;
+      distancia[centro] = 0;
+      while (fila.length) {
+        var atual = fila.shift();
+        vizinhos[atual].forEach(function (v) { if (!visto[v]) { visto[v] = true; distancia[v] = distancia[atual] + 1; fila.push(v); } });
+      }
+      restantes = restantes.filter(function (id) { return !visto[id]; });
+
+      // Ramos: o que continua ligado entre si sem passar pelo centro fica junto
+      // (ex.: conversores que chegam no mesmo DIO).
+      var ramoDe = {}, ramos = [];
+      vizinhos[centro].slice().sort(porOrdem).forEach(function (raiz) {
+        if (ramoDe[raiz] != null) return;
+        var ramo = [], pilha = [raiz];
+        ramoDe[raiz] = ramos.length;
+        while (pilha.length) {
+          var id = pilha.pop();
+          ramo.push(id);
+          vizinhos[id].forEach(function (v) { if (v !== centro && ramoDe[v] == null) { ramoDe[v] = ramos.length; pilha.push(v); } });
+        }
+        ramos.push(ramo);
+      });
+
+      // Divide os ramos: embaixo só com muitos (cerca de 1/5); o resto
+      // equilibrado entre esquerda e direita pelo número de equipamentos.
+      var lados = { esquerda: [], direita: [], baixo: [] };
+      var carga = { esquerda: 0, direita: 0, baixo: 0 };
+      var pesos = ramos.length >= 6 ? { direita: 0.4, esquerda: 0.4, baixo: 0.2 } : { direita: 0.5, esquerda: 0.5 };
+      ramos.map(function (ramo, i) { return { ramo: ramo, i: i }; })
+        .sort(function (a, b) { return b.ramo.length - a.ramo.length || a.i - b.i; })
+        .forEach(function (item) {
+          var melhor = null;
+          Object.keys(pesos).forEach(function (lado) {
+            var custo = (carga[lado] + item.ramo.length) / pesos[lado];
+            if (!melhor || custo < melhor.custo - 1e-9) melhor = { lado: lado, custo: custo };
+          });
+          lados[melhor.lado].push(item);
+          carga[melhor.lado] += item.ramo.length;
+        });
+      function idsDoLado(lado) {
+        return lados[lado].sort(function (a, b) { return a.i - b.i; }).reduce(function (t, item) { return t.concat(item.ramo); }, []);
+      }
+
+      // Espaço entre o centro e a primeira camada cresce com o número de cabos que passam ali.
+      var vao = 110 + Math.min(vizinhos[centro].length, 24) * 5;
+      var metadeW = tam[centro].w / 2, metadeH = tam[centro].h / 2;
+      var pos = {};
+      pos[centro] = { x: 0, y: 0 };
+      var alturaColunas = 0;
+      try {
+        [["direita", "LR", 1], ["esquerda", "RL", -1]].forEach(function (cfg) {
+          var ids = idsDoLado(cfg[0]);
+          if (!ids.length) return;
+          var p = camadasDoLado(centro, ids, cfg[1], vao);
+          var minY = Infinity, maxY = -Infinity, perto = Infinity;
+          ids.forEach(function (id) {
+            minY = Math.min(minY, p[id].y - tam[id].h / 2); maxY = Math.max(maxY, p[id].y + tam[id].h / 2);
+            perto = Math.min(perto, cfg[2] * p[id].x - tam[id].w / 2);
+          });
+          var meio = (minY + maxY) / 2, alt = maxY - minY;
+          alturaColunas = Math.max(alturaColunas, alt);
+          // Coluna centrada no centro e longe o bastante para os cabos de cima e
+          // de baixo dela chegarem pela lateral (ladoVoltadoPara, regra da estrela).
+          var distancia0 = Math.max(metadeW + vao, alt / 4 + 60);
+          ids.forEach(function (id) { pos[id] = { x: p[id].x + cfg[2] * (distancia0 - perto), y: p[id].y - meio }; });
+        });
+        var idsBaixo = idsDoLado("baixo");
+        if (idsBaixo.length) {
+          var pb = camadasDoLado(centro, idsBaixo, "TB", vao);
+          var minX = Infinity, maxX = -Infinity, pertoY = Infinity;
+          idsBaixo.forEach(function (id) {
+            minX = Math.min(minX, pb[id].x - tam[id].w / 2); maxX = Math.max(maxX, pb[id].x + tam[id].w / 2);
+            pertoY = Math.min(pertoY, pb[id].y - tam[id].h / 2);
+          });
+          var meioX = (minX + maxX) / 2, larg = maxX - minX;
+          // Embaixo: os cabos descem (portas embaixo do centro). Mais largo que o
+          // vão entre as colunas, a linha vai para baixo delas.
+          var topo = Math.max(metadeH + vao, larg);
+          if (larg / 2 > metadeW + vao - 40) topo = Math.max(topo, alturaColunas / 2 + vao);
+          idsBaixo.forEach(function (id) { pos[id] = { x: pb[id].x - meioX, y: pb[id].y + (topo - pertoY) }; });
+        }
+      } catch (e) {
+        console.error("Centro (estrela): falha no layout, usando a grade.", e);
+        return posicionarEmGrade();
+      }
+
+      var bl = { ids: Object.keys(pos), pos: pos };
+      var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      bl.ids.forEach(function (id) {
+        var p = pos[id], t = tam[id];
+        minX = Math.min(minX, p.x - t.w / 2); maxX = Math.max(maxX, p.x + t.w / 2);
+        minY = Math.min(minY, p.y - t.h / 2); maxY = Math.max(maxY, p.y + t.h / 2);
+      });
+      bl.minX = minX; bl.minY = minY; bl.w = maxX - minX; bl.h = maxY - minY;
+      blocos.push(bl);
+    }
+
+    // A parte principal primeiro; as soltas vão em prateleiras ao lado/abaixo.
+    blocos.sort(function (a, b) { return b.w * b.h - a.w * a.h; });
+    var pagina = tamanhoPaginaMm();
+    var total = blocos.length > 1 ? empacotarEmPrateleiras(blocos, pagina.w / pagina.h, ENTRE_PARTES) : (blocos[0].x = 0, blocos[0].y = 0, { w: blocos[0].w, h: blocos[0].h });
+    var origemX = somaX / n - total.w / 2, origemY = somaY / n - total.h / 2;
+    blocos.forEach(function (bl) {
+      bl.ids.forEach(function (id) {
+        var eq = estado.equipamentos[ordem[id]];
+        eq.posicao = { x: origemX + bl.x + bl.pos[id].x - bl.minX, y: origemY + bl.y + bl.pos[id].y - bl.minY };
+        delete eq.deslocamento;
+      });
+    });
+    return true;
+  }
+
   window.organizarDiagramaAutomaticamente = organizarDiagramaAutomaticamente;
 
   // O que outros módulos (compartilhar.js) podem ler do editor.
@@ -783,12 +987,19 @@
     var ancoraAntiga =svgAntigo && !ajustarNaProximaRenderizacao ? ancoraDoSvg(svgAntigo) : null;
     var focado = document.activeElement && document.activeElement.closest ? document.activeElement.closest("#canvas g.node") : null;
     var idFocado = focado ? idEquipamentoDoNode(focado) : null;
+    // Ninguém tem posição (projeto importado ou "Organizar"): é a hora do layout inicial.
+    var semPosicoes = estado.equipamentos.every(function (eq) { return !posicaoValida(eq.posicao); });
 
     try {
       renderizarSvg();
       // Equipamento novo só ganha posição depois de renderizado; renderiza de
       // novo para as portas dele irem para o lado certo.
       if (sincronizarPosicoes()) { renderizarSvg(); sincronizarPosicoes(); }
+      // Estrela: duas rodadas, porque as portas mudam de lado (e o tamanho das
+      // caixas muda) depois da primeira.
+      if (semPosicoes && direcaoEfetiva() === "ESTRELA") {
+        for (var passo = 0; passo < 2 && posicionarEmEstrela(); passo++) { renderizarSvg(); sincronizarPosicoes(); }
+      }
       aplicarPosicoesEquipamentos();
       ajustarCaixasDosGrupos();
       var fixo = equipamentoFixoNaSeparacao;
@@ -853,7 +1064,7 @@
   }
 
   function renderizarSvg() {
-    var dot = gerarDot(estado, selDirecao.value);
+    var dot = gerarDot(estado, direcaoEfetiva());
     ultimoDot = dot;
     idsEquipRenderizados = estado.equipamentos.map(function (eq) { return eq.id; });
     conexoesRenderizadas = estado.conexoes.slice();
@@ -880,7 +1091,7 @@
 
   // Direção do layout: lembrada neste navegador e aplicada na hora
   // (antes só valia no próximo "Organizar").
-  try { if (/^(LR|TB|GRADE|LADO)$/.test(localStorage.getItem("grafo-direcao"))) selDirecao.value = localStorage.getItem("grafo-direcao"); } catch (e) {}
+  try { if (/^(AUTO|CENTRO|LR|TB|GRADE|LADO)$/.test(localStorage.getItem("grafo-direcao"))) selDirecao.value = localStorage.getItem("grafo-direcao"); } catch (e) {}
   selDirecao.addEventListener("change", function () {
     try { localStorage.setItem("grafo-direcao", selDirecao.value); } catch (e) {}
     if (estado.equipamentos.length) organizarDiagramaAutomaticamente();
