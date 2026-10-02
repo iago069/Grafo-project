@@ -843,9 +843,7 @@
     if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return padrao;
     // Na grade não há eixo principal: vale o lado para onde o outro está mais longe.
     // Grade e grupos lado a lado: a porta vai para o lado de onde o vizinho está de fato.
-    // Estrela: colunas à esquerda e à direita (lateral mesmo bem acima ou abaixo)
-    // e a linha de baixo bem mais funda que larga (posicionarEmEstrela).
-    var horizontal = direcao === "ESTRELA" ? Math.abs(dx) >= Math.abs(dy) * 0.6 : direcao === "GRADE" || direcao === "LADO" ? Math.abs(dx) >= Math.abs(dy) : direcao === "TB"
+    var horizontal = direcao === "GRADE" || direcao === "LADO" ? Math.abs(dx) >= Math.abs(dy) : direcao === "TB"
       ? Math.abs(dy) < DISTANCIA_MINIMA_NO_EIXO && Math.abs(dx) > Math.abs(dy)
       : Math.abs(dx) >= DISTANCIA_MINIMA_NO_EIXO || Math.abs(dx) >= Math.abs(dy);
     if (horizontal) return dx > 0 ? "direita" : "esquerda";
@@ -1102,27 +1100,56 @@
     });
   }
 
-  // Rótulo do cabo no meio do trecho mais longo (acima, se horizontal; ao lado, se vertical).
-  function posicionarRotuloDaAresta(aresta, pontos) {
+  // Rótulo do cabo no meio do trecho mais longo (acima, se horizontal; ao lado, se
+  // vertical). Com "ocupados" (caixas dos rótulos já postos), se ficar em cima de
+  // outro, tenta outros pontos do trecho e os outros trechos; a caixa escolhida
+  // entra em "ocupados".
+  function posicionarRotuloDaAresta(aresta, pontos, ocupados) {
     var texto = aresta.querySelector("text");
     if (!texto) return;
-    var melhor = null, maior = -1;
+    var trechos = [];
     for (var i = 1; i < pontos.length; i++) {
       var comp = Math.abs(pontos[i].x - pontos[i - 1].x) + Math.abs(pontos[i].y - pontos[i - 1].y);
-      if (comp > maior) { maior = comp; melhor = [pontos[i - 1], pontos[i]]; }
+      if (comp > 0) trechos.push({ a: pontos[i - 1], b: pontos[i], comp: comp });
     }
-    if (!melhor) return;
+    if (!trechos.length) return;
+    trechos.sort(function (p, q) { return q.comp - p.comp; });
     texto.removeAttribute("transform");
-    var horizontal = Math.abs(melhor[0].y - melhor[1].y) < 0.5;
-    if (horizontal) {
-      texto.setAttribute("x", ((melhor[0].x + melhor[1].x) / 2).toFixed(2));
-      texto.setAttribute("y", (melhor[0].y - 5).toFixed(2));
-      texto.setAttribute("text-anchor", "middle");
-    } else {
-      texto.setAttribute("x", (melhor[0].x + 5).toFixed(2));
-      texto.setAttribute("y", ((melhor[0].y + melhor[1].y) / 2 + 3).toFixed(2));
-      texto.setAttribute("text-anchor", "start");
+    function colocar(trecho, t) {
+      var horizontal = Math.abs(trecho.a.y - trecho.b.y) < 0.5;
+      if (horizontal) {
+        texto.setAttribute("x", (trecho.a.x + (trecho.b.x - trecho.a.x) * t).toFixed(2));
+        texto.setAttribute("y", (trecho.a.y - 5).toFixed(2));
+        texto.setAttribute("text-anchor", "middle");
+      } else {
+        texto.setAttribute("x", (trecho.a.x + 5).toFixed(2));
+        texto.setAttribute("y", (trecho.a.y + (trecho.b.y - trecho.a.y) * t + 3).toFixed(2));
+        texto.setAttribute("text-anchor", "start");
+      }
     }
+    colocar(trechos[0], 0.5);
+    if (!ocupados || !texto.textContent.trim()) return;
+    function caixa() {
+      try { var b = texto.getBBox(); return { x1: b.x - 2, y1: b.y - 1, x2: b.x + b.width + 2, y2: b.y + b.height + 1 }; } catch (e) { return null; }
+    }
+    function livre(c) {
+      return c && !ocupados.some(function (o) { return c.x1 < o.x2 && c.x2 > o.x1 && c.y1 < o.y2 && c.y2 > o.y1; });
+    }
+    var primeira = caixa();
+    if (!primeira) return;
+    if (livre(primeira)) { ocupados.push(primeira); return; }
+    var fracoes = [0.3, 0.7, 0.15, 0.85, 0.5];
+    for (var k = 0; k < Math.min(trechos.length, 3); k++) {
+      if (trechos[k].comp < 40) continue;
+      for (var f = 0; f < fracoes.length; f++) {
+        colocar(trechos[k], fracoes[f]);
+        var c = caixa();
+        if (livre(c)) { ocupados.push(c); return; }
+      }
+    }
+    // Nenhum lugar livre: fica no meio do trecho mais longo.
+    colocar(trechos[0], 0.5);
+    ocupados.push(primeira);
   }
 
   function rotearCabosOrtogonalmente() {
@@ -1142,12 +1169,12 @@
     // Cabos curtos primeiro ficam com a trilha ideal; os longos desviam deles.
     function comprimento(r) { return Math.abs(r.s.x - r.e.x) + Math.abs(r.s.y - r.e.y); }
     rotas.sort(function (a, b) { return comprimento(a) - comprimento(b); });
-    var existentes = [];
+    var existentes = [], rotulos = [];
     rotas.forEach(function (rota) {
       var pts = tracarRota(rota.s, rota.e, existentes, obstaculosDoCabo(obstaculos, rota.conexao, rota.s, rota.e));
       existentes.push.apply(existentes, segmentosDaRota(pts));
       rota.path.setAttribute("d", caminhoOrtogonalArredondado(pts));
-      posicionarRotuloDaAresta(rota.aresta, pts);
+      posicionarRotuloDaAresta(rota.aresta, pts, rotulos);
     });
   }
 
@@ -4196,7 +4223,7 @@
     var padraoChegada = direcao === "TB" ? "cima" : "esquerda";
     // Estrela: a regra própria (colunas e linha de baixo) só vale para os cabos do
     // centro; nos ramos, que são camadas, vale a regra do Esquerda → Direita.
-    var centrosDaEstrela = {};
+    var centrosDaEstrela = {}, grauPorId = {};
     if (direcao === "ESTRELA") {
       var vizinhosPorId = {};
       dados.conexoes.forEach(function (c) {
@@ -4207,18 +4234,29 @@
       var maiorGrau = maiorNumeroDeVizinhos(dados);
       Object.keys(vizinhosPorId).forEach(function (id) {
         var grau = Object.keys(vizinhosPorId[id]).length;
+        grauPorId[id] = grau;
         if (grau === maiorGrau || grau >= LIGACOES_PARA_ESTRELA) centrosDaEstrela[id] = true;
       });
     }
+    // Cabo do centro da estrela: colunas (longe na horizontal) chegam pela
+    // lateral; o que está no vão entre elas (a linha de baixo), por baixo/cima.
+    function ladoNaEstrela(origem, destino, padrao, limite) {
+      if (!origem || !destino || !posicaoValida(origem.posicao) || !posicaoValida(destino.posicao)) return padrao;
+      var dx = destino.posicao.x - origem.posicao.x, dy = destino.posicao.y - origem.posicao.y;
+      if (Math.abs(dx) >= limite || Math.abs(dy) < 1) return dx >= 0 ? "direita" : "esquerda";
+      return dy > 0 ? "baixo" : "cima";
+    }
     dados.conexoes.forEach(function (c, indice) {
       var de = equipamentoPorId[c.de], para = equipamentoPorId[c.para];
-      var direcaoDoCabo = direcao === "ESTRELA" && !centrosDaEstrela[c.de] && !centrosDaEstrela[c.para] ? "LR" : direcao;
+      var centro = direcao === "ESTRELA" ? (centrosDaEstrela[c.de] ? c.de : centrosDaEstrela[c.para] ? c.para : null) : null;
+      var limite = centro ? limiteLateralDaEstrela(grauPorId[centro]) : 0;
+      var direcaoDoCabo = direcao === "ESTRELA" ? "LR" : direcao;
       if (de) {
-        var ladoSaida = ladoVoltadoPara(de, para, padraoSaida, direcaoDoCabo);
+        var ladoSaida = centro ? ladoNaEstrela(de, para, padraoSaida, limite) : ladoVoltadoPara(de, para, padraoSaida, direcaoDoCabo);
         portasPorEquipamento[c.de][ladoSaida].push({ indice: indice, ponta: "inicio", lado: ladoSaida, nome: c.saida || "P1", outro: para });
       }
       if (para) {
-        var ladoChegada = ladoVoltadoPara(para, de, padraoChegada, direcaoDoCabo);
+        var ladoChegada = centro ? ladoNaEstrela(para, de, padraoChegada, limite) : ladoVoltadoPara(para, de, padraoChegada, direcaoDoCabo);
         portasPorEquipamento[c.para][ladoChegada].push({ indice: indice, ponta: "fim", lado: ladoChegada, nome: c.chegada || "P2", outro: de });
       }
     });
@@ -4803,6 +4841,12 @@
 
   // Projeto "grande": algum equipamento com muitas ligações (um núcleo).
   var LIGACOES_PARA_ESTRELA = 8;
+  // Espaço entre o centro e a primeira camada: cresce com os cabos que passam ali.
+  function vaoDaEstrela(grau) { return 110 + Math.min(grau || 0, 24) * 5; }
+  // Distância horizontal a partir da qual o vizinho é de uma coluna (porta na
+  // lateral do centro). Menor que a da coluna mais perto (meia largura do centro,
+  // no mínimo 96, mais o vão) e maior que a metade da linha de baixo.
+  function limiteLateralDaEstrela(grau) { return 96 + vaoDaEstrela(grau) * 0.75; }
   function maiorNumeroDeVizinhos(dados) {
     var vizinhos = {};
     dados.conexoes.forEach(function (c) {
@@ -4951,13 +4995,30 @@
         return lados[lado].sort(function (a, b) { return a.i - b.i; }).reduce(function (t, item) { return t.concat(item.ramo); }, []);
       }
 
-      // Espaço entre o centro e a primeira camada cresce com o número de cabos que passam ali.
-      var vao = 110 + Math.min(vizinhos[centro].length, 24) * 5;
+      var vao = vaoDaEstrela(vizinhos[centro].length);
+      var limite = limiteLateralDaEstrela(vizinhos[centro].length);
       var metadeW = tam[centro].w / 2, metadeH = tam[centro].h / 2;
       var pos = {};
       pos[centro] = { x: 0, y: 0 };
       var alturaColunas = 0;
       try {
+        // A linha de baixo precisa caber no vão entre as colunas (é o que dá a
+        // porta embaixo do centro, ladoNaEstrela); o que não cabe vai para os lados.
+        var pb = null, idsBaixo, minX, maxX, pertoY;
+        while ((idsBaixo = idsDoLado("baixo")).length) {
+          pb = camadasDoLado(centro, idsBaixo, "TB", vao);
+          minX = Infinity; maxX = -Infinity; pertoY = Infinity;
+          idsBaixo.forEach(function (id) {
+            minX = Math.min(minX, pb[id].x - tam[id].w / 2); maxX = Math.max(maxX, pb[id].x + tam[id].w / 2);
+            pertoY = Math.min(pertoY, pb[id].y - tam[id].h / 2);
+          });
+          if ((maxX - minX) / 2 <= limite - 10) break;
+          var sobra = lados.baixo.pop();
+          var lado = carga.esquerda < carga.direita ? "esquerda" : "direita";
+          lados[lado].push(sobra);
+          carga[lado] += sobra.ramo.length;
+          pb = null;
+        }
         [["direita", "LR", 1], ["esquerda", "RL", -1]].forEach(function (cfg) {
           var ids = idsDoLado(cfg[0]);
           if (!ids.length) return;
@@ -4969,24 +5030,13 @@
           });
           var meio = (minY + maxY) / 2, alt = maxY - minY;
           alturaColunas = Math.max(alturaColunas, alt);
-          // Coluna centrada no centro e longe o bastante para os cabos de cima e
-          // de baixo dela chegarem pela lateral (ladoVoltadoPara, regra da estrela).
-          var distancia0 = Math.max(metadeW + vao, alt * 0.3 + 60);
-          ids.forEach(function (id) { pos[id] = { x: p[id].x + cfg[2] * (distancia0 - perto), y: p[id].y - meio }; });
+          // Coluna centrada no centro, com a borda de dentro a um vão dele.
+          ids.forEach(function (id) { pos[id] = { x: p[id].x + cfg[2] * (metadeW + vao - perto), y: p[id].y - meio }; });
         });
-        var idsBaixo = idsDoLado("baixo");
-        if (idsBaixo.length) {
-          var pb = camadasDoLado(centro, idsBaixo, "TB", vao);
-          var minX = Infinity, maxX = -Infinity, pertoY = Infinity;
-          idsBaixo.forEach(function (id) {
-            minX = Math.min(minX, pb[id].x - tam[id].w / 2); maxX = Math.max(maxX, pb[id].x + tam[id].w / 2);
-            pertoY = Math.min(pertoY, pb[id].y - tam[id].h / 2);
-          });
-          var meioX = (minX + maxX) / 2, larg = maxX - minX;
-          // Embaixo: os cabos descem (portas embaixo do centro). Mais largo que o
-          // vão entre as colunas, a linha vai para baixo delas.
-          var topo = Math.max(metadeH + vao, larg * 0.85);
-          if (larg / 2 > metadeW + vao - 40) topo = Math.max(topo, alturaColunas / 2 + vao);
+        if (pb) {
+          var meioX = (minX + maxX) / 2;
+          // Embaixo, na altura em que as colunas terminam (no vão entre elas).
+          var topo = Math.max(metadeH + vao * 0.6, alturaColunas / 2 - 20);
           idsBaixo.forEach(function (id) { pos[id] = { x: pb[id].x - meioX, y: pb[id].y + (topo - pertoY) }; });
         }
       } catch (e) {

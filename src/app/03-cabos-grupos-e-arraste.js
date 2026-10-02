@@ -213,27 +213,56 @@
     });
   }
 
-  // Rótulo do cabo no meio do trecho mais longo (acima, se horizontal; ao lado, se vertical).
-  function posicionarRotuloDaAresta(aresta, pontos) {
+  // Rótulo do cabo no meio do trecho mais longo (acima, se horizontal; ao lado, se
+  // vertical). Com "ocupados" (caixas dos rótulos já postos), se ficar em cima de
+  // outro, tenta outros pontos do trecho e os outros trechos; a caixa escolhida
+  // entra em "ocupados".
+  function posicionarRotuloDaAresta(aresta, pontos, ocupados) {
     var texto = aresta.querySelector("text");
     if (!texto) return;
-    var melhor = null, maior = -1;
+    var trechos = [];
     for (var i = 1; i < pontos.length; i++) {
       var comp = Math.abs(pontos[i].x - pontos[i - 1].x) + Math.abs(pontos[i].y - pontos[i - 1].y);
-      if (comp > maior) { maior = comp; melhor = [pontos[i - 1], pontos[i]]; }
+      if (comp > 0) trechos.push({ a: pontos[i - 1], b: pontos[i], comp: comp });
     }
-    if (!melhor) return;
+    if (!trechos.length) return;
+    trechos.sort(function (p, q) { return q.comp - p.comp; });
     texto.removeAttribute("transform");
-    var horizontal = Math.abs(melhor[0].y - melhor[1].y) < 0.5;
-    if (horizontal) {
-      texto.setAttribute("x", ((melhor[0].x + melhor[1].x) / 2).toFixed(2));
-      texto.setAttribute("y", (melhor[0].y - 5).toFixed(2));
-      texto.setAttribute("text-anchor", "middle");
-    } else {
-      texto.setAttribute("x", (melhor[0].x + 5).toFixed(2));
-      texto.setAttribute("y", ((melhor[0].y + melhor[1].y) / 2 + 3).toFixed(2));
-      texto.setAttribute("text-anchor", "start");
+    function colocar(trecho, t) {
+      var horizontal = Math.abs(trecho.a.y - trecho.b.y) < 0.5;
+      if (horizontal) {
+        texto.setAttribute("x", (trecho.a.x + (trecho.b.x - trecho.a.x) * t).toFixed(2));
+        texto.setAttribute("y", (trecho.a.y - 5).toFixed(2));
+        texto.setAttribute("text-anchor", "middle");
+      } else {
+        texto.setAttribute("x", (trecho.a.x + 5).toFixed(2));
+        texto.setAttribute("y", (trecho.a.y + (trecho.b.y - trecho.a.y) * t + 3).toFixed(2));
+        texto.setAttribute("text-anchor", "start");
+      }
     }
+    colocar(trechos[0], 0.5);
+    if (!ocupados || !texto.textContent.trim()) return;
+    function caixa() {
+      try { var b = texto.getBBox(); return { x1: b.x - 2, y1: b.y - 1, x2: b.x + b.width + 2, y2: b.y + b.height + 1 }; } catch (e) { return null; }
+    }
+    function livre(c) {
+      return c && !ocupados.some(function (o) { return c.x1 < o.x2 && c.x2 > o.x1 && c.y1 < o.y2 && c.y2 > o.y1; });
+    }
+    var primeira = caixa();
+    if (!primeira) return;
+    if (livre(primeira)) { ocupados.push(primeira); return; }
+    var fracoes = [0.3, 0.7, 0.15, 0.85, 0.5];
+    for (var k = 0; k < Math.min(trechos.length, 3); k++) {
+      if (trechos[k].comp < 40) continue;
+      for (var f = 0; f < fracoes.length; f++) {
+        colocar(trechos[k], fracoes[f]);
+        var c = caixa();
+        if (livre(c)) { ocupados.push(c); return; }
+      }
+    }
+    // Nenhum lugar livre: fica no meio do trecho mais longo.
+    colocar(trechos[0], 0.5);
+    ocupados.push(primeira);
   }
 
   function rotearCabosOrtogonalmente() {
@@ -253,12 +282,12 @@
     // Cabos curtos primeiro ficam com a trilha ideal; os longos desviam deles.
     function comprimento(r) { return Math.abs(r.s.x - r.e.x) + Math.abs(r.s.y - r.e.y); }
     rotas.sort(function (a, b) { return comprimento(a) - comprimento(b); });
-    var existentes = [];
+    var existentes = [], rotulos = [];
     rotas.forEach(function (rota) {
       var pts = tracarRota(rota.s, rota.e, existentes, obstaculosDoCabo(obstaculos, rota.conexao, rota.s, rota.e));
       existentes.push.apply(existentes, segmentosDaRota(pts));
       rota.path.setAttribute("d", caminhoOrtogonalArredondado(pts));
-      posicionarRotuloDaAresta(rota.aresta, pts);
+      posicionarRotuloDaAresta(rota.aresta, pts, rotulos);
     });
   }
 

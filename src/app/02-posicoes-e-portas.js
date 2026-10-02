@@ -59,9 +59,7 @@
     if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return padrao;
     // Na grade não há eixo principal: vale o lado para onde o outro está mais longe.
     // Grade e grupos lado a lado: a porta vai para o lado de onde o vizinho está de fato.
-    // Estrela: colunas à esquerda e à direita (lateral mesmo bem acima ou abaixo)
-    // e a linha de baixo bem mais funda que larga (posicionarEmEstrela).
-    var horizontal = direcao === "ESTRELA" ? Math.abs(dx) >= Math.abs(dy) * 0.6 : direcao === "GRADE" || direcao === "LADO" ? Math.abs(dx) >= Math.abs(dy) : direcao === "TB"
+    var horizontal = direcao === "GRADE" || direcao === "LADO" ? Math.abs(dx) >= Math.abs(dy) : direcao === "TB"
       ? Math.abs(dy) < DISTANCIA_MINIMA_NO_EIXO && Math.abs(dx) > Math.abs(dy)
       : Math.abs(dx) >= DISTANCIA_MINIMA_NO_EIXO || Math.abs(dx) >= Math.abs(dy);
     if (horizontal) return dx > 0 ? "direita" : "esquerda";
