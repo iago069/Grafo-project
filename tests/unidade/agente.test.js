@@ -54,6 +54,11 @@ test("só aceita IP de verdade (nada vira comando)", () => {
   for (const ruim of ["10.0.0.1; rm -rf /", "& calc", "", null, "host.local"]) assert.ok(!agente.ipValido(ruim));
 });
 
+function temPing() {
+  try { require("child_process").execFileSync("ping", process.platform === "win32" ? ["-n", "1", "127.0.0.1"] : ["-c", "1", "127.0.0.1"], { stdio: "ignore", timeout: 5000 }); return true; }
+  catch (e) { return false; }
+}
+
 function ouvir(servidor) { return new Promise(r => servidor.listen(0, "127.0.0.1", () => r(servidor.address().port))); }
 
 test("servidor: lê o POP do NetBox, bloqueia origem estranha e pinga", async (t) => {
@@ -86,5 +91,7 @@ test("servidor: lê o POP do NetBox, bloqueia origem estranha e pinga", async (t
 
   const st = await (await fetch(base + "/status", { method: "POST", headers: origem, body: JSON.stringify({ ips: ["127.0.0.1", "x; ls"] }) })).json();
   assert.deepEqual(Object.keys(st), ["127.0.0.1"]);
-  assert.equal(st["127.0.0.1"].online, true);
+  assert.equal(typeof st["127.0.0.1"].online, "boolean");
+  // O build da Vercel não tem o comando ping: lá só confere o formato.
+  if (temPing()) assert.equal(st["127.0.0.1"].online, true);
 });
