@@ -88,6 +88,19 @@
     finally { verificando = false; }
   }
 
+  // IP novo num equipamento: ping na hora (se o agente estiver rodando).
+  window.addEventListener("grafo:ips-novos", async function (ev) {
+    var ips = ev.detail || [];
+    try {
+      var mapa = await agente("/status", { method: "POST", body: JSON.stringify({ ips: ips }) });
+      app.atualizarStatusOnline(mapa);
+      var textos = Object.keys(mapa).map(function (ip) { return ip + (mapa[ip].online ? " online" + (mapa[ip].ms != null ? " (" + mapa[ip].ms + " ms)" : "") : " offline"); });
+      if (textos.length) { app.avisar("Ping: " + textos.join(" · ")); status("Ping " + new Date().toLocaleTimeString() + ": " + textos.join(" · ")); }
+    } catch (e) {
+      status("IP novo não verificado: " + e.message);
+    }
+  });
+
   btnVerificar.addEventListener("click", function () { verificar(false); });
   var timer = null;
   elAuto.addEventListener("change", function () {

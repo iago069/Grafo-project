@@ -162,7 +162,7 @@ Limites: **35 equipamentos por diagrama**, 2000 cabos e 100 projetos. Um arquivo
 Na barra lateral, **Integração → NetBox e status online**:
 
 1. **Carregar POPs** lista os sites do NetBox; escolha o POP e clique em **Gerar diagrama do POP**. O Grafo cria um projeto novo com os equipamentos do site e os cabos documentados (porta de saída e de chegada, fibra ou cabo, cor; cabo *planned* fica tracejado). Cabos que saem do POP ou terminam em patch panel/circuito ficam de fora. Status do NetBox: *active* → ativo; *planned/staged/inventory* → manutenção; *offline/failed* → offline. Até 35 equipamentos por diagrama.
-2. **Verificar online** dá ping nos IPs do projeto aberto e marca **ativo** ou **offline** (equipamento em manutenção não muda). **Verificar a cada 60 s** repete sozinho enquanto o editor estiver aberto.
+2. **Verificar online** dá ping nos IPs do projeto aberto e marca **ativo** ou **offline** (equipamento em manutenção não muda). **Verificar a cada 60 s** repete sozinho enquanto o editor estiver aberto. Com o agente rodando, **ao colocar ou trocar o IP de um equipamento** (formulário, editor, CSV ou JSON) o Grafo dá ping nele na hora e mostra o resultado num aviso.
 
 O site na Vercel não alcança a rede interna, então quem fala com o NetBox e dá o ping é o **agente**, um programa sem dependências que roda num computador dentro da rede:
 

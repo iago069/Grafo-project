@@ -166,7 +166,19 @@
     }, 120);
   }
 
-  function renderTudo() { aplicarModoNaTela(); renderEquipamentos(); renderConexoes(); renderSidebarPanels(); atualizarJsonAvancado(); atualizarContadorEquipamentos(); salvarLocal(); solicitarAtualizacaoDiagrama(); }
+  function renderTudo() { aplicarModoNaTela(); renderEquipamentos(); renderConexoes(); renderSidebarPanels(); atualizarJsonAvancado(); atualizarContadorEquipamentos(); salvarLocal(); solicitarAtualizacaoDiagrama(); avisarIpsNovos(); }
+
+  // IP colocado ou trocado em algum equipamento (formulário, editor, CSV, JSON…):
+  // avisa integracao.js, que dá ping na hora. Ao trocar de projeto, só memoriza.
+  var ipsConhecidos = null, projetoDosIps = null;
+  function avisarIpsNovos() {
+    var atuais = {};
+    estado.equipamentos.forEach(function (eq) { var ip = (eq.ip || "").split("/")[0]; if (ip) atuais[ip] = true; });
+    var novos = projetoDosIps === projetoAtual && ipsConhecidos ? Object.keys(atuais).filter(function (ip) { return !ipsConhecidos[ip]; }) : [];
+    ipsConhecidos = atuais;
+    projetoDosIps = projetoAtual;
+    if (novos.length) window.dispatchEvent(new CustomEvent("grafo:ips-novos", { detail: novos }));
+  }
 
   // Contador "n/35" na barra do diagrama. Perto do limite fica em alerta; no
   // limite, os botões de adicionar são bloqueados e aparece um aviso (uma vez).
