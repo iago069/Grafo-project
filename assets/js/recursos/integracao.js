@@ -35,6 +35,8 @@
       throw new Error("Agente não respondeu em " + base + ". Ele está rodando (node agente/grafo-agente.js)?");
     }
     var json = await resp.json().catch(function () { return {}; });
+    // Respondeu (mesmo com erro): há agente aqui, então vale o ping automático.
+    try { localStorage.setItem("grafo-agente-ok", "1"); } catch (e) {}
     if (!resp.ok) throw new Error(json.erro || ("Agente respondeu " + resp.status));
     return json;
   }
@@ -75,7 +77,12 @@
   async function verificar(silencioso) {
     if (verificando) return;
     var ips = app.ipsDoProjeto();
-    if (!ips.length) { if (!silencioso) status("Nenhum equipamento deste projeto tem IP."); return; }
+    if (!ips.length) {
+      if (silencioso) return;
+      try { await agente("/saude"); status("Agente conectado. Nenhum equipamento deste projeto tem IP; ao colocar um, o ping é automático."); }
+      catch (e) { status(e.message); }
+      return;
+    }
     verificando = true;
     if (!silencioso) status("Verificando " + ips.length + " IPs…");
     try {
@@ -91,6 +98,11 @@
   // IP novo num equipamento: ping na hora (se o agente estiver rodando).
   window.addEventListener("grafo:ips-novos", async function (ev) {
     var ips = ev.detail || [];
+    // Só para quem já usou o agente neste navegador: os demais não têm agente
+    // e veriam um erro de conexão a cada IP digitado.
+    var usaAgente = false;
+    try { usaAgente = localStorage.getItem("grafo-agente-ok") === "1"; } catch (e) {}
+    if (!usaAgente) return;
     try {
       var mapa = await agente("/status", { method: "POST", body: JSON.stringify({ ips: ips }) });
       app.atualizarStatusOnline(mapa);
