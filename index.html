@@ -552,6 +552,29 @@
           </div>
         </div>
 
+        <div class="nav-section">
+          <button class="nav-label" type="button" aria-expanded="true">Integração</button>
+          <button class="nav-item" type="button" data-nav-panel="navNetbox" data-icon="cabo" title="Gerar o diagrama de um POP a partir do cabeamento do NetBox e verificar quem está online">NetBox e status online</button>
+          <div class="nav-panel" id="navNetbox">
+            <div class="nav-form">
+              <label class="full">Endereço do agente<input id="agenteUrl" type="url" placeholder="http://localhost:8787" spellcheck="false"></label>
+              <label class="full">Chave do agente (opcional)<input id="agenteChave" type="password" autocomplete="off"></label>
+              <div class="nav-form-actions">
+                <button class="ghost" id="btnListarPops" type="button" title="Busca os sites (POPs) cadastrados no NetBox">Carregar POPs</button>
+              </div>
+              <label class="full">POP<select id="netboxPop" disabled><option value="">Carregue os POPs</option></select></label>
+              <div class="nav-form-actions">
+                <button class="primary" id="btnGerarPop" type="button" disabled title="Cria um projeto novo com os equipamentos e cabos documentados do POP">Gerar diagrama do POP</button>
+              </div>
+              <div class="nav-form-actions">
+                <button class="ghost" id="btnVerificarOnline" type="button" title="O agente dá ping nos IPs do projeto aberto e marca ativo ou offline">Verificar online</button>
+              </div>
+              <label class="full opcao-check"><input id="verificarAuto" type="checkbox"> Verificar a cada 60 s</label>
+              <small id="integracaoStatus" class="full" role="status"></small>
+            </div>
+          </div>
+        </div>
+
         <!-- Quem está usando (auth.js): só o nome, ou "Sem login". -->
         <div class="sidebar-usuario" id="sidebarUsuario" hidden>
           <strong id="sidebarUsuarioNome"></strong>

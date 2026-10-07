@@ -157,6 +157,22 @@ Se algo estiver errado, **nada é alterado** e o app lista cada problema com o i
 
 Limites: **35 equipamentos por diagrama**, 2000 cabos e 100 projetos. Um arquivo com mais de 35 equipamentos é recusado.
 
+### NetBox e status online (agente)
+
+Na barra lateral, **Integração → NetBox e status online**:
+
+1. **Carregar POPs** lista os sites do NetBox; escolha o POP e clique em **Gerar diagrama do POP**. O Grafo cria um projeto novo com os equipamentos do site e os cabos documentados (porta de saída e de chegada, fibra ou cabo, cor; cabo *planned* fica tracejado). Cabos que saem do POP ou terminam em patch panel/circuito ficam de fora. Status do NetBox: *active* → ativo; *planned/staged/inventory* → manutenção; *offline/failed* → offline. Até 35 equipamentos por diagrama.
+2. **Verificar online** dá ping nos IPs do projeto aberto e marca **ativo** ou **offline** (equipamento em manutenção não muda). **Verificar a cada 60 s** repete sozinho enquanto o editor estiver aberto.
+
+O site na Vercel não alcança a rede interna, então quem fala com o NetBox e dá o ping é o **agente**, um programa sem dependências que roda num computador dentro da rede:
+
+```bash
+cp agente/.env.exemplo agente/.env   # preencha NETBOX_URL e NETBOX_TOKEN (token só leitura)
+npm run agente                       # http://localhost:8787
+```
+
+O editor chama `http://localhost:8787` (o CSP libera só `localhost`/`127.0.0.1` em http), então o agente deve rodar **no mesmo computador** em que o Grafo está aberto. `ORIGENS` limita quais sites podem usá-lo e `AGENTE_CHAVE` (opcional) exige uma senha.
+
 ### CSV
 
 Em **Projeto → JSON e CSV → Importar CSV** (o botão **Modelo CSV** gera um exemplo). Uma linha por cabo; os equipamentos são criados pelos nomes. Linha sem `destino` cadastra só o equipamento. A importação substitui o projeto aberto (se ele já tiver conteúdo, o Grafo pergunta antes) — o ↶ desfaz.

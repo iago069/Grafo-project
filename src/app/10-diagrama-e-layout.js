@@ -946,6 +946,41 @@
       atualizarBotoesHistorico();
     },
     removerProjeto: function (nome) { removerProjetoDaLista(nome); },
+    // Usados por integracao.js (NetBox + agente).
+    // Cria um projeto novo com os dados de um POP. Retorna o nome, ou null se recusado.
+    importarProjetoExterno: function (dados, origem) {
+      var resultado = Esquema.validarProjeto(dados, "estrito");
+      if (!resultado.ok) { mostrarErrosDeValidacao(origem, resultado); return null; }
+      if (Object.keys(projetos).length >= LIMITES.projetos) {
+        mostrarErro("Não foi possível importar: o limite é de " + LIMITES.projetos + " projetos. Exclua algum antes.");
+        return null;
+      }
+      var nomeValido = Esquema.validarNomeProjeto(dados.projeto || "");
+      var base = nomeValido.ok ? nomeValido.dados : "POP importado";
+      var nome = base;
+      for (var i = 2; projetos[nome]; i++) nome = base.slice(0, LIMITES.nomeProjeto - 5) + " (" + i + ")";
+      salvarLocal();
+      projetos[nome] = resultado.dados;
+      abrirProjeto(nome);
+      salvarLocal();
+      mostrarAvisosDaImportacao(origem, resultado);
+      return nome;
+    },
+    ipsDoProjeto: function () {
+      return estado.equipamentos.map(function (eq) { return (eq.ip || "").split("/")[0]; }).filter(Boolean);
+    },
+    // mapa: { ip: { online } }. Equipamento em manutenção não muda. Retorna quantos mudaram.
+    atualizarStatusOnline: function (mapa) {
+      var mudou = 0;
+      estado.equipamentos.forEach(function (eq) {
+        var r = mapa[(eq.ip || "").split("/")[0]];
+        if (!r || eq.status === "manutencao") return;
+        var novo = r.online ? "ativo" : "offline";
+        if (eq.status !== novo) { eq.status = novo; mudou++; }
+      });
+      if (mudou) renderTudo();
+      return mudou;
+    },
     // Usado por historico.js: volta o projeto para uma versão guardada. Entra no
     // desfazer como um passo (Ctrl+Z volta para como estava antes de restaurar).
     restaurarDados: function (nome, dados) {

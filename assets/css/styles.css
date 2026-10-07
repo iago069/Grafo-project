@@ -1005,6 +1005,8 @@ button.menu-item:disabled { opacity: 0.45; }
 .dica-campo { margin: 0; color: var(--text-dim); font-size: 0.7rem; line-height: 1.4; }
 .painel-pagina .opcao-check { display: flex; align-items: center; gap: 8px; color: var(--text); font: 0.8rem var(--sans); cursor: pointer; }
 .painel-pagina .opcao-check input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+.nav-form .opcao-check { display: flex; align-items: center; gap: 8px; color: var(--text); font: 0.74rem var(--sans); cursor: pointer; }
+.nav-form .opcao-check input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
 
 /* Retrato | Paisagem */
 .segmentado { display: grid; grid-template-columns: 1fr 1fr; padding: 3px; gap: 3px; border-radius: 10px; background: var(--field-bg); border: 1px solid var(--field-border); }
