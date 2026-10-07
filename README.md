@@ -171,6 +171,8 @@ cp agente/.env.exemplo agente/.env   # preencha NETBOX_URL e NETBOX_TOKEN (token
 npm run agente                       # http://localhost:8787
 ```
 
+**Sem NetBox para testar?** `npm run netbox-falso` sobe uma API falsa em `http://localhost:8000` (token `teste123`) com dois POPs de exemplo; no `agente/.env` use `NETBOX_URL=http://localhost:8000` e `NETBOX_TOKEN=teste123`. IPs `127.0.0.x` respondem ao ping (online) e `10.255.x.x` não (offline).
+
 O editor chama `http://localhost:8787` (o CSP libera só `localhost`/`127.0.0.1` em http), então o agente deve rodar **no mesmo computador** em que o Grafo está aberto. `ORIGENS` limita quais sites podem usá-lo e `AGENTE_CHAVE` (opcional) exige uma senha.
 
 ### CSV

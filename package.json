@@ -10,7 +10,8 @@
     "test:navegador": "node --test --test-concurrency=1 \"tests/navegador/*.test.js\"",
     "icones": "node scripts/gerar-icones-embutidos.js",
     "montar": "node scripts/montar-app.js",
-    "agente": "node agente/grafo-agente.js"
+    "agente": "node agente/grafo-agente.js",
+    "netbox-falso": "node agente/netbox-falso.js"
   },
   "dependencies": {
     "express": "^4.21.2"
