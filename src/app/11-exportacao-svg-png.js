@@ -92,6 +92,45 @@
     return href || hrefXlink || "";
   }
 
+  // Mesmo efeito do filtro da tela (filtroCorIcone): matiz e saturação da cor,
+  // luminosidade e transparência da imagem. Retorna PNG em data URL, ou null.
+  function tingirImagem(dataUrl, cor) {
+    return new Promise(function (resolver) {
+      var img = new Image();
+      img.onload = function () {
+        try {
+          // Até 512 px no lado maior: nítido na impressão (o ícone tem ~84 pt).
+          var nw = img.naturalWidth || 512, nh = img.naturalHeight || 512;
+          var k = Math.min(1, 512 / Math.max(nw, nh));
+          var w = Math.max(1, Math.round(nw * k)), h = Math.max(1, Math.round(nh * k));
+          var canvas = document.createElement("canvas");
+          canvas.width = w; canvas.height = h;
+          var ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
+          ctx.globalCompositeOperation = "color";
+          ctx.fillStyle = cor;
+          ctx.fillRect(0, 0, w, h);
+          ctx.globalCompositeOperation = "destination-in";
+          ctx.drawImage(img, 0, 0, w, h);
+          resolver(canvas.toDataURL("image/png"));
+        } catch (e) { resolver(null); }
+      };
+      img.onerror = function () { resolver(null); };
+      img.src = dataUrl;
+    });
+  }
+
+  // Cor do ícone na exportação: o svg2pdf (PDF) ignora filtros SVG, então o tom
+  // vai direto na imagem e o filtro sai (para não aplicar duas vezes).
+  async function aplicarTomNaImagem(imagem, dataUrl) {
+    var tom = /url\(#tom-([0-9a-f]{6})\)/i.exec(imagem.getAttribute("filter") || "");
+    if (!tom) return dataUrl;
+    var tingida = await tingirImagem(dataUrl, "#" + tom[1]);
+    if (!tingida) return dataUrl;
+    imagem.removeAttribute("filter");
+    return tingida;
+  }
+
   async function prepararSvgParaExportacao(svgEl, removerImagens) {
     var copia = svgEl.cloneNode(true);
     copia.setAttribute("xmlns", "http://www.w3.org/2000/svg");
@@ -119,6 +158,7 @@
       try {
         var dataUrl = await fonteImagemComoDataUrl(origem, imagensVivas[indice]);
         if (!dataUrl) return;
+        dataUrl = await aplicarTomNaImagem(imagem, dataUrl);
         imagem.setAttribute("href", dataUrl);
         imagem.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", dataUrl);
       } catch (erroImagem) {
@@ -338,6 +378,7 @@
       // Só data: URL pode ir para o PNG: qualquer imagem externa bloqueia o canvas.
       var dataUrl = await imagemParaExportacao(origem);
       if (dataUrl) {
+        dataUrl = await aplicarTomNaImagem(imagem, dataUrl);
         imagem.setAttribute("href", dataUrl);
         imagem.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", dataUrl);
       } else {
