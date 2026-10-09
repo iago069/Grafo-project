@@ -142,3 +142,13 @@ test("equipamento: VLAN / rede é opcional, com limite de tamanho", () => {
   assert.equal("rede" in eq({}).dados, false, "sem rede, o campo não aparece");
   assert.equal(eq({ rede: "x".repeat(41) }).dados.rede, undefined, "grande demais: descartado");
 });
+
+test("corIcone: opcional, aceita #RRGGBB ou vazio (cor original)", () => {
+  const base = { id: "a", nome: "A" };
+  assert.equal(simples(E.validarEquipamento(Object.assign({ corIcone: "#2E9E5B" }, base)).dados).corIcone, "#2E9E5B");
+  assert.equal(simples(E.validarEquipamento(Object.assign({ corIcone: "" }, base)).dados).corIcone, "");
+  assert.equal("corIcone" in simples(E.validarEquipamento(base).dados), false);
+  const r = E.validarProjeto({ equipamentos: [Object.assign({ corIcone: "verde" }, base)], conexoes: [] }, "estrito");
+  assert.ok(r.ok, "cor inválida só é descartada");
+  assert.equal("corIcone" in simples(r.dados.equipamentos[0]), false);
+});

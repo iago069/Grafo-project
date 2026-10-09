@@ -307,6 +307,8 @@
     }).join("");
     selecionarOpcao(campoEditor("editEquipIcone"), eq.icone || "");
     campoEditor("editEquipCor").value = corValida(eq.corFonte, "#16323D");
+    campoEditor("editEquipCorIconeOriginal").checked = !eq.corIcone;
+    campoEditor("editEquipCorIcone").value = eq.corIcone || "#2E9E5B";
     mostrarEditor("Editar equipamento", editor.formEquip);
   }
 
@@ -334,6 +336,8 @@
   }
 
   campoEditor("editEquipIp").addEventListener("input", function (event) { event.target.setCustomValidity(""); });
+  // Escolher uma cor já desmarca "Original".
+  campoEditor("editEquipCorIcone").addEventListener("input", function () { campoEditor("editEquipCorIconeOriginal").checked = false; });
 
   editor.formEquip.addEventListener("submit", function (event) {
     event.preventDefault();
@@ -348,7 +352,8 @@
       modelo: campoEditor("editEquipModelo").value, ip: campoEditor("editEquipIp").value,
       grupo: campoEditor("editEquipGrupo").value, status: campoEditor("editEquipStatus").value,
       rede: campoEditor("editEquipRede").value,
-      corFonte: campoEditor("editEquipCor").value
+      corFonte: campoEditor("editEquipCor").value,
+      corIcone: campoEditor("editEquipCorIconeOriginal").checked ? "" : campoEditor("editEquipCorIcone").value
     }));
     if (!validacao.ok) { campoEditor("editEquipMensagem").textContent = textoDosErros(validacao.erros); return; }
     Object.assign(eq, validacao.dados);

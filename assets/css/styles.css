@@ -1282,3 +1282,7 @@ body:not([data-modo-diagrama="redes"]) .so-modo-redes { display: none; }
 .nav-form .botao-arquivo:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* Botões de arquivo (label com tabindex): contorno de foco ao navegar pelo teclado. */
 [data-botao-arquivo]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.cor-icone-campo { display: flex; align-items: center; gap: 8px; }
+.cor-icone-campo input[type="color"] { flex: 1; min-width: 0; }
+.cor-icone-campo .opcao-check { display: flex; align-items: center; gap: 4px; font: 0.72rem var(--sans); color: var(--text); white-space: nowrap; }

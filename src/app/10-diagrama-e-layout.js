@@ -326,6 +326,26 @@
     });
   }
 
+  // Filtro SVG que dá o tom da cor ao ícone mantendo claros e escuros do desenho
+  // (blend "color": matiz e saturação da cor, luminosidade da imagem). Um por cor.
+  function filtroCorIcone(defs, cor) {
+    var id = "tom-" + cor.slice(1).toLowerCase();
+    if (defs.querySelector("#" + id)) return id;
+    var ns = "http://www.w3.org/2000/svg";
+    var filtro = document.createElementNS(ns, "filter");
+    filtro.setAttribute("id", id);
+    filtro.setAttribute("color-interpolation-filters", "sRGB");
+    [["feFlood", { "flood-color": cor, result: "cor" }],
+     ["feBlend", { in: "cor", in2: "SourceGraphic", mode: "color", result: "tom" }],
+     ["feComposite", { in: "tom", in2: "SourceAlpha", operator: "in" }]].forEach(function (p) {
+      var el = document.createElementNS(ns, p[0]);
+      Object.keys(p[1]).forEach(function (k) { el.setAttribute(k, p[1][k]); });
+      filtro.appendChild(el);
+    });
+    defs.appendChild(filtro);
+    return id;
+  }
+
   function aplicarImagensNoSvg(dados) {
     var svgEl = elCanvas.querySelector("svg");
     if (!svgEl) return;
@@ -423,6 +443,7 @@
         clip.appendChild(rect);
         defs.appendChild(clip);
         img.setAttribute("clip-path", "url(#" + clipId + ")");
+        if (/^#[0-9a-f]{6}$/i.test(equipamento.corIcone || "")) img.setAttribute("filter", "url(#" + filtroCorIcone(defs, equipamento.corIcone) + ")");
 
         var primeiroTexto = g.querySelector("text");
         if (primeiroTexto) g.insertBefore(img, primeiroTexto);

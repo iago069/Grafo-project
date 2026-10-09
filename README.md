@@ -147,6 +147,7 @@ Formato:
 | `status` | `ativo`, `manutencao` ou `offline` (aceita "Manutenção", "OFFLINE"…) |
 | `estilo` | `solid`, `dashed` ou `dotted` (aceita "contínuo", "tracejado", "pontilhado") |
 | `cor` | Formato `#1A2B3C` |
+| `corIcone` (opcional) | Tom do ícone do equipamento, formato `#1A2B3C` (ex.: switch de core verde). Vazio ou ausente: cores originais. No editor do equipamento: **Cor do ícone** (marque **Original** para voltar) |
 | `grossura` | De 1 a 10 |
 | `de` / `para` | Precisam ser `id`s de equipamentos existentes e diferentes entre si |
 | `anotacoes` (opcional) | Lista de `{ "id", "texto", "x", "y", "cor" }`: até 50, texto de até 500 caracteres, cor `#FFF3B0` (amarelo), `#D6ECFF`, `#DDF5D8`, `#FFDDE4` ou `#ECEFF3` |
