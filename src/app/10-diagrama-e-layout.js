@@ -346,6 +346,16 @@
     return id;
   }
 
+  // Ícones do catálogo desenhados sem quadro em volta (os demais já têm um).
+  var COR_MOLDURA_ICONE = "#57555A";
+  var ICONES_SEM_MOLDURA = ["CONCENTRADOR-HOTSPOT.png", "CONVERSOR-FIBRA.png", "CONVERSOR-MIDIA.png", "CX.png", "DECODER.png",
+    "DEMUX.png", "DIO.png", "DWDM.png", "MIKROTIK.png", "MUX.png", "NUVEM-VPLS.png", "NVR.png", "OLT.png", "ONU.svg",
+    "POE.png", "SERVIDOR.svg", "SWITCH-POE.png", "UNIFI.png"];
+  function iconeSemMoldura(icone) {
+    var arquivo = String(icone || "").split(/[\/]/).pop();
+    return ICONES_SEM_MOLDURA.indexOf(arquivo) >= 0;
+  }
+
   function aplicarImagensNoSvg(dados) {
     var svgEl = elCanvas.querySelector("svg");
     if (!svgEl) return;
@@ -375,7 +385,7 @@
       if (!equipamento) return;
 
       try {
-        g.querySelectorAll("image[data-equip-img='1']").forEach(function (imagemAntiga) {
+        g.querySelectorAll("[data-equip-img='1']").forEach(function (imagemAntiga) {
           imagemAntiga.remove();
         });
 
@@ -410,6 +420,28 @@
         var centroX = bboxNode.x + bboxNode.width / 2;
         var x = centroX - tam / 2;
         var y = areaTopo + (areaAltura - tam) / 2;
+
+        // Ícone do catálogo sem moldura própria: ganha a mesma moldura do UPS/RPS
+        // e o desenho encolhe para caber dentro dela.
+        var moldura = null;
+        if (!nomeAtualDaImagem(equipamento.imagem) && iconeSemMoldura(equipamento.icone)) {
+          var traco = Math.max(1.5, tam * 0.045);
+          moldura = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+          moldura.setAttribute("data-equip-img", "1");
+          moldura.setAttribute("x", x + traco / 2);
+          moldura.setAttribute("y", y + traco / 2);
+          moldura.setAttribute("width", tam - traco);
+          moldura.setAttribute("height", tam - traco);
+          moldura.setAttribute("rx", tam * 0.04);
+          moldura.setAttribute("fill", "none");
+          moldura.setAttribute("stroke", COR_MOLDURA_ICONE);
+          moldura.setAttribute("stroke-width", traco);
+          moldura.setAttribute("pointer-events", "none");
+          var interno = tam * 0.72;
+          x += (tam - interno) / 2;
+          y += (tam - interno) / 2;
+          tam = interno;
+        }
 
         var urlImagem = resolverUrlRelativa(origemImagem);
         var img = document.createElementNS("http://www.w3.org/2000/svg", "image");
@@ -448,6 +480,7 @@
         var primeiroTexto = g.querySelector("text");
         if (primeiroTexto) g.insertBefore(img, primeiroTexto);
         else g.appendChild(img);
+        if (moldura) g.insertBefore(moldura, img);
       } catch (err) {}
     });
   }
