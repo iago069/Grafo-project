@@ -29,6 +29,9 @@
   var ALTURAS_COMUNS = [12, 24, 36, 42, 44, 45, 48];
 
   var dados = { racks: [], cabos: [] };
+  // Equipamento recém-instalado ou movido: chega com destaque no próximo desenho.
+  var destaque = null, timerDestaque = null;
+  function destacar(id) { destaque = id; clearTimeout(timerDestaque); timerDestaque = setTimeout(function () { destaque = null; }, 1500); }
   var sel = { rack: null, item: null, u: null };
   var vista = { face: "frente", inverter: false, zoom: 1, cabos: "todos", busca: "" };
   try { Object.assign(vista, JSON.parse(localStorage.getItem("grafo-racks-vista") || "{}"), { busca: "" }); } catch (e) {}
@@ -149,7 +152,7 @@
       }
       var fundo = it.cor || CORES[it.categoria] || CORES.personalizado;
       var tracejado = it.estado === "planejado" ? ' stroke-dasharray="6 3"' : "";
-      p.push('<g class="rk-item" data-item="' + esc(it.id) + '">');
+      p.push('<g class="rk-item' + (!exportar && destaque === it.id ? " rk-novo" : "") + '" data-item="' + esc(it.id) + '">');
       p.push('<title>' + esc(it.nome + " · " + cat.rotulo + " · " + faixaUTexto(it) + (it.modelo ? " · " + it.modelo : "")) + '</title>');
       p.push('<rect class="rk-item-corpo" x="' + (xi + 1) + '" y="' + (y + 0.5) + '" width="' + (wi - 2) + '" height="' + (h - 1) + '" rx="2" fill="' + fundo + '" stroke="' + (selecionado ? "#E8A33D" : destaque ? "#F2C94C" : "#14171B") + '" stroke-width="' + (selecionado || destaque ? 2.5 : 1) + '"' + tracejado + '/>');
       // Orelhas de fixação.
@@ -470,6 +473,7 @@
     item.u = Number(item.u); item.alturaU = Number(item.alturaU);
     var pos = E.verificarPosicaoRack(rack, item);
     if (!pos.ok) { mensagem("Não dá para instalar aí: " + pos.motivo + ".", true); return false; }
+    destacar(item.id);
     var ok = comRack(rack.id, function (r, racks) { r.itens.push(item); sel = { rack: r.id, item: item.id, u: null }; return gravar(racks, dados.cabos, item.nome + " instalado em " + faixaU(item) + "."); });
     return ok;
   }
@@ -488,6 +492,7 @@
     rOrigem.itens = rOrigem.itens.filter(function (x) { return x.id !== itemId; });
     rDestino.itens.push(candidato);
     sel = { rack: destino.id, item: itemId, u: null };
+    destacar(itemId);
     return gravar(racks, dados.cabos, candidato.nome + " movido para " + faixaU(candidato) + (destino.id !== origem.rack.id ? " em " + destino.nome : "") + ".");
   }
 

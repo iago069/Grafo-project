@@ -1363,3 +1363,87 @@ body[data-modo-diagrama="racks"] .so-diagrama { display: none !important; }
 .rk-cabo-cor { width: 10px; height: 10px; border-radius: 2px; }
 @media (max-width: 1200px) { .rk { grid-template-columns: 210px minmax(0, 1fr); } .rk-props { grid-column: 1 / -1; max-height: none; } }
 @media (max-width: 760px) { .rk { grid-template-columns: 1fr; } .rk-lista, .rk-biblioteca { max-height: 220px; } }
+
+/* ==== Movimento e acabamento (2026-10) ==== */
+/* Diagrama: entrada ao abrir/importar/organizar (revelarDiagrama). As propriedades
+   individuais translate/scale somam com o transform que o SVG já tem. */
+.canvas-wrap svg.revelando g.node { transform-box: fill-box; transform-origin: center; animation: noSurgir 0.6s var(--ease-mola) both; animation-delay: calc(var(--i, 0) * 45ms); }
+.canvas-wrap svg.revelando g.cluster { animation: aparecer 0.5s ease both; }
+.canvas-wrap svg.revelando g.edge path { stroke-dasharray: var(--len, 2000); stroke-dashoffset: var(--len, 2000); animation: caboDesenhar 0.9s var(--ease-out) forwards; animation-delay: calc(220ms + var(--i, 0) * 40ms); }
+.canvas-wrap svg.revelando g.edge polygon, .canvas-wrap svg.revelando g.edge text { animation: aparecer 0.4s ease both; animation-delay: calc(700ms + var(--i, 0) * 40ms); }
+@keyframes noSurgir { from { opacity: 0; scale: 0.82; translate: 0 8px; } to { opacity: 1; scale: 1; translate: 0 0; } }
+@keyframes caboDesenhar { to { stroke-dashoffset: 0; } }
+
+/* Foco ao passar o mouse: cabos do equipamento acendem e correm; o resto esmaece. */
+.canvas-wrap svg g.node, .canvas-wrap svg g.edge, .canvas-wrap svg g.cluster { transition: opacity 0.22s ease, filter 0.22s ease; }
+.canvas-wrap svg.focando g.node:not(.foco):not(.vizinho) { opacity: 0.32; }
+.canvas-wrap svg.focando g.edge:not(.ligado) { opacity: 0.12; }
+.canvas-wrap svg.focando g.node.foco { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--accent) 70%, transparent)); }
+.canvas-wrap svg g.edge.ligado path { stroke-width: 3px; stroke-dasharray: 10 6; animation: caboFluxo 0.7s linear infinite; filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 60%, transparent)); }
+@keyframes caboFluxo { to { stroke-dashoffset: -16; } }
+
+/* Botão principal: um brilho atravessa ao passar o mouse. */
+button.primary, .landing-botao {
+  background-image: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.38) 50%, transparent 65%);
+  background-size: 260% 100%; background-position: 130% 0; background-repeat: no-repeat;
+  transition: background-position 0.75s var(--ease-out), transform var(--dur-rapida) var(--ease-out), filter var(--dur-rapida) ease, box-shadow var(--dur-media) ease;
+}
+button.primary:hover:not(:disabled), .landing-botao:hover { background-position: -30% 0; }
+
+/* Painéis em vidro: o fundo com a grade aparece de leve por trás. */
+@supports (backdrop-filter: blur(1px)) {
+  .panel, .sidebar, .rk-props, .rk-bloco, .menu-flutuante, .modal-box { backdrop-filter: blur(14px) saturate(1.25); -webkit-backdrop-filter: blur(14px) saturate(1.25); }
+}
+.panel { transition: box-shadow var(--dur-media) ease, border-color var(--dur-media) ease; }
+.render-panel:hover { box-shadow: var(--shadow-soft), 0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent); }
+
+/* Fundo do app: os brilhos de cor respiram devagar. */
+body::after {
+  content: ""; position: fixed; inset: -20%; z-index: -1; pointer-events: none;
+  background: radial-gradient(40% 35% at 20% 15%, color-mix(in srgb, var(--teal) 10%, transparent), transparent 70%),
+    radial-gradient(35% 30% at 85% 85%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%);
+  animation: brilhoRespira 18s ease-in-out infinite alternate;
+}
+@keyframes brilhoRespira { from { transform: translate3d(0, 0, 0) scale(1); } to { transform: translate3d(3%, -2%, 0) scale(1.08); } }
+
+/* Página inicial: rede animada ao fundo e texto chegando em sequência. */
+.landing-heroi { position: relative; isolation: isolate; }
+.landing-rede { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; pointer-events: none; opacity: 0.7;
+  /* Fraca atrás do texto, mais visível nas bordas e no vão até o formulário. */
+  -webkit-mask-image: radial-gradient(42% 48% at 27% 52%, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0.25) 60%, #000 100%); mask-image: radial-gradient(42% 48% at 27% 52%, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0.25) 60%, #000 100%); }
+.landing-rede .lr-cabo { fill: none; stroke: color-mix(in srgb, var(--l-foco) 40%, transparent); stroke-width: 1.2; stroke-dasharray: 600; stroke-dashoffset: 600; animation: caboDesenhar 2.4s var(--ease-out) forwards; }
+.landing-rede .lr-no { fill: #12324a; stroke: color-mix(in srgb, var(--l-foco) 70%, transparent); stroke-width: 1.4; transform-box: fill-box; transform-origin: center; animation: noSurgir 0.8s var(--ease-mola) both; }
+.landing-rede .lr-led { fill: var(--l-foco); animation: ledPisca 2.2s ease-in-out infinite; }
+.landing-rede .lr-pulso { fill: var(--l-acento); filter: drop-shadow(0 0 6px var(--l-acento)); }
+@keyframes ledPisca { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+.landing-heroi-texto > * { animation: entrarBaixo 0.7s var(--ease-out) both; }
+.landing-heroi-texto > :nth-child(1) { animation-delay: 0.05s; }
+.landing-heroi-texto > :nth-child(2) { animation-delay: 0.13s; }
+.landing-heroi-texto > :nth-child(3) { animation-delay: 0.21s; }
+.landing-heroi-texto > :nth-child(4) { animation-delay: 0.29s; }
+.landing-heroi-texto > :nth-child(5) { animation-delay: 0.37s; }
+.landing-heroi-texto > :nth-child(6) { animation-delay: 0.45s; }
+.landing-heroi .auth-card { animation: modalEntrar 0.8s var(--ease-mola) 0.25s both; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.06); }
+.landing-heroi h1 { background: linear-gradient(100deg, var(--l-heroi-texto) 0%, var(--l-heroi-texto) 55%, #ffd29a 75%, var(--l-heroi-texto) 95%); background-size: 220% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent; animation: entrarBaixo 0.7s var(--ease-out) 0.13s both, tituloBrilho 7s ease-in-out 1.2s infinite; }
+@keyframes tituloBrilho { 0%, 100% { background-position: 100% 0; } 50% { background-position: 0% 0; } }
+
+/* Bayface: equipamento recém-instalado ou movido chega com destaque. */
+.rk-svg .rk-novo { animation: rkChegar 0.7s var(--ease-mola) both; }
+.rk-svg .rk-novo .rk-item-corpo { animation: rkBrilho 1.4s ease-out both; }
+@keyframes rkChegar { from { opacity: 0; translate: -18px 0; } to { opacity: 1; translate: 0 0; } }
+@keyframes rkBrilho { 0% { filter: drop-shadow(0 0 0 transparent); } 30% { filter: drop-shadow(0 0 10px #F2C94C); } 100% { filter: drop-shadow(0 0 0 transparent); } }
+.rk-svg .rk-item:hover .rk-item-corpo { filter: brightness(1.12); }
+.rk-svg .rk-item .rk-item-corpo, .rk-svg .rk-u-livre { transition: filter 0.15s ease, fill 0.15s ease; }
+.rk-rack-item { transition: border-color var(--dur-rapida) ease, background-color var(--dur-rapida) ease, transform var(--dur-rapida) var(--ease-out); }
+.rk-rack-item:hover { transform: translateX(2px); }
+.rk-barra-ocupacao span { transition: width 0.6s var(--ease-out); }
+.rk-peca { transition: border-color var(--dur-rapida) ease, transform var(--dur-rapida) var(--ease-out); }
+.rk-peca:hover { transform: translateX(3px); }
+.rk-msg:not([hidden]) { animation: surgir 0.25s var(--ease-out) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  body::after, .landing-rede .lr-pulso, .landing-rede .lr-led, .landing-heroi h1 { animation: none !important; }
+  .landing-rede .lr-cabo { stroke-dashoffset: 0; }
+  .canvas-wrap svg g.edge.ligado path { animation: none; }
+}

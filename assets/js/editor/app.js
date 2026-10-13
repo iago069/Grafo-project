@@ -5315,6 +5315,61 @@
   var gerarPendente;
   // Centraliza/ajusta o zoom na primeira renderização e ao trocar de projeto.
   var ajustarNaProximaRenderizacao = true;
+
+  // Entrada do diagrama ao abrir, importar ou organizar: os equipamentos surgem em
+  // sequência e os cabos se desenham. Edições pequenas não animam (só redesenham).
+  var movimentoReduzido = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
+  var timerRevelar = null;
+  function revelarDiagrama() {
+    var svg = elCanvas.querySelector("svg");
+    if (!svg || movimentoReduzido.matches) return;
+    svg.querySelectorAll("g.node").forEach(function (no, i) { no.style.setProperty("--i", Math.min(i, 30)); });
+    svg.querySelectorAll("g.edge").forEach(function (aresta, i) {
+      aresta.style.setProperty("--i", Math.min(i, 40));
+      aresta.querySelectorAll("path").forEach(function (caminho) {
+        try { caminho.style.setProperty("--len", Math.ceil(caminho.getTotalLength()) + 1); } catch (e) {}
+      });
+    });
+    svg.classList.add("revelando");
+    clearTimeout(timerRevelar);
+    timerRevelar = setTimeout(function () { svg.classList.remove("revelando"); }, 2600);
+  }
+
+  // Passar o mouse num equipamento acende os cabos dele e os vizinhos; o resto esmaece.
+  function ativarFocoAoPassar() {
+    var svg = elCanvas.querySelector("svg");
+    if (!svg) return;
+    var arestasPorEquip = {};
+    svg.querySelectorAll("g.edge").forEach(function (aresta) {
+      var c = conexaoDaAresta(aresta);
+      if (!c) return;
+      (arestasPorEquip[c.de] = arestasPorEquip[c.de] || []).push({ aresta: aresta, outro: c.para });
+      (arestasPorEquip[c.para] = arestasPorEquip[c.para] || []).push({ aresta: aresta, outro: c.de });
+    });
+    var nosPorEquip = {};
+    svg.querySelectorAll("g.node").forEach(function (no) { var id = idEquipamentoDoNode(no); if (id) nosPorEquip[id] = no; });
+    function limpar() {
+      svg.classList.remove("focando");
+      svg.querySelectorAll(".foco, .vizinho, .ligado").forEach(function (el) { el.classList.remove("foco", "vizinho", "ligado"); });
+    }
+    Object.keys(nosPorEquip).forEach(function (id) {
+      var no = nosPorEquip[id];
+      no.addEventListener("pointerenter", function (ev) {
+        if (ev.buttons || svg.classList.contains("revelando")) return;
+        limpar();
+        var ligacoes = arestasPorEquip[id] || [];
+        if (!ligacoes.length) return;
+        svg.classList.add("focando");
+        no.classList.add("foco");
+        ligacoes.forEach(function (l) {
+          l.aresta.classList.add("ligado");
+          if (nosPorEquip[l.outro]) nosPorEquip[l.outro].classList.add("vizinho");
+        });
+      });
+      no.addEventListener("pointerleave", limpar);
+      no.addEventListener("pointerdown", limpar);
+    });
+  }
   var equipamentoFixoNaSeparacao = null;
   Viz.instance().then(function (viz) {
     vizInstancia = viz;
@@ -5368,6 +5423,7 @@
       rotearCabosOrtogonalmente();
       desenharAnotacoes(); // antes do viewBox: as anotações também contam na área do desenho
       ajustarViewBoxAoConteudo(false);
+      var revelarAgora = ajustarNaProximaRenderizacao;
       if (ajustarNaProximaRenderizacao) {
         ajustarNaProximaRenderizacao = false;
         ajustarATela();
@@ -5383,6 +5439,8 @@
       }
       ativarArrasteDosEquipamentos();
       ativarEdicaoDosCabos();
+      ativarFocoAoPassar();
+      if (revelarAgora) revelarDiagrama();
       aplicarBusca();
       aplicarCaminho();
       aplicarImagensNoSvg(estado);
