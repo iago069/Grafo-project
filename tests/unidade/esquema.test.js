@@ -123,7 +123,7 @@ test("formulários de equipamento, cabo e nome de projeto", () => {
   assert.equal(E.validarNomeProjeto("x".repeat(E.LIMITES.nomeProjeto + 1)).ok, false);
 });
 
-test("modo do projeto: aceita os três (e nomes comuns); desconhecido vira topologia com aviso; sem modo continua sem", () => {
+test("modo do projeto: aceita os quatro (e nomes comuns); desconhecido vira topologia com aviso; sem modo continua sem", () => {
   const proj = modo => simples(E.validarProjeto({ equipamentos: [], conexoes: [], modo }, "estrito"));
   assert.equal(proj("redes").dados.modo, "redes");
   assert.equal(proj("Monitoramento").dados.modo, "monitoramento");
@@ -133,7 +133,8 @@ test("modo do projeto: aceita os três (e nomes comuns); desconhecido vira topol
   assert.equal(estranho.dados.modo, "topologia");
   assert.match(estranho.ajustes[0].mensagem, /usado Topologia/);
   assert.equal("modo" in simples(E.validarProjeto({ equipamentos: [], conexoes: [] }, "estrito")).dados, false);
-  assert.deepEqual(simples(E.MODOS), ["topologia", "redes", "monitoramento"]);
+  assert.equal(proj("Bayface de Racks").dados.modo, "racks");
+  assert.deepEqual(simples(E.MODOS), ["topologia", "redes", "monitoramento", "racks"]);
 });
 
 test("equipamento: VLAN / rede é opcional, com limite de tamanho", () => {

@@ -2904,7 +2904,9 @@
   var MODOS_DIAGRAMA = {
     topologia: { titulo: "Topologia", exportacao: "Topologia de rede" },
     redes: { titulo: "Diagrama de redes", exportacao: "Diagrama de redes" },
-    monitoramento: { titulo: "Monitoramento", exportacao: "Diagrama de monitoramento" }
+    monitoramento: { titulo: "Monitoramento", exportacao: "Diagrama de monitoramento" },
+    // Disposição física dos racks (recursos/racks.js); o diagrama lógico fica guardado.
+    racks: { titulo: "Bayface de Racks", exportacao: "Bayface de racks" }
   };
   var elModoDiagrama = document.getElementById("modoDiagrama");
   var modoNaTela = null;
@@ -3466,11 +3468,13 @@
   function solicitarAtualizacaoDiagrama() {
     window.clearTimeout(atualizacaoDiagramaPendente);
     atualizacaoDiagramaPendente = window.setTimeout(function () {
+      // No Bayface o diagrama está escondido: redesenha ao voltar para ele.
+      if (modoAtual() === "racks") return;
       if (estado.equipamentos.length) gerar(); else limparDiagrama();
     }, 120);
   }
 
-  function renderTudo() { aplicarModoNaTela(); renderEquipamentos(); renderConexoes(); renderSidebarPanels(); atualizarJsonAvancado(); atualizarContadorEquipamentos(); salvarLocal(); solicitarAtualizacaoDiagrama(); avisarIpsNovos(); }
+  function renderTudo() { aplicarModoNaTela(); renderEquipamentos(); renderConexoes(); renderSidebarPanels(); atualizarJsonAvancado(); atualizarContadorEquipamentos(); salvarLocal(); solicitarAtualizacaoDiagrama(); avisarIpsNovos(); window.dispatchEvent(new CustomEvent("grafo:render")); }
 
   // IP colocado ou trocado em algum equipamento (formulário, editor, CSV, JSON…):
   // avisa integracao.js, que dá ping na hora. Ao trocar de projeto, só memoriza.
@@ -5181,6 +5185,29 @@
       atualizarBotoesHistorico();
     },
     removerProjeto: function (nome) { removerProjetoDaLista(nome); },
+    // Usados por racks.js (Bayface de Racks). As regras físicas ficam no esquema,
+    // que também valida o projeto ao abrir, importar e sincronizar.
+    racksDoProjeto: function () {
+      return { racks: clonarDados(estado.racks || []), cabos: clonarDados(estado.cabosRack || []) };
+    },
+    salvarRacks: function (racks, cabos) {
+      var r = Esquema.validarRacksDoProjeto(racks, cabos);
+      if (!r.ok) return r;
+      estado.racks = r.dados.racks;
+      estado.cabosRack = r.dados.cabos;
+      renderTudo();
+      return r;
+    },
+    equipamentosDoDiagrama: function () {
+      return estado.equipamentos.map(function (eq) { return { id: eq.id, nome: eq.nome, tipo: eq.tipo || "", modelo: eq.modelo || "" }; });
+    },
+    bibliotecasPdf: async function () {
+      var JsPdf = await carregarJsPdf();
+      await carregarSvg2Pdf();
+      return JsPdf;
+    },
+    baixarArquivo: function (blob, nome) { baixarBlob(blob, nome); },
+    mostrarErro: function (texto, detalhes) { mostrarErro(texto, detalhes); },
     // Usados por integracao.js (NetBox + agente).
     // Cria um projeto novo com os dados de um POP. Retorna o nome, ou null se recusado.
     importarProjetoExterno: function (dados, origem) {

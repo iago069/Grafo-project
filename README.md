@@ -119,6 +119,20 @@ Ao criar um projeto (botão **+**), escolha o tipo de diagrama. Dá para trocar 
 
 Cada tipo também põe primeiro, na lista de **Tipo**, os equipamentos que fazem sentido para ele (Monitoramento: câmera, NVR, controle de acesso…; Redes: RB/CCR, switch, OLT…). O PDF/PNG/SVG exportado mostra o tipo no cabeçalho, e o nome do arquivo leva `-rede` ou `-monitoramento`. O status é o que você marca em cada equipamento (ativo, manutenção, offline); o Grafo não testa os IPs sozinho.
 
+## Bayface de Racks
+
+Disposição **física** dos equipamentos nos racks — independente do diagrama lógico (IP, VLAN e rotas continuam no diagrama). Crie um projeto do tipo **Bayface de Racks** (ou troque o tipo de um projeto existente no seletor da barra do diagrama: o diagrama lógico fica guardado e volta quando você troca de novo).
+
+- **Racks**: vários por projeto, agrupados por local (sala, POP, datacenter). Nome, patrimônio, local, fabricante, modelo, altura de 1U a 60U (12, 24, 36, 42, 44, 45, 48 ou outra), largura, profundidade, status (planejado, em montagem, instalado, desativado) e observações. Duplicar, excluir (com confirmação) e buscar racks e equipamentos.
+- **Editor**: vista frontal e traseira, U1 embaixo (dá para inverter na tela sem mudar a numeração), zoom, U livres tracejadas, ocupação (“16/44U · 28 livres”). Arraste da **Biblioteca** para o rack, clique numa U livre e escolha a categoria, ou clique numa peça da biblioteca para instalar na primeira posição livre. Arraste um equipamento (ou use ↑/↓) para mover; Delete remove.
+- **Categorias**: servidor, switch, roteador, OLT, DIO, patch panel, organizador, bandeja fixa e deslizante, PDU, nobreak, DWDM, telecom, painel cego e personalizado — cada uma com sigla no desenho (não depende só da cor).
+- **Equipamento**: nome, categoria, fabricante, modelo, U inicial, altura, face (profundidade total, só frente ou só traseira), estado (instalado, planejado, a remover), cor, patrimônio, portas (quantidade, tipo e prefixo, ex.: `ge1/`), largura, profundidade, observações e, opcionalmente, o equipamento do diagrama lógico que ele representa.
+- **Regras físicas** (no editor e na validação do projeto, `assets/js/comum/esquema.js`): nada passa do topo nem abaixo de U1; duas peças não dividem a mesma U, exceto uma **só frente** com uma **só traseira**; peças de várias U ocupam todas elas; posição inválida mostra o motivo e não grava.
+- **Cabos físicos** (rede, fibra, cordão óptico, energia, outro): porta de origem e de destino (inclusive em outro rack), identificação, comprimento, cor e observações. Uma porta tem no máximo um cabo. No desenho, os do mesmo rack voltam pela lateral; os que vão para outro rack terminam numa etiqueta. Filtro por tipo ou ocultos.
+- **Exportar**: PNG, SVG, PDF do rack ou **PDF de todos** (um por página), com projeto, rack, local, ocupação, inventário e U livres; **Relatório** (.xlsx) com racks, equipamentos, situação de cada U e cabos.
+
+Os racks ficam no próprio projeto (`racks` e `cabosRack` no JSON): salvam no navegador e na nuvem, entram no desfazer, no histórico de versões, nos projetos de equipe e no backup. Limites: 60 racks por projeto, 120 equipamentos por rack, 3000 cabos físicos. O link “Compartilhar” (só leitura) mostra o diagrama lógico.
+
 ## Importar e exportar
 
 ### Projeto em JSON

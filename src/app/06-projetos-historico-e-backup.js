@@ -197,7 +197,9 @@
   var MODOS_DIAGRAMA = {
     topologia: { titulo: "Topologia", exportacao: "Topologia de rede" },
     redes: { titulo: "Diagrama de redes", exportacao: "Diagrama de redes" },
-    monitoramento: { titulo: "Monitoramento", exportacao: "Diagrama de monitoramento" }
+    monitoramento: { titulo: "Monitoramento", exportacao: "Diagrama de monitoramento" },
+    // Disposição física dos racks (recursos/racks.js); o diagrama lógico fica guardado.
+    racks: { titulo: "Bayface de Racks", exportacao: "Bayface de racks" }
   };
   var elModoDiagrama = document.getElementById("modoDiagrama");
   var modoNaTela = null;

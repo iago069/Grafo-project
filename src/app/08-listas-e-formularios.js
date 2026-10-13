@@ -162,11 +162,13 @@
   function solicitarAtualizacaoDiagrama() {
     window.clearTimeout(atualizacaoDiagramaPendente);
     atualizacaoDiagramaPendente = window.setTimeout(function () {
+      // No Bayface o diagrama está escondido: redesenha ao voltar para ele.
+      if (modoAtual() === "racks") return;
       if (estado.equipamentos.length) gerar(); else limparDiagrama();
     }, 120);
   }
 
-  function renderTudo() { aplicarModoNaTela(); renderEquipamentos(); renderConexoes(); renderSidebarPanels(); atualizarJsonAvancado(); atualizarContadorEquipamentos(); salvarLocal(); solicitarAtualizacaoDiagrama(); avisarIpsNovos(); }
+  function renderTudo() { aplicarModoNaTela(); renderEquipamentos(); renderConexoes(); renderSidebarPanels(); atualizarJsonAvancado(); atualizarContadorEquipamentos(); salvarLocal(); solicitarAtualizacaoDiagrama(); avisarIpsNovos(); window.dispatchEvent(new CustomEvent("grafo:render")); }
 
   // IP colocado ou trocado em algum equipamento (formulário, editor, CSV, JSON…):
   // avisa integracao.js, que dá ping na hora. Ao trocar de projeto, só memoriza.

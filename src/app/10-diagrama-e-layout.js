@@ -1000,6 +1000,29 @@
       atualizarBotoesHistorico();
     },
     removerProjeto: function (nome) { removerProjetoDaLista(nome); },
+    // Usados por racks.js (Bayface de Racks). As regras físicas ficam no esquema,
+    // que também valida o projeto ao abrir, importar e sincronizar.
+    racksDoProjeto: function () {
+      return { racks: clonarDados(estado.racks || []), cabos: clonarDados(estado.cabosRack || []) };
+    },
+    salvarRacks: function (racks, cabos) {
+      var r = Esquema.validarRacksDoProjeto(racks, cabos);
+      if (!r.ok) return r;
+      estado.racks = r.dados.racks;
+      estado.cabosRack = r.dados.cabos;
+      renderTudo();
+      return r;
+    },
+    equipamentosDoDiagrama: function () {
+      return estado.equipamentos.map(function (eq) { return { id: eq.id, nome: eq.nome, tipo: eq.tipo || "", modelo: eq.modelo || "" }; });
+    },
+    bibliotecasPdf: async function () {
+      var JsPdf = await carregarJsPdf();
+      await carregarSvg2Pdf();
+      return JsPdf;
+    },
+    baixarArquivo: function (blob, nome) { baixarBlob(blob, nome); },
+    mostrarErro: function (texto, detalhes) { mostrarErro(texto, detalhes); },
     // Usados por integracao.js (NetBox + agente).
     // Cria um projeto novo com os dados de um POP. Retorna o nome, ou null se recusado.
     importarProjetoExterno: function (dados, origem) {

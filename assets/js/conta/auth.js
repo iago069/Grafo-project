@@ -335,6 +335,8 @@
     loadScript("./assets/js/recursos/primeiros-passos.js").catch(function (error) { console.error(error); });
     // Etiquetas exportam um PDF: valem também sem login.
     loadScript("./assets/js/recursos/etiquetas.js").catch(function (error) { console.error(error); });
+    // Bayface de Racks: vale também sem login (os racks ficam no projeto).
+    loadScript("./assets/js/recursos/racks.js").catch(function (error) { console.error(error); });
     // Opcional: painel "NetBox e status online" (precisa do agente na rede).
     loadScript("./assets/js/recursos/integracao.js").catch(function (error) { console.error(error); });
     if (convidado) { prepararBotoesQuePedemLogin(); return; }
@@ -512,7 +514,7 @@
   function keepEditorOffline() {
     if (!("serviceWorker" in navigator) || !navigator.serviceWorker.controller) return;
     var urls = EDITOR_SCRIPTS.map(function (script) { return script[0]; })
-      .concat(["./assets/js/recursos/primeiros-passos.js", "./assets/js/recursos/compartilhar.js", "./assets/js/recursos/historico.js", "./assets/js/recursos/etiquetas.js", "./assets/js/recursos/integracao.js"]);
+      .concat(["./assets/js/recursos/primeiros-passos.js", "./assets/js/recursos/compartilhar.js", "./assets/js/recursos/historico.js", "./assets/js/recursos/etiquetas.js", "./assets/js/recursos/integracao.js", "./assets/js/recursos/racks.js"]);
     if (window.GrafoApp && window.GrafoApp.arquivosParaGuardar) urls = urls.concat(window.GrafoApp.arquivosParaGuardar());
     navigator.serviceWorker.controller.postMessage({ tipo: "guardar", urls: urls });
   }

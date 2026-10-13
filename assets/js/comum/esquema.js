@@ -32,7 +32,15 @@
     grossuraMin: 1,
     grossuraMax: 10,
     coordenada: 20000,
-    canvas: { minX: -4200, maxX: 4200, minY: -3200, maxY: 3200 }
+    canvas: { minX: -4200, maxX: 4200, minY: -3200, maxY: 3200 },
+    // Bayface de Racks
+    racks: 60,
+    itensPorRack: 120,
+    cabosRack: 3000,
+    alturaRackMax: 60,
+    portasPorItem: 144,
+    textoRack: 60,
+    obsRack: 500
   };
 
   var COR_FONTE_PADRAO = "#16323D";
@@ -108,11 +116,13 @@
     "ativo", 'use "ativo", "manutencao" ou "offline"');
 
   // Modo do projeto: o que o diagrama destaca. Sem modo = topologia.
-  var MODOS = ["topologia", "redes", "monitoramento"];
+  // "racks": o projeto abre no Bayface de Racks (disposição física), não no diagrama.
+  var MODOS = ["topologia", "redes", "monitoramento", "racks"];
   var ESQUEMA_MODO = enumTolerante(MODOS,
     { rede: "redes", "diagrama de redes": "redes", "diagrama de rede": "redes", "topologia de rede": "topologia",
-      monitorar: "monitoramento", "diagrama de monitoramento": "monitoramento" },
-    "topologia", 'use "topologia", "redes" ou "monitoramento"');
+      monitorar: "monitoramento", "diagrama de monitoramento": "monitoramento",
+      rack: "racks", bayface: "racks", "bayface de racks": "racks" },
+    "topologia", 'use "topologia", "redes", "monitoramento" ou "racks"');
 
   var ESQUEMA_ESTILO = enumTolerante(["solid", "dashed", "dotted"],
     { continuo: "solid", solido: "solid", tracejado: "dashed", pontilhado: "dotted" },
@@ -356,6 +366,12 @@
         dados.anotacoes.push(a);
       });
     }
+    // Bayface de Racks (opcional): disposição física, independente do diagrama.
+    if (entrada.racks != null || entrada.cabosRack != null) {
+      var fisico = validarRacks(entrada.racks, entrada.cabosRack, modo, relatorio);
+      dados.racks = fisico.racks;
+      dados.cabosRack = fisico.cabos;
+    }
     return concluir(relatorio, dados);
   }
 
@@ -508,7 +524,208 @@
     return porCategoria.length ? porCategoria : lista.slice();
   }
 
+  // ---- Bayface de Racks --------------------------------------------------------
+  // Rack com altura em U (U1 embaixo). Cada item ocupa de "u" até u + alturaU - 1.
+  // Face: "ambas" (profundidade total), "frente" ou "tras" (meia profundidade):
+  // um item de frente e outro de trás podem dividir a mesma U; o resto não.
+  var CATEGORIAS_RACK = [
+    { valor: "servidor", rotulo: "Servidor", sigla: "SRV", altura: 2, portas: 4, tipoPorta: "RJ45" },
+    { valor: "switch", rotulo: "Switch", sigla: "SW", altura: 1, portas: 24, tipoPorta: "RJ45" },
+    { valor: "roteador", rotulo: "Roteador", sigla: "RT", altura: 1, portas: 8, tipoPorta: "RJ45" },
+    { valor: "olt", rotulo: "OLT", sigla: "OLT", altura: 2, portas: 16, tipoPorta: "PON" },
+    { valor: "dio", rotulo: "DIO / distribuidor óptico", sigla: "DIO", altura: 1, portas: 24, tipoPorta: "SC/APC" },
+    { valor: "patch", rotulo: "Patch panel", sigla: "PP", altura: 1, portas: 24, tipoPorta: "RJ45" },
+    { valor: "organizador", rotulo: "Organizador de cabos", sigla: "ORG", altura: 1, portas: 0 },
+    { valor: "bandeja", rotulo: "Bandeja fixa", sigla: "BJ", altura: 1, portas: 0 },
+    { valor: "bandeja-deslizante", rotulo: "Bandeja deslizante", sigla: "BJD", altura: 1, portas: 0 },
+    { valor: "pdu", rotulo: "Régua de energia / PDU", sigla: "PDU", altura: 1, portas: 8, tipoPorta: "Tomada" },
+    { valor: "nobreak", rotulo: "Nobreak", sigla: "UPS", altura: 2, portas: 6, tipoPorta: "Tomada" },
+    { valor: "dwdm", rotulo: "DWDM", sigla: "DWDM", altura: 2, portas: 8, tipoPorta: "LC" },
+    { valor: "telecom", rotulo: "Telecomunicações", sigla: "TEL", altura: 1, portas: 4, tipoPorta: "RJ45" },
+    { valor: "cego", rotulo: "Painel cego", sigla: "PC", altura: 1, portas: 0 },
+    { valor: "personalizado", rotulo: "Personalizado", sigla: "EQ", altura: 1, portas: 0 }
+  ];
+  var STATUS_RACK = ["planejado", "montagem", "instalado", "desativado"];
+  var ESTADOS_ITEM_RACK = ["instalado", "planejado", "remover"];
+  var FACES_RACK = ["ambas", "frente", "tras"];
+  var TIPOS_CABO_RACK = ["rede", "fibra", "cordao", "energia", "outro"];
+
+  // padrao: valor usado quando o campo vem vazio ou ausente (sem padrão = obrigatório).
+  function inteiro(min, max, padrao) {
+    return z.preprocess(function (v) { return (v == null || v === "") && padrao !== undefined ? padrao : v; },
+      z.coerce.number({ invalid_type_error: "precisa ser um número" }).int("precisa ser um número inteiro")
+        .min(min, "mínimo " + min).max(max, "máximo " + max));
+  }
+  function corOpcional() {
+    return z.preprocess(function (v) { return v == null ? "" : typeof v === "string" ? v.trim() : v; },
+      z.string().regex(/^(#[0-9a-f]{6})?$/i, "cor inválida (use o formato #1A2B3C)"));
+  }
+  var ESQUEMA_CATEGORIA_RACK = enumTolerante(CATEGORIAS_RACK.map(function (c) { return c.valor; }),
+    { servidores: "servidor", switches: "switch", roteadores: "roteador", "patch panel": "patch", "patch-panel": "patch",
+      organizadores: "organizador", "bandeja fixa": "bandeja", regua: "pdu", "regua de energia": "pdu", ups: "nobreak",
+      "painel cego": "cego", outro: "personalizado" },
+    "personalizado", "categoria desconhecida");
+
+  function textoReparado(max) {
+    return function (v, o) { return truncar(max)(v) || truncar(max)(o.id) || null; };
+  }
+
+  var CAMPOS_RACK = {
+    id: { rotulo: "id", esquema: texto(LIMITES.id, true), reparar: null },
+    nome: { rotulo: "Nome", esquema: texto(LIMITES.textoRack, true), reparar: textoReparado(LIMITES.textoRack) },
+    patrimonio: { rotulo: "Patrimônio", esquema: texto(40), reparar: truncar(40) },
+    local: { rotulo: "Local", esquema: texto(LIMITES.textoRack), reparar: truncar(LIMITES.textoRack) },
+    fabricante: { rotulo: "Fabricante", esquema: texto(40), reparar: truncar(40) },
+    modelo: { rotulo: "Modelo", esquema: texto(LIMITES.modelo), reparar: truncar(LIMITES.modelo) },
+    alturaU: { rotulo: "Altura (U)", esquema: inteiro(1, LIMITES.alturaRackMax, 42), reparar: constante(42) },
+    largura: { rotulo: "Largura", esquema: texto(20), reparar: truncar(20) },
+    profundidade: { rotulo: "Profundidade", esquema: texto(20), reparar: truncar(20) },
+    status: { rotulo: "Status", esquema: enumTolerante(STATUS_RACK, { "em montagem": "montagem" }, "planejado", "use planejado, montagem, instalado ou desativado"), reparar: constante("planejado") },
+    obs: { rotulo: "Observações", esquema: texto(LIMITES.obsRack), reparar: truncar(LIMITES.obsRack) }
+  };
+  var CAMPOS_ITEM_RACK = {
+    id: { rotulo: "id", esquema: texto(LIMITES.id, true), reparar: null },
+    nome: { rotulo: "Nome", esquema: texto(LIMITES.textoRack, true), reparar: textoReparado(LIMITES.textoRack) },
+    categoria: { rotulo: "Categoria", esquema: ESQUEMA_CATEGORIA_RACK, reparar: constante("personalizado") },
+    fabricante: { rotulo: "Fabricante", esquema: texto(40), reparar: truncar(40) },
+    modelo: { rotulo: "Modelo", esquema: texto(LIMITES.modelo), reparar: truncar(LIMITES.modelo) },
+    u: { rotulo: "U inicial", esquema: inteiro(1, LIMITES.alturaRackMax), reparar: null },
+    alturaU: { rotulo: "Altura (U)", esquema: inteiro(1, LIMITES.alturaRackMax, 1), reparar: constante(1) },
+    face: { rotulo: "Face", esquema: enumTolerante(FACES_RACK, { traseira: "tras", frontal: "frente", total: "ambas" }, "ambas", "use ambas, frente ou tras"), reparar: constante("ambas") },
+    cor: { rotulo: "Cor", esquema: corOpcional(), reparar: constante("") },
+    patrimonio: { rotulo: "Patrimônio", esquema: texto(40), reparar: truncar(40) },
+    portas: { rotulo: "Portas", esquema: inteiro(0, LIMITES.portasPorItem, 0), reparar: constante(0) },
+    tipoPorta: { rotulo: "Tipo de porta", esquema: texto(30), reparar: truncar(30) },
+    prefixoPorta: { rotulo: "Prefixo das portas", esquema: texto(15), reparar: truncar(15) },
+    largura: { rotulo: "Largura", esquema: texto(20), reparar: truncar(20) },
+    profundidade: { rotulo: "Profundidade", esquema: texto(20), reparar: truncar(20) },
+    estado: { rotulo: "Estado", esquema: enumTolerante(ESTADOS_ITEM_RACK, { "a remover": "remover", removido: "remover" }, "instalado", "use instalado, planejado ou remover"), reparar: constante("instalado") },
+    obs: { rotulo: "Observações", esquema: texto(LIMITES.obsRack), reparar: truncar(LIMITES.obsRack) },
+    // Opcional: equipamento do diagrama lógico que este item representa.
+    equipId: { rotulo: "Equipamento do diagrama", esquema: texto(LIMITES.id), opcional: true }
+  };
+  var CAMPOS_CABO_RACK = {
+    id: { rotulo: "id", esquema: texto(LIMITES.id, true), reparar: null },
+    deItem: { rotulo: "Origem", esquema: texto(LIMITES.id, true), reparar: null },
+    dePorta: { rotulo: "Porta de origem", esquema: inteiro(1, LIMITES.portasPorItem), reparar: null },
+    paraItem: { rotulo: "Destino", esquema: texto(LIMITES.id, true), reparar: null },
+    paraPorta: { rotulo: "Porta de destino", esquema: inteiro(1, LIMITES.portasPorItem), reparar: null },
+    tipo: { rotulo: "Tipo de cabo", esquema: enumTolerante(TIPOS_CABO_RACK, { cabo: "rede", utp: "rede", "cabo de rede": "rede", "fibra optica": "fibra", "cordao optico": "cordao", eletrica: "energia" }, "rede", "use rede, fibra, cordao, energia ou outro"), reparar: constante("rede") },
+    etiqueta: { rotulo: "Identificação", esquema: texto(40), reparar: truncar(40) },
+    comprimento: { rotulo: "Comprimento", esquema: texto(20), reparar: truncar(20) },
+    cor: { rotulo: "Cor", esquema: corOpcional(), reparar: constante("") },
+    obs: { rotulo: "Observações", esquema: texto(LIMITES.obsRack), reparar: truncar(LIMITES.obsRack) }
+  };
+
+  function facesConflitam(a, b) {
+    return !((a === "frente" && b === "tras") || (a === "tras" && b === "frente"));
+  }
+  // Regra física de uma posição. item: { u, alturaU, face }; ignorarId: o próprio
+  // item ao mover. Retorna { ok, motivo, conflito } (conflito = item que já está lá).
+  function verificarPosicaoRack(rack, item, ignorarId) {
+    var u = Number(item.u), h = Number(item.alturaU), alturaRack = Number(rack.alturaU);
+    if (!(h >= 1)) return { ok: false, motivo: "a altura precisa ser de pelo menos 1U" };
+    if (!(u >= 1)) return { ok: false, motivo: "a posição mínima é U1" };
+    if (u + h - 1 > alturaRack) return { ok: false, motivo: "passa do topo do rack (U" + (u + h - 1) + " num rack de " + alturaRack + "U)" };
+    var face = item.face || "ambas";
+    var lista = rack.itens || [];
+    for (var i = 0; i < lista.length; i++) {
+      var outro = lista[i];
+      if (outro.id === ignorarId) continue;
+      var inicio = Math.max(u, outro.u), fim = Math.min(u + h - 1, outro.u + outro.alturaU - 1);
+      if (inicio <= fim && facesConflitam(face, outro.face || "ambas")) {
+        return { ok: false, conflito: outro, motivo: "U" + inicio + (fim > inicio ? "–U" + fim : "") + " já está ocupada por \"" + outro.nome + "\"" };
+      }
+    }
+    return { ok: true };
+  }
+  // Ocupação por U: { 1: [itens], ... } e totais (U com algo na frente ou atrás conta como ocupada).
+  function ocupacaoRack(rack) {
+    var porU = {}, ocupadas = 0;
+    for (var u = 1; u <= rack.alturaU; u++) porU[u] = [];
+    (rack.itens || []).forEach(function (it) {
+      for (var k = it.u; k < it.u + it.alturaU && k <= rack.alturaU; k++) if (porU[k]) porU[k].push(it);
+    });
+    Object.keys(porU).forEach(function (k) { if (porU[k].length) ocupadas++; });
+    return { porU: porU, ocupadas: ocupadas, livres: rack.alturaU - ocupadas, total: rack.alturaU };
+  }
+
+  function validarRacks(racksBrutos, cabosBrutos, modo, relatorio) {
+    var falha = function (onde, mensagem) { (modo === "reparar" ? relatorio.ajustes : relatorio.erros).push({ onde: onde, mensagem: mensagem }); };
+    if (racksBrutos == null) racksBrutos = [];
+    if (cabosBrutos == null) cabosBrutos = [];
+    if (!Array.isArray(racksBrutos)) { falha("racks", "precisa ser uma lista"); racksBrutos = []; }
+    if (!Array.isArray(cabosBrutos)) { falha("cabosRack", "precisa ser uma lista"); cabosBrutos = []; }
+    if (racksBrutos.length > LIMITES.racks) { falha("racks", "máximo de " + LIMITES.racks + " racks por projeto"); racksBrutos = racksBrutos.slice(0, LIMITES.racks); }
+    var racks = [], idsRack = {}, itensPorId = {};
+    racksBrutos.forEach(function (bruto, i) {
+      var onde = "Rack " + (i + 1) + (ehObjeto(bruto) && bruto.nome ? " (" + String(bruto.nome).slice(0, 30) + ")" : "");
+      if (!ehObjeto(bruto)) { falha(onde, "precisa ser um objeto"); return; }
+      var r = validarCampos(bruto, CAMPOS_RACK, modo, onde, relatorio);
+      if (!r) return;
+      if (idsRack[r.id]) { falha(onde + " › id", '"' + r.id + '" repetido'); return; }
+      idsRack[r.id] = true;
+      var itensBrutos = Array.isArray(bruto.itens) ? bruto.itens : [];
+      if (bruto.itens != null && !Array.isArray(bruto.itens)) falha(onde + " › itens", "precisa ser uma lista");
+      if (itensBrutos.length > LIMITES.itensPorRack) { falha(onde + " › itens", "máximo de " + LIMITES.itensPorRack + " equipamentos por rack"); itensBrutos = itensBrutos.slice(0, LIMITES.itensPorRack); }
+      r.itens = [];
+      itensBrutos.forEach(function (itBruto, j) {
+        var ondeItem = onde + " › equipamento " + (j + 1) + (ehObjeto(itBruto) && itBruto.nome ? " (" + String(itBruto.nome).slice(0, 30) + ")" : "");
+        if (!ehObjeto(itBruto)) { falha(ondeItem, "precisa ser um objeto"); return; }
+        var it = validarCampos(itBruto, CAMPOS_ITEM_RACK, modo, ondeItem, relatorio);
+        if (!it) return;
+        if (itensPorId[it.id]) { falha(ondeItem + " › id", '"' + it.id + '" repetido'); return; }
+        var pos = verificarPosicaoRack(r, it);
+        if (!pos.ok) { falha(ondeItem, pos.motivo + (modo === "reparar" ? " — retirado do rack" : "")); return; }
+        itensPorId[it.id] = { item: it, rack: r };
+        r.itens.push(it);
+      });
+      racks.push(r);
+    });
+
+    if (cabosBrutos.length > LIMITES.cabosRack) { falha("cabosRack", "máximo de " + LIMITES.cabosRack + " cabos físicos"); cabosBrutos = cabosBrutos.slice(0, LIMITES.cabosRack); }
+    var cabos = [], idsCabo = {}, portasUsadas = {};
+    cabosBrutos.forEach(function (bruto, i) {
+      var onde = "Cabo físico " + (i + 1) + (ehObjeto(bruto) && bruto.etiqueta ? " (" + String(bruto.etiqueta).slice(0, 30) + ")" : "");
+      if (!ehObjeto(bruto)) { falha(onde, "precisa ser um objeto"); return; }
+      var c = validarCampos(bruto, CAMPOS_CABO_RACK, modo, onde, relatorio);
+      if (!c) return;
+      if (idsCabo[c.id]) { falha(onde + " › id", '"' + c.id + '" repetido'); return; }
+      var problema = null;
+      [["de", c.deItem, c.dePorta], ["para", c.paraItem, c.paraPorta]].some(function (ponta) {
+        var ref = itensPorId[ponta[1]];
+        if (!ref) { problema = (ponta[0] === "de" ? "origem" : "destino") + " não existe em nenhum rack"; return true; }
+        if (ponta[2] > ref.item.portas) { problema = "\"" + ref.item.nome + "\" não tem a porta " + ponta[2] + " (tem " + ref.item.portas + ")"; return true; }
+        if (portasUsadas[ponta[1] + "#" + ponta[2]]) { problema = "a porta " + ponta[2] + " de \"" + ref.item.nome + "\" já tem outro cabo"; return true; }
+        return false;
+      });
+      if (!problema && c.deItem === c.paraItem && c.dePorta === c.paraPorta) problema = "origem e destino são a mesma porta";
+      if (problema) { falha(onde, problema + (modo === "reparar" ? " — cabo descartado" : "")); return; }
+      portasUsadas[c.deItem + "#" + c.dePorta] = true;
+      portasUsadas[c.paraItem + "#" + c.paraPorta] = true;
+      idsCabo[c.id] = true;
+      cabos.push(c);
+    });
+    return { racks: racks, cabos: cabos };
+  }
+
+  // Só a parte física (usado pelo editor de racks antes de gravar).
+  function validarRacksDoProjeto(racks, cabos) {
+    var relatorio = { erros: [], ajustes: [] };
+    var r = validarRacks(racks, cabos, "estrito", relatorio);
+    return { ok: relatorio.erros.length === 0, dados: r, erros: relatorio.erros };
+  }
+
+
   global.GrafoEsquema = {
+    CATEGORIAS_RACK: CATEGORIAS_RACK,
+    STATUS_RACK: STATUS_RACK,
+    ESTADOS_ITEM_RACK: ESTADOS_ITEM_RACK,
+    FACES_RACK: FACES_RACK,
+    TIPOS_CABO_RACK: TIPOS_CABO_RACK,
+    verificarPosicaoRack: verificarPosicaoRack,
+    ocupacaoRack: ocupacaoRack,
+    validarRacksDoProjeto: validarRacksDoProjeto,
     LIMITES: LIMITES,
     ipValido: ipValido,
     normalizarCapacidade: normalizarCapacidade,

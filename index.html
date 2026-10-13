@@ -150,6 +150,9 @@
             <label class="modo-opcao"><input type="radio" name="modoProjeto" value="monitoramento">
               <span class="modo-icone" data-modo="monitoramento" aria-hidden="true"></span>
               <strong>Monitoramento</strong><small>Status de cada equipamento, com cores.</small></label>
+            <label class="modo-opcao"><input type="radio" name="modoProjeto" value="racks">
+              <span class="modo-icone" data-modo="racks" aria-hidden="true"></span>
+              <strong>Bayface de Racks</strong><small>Disposição física: racks, U ocupadas e livres.</small></label>
           </fieldset>
           <p class="nav-dica">Dá para trocar depois, na barra do diagrama.</p>
           <div class="nav-panel-message" id="novoProjetoMensagem" aria-live="polite"></div>
@@ -473,7 +476,7 @@
       </div>
 
       <nav class="nav" aria-label="Menu principal">
-        <div class="nav-section">
+        <div class="nav-section so-diagrama">
           <button class="nav-label" type="button" aria-expanded="true">Equipamentos</button>
           <button class="nav-item" type="button" data-nav-panel="navAddEquip" data-icon="adicionar" title="Adicionar equipamento">Adicionar equipamento</button>
           <div class="nav-panel" id="navAddEquip">
@@ -499,7 +502,7 @@
           </div>
         </div>
 
-        <div class="nav-section">
+        <div class="nav-section so-diagrama">
           <button class="nav-label" type="button" aria-expanded="true">Cabeamento</button>
           <button class="nav-item" type="button" data-nav-panel="navAddCable" data-icon="cabo" title="Adicionar cabeamento">Adicionar cabeamento</button>
           <div class="nav-panel" id="navAddCable">
@@ -526,7 +529,7 @@
           
         </div>
 
-        <div class="nav-section">
+        <div class="nav-section so-diagrama">
           <button class="nav-label" type="button" aria-expanded="true">Diagrama</button>
           <button class="nav-item" id="btnModoAvancado" type="button" data-icon="lista" title="Abre a lista de equipamentos e cabos para editar vários de uma vez">Editar em lista</button>
           <button class="nav-item" type="button" data-nav-action="export-diagram" data-icon="imagem" title="Exportar diagrama">Exportar diagrama</button>
@@ -783,6 +786,7 @@
                 <option value="topologia">Topologia</option>
                 <option value="redes">Diagrama de redes</option>
                 <option value="monitoramento">Monitoramento</option>
+                <option value="racks">Bayface de Racks</option>
               </select>
               <span class="contador-equip" id="contadorEquip" role="status" aria-live="polite" title="Equipamentos no diagrama (máximo 35)">0/35</span>
             </div>
@@ -877,6 +881,8 @@
           </div>
           <div class="canvas-wrap vazio" id="canvas"></div>
           <div class="legenda" id="legenda"></div>
+          <!-- Bayface de Racks (recursos/racks.js): aparece no lugar do diagrama. -->
+          <div class="racks-app" id="racksApp" hidden></div>
         </section>
       </main>
     </div>
