@@ -119,7 +119,7 @@
     p.push('<g class="rk-rack" font-family="Helvetica, Arial, sans-serif">');
     // Estrutura: laterais (trilhos) e topo/base.
     p.push('<rect x="' + x0 + '" y="' + y0 + '" width="' + larguraRack + '" height="' + altura + '" rx="4" fill="#2B2F36" stroke="#1A1D22"/>');
-    p.push('<rect x="' + xi + '" y="' + (y0 + BORDA) + '" width="' + wi + '" height="' + (UH * rack.alturaU) + '" fill="#E9EDF1"/>');
+    p.push('<rect class="rk-interior" x="' + xi + '" y="' + (y0 + BORDA) + '" width="' + wi + '" height="' + (UH * rack.alturaU) + '" fill="#E9EDF1"/>');
     // Unidades: numeração dos dois lados e linhas guia.
     var oc = E.ocupacaoRack(rack);
     for (var u = 1; u <= rack.alturaU; u++) {
@@ -134,7 +134,7 @@
         p.push('<rect x="' + (x0 + TRILHO - 7) + '" y="' + (yf - 1.5) + '" width="4" height="3" fill="#5A626C"/><rect x="' + (xi + wi + 3) + '" y="' + (yf - 1.5) + '" width="4" height="3" fill="#5A626C"/>');
       }
       if (!ocupadaAqui) {
-        p.push('<rect class="rk-u-livre" data-u="' + u + '" x="' + (xi + 1) + '" y="' + (y + 1) + '" width="' + (wi - 2) + '" height="' + (UH - 2) + '" fill="' + (sel.u === u && !exportar && sel.rack === rack.id ? "#CDE8D6" : "#F6F8FA") + '" stroke="#C8D0D8" stroke-dasharray="3 3"/>');
+        p.push('<rect class="rk-u-livre' + (sel.u === u && !exportar && sel.rack === rack.id ? " rk-u-sel" : "") + '" data-u="' + u + '" x="' + (xi + 1) + '" y="' + (y + 1) + '" width="' + (wi - 2) + '" height="' + (UH - 2) + '" fill="' + (sel.u === u && !exportar && sel.rack === rack.id ? "#CDE8D6" : "#F6F8FA") + '" stroke="#C8D0D8" stroke-dasharray="3 3"/>');
       }
     }
     // Itens da face pedida; os da outra face aparecem só como contorno (ocupação).
@@ -218,7 +218,7 @@
           var portaOutro = a ? cb.paraPorta : cb.dePorta;
           var texto = outro ? outro.rack.nome + " / " + outro.item.nome + " p" + portaOutro : "?";
           p.push('<path d="M' + ponta.x + ' ' + ponta.y + ' H' + xc + '" fill="none" stroke="' + cor + '" stroke-width="1.6"/>');
-          p.push('<text x="' + (xc + 4) + '" y="' + (ponta.y + 3) + '" font-size="8" fill="#3A4652">' + esc("> " + texto.slice(0, 32)) + '</text>');
+          p.push('<text class="rk-cabo-rotulo" x="' + (xc + 4) + '" y="' + (ponta.y + 3) + '" font-size="8" fill="#3A4652">' + esc("> " + texto.slice(0, 32)) + '</text>');
         }
       });
     }
@@ -226,7 +226,7 @@
     return { svg: p.join(""), largura: larguraTotal, altura: altura, UH: UH, topoU: topoU };
   }
 
-  var DEFS = '<defs><pattern id="rk-hachura" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#EEF1F4"/><line x1="0" y1="0" x2="0" y2="6" stroke="#C3CAD1" stroke-width="2"/></pattern></defs>';
+  var DEFS = '<defs><pattern id="rk-hachura" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect class="rk-hachura-fundo" width="6" height="6" fill="#EEF1F4"/><line x1="0" y1="0" x2="0" y2="6" stroke="#C3CAD1" stroke-width="2"/></pattern></defs>';
 
   // ---- montagem da interface ---------------------------------------------------
   raiz.innerHTML =
@@ -327,7 +327,7 @@
     ultimoDesenho = d;
     var largura = d.largura + 40, altura = d.altura + 40;
     elPalco.innerHTML = '<svg class="rk-svg" xmlns="http://www.w3.org/2000/svg" width="' + largura + '" height="' + altura + '" viewBox="0 0 ' + largura + ' ' + altura + '">' + DEFS +
-      '<text x="20" y="16" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#4A5560">' + (vista.face === "frente" ? "Vista frontal" : "Vista traseira") + '</text>' +
+      '<text class="rk-legenda" x="20" y="16" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#4A5560">' + (vista.face === "frente" ? "Vista frontal" : "Vista traseira") + '</text>' +
       d.svg + '<rect class="rk-fantasma" x="0" y="0" width="0" height="0" visibility="hidden"/></svg>';
   }
 

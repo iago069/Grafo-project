@@ -149,6 +149,11 @@ test("bayface: arrastar da biblioteca e tela estreita", async () => {
   await pagina.click('.rk-peca[data-categoria="dwdm"]');
   await pagina.waitForFunction(() => /instalado em U20–U21/.test(document.querySelector(".rk-msg").textContent));
   // Sem rolagem horizontal da página em tela menor.
-  assert.equal(await pagina.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), true);
+  const sobra = await pagina.evaluate(() => {
+    if (document.documentElement.scrollWidth <= window.innerWidth + 1) return [];
+    return [...document.querySelectorAll("body *")].filter(e => e.getBoundingClientRect().right > window.innerWidth + 1 && getComputedStyle(e).position !== "fixed")
+      .slice(0, 5).map(e => (e.id || String(e.className && e.className.baseVal != null ? e.className.baseVal : e.className)).slice(0, 40) + " " + Math.round(e.getBoundingClientRect().right));
+  });
+  assert.deepEqual(sobra, [], "sem rolagem horizontal da página");
   assert.deepEqual(pagina.erros, []);
 });
