@@ -158,6 +158,17 @@ test("bayface: arrastar da biblioteca e tela estreita", async () => {
   await pagina.click('[data-rk="fotos"]');
   assert.equal(await pagina.locator(".rk-svg image.rk-foto").count(), 0, "botão Fotos esconde");
   await pagina.click('[data-rk="fotos"]');
+  // Catálogo de modelos reais: busca, clique instala com fabricante, modelo, altura e portas.
+  await pagina.fill("[data-rk-busca-modelo]", "r720xd");
+  await pagina.click('.rk-modelos .rk-peca');
+  await pagina.waitForFunction(() => /PowerEdge R720xd 1 instalado/.test(document.querySelector(".rk-msg").textContent));
+  const r720 = await pagina.evaluate(() => window.GrafoRacks.dados().racks[0].itens.find(i => i.modelo === "PowerEdge R720xd"));
+  assert.equal(r720.fabricante, "Dell"); assert.equal(r720.alturaU, 2); assert.equal(r720.categoria, "servidor");
+  await pagina.fill("[data-rk-busca-modelo]", "");
+  // Nomes ao lado do rack, com seta (estilo planta de datacenter).
+  await pagina.click('[data-rk="nomes"]');
+  assert.equal(await pagina.locator(".rk-svg .rk-nome-lado").count(), 3);
+  await pagina.click('[data-rk="nomes"]');
   // Sem rolagem horizontal da página em tela menor.
   const sobra = await pagina.evaluate(() => {
     if (document.documentElement.scrollWidth <= window.innerWidth + 1) return [];

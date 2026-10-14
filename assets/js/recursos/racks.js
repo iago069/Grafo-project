@@ -19,7 +19,7 @@
   var CORES = {
     servidor: "#3B4A5A", switch: "#2F5D8A", roteador: "#2E6E5E", olt: "#5B4B8A", dio: "#7A6A3A", patch: "#4A5560",
     organizador: "#2B2F33", bandeja: "#6B7177", "bandeja-deslizante": "#6B7177", pdu: "#8A3B3B", nobreak: "#3E4A3A",
-    dwdm: "#285E73", telecom: "#55606B", cego: "#1F2328", personalizado: "#4D5966"
+    dwdm: "#285E73", telecom: "#55606B", storage: "#46506E", firewall: "#8A4B2E", cego: "#1F2328", personalizado: "#4D5966"
   };
   var CORES_CABO = { rede: "#2F80ED", fibra: "#F2C94C", cordao: "#F2994A", energia: "#D64545", outro: "#8E44AD" };
   var NOMES_CABO = { rede: "Cabo de rede", fibra: "Fibra óptica", cordao: "Cordão óptico", energia: "Energia", outro: "Outro" };
@@ -33,9 +33,9 @@
   var destaque = null, timerDestaque = null;
   function destacar(id) { destaque = id; clearTimeout(timerDestaque); timerDestaque = setTimeout(function () { destaque = null; }, 1500); }
   var sel = { rack: null, item: null, u: null };
-  var vista = { face: "frente", inverter: false, zoom: 1, cabos: "todos", busca: "", fotos: true };
+  var vista = { face: "frente", inverter: false, zoom: 1, cabos: "todos", busca: "", fotos: true, nomes: false };
   try { Object.assign(vista, JSON.parse(localStorage.getItem("grafo-racks-vista") || "{}"), { busca: "" }); } catch (e) {}
-  function guardarVista() { try { localStorage.setItem("grafo-racks-vista", JSON.stringify({ face: vista.face, inverter: vista.inverter, zoom: vista.zoom, cabos: vista.cabos, fotos: vista.fotos })); } catch (e) {} }
+  function guardarVista() { try { localStorage.setItem("grafo-racks-vista", JSON.stringify({ face: vista.face, inverter: vista.inverter, zoom: vista.zoom, cabos: vista.cabos, fotos: vista.fotos, nomes: vista.nomes })); } catch (e) {} }
 
   // ---- utilidades ------------------------------------------------------------
   function esc(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -107,11 +107,12 @@
     var face = opcoes.face || "frente";
     var inverter = !!opcoes.inverter;
     var exportar = !!opcoes.exportar;
-    var x0 = opcoes.x || 0, y0 = opcoes.y || 0;
+    var MARGEM_NOMES = opcoes.nomesAoLado ? 200 : 0;
+    var x0 = (opcoes.x || 0) + MARGEM_NOMES, y0 = opcoes.y || 0;
     var larguraRack = TRILHO * 2 + LARGURA_19;
     var altura = BORDA * 2 + UH * rack.alturaU;
     var canal = larguraRack + 10;   // cabos que voltam pela lateral direita
-    var larguraTotal = larguraRack + (opcoes.semCanal ? 0 : 150);
+    var larguraTotal = larguraRack + (opcoes.semCanal ? 0 : 150) + MARGEM_NOMES;
     var alturaDesenho = altura;
     function topoU(u) { return y0 + BORDA + (inverter ? (u - 1) : (rack.alturaU - u)) * UH; }
     function topoItem(it) { return inverter ? topoU(it.u) : topoU(it.u + it.alturaU - 1); }
@@ -142,7 +143,7 @@
     // equipamentos e aparecerem saindo pela lateral, sem cruzar as outras portas.
     var posicaoDosCabos = p.length;
     // Itens da face pedida; os da outra face aparecem só como contorno (ocupação).
-    var portasPos = {};
+    var portasPos = {}, nomesLado = [];
     (rack.itens || []).slice().sort(function (a, b) { return a.u - b.u; }).forEach(function (it) {
       var cat = CATEGORIAS[it.categoria] || CATEGORIAS.personalizado;
       var y = topoItem(it), h = it.alturaU * UH;
@@ -154,6 +155,7 @@
           '<text x="' + (xi + wi / 2) + '" y="' + (y + h / 2 + 3.5) + '" font-size="9" fill="#5A626C" text-anchor="middle">' + esc((face === "frente" ? "Atrás: " : "Na frente: ") + it.nome) + '</text></g>');
         return;
       }
+      nomesLado.push({ y: y + h / 2, texto: it.nome });
       var fundo = it.cor || CORES[it.categoria] || CORES.personalizado;
       var tracejado = it.estado === "planejado" ? ' stroke-dasharray="6 3"' : "";
       p.push('<g class="rk-item' + (!exportar && destaque === it.id ? " rk-novo" : "") + '" data-item="' + esc(it.id) + '">');
@@ -256,6 +258,19 @@
       // Etiquetas que passam da base do rack aumentam a altura do desenho.
       if (saidas.length) alturaDesenho = Math.max(alturaDesenho, ultimaY + 10 - y0);
     }
+    // Nomes ao lado (como nas plantas de datacenter): à esquerda, com seta até o equipamento.
+    if (MARGEM_NOMES) {
+      var ultimoNome = -Infinity;
+      nomesLado.sort(function (m, n) { return m.y - n.y; }).forEach(function (n) {
+        var yn = Math.max(n.y, ultimoNome + 12);
+        ultimoNome = yn;
+        var t = n.texto.length > 30 ? n.texto.slice(0, 28) + "..." : n.texto;
+        p.push('<path class="rk-nome-seta" d="M' + (x0 - 12) + ' ' + yn + ' L' + (x0 - 4) + ' ' + yn + ' L' + (xi - 7) + ' ' + n.y + '" fill="none" stroke="#3A4652" stroke-width="1"/>');
+        p.push('<path d="M' + (xi - 7) + ' ' + n.y + ' l-6 -3 v6 z" fill="#3A4652"/>');
+        p.push('<text class="rk-nome-lado" x="' + (x0 - 15) + '" y="' + (yn + 3.5) + '" font-size="10" fill="#3A4652" text-anchor="end">' + esc(t) + '</text>');
+      });
+      if (nomesLado.length) alturaDesenho = Math.max(alturaDesenho, ultimoNome + 10 - y0);
+    }
     p.push('</g>');
     return { svg: p.join(""), largura: larguraTotal, altura: alturaDesenho, UH: UH, topoU: topoU };
   }
@@ -270,8 +285,10 @@
           '<input type="search" class="rk-busca" placeholder="Buscar rack ou equipamento" aria-label="Buscar rack ou equipamento" data-rk-busca>' +
           '<div class="rk-lista" data-rk-lista></div></div>' +
         '<div class="rk-bloco"><div class="rk-cabecalho"><strong>Biblioteca</strong></div>' +
+          '<input type="search" class="rk-busca" placeholder="Buscar modelo (ex.: R720, MX204, DIO)" aria-label="Buscar modelo de equipamento" data-rk-busca-modelo>' +
+          '<div class="rk-biblioteca rk-modelos" data-rk-modelos></div>' +
           '<div class="rk-biblioteca" data-rk-biblioteca></div>' +
-          '<p class="rk-dica">Arraste para o rack, ou clique numa U livre e escolha a categoria.</p></div>' +
+          '<p class="rk-dica">Arraste para o rack, ou clique numa U livre e escolha o modelo ou a categoria.</p></div>' +
       '</aside>' +
       '<section class="rk-centro" aria-label="Rack">' +
         '<div class="rk-barra">' +
@@ -279,6 +296,7 @@
           '<div class="rk-grupo" role="group" aria-label="Face">' +
             '<button type="button" class="ghost small" data-rk-face="frente">Frente</button><button type="button" class="ghost small" data-rk-face="tras">Traseira</button></div>' +
           '<button type="button" class="ghost small" data-rk="inverter" title="Inverter a orientação na tela (U1 continua sendo a de baixo no rack)">U1 embaixo</button>' +
+          '<button type="button" class="ghost small" data-rk="nomes" title="Nomes dos equipamentos ao lado do rack, com seta">Nomes ao lado</button>' +
           '<button type="button" class="ghost small" data-rk="fotos" title="Mostrar ou esconder as fotos reais dos equipamentos">Fotos</button>' +
           '<div class="rk-grupo" role="group" aria-label="Zoom"><button type="button" class="ghost small" data-rk="zoom-menos" aria-label="Reduzir">−</button><span data-rk-zoom>100%</span><button type="button" class="ghost small" data-rk="zoom-mais" aria-label="Ampliar">+</button></div>' +
           '<label class="rk-filtro">Cabos <select data-rk-cabos><option value="todos">Todos</option><option value="ocultos">Ocultos</option>' +
@@ -302,6 +320,44 @@
   var elBusca = raiz.querySelector("[data-rk-busca]");
   var elCabos = raiz.querySelector("[data-rk-cabos]");
 
+  var elModelos = raiz.querySelector("[data-rk-modelos]");
+  var MODELOS = E.MODELOS_RACK || [];
+  function semAcento(t) { return String(t).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); }
+  function renderModelos(termo) {
+    var q = semAcento(termo || "").trim();
+    if (!q) { elModelos.innerHTML = ""; elModelos.hidden = true; return; }
+    var achados = [];
+    MODELOS.forEach(function (m, i) { if (semAcento(m.fabricante + " " + m.modelo + " " + (CATEGORIAS[m.categoria] || {}).rotulo).indexOf(q) >= 0) achados.push(i); });
+    elModelos.hidden = false;
+    elModelos.innerHTML = achados.length ? achados.slice(0, 12).map(function (i) {
+      var m = MODELOS[i], c = CATEGORIAS[m.categoria];
+      return '<button type="button" class="rk-peca" draggable="true" data-modelo="' + i + '" title="' + esc(m.fabricante + " " + m.modelo + " · " + m.altura + "U · " + m.portas + "x " + m.tipoPorta) + '">' +
+        '<span class="rk-sigla" style="background:' + CORES[m.categoria] + '">' + esc(c.sigla) + '</span><span>' + esc(m.fabricante + " " + m.modelo) + '</span><small>' + m.altura + 'U</small></button>';
+    }).join("") : '<p class="rk-dica">Nenhum modelo. Use uma categoria abaixo e preencha o modelo.</p>';
+  }
+  renderModelos("");
+  raiz.querySelector("[data-rk-busca-modelo]").addEventListener("input", function (ev) { renderModelos(ev.target.value); });
+  // Peça da biblioteca (categoria ou modelo) -> dados para instalar.
+  function pecaPorChave(chave) {
+    if (!chave) return null;
+    if (chave.indexOf("m:") === 0) {
+      var m = MODELOS[Number(chave.slice(2))];
+      if (!m) return null;
+      return { altura: m.altura, categoria: m.categoria, nome: m.modelo, base: { categoria: m.categoria, fabricante: m.fabricante, modelo: m.modelo, alturaU: m.altura, portas: m.portas, tipoPorta: m.tipoPorta } };
+    }
+    var c = CATEGORIAS[chave];
+    return c ? { altura: c.altura, categoria: c.valor, nome: c.rotulo, base: { categoria: c.valor } } : null;
+  }
+  function chaveDaPeca(el) {
+    var peca = el.closest("[data-categoria],[data-modelo]");
+    if (!peca) return null;
+    return peca.hasAttribute("data-modelo") ? "m:" + peca.getAttribute("data-modelo") : peca.getAttribute("data-categoria");
+  }
+  function instalarPeca(rack, pc, u) {
+    var n = (rack.itens || []).filter(function (x) { return pc.base.modelo ? x.modelo === pc.base.modelo : x.categoria === pc.categoria; }).length + 1;
+    adicionarItem(rack, Object.assign({}, pc.base, { u: u, nome: pc.nome + " " + n }));
+  }
+
   elBiblioteca.innerHTML = E.CATEGORIAS_RACK.map(function (c) {
     return '<button type="button" class="rk-peca" draggable="true" data-categoria="' + c.valor + '" title="' + esc(c.rotulo + " · " + c.altura + "U") + '">' +
       '<span class="rk-sigla" style="background:' + CORES[c.valor] + '">' + esc(c.sigla) + '</span><span>' + esc(c.rotulo) + '</span><small>' + c.altura + 'U</small></button>';
@@ -322,6 +378,9 @@
     renderProps();
     raiz.querySelectorAll("[data-rk-face]").forEach(function (b) { b.classList.toggle("ativo", b.getAttribute("data-rk-face") === vista.face); b.setAttribute("aria-pressed", String(b.getAttribute("data-rk-face") === vista.face)); });
     raiz.querySelector('[data-rk="inverter"]').textContent = vista.inverter ? "U1 em cima" : "U1 embaixo";
+    var botaoNomes = raiz.querySelector('[data-rk="nomes"]');
+    botaoNomes.classList.toggle("ativo", vista.nomes);
+    botaoNomes.setAttribute("aria-pressed", String(vista.nomes));
     var botaoFotos = raiz.querySelector('[data-rk="fotos"]');
     botaoFotos.classList.toggle("ativo", vista.fotos);
     botaoFotos.setAttribute("aria-pressed", String(vista.fotos));
@@ -361,7 +420,7 @@
     }
     var oc = E.ocupacaoRack(rack);
     elTitulo.innerHTML = '<strong>' + esc(rack.nome) + '</strong> <span>' + oc.ocupadas + '/' + rack.alturaU + 'U ocupadas · ' + oc.livres + ' livres (' + Math.round(oc.ocupadas / rack.alturaU * 100) + '%)</span>';
-    var d = desenharRack(rack, { zoom: vista.zoom, face: vista.face, inverter: vista.inverter, cabos: vista.cabos, fotos: vista.fotos, x: 20, y: 24 });
+    var d = desenharRack(rack, { zoom: vista.zoom, face: vista.face, inverter: vista.inverter, cabos: vista.cabos, fotos: vista.fotos, nomesAoLado: vista.nomes, x: 20, y: 24 });
     ultimoDesenho = d;
     var largura = d.largura + 40, altura = d.altura + 40;
     elPalco.innerHTML = '<svg class="rk-svg" xmlns="http://www.w3.org/2000/svg" width="' + largura + '" height="' + altura + '" viewBox="0 0 ' + largura + ' ' + altura + '">' + DEFS +
@@ -411,6 +470,10 @@
     elProps.innerHTML =
       '<h3>Adicionar em U' + u + '</h3>' +
       '<form class="nav-form rk-form" data-rk-form="novo">' +
+        campo("Modelo pronto", '<select name="modeloPronto"><option value="">— escolher depois —</option>' + E.CATEGORIAS_RACK.map(function (c) {
+          var lista = MODELOS.map(function (m, i) { return m.categoria === c.valor ? '<option value="' + i + '">' + esc(m.fabricante + " " + m.modelo + " (" + m.altura + "U)") + '</option>' : ""; }).join("");
+          return lista ? '<optgroup label="' + esc(c.rotulo) + '">' + lista + '</optgroup>' : "";
+        }).join("") + '</select>', "full") +
         campo("Categoria", '<select name="categoria">' + opcoesCategoria("switch") + '</select>', "full") +
         campo("Nome", entrada("nome", "", 'required maxlength="60" placeholder="Ex.: SW-CORE-01"'), "full") +
         '<div class="nav-form-grid">' + campo("Altura (U)", entrada("alturaU", 1, 'type="number" min="1" max="' + rack.alturaU + '" required')) + campo("Face", '<select name="face">' + opcoes(E.FACES_RACK, "ambas", NOMES_FACE) + '</select>') + '</div>' +
@@ -420,6 +483,12 @@
       '</form>';
     var form = elProps.querySelector("form");
     form.categoria.addEventListener("change", function () { form.alturaU.value = CATEGORIAS[form.categoria.value].altura; });
+    form.modeloPronto.addEventListener("change", function () {
+      var m = MODELOS[Number(form.modeloPronto.value)];
+      if (!form.modeloPronto.value || !m) return;
+      form.categoria.value = m.categoria; form.alturaU.value = m.altura; form.fabricante.value = m.fabricante; form.modelo.value = m.modelo;
+      if (!form.nome.value) form.nome.value = m.modelo;
+    });
     form.nome.focus();
   }
 
@@ -617,7 +686,9 @@
         return gravar(racks, dados.cabos, "Rack salvo.");
       });
     } else if (tipo === "novo" && rack) {
-      adicionarItem(rack, { categoria: v.categoria, nome: v.nome, alturaU: v.alturaU, face: v.face, fabricante: v.fabricante, modelo: v.modelo, u: sel.u });
+      var pronto = v.modeloPronto ? MODELOS[Number(v.modeloPronto)] : null;
+      adicionarItem(rack, Object.assign(pronto && pronto.modelo === v.modelo ? { portas: pronto.portas, tipoPorta: pronto.tipoPorta } : {},
+        { categoria: v.categoria, nome: v.nome, alturaU: v.alturaU, face: v.face, fabricante: v.fabricante, modelo: v.modelo, u: sel.u }));
     } else if (tipo === "item") {
       var achado = itemPorId(sel.item);
       if (!achado) return;
@@ -673,6 +744,7 @@
     var achado = sel.item ? itemPorId(sel.item) : null;
     if (acao === "novo-rack") novoRack();
     else if (acao === "inverter") { vista.inverter = !vista.inverter; guardarVista(); render(); }
+    else if (acao === "nomes") { vista.nomes = !vista.nomes; guardarVista(); render(); }
     else if (acao === "fotos") { vista.fotos = !vista.fotos; guardarVista(); render(); }
     else if (acao === "remover-foto" && achado) {
       if (!window.confirm('Remover a foto de "' + achado.item.nome + '"?')) return;
@@ -793,30 +865,31 @@
 
   // Arrastar da biblioteca (HTML5 drag and drop).
   var categoriaArrastada = null;
-  elBiblioteca.addEventListener("dragstart", function (ev) {
-    var peca = ev.target.closest("[data-categoria]");
-    if (!peca) return;
-    categoriaArrastada = peca.getAttribute("data-categoria");
-    ev.dataTransfer.setData("text/plain", categoriaArrastada);
-    ev.dataTransfer.effectAllowed = "copy";
-  });
-  elBiblioteca.addEventListener("dragend", function () { categoriaArrastada = null; mostrarFantasma(null); });
-  elBiblioteca.addEventListener("click", function (ev) {
-    var peca = ev.target.closest("[data-categoria]");
-    var rack = rackAtual();
-    if (!peca || !rack) { if (peca) mensagem("Crie um rack primeiro.", true); return; }
-    var cat = CATEGORIAS[peca.getAttribute("data-categoria")];
-    var u = sel.u && E.verificarPosicaoRack(rack, { u: sel.u, alturaU: cat.altura }).ok ? sel.u : primeiraPosicaoLivre(rack, cat.altura, "ambas", 1);
-    if (u == null) { mensagem("Não há " + cat.altura + "U livres seguidas neste rack.", true); return; }
-    adicionarItem(rack, { categoria: cat.valor, u: u, nome: cat.rotulo + " " + ((rack.itens || []).filter(function (x) { return x.categoria === cat.valor; }).length + 1) });
+  [elBiblioteca, elModelos].forEach(function (lista) {
+    lista.addEventListener("dragstart", function (ev) {
+      var chave = chaveDaPeca(ev.target);
+      if (!chave) return;
+      categoriaArrastada = chave;
+      ev.dataTransfer.setData("text/plain", chave);
+      ev.dataTransfer.effectAllowed = "copy";
+    });
+    lista.addEventListener("dragend", function () { categoriaArrastada = null; mostrarFantasma(null); });
+    lista.addEventListener("click", function (ev) {
+      var pc = pecaPorChave(chaveDaPeca(ev.target));
+      var rack = rackAtual();
+      if (!pc || !rack) { if (pc) mensagem("Crie um rack primeiro.", true); return; }
+      var u = sel.u && E.verificarPosicaoRack(rack, { u: sel.u, alturaU: pc.altura }).ok ? sel.u : primeiraPosicaoLivre(rack, pc.altura, "ambas", 1);
+      if (u == null) { mensagem("Não há " + pc.altura + "U livres seguidas neste rack.", true); return; }
+      instalarPeca(rack, pc, u);
+    });
   });
   function posicaoDeSoltura(ev) {
-    var cat = CATEGORIAS[categoriaArrastada || ev.dataTransfer.getData("text/plain")];
+    var pc = pecaPorChave(categoriaArrastada || ev.dataTransfer.getData("text/plain"));
     var u = uNoPonto(ev.clientY);
-    if (!cat || u == null) return null;
+    if (!pc || u == null) return null;
     // O ponteiro marca o topo do equipamento.
-    var base = vista.inverter ? u : u - cat.altura + 1;
-    return { cat: cat, u: Math.max(1, base) };
+    var base = vista.inverter ? u : u - pc.altura + 1;
+    return { cat: pc, u: Math.max(1, base) };
   }
   elPalco.addEventListener("dragover", function (ev) {
     if (!rackAtual()) return;
@@ -834,7 +907,7 @@
     categoriaArrastada = null;
     var rack = rackAtual();
     if (!p || !rack) return;
-    adicionarItem(rack, { categoria: p.cat.valor, u: p.u, nome: p.cat.rotulo + " " + ((rack.itens || []).filter(function (x) { return x.categoria === p.cat.valor; }).length + 1) });
+    instalarPeca(rack, p.cat, p.u);
   });
 
   // Teclado: setas movem 1U, Delete remove, Esc limpa a seleção.
@@ -856,7 +929,7 @@
   // ---- exportação ------------------------------------------------------------------
   // Página técnica: cabeçalho (projeto, rack, local), o rack e o inventário ao lado.
   function svgDeDocumento(rack, face) {
-    var d = desenharRack(rack, { zoom: 1, face: face || vista.face, inverter: vista.inverter, cabos: vista.cabos, fotos: vista.fotos, x: 30, y: 96, exportar: true });
+    var d = desenharRack(rack, { zoom: 1, face: face || vista.face, inverter: vista.inverter, cabos: vista.cabos, fotos: vista.fotos, nomesAoLado: vista.nomes, x: 30, y: 96, exportar: true });
     var oc = E.ocupacaoRack(rack);
     var xTabela = 30 + d.largura + 30;
     var larguraTabela = 520;

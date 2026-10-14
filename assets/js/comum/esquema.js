@@ -533,6 +533,8 @@
     { valor: "servidor", rotulo: "Servidor", sigla: "SRV", altura: 2, portas: 4, tipoPorta: "RJ45" },
     { valor: "switch", rotulo: "Switch", sigla: "SW", altura: 1, portas: 24, tipoPorta: "RJ45" },
     { valor: "roteador", rotulo: "Roteador", sigla: "RT", altura: 1, portas: 8, tipoPorta: "RJ45" },
+    { valor: "storage", rotulo: "Storage", sigla: "STG", altura: 2, portas: 4, tipoPorta: "SAS" },
+    { valor: "firewall", rotulo: "Firewall", sigla: "FW", altura: 1, portas: 8, tipoPorta: "RJ45" },
     { valor: "olt", rotulo: "OLT", sigla: "OLT", altura: 2, portas: 16, tipoPorta: "PON" },
     { valor: "dio", rotulo: "DIO / distribuidor óptico", sigla: "DIO", altura: 1, portas: 24, tipoPorta: "SC/APC" },
     { valor: "patch", rotulo: "Patch panel", sigla: "PP", altura: 1, portas: 24, tipoPorta: "RJ45" },
@@ -546,6 +548,10 @@
     { valor: "cego", rotulo: "Painel cego", sigla: "PC", altura: 1, portas: 0 },
     { valor: "personalizado", rotulo: "Personalizado", sigla: "EQ", altura: 1, portas: 0 }
   ];
+  // Modelos reais prontos para a biblioteca: fabricante, modelo, categoria, U, portas.
+  var MODELOS_RACK = [["Lenovo","ThinkSystem SR650","servidor",2,4,"RJ45"],["HPE","ProLiant DL380 Gen10","servidor",2,4,"RJ45"],["HPE","ProLiant DL560 Gen11","servidor",2,4,"RJ45"],["HPE","ProLiant DL325 Gen10","servidor",1,4,"RJ45"],["HP","ProLiant DL380p Gen8","servidor",2,4,"RJ45"],["HP","ProLiant DL380 G7","servidor",2,4,"RJ45"],["HP","ProLiant DL385 G7","servidor",2,4,"RJ45"],["HP","ProLiant DL320 G6","servidor",1,2,"RJ45"],["HP","ProLiant DL180 G6","servidor",2,2,"RJ45"],["HP","ProLiant DL160 G6","servidor",1,2,"RJ45"],["HP","ProLiant DL120 G6","servidor",1,2,"RJ45"],["HP","ProLiant ML370 G5","servidor",5,2,"RJ45"],["HP","Compaq dc7700 (SFF)","personalizado",2,1,"RJ45"],["Dell","PowerEdge R740","servidor",2,4,"RJ45"],["Dell","PowerEdge R730","servidor",2,4,"RJ45"],["Dell","PowerEdge R720","servidor",2,4,"RJ45"],["Dell","PowerEdge R720xd","servidor",2,4,"RJ45"],["Dell","PowerEdge R710","servidor",2,4,"RJ45"],["Dell","PowerEdge R620","servidor",1,4,"RJ45"],["Dell","PowerEdge R610","servidor",1,4,"RJ45"],["Dell","PowerEdge R510","servidor",2,2,"RJ45"],["Dell","PowerEdge R420","servidor",1,2,"RJ45"],["Dell","PowerEdge R320","servidor",1,2,"RJ45"],["Supermicro","SYS-6029P-TR","servidor",2,2,"RJ45"],["Supermicro","SuperWorkstation SYS-540A-TR","servidor",4,2,"RJ45"],["Netflix","OCA (Open Connect)","servidor",2,4,"SFP+"],["HPE","Alletra Storage Server 4140","storage",2,4,"SFP+"],["HPE","MSA 2060","storage",2,8,"SFP+"],["HPE","StoreEasy 1450","storage",1,4,"RJ45"],["HP","3PAR StoreServ 8000","storage",2,8,"FC"],["HP","StorageWorks MSL2024","storage",2,2,"SAS"],["HP","StorageWorks P2000 G3","storage",2,4,"FC"],["Dell","PowerVault MD3200","storage",2,4,"SAS"],["Dell","PowerVault MD1400","storage",2,4,"SAS"],["Sophos","XGS 2100","firewall",1,10,"RJ45"],["Datacom","DM4100","switch",1,28,"RJ45"],["Datacom","DM4170 (24GX+4XS)","switch",1,28,"SFP+"],["Datacom","DM4270-48X-6Q","switch",1,54,"SFP+"],["Datacom","DM4270-48X-2Q","switch",1,50,"SFP+"],["Datacom","DM4270-24XS+2CX","switch",1,26,"SFP+"],["Datacom","DM4370","switch",1,32,"SFP28"],["Datacom","DM4001","switch",1,10,"RJ45"],["Datacom","DmSwitch 3000","switch",1,28,"RJ45"],["Juniper","QFX5100-48S","switch",1,54,"SFP+"],["Juniper","QFX5110-48S","switch",1,52,"SFP+"],["Juniper","QFX5120-48Y","switch",1,56,"SFP28"],["Juniper","QFX5120-32C","switch",1,32,"QSFP28"],["Arista","DCS-7280CR3-32D","switch",1,32,"QSFP28"],["Arista","DCS-7160-32CQ-R","switch",1,32,"QSFP28"],["Edgecore","ECS4120-28F","switch",1,28,"SFP"],["Huawei","CloudEngine S5732","switch",1,52,"RJ45"],["Cisco","ME 3600X-24CX-M","switch",1,28,"RJ45"],["D-Link","DES-1210-28","switch",1,28,"RJ45"],["Juniper","MX204","roteador",1,12,"QSFP28"],["MikroTik","CCR2116-12G-4S+","roteador",1,16,"RJ45"],["MikroTik","CCR1036-12G-4S","roteador",1,16,"RJ45"],["MikroTik","CCR1036-8G-2S+","roteador",1,10,"RJ45"],["MikroTik","CCR1009-7G-1C-1S+PC","roteador",1,9,"RJ45"],["MikroTik","RB2011UiAS-RM","roteador",1,10,"RJ45"],["MikroTik","RB1100AHx2","roteador",1,13,"RJ45"],["MikroTik","L009UiGS-RM","roteador",1,9,"RJ45"],["Huawei","SmartAX MA5800-X2","olt",2,32,"PON"],["Parks","Fiberlink 4004E","olt",1,4,"PON"],["Parks","Fiberlink 10008S","olt",1,8,"PON"],["Parks","Fiberlink 30028","olt",1,8,"PON"],["Fibracem","DIO FIT 24F","dio",1,24,"SC/APC"],["Fibracem","DIO FIT AC 48F","dio",1,48,"SC/APC"],["Fibracem","DIO 24Fit X Plus","dio",1,24,"SC/APC"],["Fibracem","DIO Articulado 96F","dio",2,96,"LC"],["Fibracem","DIO Office 36F","dio",1,36,"SC/APC"],["Padtec","LightPad i1600G","dwdm",1,8,"LC"],["Padtec","Subrack LightPad i6400G","dwdm",7,16,"LC"],["Padtec","Muxponder TM800G Lite","dwdm",1,8,"LC"],["XPS","Retificador SR60A -48V","nobreak",3,6,"Disjuntor"],["XPS","Retificador SRF10A -48V","nobreak",1,4,"Disjuntor"],["SVS","7016 R FT","nobreak",2,6,"Tomada"],["iNVU","91128 M4 IAX FT","nobreak",2,6,"Tomada"],["Dígitro","NGC VoIP Manager","telecom",2,4,"RJ45"],["Dígitro","NGC 80 Evolution","telecom",2,8,"E1"],["Intelbras","Impacta 300","telecom",6,16,"RJ11"],["Aligera","AG500 E1","telecom",1,4,"E1"]].map(function (m) {
+    return { fabricante: m[0], modelo: m[1], categoria: m[2], altura: m[3], portas: m[4], tipoPorta: m[5] };
+  });
   var STATUS_RACK = ["planejado", "montagem", "instalado", "desativado"];
   var ESTADOS_ITEM_RACK = ["instalado", "planejado", "remover"];
   var FACES_RACK = ["ambas", "frente", "tras"];
@@ -564,7 +570,7 @@
   var ESQUEMA_CATEGORIA_RACK = enumTolerante(CATEGORIAS_RACK.map(function (c) { return c.valor; }),
     { servidores: "servidor", switches: "switch", roteadores: "roteador", "patch panel": "patch", "patch-panel": "patch",
       organizadores: "organizador", "bandeja fixa": "bandeja", regua: "pdu", "regua de energia": "pdu", ups: "nobreak",
-      "painel cego": "cego", outro: "personalizado" },
+      "painel cego": "cego", outro: "personalizado", storages: "storage", fw: "firewall" },
     "personalizado", "categoria desconhecida");
 
   function textoReparado(max) {
@@ -723,6 +729,7 @@
 
   global.GrafoEsquema = {
     CATEGORIAS_RACK: CATEGORIAS_RACK,
+    MODELOS_RACK: MODELOS_RACK,
     STATUS_RACK: STATUS_RACK,
     ESTADOS_ITEM_RACK: ESTADOS_ITEM_RACK,
     FACES_RACK: FACES_RACK,
