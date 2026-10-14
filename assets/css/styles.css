@@ -1702,3 +1702,18 @@ button.ghost { backdrop-filter: blur(6px); }
 @media (max-width: 1000px) { .landing-recursos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .landing-recursos { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .landing-recurso { animation: none; } }
+
+/* Telas vazias com ilustração. */
+.rk-palco-vazio { padding: 56px 20px; gap: 12px; }
+.rk-palco-vazio h3 { margin: 4px 0 0; color: var(--text); font-size: 1.15rem; letter-spacing: -0.01em; }
+.rk-palco-vazio p { margin: 0 0 6px; max-width: 34ch; line-height: 1.5; }
+.rk-vazio-ilustra { width: 110px; height: auto; filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.35)); animation: rkFlutua 5s ease-in-out infinite; }
+.rkv-moldura { fill: #2A2F37; stroke: #14171B; }
+.rkv-interior { fill: color-mix(in srgb, var(--bg-panel-2), var(--text) 6%); }
+.rkv-eq { fill: #2F5D8A; } .rkv-2 { fill: #2E6E5E; } .rkv-3 { fill: #3B4A5A; }
+.rkv-eq { animation: rkvEntra 0.8s var(--ease-mola) both; } .rkv-2 { animation-delay: 0.15s; } .rkv-3 { animation-delay: 0.3s; }
+.rkv-livre { fill: none; stroke: color-mix(in srgb, var(--text) 25%, transparent); stroke-dasharray: 3 3; }
+.rkv-led { fill: #5fe08f; animation: ledPisca 1.6s ease-in-out infinite; } .rkv-led2 { animation-delay: 0.6s; }
+@keyframes rkFlutua { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes rkvEntra { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .rk-vazio-ilustra, .rkv-eq, .rkv-led { animation: none; } }

@@ -484,7 +484,7 @@
     }
     if (!rack) {
       elTitulo.textContent = "";
-      elPalco.innerHTML = '<div class="rk-palco-vazio"><p>Este projeto ainda não tem racks.</p><button type="button" class="primary" data-rk="novo-rack">Criar o primeiro rack</button></div>';
+      elPalco.innerHTML = '<div class="rk-palco-vazio"><svg class="rk-vazio-ilustra" viewBox="0 0 120 150" aria-hidden="true"><rect x="10" y="6" width="100" height="138" rx="8" class="rkv-moldura"/><rect x="22" y="18" width="76" height="114" rx="3" class="rkv-interior"/><rect x="26" y="24" width="68" height="12" rx="2" class="rkv-eq rkv-1"/><rect x="26" y="40" width="68" height="12" rx="2" class="rkv-eq rkv-2"/><rect x="26" y="56" width="68" height="22" rx="2" class="rkv-eq rkv-3"/><circle cx="86" cy="30" r="1.8" class="rkv-led"/><circle cx="86" cy="46" r="1.8" class="rkv-led rkv-led2"/><rect x="26" y="84" width="68" height="12" rx="2" class="rkv-livre"/><rect x="26" y="100" width="68" height="12" rx="2" class="rkv-livre"/></svg><h3>Monte seu primeiro rack</h3><p>Crie um rack e arraste equipamentos da biblioteca. Mais de 70 modelos já vêm com foto real.</p><button type="button" class="primary" data-rk="novo-rack">Criar o primeiro rack</button></div>';
       return;
     }
     var oc = E.ocupacaoRack(rack);
