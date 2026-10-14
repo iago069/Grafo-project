@@ -57,13 +57,15 @@ test("bayface: cria rack 42U, instala, move, impede sobreposição e limite, rem
   await pagina.fill('[data-rk-form="item"] input[name=u]', "41");
   await pagina.click('[data-rk-form="item"] button[type=submit]');
   await pagina.waitForFunction(() => /movido|salvo/.test(document.querySelector(".rk-msg").textContent));
+  // Com a proporção real (1U ≈ 35 px), o rack inteiro só cabe na tela do teste com zoom menor.
+  for (let i = 0; i < 3; i++) await pagina.click('[data-rk="zoom-menos"]');
   const srv = pagina.locator('.rk-item:has(text:text("SRV-01")) .rk-item-corpo');
   const caixa = await srv.boundingBox();
   const passoU = caixa.height / 2;
   await pagina.mouse.move(caixa.x + caixa.width / 2, caixa.y + caixa.height / 2);
   await pagina.mouse.down();
   await pagina.mouse.move(caixa.x + caixa.width / 2, caixa.y + caixa.height / 2 + passoU * 5, { steps: 8 });
-  await pagina.mouse.move(caixa.x + caixa.width / 2, caixa.y + caixa.height / 2 + passoU * 10, { steps: 8 });
+  await pagina.mouse.move(caixa.x + caixa.width / 2, caixa.y + caixa.height / 2 + passoU * 10.4, { steps: 8 });
   await pagina.mouse.up();
   await pagina.waitForFunction(() => /SRV-01 movido para U20/.test(document.querySelector(".rk-msg").textContent));
   assert.deepEqual(await itens(pagina), ["SRV-01@20+2", "SW-CORE@41+1", "UPS-01@10+4"]);

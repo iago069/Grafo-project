@@ -103,7 +103,8 @@
   var TRILHO = 30, LARGURA_19 = 380, BORDA = 16;
   function desenharRack(rack, opcoes) {
     opcoes = opcoes || {};
-    var UH = Math.round(20 * (opcoes.zoom || 1) * 10) / 10;
+    // Proporção real de um rack 19": 1U (44,45 mm) para 482,6 mm de largura útil.
+    var UH = Math.round(LARGURA_19 * 44.45 / 482.6 * (opcoes.zoom || 1) * 10) / 10;
     var face = opcoes.face || "frente";
     var inverter = !!opcoes.inverter;
     var exportar = !!opcoes.exportar;
