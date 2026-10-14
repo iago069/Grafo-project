@@ -154,6 +154,8 @@ test("bayface: arrastar da biblioteca e tela estreita", async () => {
   await pagina.setInputFiles("[data-rk-foto]", { name: "frente.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") });
   await pagina.waitForFunction(() => /Foto de Switch 1 salva/.test(document.querySelector(".rk-msg").textContent));
   assert.equal(await pagina.locator(".rk-svg image.rk-foto").count(), 1);
+  // Foto 800x120 tem proporção de ~2U: a altura do equipamento se ajusta em vez de cortar.
+  assert.equal(await pagina.evaluate(() => window.GrafoRacks.dados().racks[0].itens.find(i => i.foto).alturaU), 2);
   assert.match(await pagina.evaluate(() => window.GrafoRacks.dados().racks[0].itens.find(i => i.foto).foto.slice(0, 23)), /^data:image\/jpeg;base64,/);
   await pagina.click('[data-rk="fotos"]');
   assert.equal(await pagina.locator(".rk-svg image.rk-foto").count(), 0, "botão Fotos esconde");

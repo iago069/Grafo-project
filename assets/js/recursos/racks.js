@@ -168,7 +168,7 @@
       if (comFoto) {
         var idClip = "rkf-" + String(it.id).replace(/[^a-zA-Z0-9_-]/g, "") + (exportar ? "-x" : "");
         p.push('<clipPath id="' + idClip + '"><rect x="' + (xi + 1) + '" y="' + (y + 0.5) + '" width="' + (wi - 2) + '" height="' + (h - 1) + '" rx="2"/></clipPath>');
-        p.push('<image class="rk-foto" href="' + esc(it.foto) + '" x="' + (xi + 1) + '" y="' + (y + 0.5) + '" width="' + (wi - 2) + '" height="' + (h - 1) + '" preserveAspectRatio="xMidYMid slice" clip-path="url(#' + idClip + ')"/>');
+        p.push('<image class="rk-foto" href="' + esc(it.foto) + '" x="' + (xi + 1) + '" y="' + (y + 0.5) + '" width="' + (wi - 2) + '" height="' + (h - 1) + '" preserveAspectRatio="xMidYMid meet" clip-path="url(#' + idClip + ')"/>');
         p.push('<rect x="' + (xi + 1) + '" y="' + (y + 0.5) + '" width="' + (wi - 2) + '" height="' + (h - 1) + '" rx="2" fill="none" stroke="' + (selecionado ? "#E8A33D" : destaque ? "#F2C94C" : "#14171B") + '" stroke-width="' + (selecionado || destaque ? 2.5 : 1) + '"' + tracejado + '/>');
       }
       // Sigla da categoria (identificação sem depender da cor).
@@ -557,34 +557,37 @@
         (it.foto && outros ? '<button type="button" class="ghost small" data-rk="foto-modelo" title="Mesma foto nos outros ' + esc(it.modelo) + ' com a mesma altura">Usar nos outros ' + outros + ' do modelo</button>' : '') +
       '</div></div>';
   }
-  // Recorta a foto no formato do painel (cobre e centraliza) e comprime em JPEG.
-  function prepararFoto(arquivo, alturaU) {
+  // Ajusta a altura do equipamento (em U) à proporção da foto e encaixa a imagem
+  // inteira, sem cortar. Se a nova altura não couber no rack, mantém a atual.
+  function prepararFoto(arquivo, alturaU, rack, item) {
     return new Promise(function (resolver, rejeitar) {
       if (!/^image\//.test(arquivo.type)) { rejeitar(new Error("o arquivo não é uma imagem")); return; }
       var url = URL.createObjectURL(arquivo);
       var img = new Image();
       img.onload = function () {
         URL.revokeObjectURL(url);
+        var uFoto = Math.max(1, Math.min(rack ? rack.alturaU : 60, Math.round(482.6 * img.naturalHeight / (img.naturalWidth * 44.45))));
+        if (rack && item && uFoto !== alturaU && E.verificarPosicaoRack(rack, Object.assign({}, item, { alturaU: uFoto }), item.id).ok) alturaU = uFoto;
         var w = LARGURA_FOTO, h = Math.max(40, Math.round(LARGURA_FOTO * alturaU * 44.45 / 482.6));
         var c = document.createElement("canvas");
         c.width = w; c.height = h;
         var ctx = c.getContext("2d");
-        var escala = Math.max(w / img.naturalWidth, h / img.naturalHeight);
+        var escala = Math.min(w / img.naturalWidth, h / img.naturalHeight);
         var dw = img.naturalWidth * escala, dh = img.naturalHeight * escala;
         ctx.fillStyle = "#1A1D22"; ctx.fillRect(0, 0, w, h);
         ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
         var qualidade = 0.82, dataUrl = c.toDataURL("image/jpeg", qualidade);
         while (dataUrl.length > E.LIMITES.fotoRack && qualidade > 0.4) { qualidade -= 0.1; dataUrl = c.toDataURL("image/jpeg", qualidade); }
         if (dataUrl.length > E.LIMITES.fotoRack) { rejeitar(new Error("a foto ficou grande demais mesmo comprimida")); return; }
-        resolver(dataUrl);
+        resolver({ foto: dataUrl, alturaU: alturaU });
       };
       img.onerror = function () { URL.revokeObjectURL(url); rejeitar(new Error("não foi possível ler a imagem")); };
       img.src = url;
     });
   }
-  function salvarFoto(ids, foto, sucesso) {
+  function salvarFoto(ids, foto, sucesso, alturaU) {
     var racks = clonar(dados.racks);
-    racks.forEach(function (r) { r.itens.forEach(function (x) { if (ids.indexOf(x.id) >= 0) { if (foto) x.foto = foto; else delete x.foto; } }); });
+    racks.forEach(function (r) { r.itens.forEach(function (x) { if (ids.indexOf(x.id) >= 0) { if (foto) x.foto = foto; else delete x.foto; if (alturaU) x.alturaU = alturaU; } }); });
     if (foto) destacar(ids[0]);
     gravar(racks, dados.cabos, sucesso);
   }
@@ -722,8 +725,11 @@
       var arquivo = ev.target.files && ev.target.files[0];
       if (!achadoFoto || !arquivo) return;
       mensagem("Preparando a foto…");
-      prepararFoto(arquivo, achadoFoto.item.alturaU)
-        .then(function (foto) { salvarFoto([achadoFoto.item.id], foto, "Foto de " + achadoFoto.item.nome + " salva."); })
+      prepararFoto(arquivo, achadoFoto.item.alturaU, achadoFoto.rack, achadoFoto.item)
+        .then(function (r) {
+          var mudou = r.alturaU !== achadoFoto.item.alturaU;
+          salvarFoto([achadoFoto.item.id], r.foto, "Foto de " + achadoFoto.item.nome + " salva" + (mudou ? " (altura ajustada para " + r.alturaU + "U)" : "") + ".", r.alturaU);
+        })
         .catch(function (e) { mensagem("Não deu para usar a foto: " + e.message + ".", true); });
       return;
     }
