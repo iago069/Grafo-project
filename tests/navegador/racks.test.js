@@ -148,6 +148,16 @@ test("bayface: arrastar da biblioteca e tela estreita", async () => {
   await pagina.click('.rk-u-livre[data-u="20"]');
   await pagina.click('.rk-peca[data-categoria="dwdm"]');
   await pagina.waitForFunction(() => /instalado em U20–U21/.test(document.querySelector(".rk-msg").textContent));
+  // Foto real do painel: recortada no formato do equipamento, aparece no desenho e fica salva.
+  await pagina.click('.rk-item[data-item] text:text("Switch 1")');
+  const png = await pagina.evaluate(() => { const c = document.createElement("canvas"); c.width = 800; c.height = 120; const x = c.getContext("2d"); x.fillStyle = "#333"; x.fillRect(0, 0, 800, 120); return c.toDataURL("image/png").split(",")[1]; });
+  await pagina.setInputFiles("[data-rk-foto]", { name: "frente.png", mimeType: "image/png", buffer: Buffer.from(png, "base64") });
+  await pagina.waitForFunction(() => /Foto de Switch 1 salva/.test(document.querySelector(".rk-msg").textContent));
+  assert.equal(await pagina.locator(".rk-svg image.rk-foto").count(), 1);
+  assert.match(await pagina.evaluate(() => window.GrafoRacks.dados().racks[0].itens.find(i => i.foto).foto.slice(0, 23)), /^data:image\/jpeg;base64,/);
+  await pagina.click('[data-rk="fotos"]');
+  assert.equal(await pagina.locator(".rk-svg image.rk-foto").count(), 0, "botão Fotos esconde");
+  await pagina.click('[data-rk="fotos"]');
   // Sem rolagem horizontal da página em tela menor.
   const sobra = await pagina.evaluate(() => {
     if (document.documentElement.scrollWidth <= window.innerWidth + 1) return [];

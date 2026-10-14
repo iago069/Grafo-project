@@ -1574,3 +1574,8 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
 
 /* Rack cabe na largura do palco (etiquetas dos cabos visíveis sem rolar para o lado). */
 .rk-svg { max-width: 100%; height: auto; }
+.rk-foto-secao { border-top: 1px solid var(--line, #dde3ea); margin-top: 12px; padding-top: 4px; }
+.rk-foto-previa { display: block; width: 100%; border-radius: 6px; border: 1px solid var(--ctl-borda); margin: 6px 0; background: #1A1D22; }
+.rk-botao-foto { display: inline-flex; align-items: center; min-height: var(--ctl-h-sm); padding: 4px 11px; border-radius: 8px; border: 1px solid var(--ctl-borda); background: var(--ctl-bg); color: var(--text); font-size: 0.75rem; font-weight: 600; cursor: pointer; }
+.rk-botao-foto:hover { background: var(--ctl-bg-hover); border-color: var(--ctl-borda-hover); }
+.rk-barra [data-rk="fotos"].ativo { border-color: var(--accent); color: var(--accent); }

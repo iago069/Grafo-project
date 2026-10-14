@@ -40,7 +40,8 @@
     alturaRackMax: 60,
     portasPorItem: 144,
     textoRack: 60,
-    obsRack: 500
+    obsRack: 500,
+    fotoRack: 340000 // ~250 KB de foto em base64 (o editor reduz e comprime antes)
   };
 
   var COR_FONTE_PADRAO = "#16323D";
@@ -602,7 +603,10 @@
     estado: { rotulo: "Estado", esquema: enumTolerante(ESTADOS_ITEM_RACK, { "a remover": "remover", removido: "remover" }, "instalado", "use instalado, planejado ou remover"), reparar: constante("instalado") },
     obs: { rotulo: "Observações", esquema: texto(LIMITES.obsRack), reparar: truncar(LIMITES.obsRack) },
     // Opcional: equipamento do diagrama lógico que este item representa.
-    equipId: { rotulo: "Equipamento do diagrama", esquema: texto(LIMITES.id), opcional: true }
+    equipId: { rotulo: "Equipamento do diagrama", esquema: texto(LIMITES.id), opcional: true },
+    // Opcional: foto real do painel frontal, já recortada e reduzida pelo editor.
+    foto: { rotulo: "Foto", esquema: z.string().max(LIMITES.fotoRack, "foto grande demais (máx. ~250 KB)")
+      .regex(/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/, "use uma foto enviada pelo app"), opcional: true }
   };
   var CAMPOS_CABO_RACK = {
     id: { rotulo: "id", esquema: texto(LIMITES.id, true), reparar: null },

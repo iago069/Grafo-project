@@ -33,9 +33,9 @@
   var destaque = null, timerDestaque = null;
   function destacar(id) { destaque = id; clearTimeout(timerDestaque); timerDestaque = setTimeout(function () { destaque = null; }, 1500); }
   var sel = { rack: null, item: null, u: null };
-  var vista = { face: "frente", inverter: false, zoom: 1, cabos: "todos", busca: "" };
+  var vista = { face: "frente", inverter: false, zoom: 1, cabos: "todos", busca: "", fotos: true };
   try { Object.assign(vista, JSON.parse(localStorage.getItem("grafo-racks-vista") || "{}"), { busca: "" }); } catch (e) {}
-  function guardarVista() { try { localStorage.setItem("grafo-racks-vista", JSON.stringify({ face: vista.face, inverter: vista.inverter, zoom: vista.zoom, cabos: vista.cabos })); } catch (e) {} }
+  function guardarVista() { try { localStorage.setItem("grafo-racks-vista", JSON.stringify({ face: vista.face, inverter: vista.inverter, zoom: vista.zoom, cabos: vista.cabos, fotos: vista.fotos })); } catch (e) {} }
 
   // ---- utilidades ------------------------------------------------------------
   function esc(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -161,6 +161,14 @@
       p.push('<rect class="rk-item-corpo" x="' + (xi + 1) + '" y="' + (y + 0.5) + '" width="' + (wi - 2) + '" height="' + (h - 1) + '" rx="2" fill="' + fundo + '" stroke="' + (selecionado ? "#E8A33D" : destaque ? "#F2C94C" : "#14171B") + '" stroke-width="' + (selecionado || destaque ? 2.5 : 1) + '"' + tracejado + '/>');
       // Orelhas de fixação.
       p.push('<rect x="' + (xi - 6) + '" y="' + (y + 1.5) + '" width="7" height="' + (h - 3) + '" fill="#9AA3AD"/><rect x="' + (xi + wi - 1) + '" y="' + (y + 1.5) + '" width="7" height="' + (h - 3) + '" fill="#9AA3AD"/>');
+      // Foto real do painel frontal (opcional): cobre o corpo, com a borda por cima.
+      var comFoto = !!it.foto && opcoes.fotos !== false;
+      if (comFoto) {
+        var idClip = "rkf-" + String(it.id).replace(/[^a-zA-Z0-9_-]/g, "") + (exportar ? "-x" : "");
+        p.push('<clipPath id="' + idClip + '"><rect x="' + (xi + 1) + '" y="' + (y + 0.5) + '" width="' + (wi - 2) + '" height="' + (h - 1) + '" rx="2"/></clipPath>');
+        p.push('<image class="rk-foto" href="' + esc(it.foto) + '" x="' + (xi + 1) + '" y="' + (y + 0.5) + '" width="' + (wi - 2) + '" height="' + (h - 1) + '" preserveAspectRatio="xMidYMid slice" clip-path="url(#' + idClip + ')"/>');
+        p.push('<rect x="' + (xi + 1) + '" y="' + (y + 0.5) + '" width="' + (wi - 2) + '" height="' + (h - 1) + '" rx="2" fill="none" stroke="' + (selecionado ? "#E8A33D" : destaque ? "#F2C94C" : "#14171B") + '" stroke-width="' + (selecionado || destaque ? 2.5 : 1) + '"' + tracejado + '/>');
+      }
       // Sigla da categoria (identificação sem depender da cor).
       var fs = Math.max(7, Math.min(11, UH * 0.5));
       var larguraSigla = cat.sigla.length * fs * 0.62 + 8;
@@ -174,12 +182,15 @@
       var linhas = Math.ceil(it.portas / colunas);
       var cabem = temPortas && linhas * passo <= h - 4;
       if (temPortas && !cabem) { colunas = Math.ceil(it.portas / Math.max(1, Math.floor((h - 4) / passo))); cabem = colunas * passo <= areaPortasW && Math.floor((h - 4) / passo) >= 1; linhas = Math.ceil(it.portas / colunas); }
+      if (comFoto) cabem = false; // a foto já mostra as portas de verdade
       var xTexto = xi + 6 + larguraSigla + 6;
       var limiteTexto = (cabem ? areaPortasX - 6 : xi + wi - 8) - xTexto;
       var maxChars = Math.max(4, Math.floor(limiteTexto / (fs * 0.56)));
       var nome = it.nome.length > maxChars ? it.nome.slice(0, maxChars - 2) + "..." : it.nome;
-      var linhasTexto = h >= UH * 2 && it.modelo ? 2 : 1;
+      var linhasTexto = !comFoto && h >= UH * 2 && it.modelo ? 2 : 1;
       var yNome = linhasTexto === 2 ? y + h / 2 - 2 : y + h / 2 + fs * 0.36;
+      // Sobre a foto, o nome vai numa faixa escura para continuar legível.
+      if (comFoto) p.push('<rect x="' + (xTexto - 4) + '" y="' + (y + h / 2 - fs * 0.75) + '" width="' + (Math.min(nome.length, maxChars) * fs * 0.6 + 8) + '" height="' + (fs * 1.5) + '" rx="2" fill="#0B1117" fill-opacity="0.72"/>');
       p.push('<text x="' + xTexto + '" y="' + yNome + '" font-size="' + fs + '" fill="#FFFFFF" font-weight="bold">' + esc(nome) + '</text>');
       if (linhasTexto === 2) p.push('<text x="' + xTexto + '" y="' + (yNome + fs + 2) + '" font-size="' + (fs - 1.5) + '" fill="#D9E1E8">' + esc([it.fabricante, it.modelo].filter(Boolean).join(" ").slice(0, maxChars + 4)) + '</text>');
       if (it.estado !== "instalado") {
@@ -200,7 +211,7 @@
       } else if (temPortas) {
         // Portas sem desenho (não cabem): os cabos saem da lateral direita do equipamento.
         for (var k = 1; k <= it.portas; k++) portasPos[it.id + "#" + k] = { x: xi + wi - 4, y: y + h / 2 };
-        p.push('<text x="' + (xi + wi - 8) + '" y="' + (y + h - 3) + '" font-size="' + (fs - 2) + '" fill="#D9E1E8" text-anchor="end">' + it.portas + "x " + esc(it.tipoPorta || "portas") + '</text>');
+        if (!comFoto) p.push('<text x="' + (xi + wi - 8) + '" y="' + (y + h - 3) + '" font-size="' + (fs - 2) + '" fill="#D9E1E8" text-anchor="end">' + it.portas + "x " + esc(it.tipoPorta || "portas") + '</text>');
       }
       p.push('</g>');
     });
@@ -268,6 +279,7 @@
           '<div class="rk-grupo" role="group" aria-label="Face">' +
             '<button type="button" class="ghost small" data-rk-face="frente">Frente</button><button type="button" class="ghost small" data-rk-face="tras">Traseira</button></div>' +
           '<button type="button" class="ghost small" data-rk="inverter" title="Inverter a orientação na tela (U1 continua sendo a de baixo no rack)">U1 embaixo</button>' +
+          '<button type="button" class="ghost small" data-rk="fotos" title="Mostrar ou esconder as fotos reais dos equipamentos">Fotos</button>' +
           '<div class="rk-grupo" role="group" aria-label="Zoom"><button type="button" class="ghost small" data-rk="zoom-menos" aria-label="Reduzir">−</button><span data-rk-zoom>100%</span><button type="button" class="ghost small" data-rk="zoom-mais" aria-label="Ampliar">+</button></div>' +
           '<label class="rk-filtro">Cabos <select data-rk-cabos><option value="todos">Todos</option><option value="ocultos">Ocultos</option>' +
             E.TIPOS_CABO_RACK.map(function (t) { return '<option value="' + t + '">' + NOMES_CABO[t] + '</option>'; }).join("") + '</select></label>' +
@@ -310,6 +322,9 @@
     renderProps();
     raiz.querySelectorAll("[data-rk-face]").forEach(function (b) { b.classList.toggle("ativo", b.getAttribute("data-rk-face") === vista.face); b.setAttribute("aria-pressed", String(b.getAttribute("data-rk-face") === vista.face)); });
     raiz.querySelector('[data-rk="inverter"]').textContent = vista.inverter ? "U1 em cima" : "U1 embaixo";
+    var botaoFotos = raiz.querySelector('[data-rk="fotos"]');
+    botaoFotos.classList.toggle("ativo", vista.fotos);
+    botaoFotos.setAttribute("aria-pressed", String(vista.fotos));
     raiz.querySelector("[data-rk-zoom]").textContent = Math.round(vista.zoom * 100) + "%";
     elCabos.value = vista.cabos;
   }
@@ -346,7 +361,7 @@
     }
     var oc = E.ocupacaoRack(rack);
     elTitulo.innerHTML = '<strong>' + esc(rack.nome) + '</strong> <span>' + oc.ocupadas + '/' + rack.alturaU + 'U ocupadas · ' + oc.livres + ' livres (' + Math.round(oc.ocupadas / rack.alturaU * 100) + '%)</span>';
-    var d = desenharRack(rack, { zoom: vista.zoom, face: vista.face, inverter: vista.inverter, cabos: vista.cabos, x: 20, y: 24 });
+    var d = desenharRack(rack, { zoom: vista.zoom, face: vista.face, inverter: vista.inverter, cabos: vista.cabos, fotos: vista.fotos, x: 20, y: 24 });
     ultimoDesenho = d;
     var largura = d.largura + 40, altura = d.altura + 40;
     elPalco.innerHTML = '<svg class="rk-svg" xmlns="http://www.w3.org/2000/svg" width="' + largura + '" height="' + altura + '" viewBox="0 0 ' + largura + ' ' + altura + '">' + DEFS +
@@ -437,6 +452,7 @@
         campo("Rack", '<select data-rk-mover-rack>' + dados.racks.map(function (r) { return '<option value="' + esc(r.id) + '"' + (r.id === rack.id ? " selected" : "") + '>' + esc(r.nome) + '</option>'; }).join("") + '</select>') +
         campo("U inicial", '<input type="number" min="1" data-rk-mover-u value="' + it.u + '">') + '</div>' +
         '<div class="nav-form-actions"><button type="button" class="primary small" data-rk="confirmar-mover">Mover</button></div></div>' +
+      renderSecaoFoto(it) +
       '<div class="rk-cabos"><h4>Portas e cabos físicos <small>' + cabos.length + ' cabo' + (cabos.length === 1 ? "" : "s") + ' · ' + livres.length + ' porta' + (livres.length === 1 ? "" : "s") + ' livre' + (livres.length === 1 ? "" : "s") + '</small></h4>' +
         (cabos.length ? '<ul class="rk-lista-cabos">' + cabos.map(function (c) {
           var daqui = c.deItem === it.id;
@@ -450,6 +466,58 @@
       '</div>';
     var form = elProps.querySelector('[data-rk-form="item"]');
     form.cor.addEventListener("input", function () { form.corPadrao.checked = false; });
+  }
+
+  // ---- fotos reais do painel frontal ------------------------------------------------
+  // Proporção do painel: 19" (482,6 mm) de largura por 44,45 mm de altura a cada U.
+  var LARGURA_FOTO = 960;
+  function mesmoModelo(it) {
+    if (!it.modelo) return [it];
+    var chave = (it.fabricante + "|" + it.modelo).toLowerCase();
+    var lista = [];
+    dados.racks.forEach(function (r) { (r.itens || []).forEach(function (x) { if ((x.fabricante + "|" + x.modelo).toLowerCase() === chave && x.alturaU === it.alturaU) lista.push(x); }); });
+    return lista;
+  }
+  function renderSecaoFoto(it) {
+    var outros = it.modelo ? mesmoModelo(it).filter(function (x) { return x.id !== it.id && x.foto !== it.foto; }).length : 0;
+    return '<div class="rk-foto-secao"><h4>Foto do painel frontal</h4>' +
+      (it.foto ? '<img class="rk-foto-previa" src="' + esc(it.foto) + '" alt="Foto de ' + esc(it.nome) + '">' : '<p class="rk-dica">Tire uma foto de frente do equipamento instalado. O Grafo recorta no formato do painel (' + it.alturaU + 'U) e reduz para não pesar no projeto.</p>') +
+      '<div class="nav-form-actions rk-acoes">' +
+        '<label class="ghost botao-arquivo rk-botao-foto" tabindex="0" role="button">' + (it.foto ? "Trocar foto" : "Enviar foto") + '<input type="file" accept="image/*" data-rk-foto hidden></label>' +
+        (it.foto ? '<button type="button" class="ghost small danger-texto" data-rk="remover-foto">Remover</button>' : '') +
+        (it.foto && outros ? '<button type="button" class="ghost small" data-rk="foto-modelo" title="Mesma foto nos outros ' + esc(it.modelo) + ' com a mesma altura">Usar nos outros ' + outros + ' do modelo</button>' : '') +
+      '</div></div>';
+  }
+  // Recorta a foto no formato do painel (cobre e centraliza) e comprime em JPEG.
+  function prepararFoto(arquivo, alturaU) {
+    return new Promise(function (resolver, rejeitar) {
+      if (!/^image\//.test(arquivo.type)) { rejeitar(new Error("o arquivo não é uma imagem")); return; }
+      var url = URL.createObjectURL(arquivo);
+      var img = new Image();
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        var w = LARGURA_FOTO, h = Math.max(40, Math.round(LARGURA_FOTO * alturaU * 44.45 / 482.6));
+        var c = document.createElement("canvas");
+        c.width = w; c.height = h;
+        var ctx = c.getContext("2d");
+        var escala = Math.max(w / img.naturalWidth, h / img.naturalHeight);
+        var dw = img.naturalWidth * escala, dh = img.naturalHeight * escala;
+        ctx.fillStyle = "#1A1D22"; ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+        var qualidade = 0.82, dataUrl = c.toDataURL("image/jpeg", qualidade);
+        while (dataUrl.length > E.LIMITES.fotoRack && qualidade > 0.4) { qualidade -= 0.1; dataUrl = c.toDataURL("image/jpeg", qualidade); }
+        if (dataUrl.length > E.LIMITES.fotoRack) { rejeitar(new Error("a foto ficou grande demais mesmo comprimida")); return; }
+        resolver(dataUrl);
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); rejeitar(new Error("não foi possível ler a imagem")); };
+      img.src = url;
+    });
+  }
+  function salvarFoto(ids, foto, sucesso) {
+    var racks = clonar(dados.racks);
+    racks.forEach(function (r) { r.itens.forEach(function (x) { if (ids.indexOf(x.id) >= 0) { if (foto) x.foto = foto; else delete x.foto; } }); });
+    if (foto) destacar(ids[0]);
+    gravar(racks, dados.cabos, sucesso);
   }
 
   function renderFormCabo(it, livres) {
@@ -578,6 +646,16 @@
   });
 
   raiz.addEventListener("change", function (ev) {
+    if (ev.target.matches("[data-rk-foto]")) {
+      var achadoFoto = sel.item ? itemPorId(sel.item) : null;
+      var arquivo = ev.target.files && ev.target.files[0];
+      if (!achadoFoto || !arquivo) return;
+      mensagem("Preparando a foto…");
+      prepararFoto(arquivo, achadoFoto.item.alturaU)
+        .then(function (foto) { salvarFoto([achadoFoto.item.id], foto, "Foto de " + achadoFoto.item.nome + " salva."); })
+        .catch(function (e) { mensagem("Não deu para usar a foto: " + e.message + ".", true); });
+      return;
+    }
     var form = ev.target.closest('[data-rk-form="cabo"]');
     if (form && (ev.target.name === "paraItem" || ev.target.name === "dePorta")) { var a = itemPorId(sel.item); if (a) atualizarPortasDestino(form, a.item); }
     if (form && ev.target.name === "cor") form.corPadrao.checked = false;
@@ -595,6 +673,14 @@
     var achado = sel.item ? itemPorId(sel.item) : null;
     if (acao === "novo-rack") novoRack();
     else if (acao === "inverter") { vista.inverter = !vista.inverter; guardarVista(); render(); }
+    else if (acao === "fotos") { vista.fotos = !vista.fotos; guardarVista(); render(); }
+    else if (acao === "remover-foto" && achado) {
+      if (!window.confirm('Remover a foto de "' + achado.item.nome + '"?')) return;
+      salvarFoto([achado.item.id], null, "Foto removida.");
+    } else if (acao === "foto-modelo" && achado && achado.item.foto) {
+      var mesmos = mesmoModelo(achado.item);
+      salvarFoto(mesmos.map(function (x) { return x.id; }), achado.item.foto, "Foto aplicada em " + mesmos.length + " equipamento" + (mesmos.length > 1 ? "s" : "") + " do modelo " + achado.item.modelo + ".");
+    }
     else if (acao === "zoom-mais") { vista.zoom = Math.min(2.5, Math.round((vista.zoom + 0.2) * 10) / 10); guardarVista(); render(); }
     else if (acao === "zoom-menos") { vista.zoom = Math.max(0.5, Math.round((vista.zoom - 0.2) * 10) / 10); guardarVista(); render(); }
     else if (acao === "cancelar") { sel.u = null; render(); }
@@ -770,7 +856,7 @@
   // ---- exportação ------------------------------------------------------------------
   // Página técnica: cabeçalho (projeto, rack, local), o rack e o inventário ao lado.
   function svgDeDocumento(rack, face) {
-    var d = desenharRack(rack, { zoom: 1, face: face || vista.face, inverter: vista.inverter, cabos: vista.cabos, x: 30, y: 96, exportar: true });
+    var d = desenharRack(rack, { zoom: 1, face: face || vista.face, inverter: vista.inverter, cabos: vista.cabos, fotos: vista.fotos, x: 30, y: 96, exportar: true });
     var oc = E.ocupacaoRack(rack);
     var xTabela = 30 + d.largura + 30;
     var larguraTabela = 520;
