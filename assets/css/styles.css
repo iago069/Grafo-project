@@ -1583,3 +1583,77 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
 .rk-botao-foto { display: inline-flex; align-items: center; min-height: var(--ctl-h-sm); padding: 4px 11px; border-radius: 8px; border: 1px solid var(--ctl-borda); background: var(--ctl-bg); color: var(--text); font-size: 0.75rem; font-weight: 600; cursor: pointer; }
 .rk-botao-foto:hover { background: var(--ctl-bg-hover); border-color: var(--ctl-borda-hover); }
 .rk-barra [data-rk="fotos"].ativo { border-color: var(--accent); color: var(--accent); }
+
+/* ==== Acabamento premium (2026-10) ==== */
+html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
+body { font-feature-settings: "ss01", "cv01"; }
+::selection { background: color-mix(in srgb, var(--accent) 35%, transparent); color: var(--text); }
+h1, h2, h3, .panel-title, .brand { letter-spacing: -0.02em; }
+
+/* Rolagens finas, na cor do tema. */
+* { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--text-dim) 40%, transparent) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--text-dim) 35%, transparent); border-radius: 99px; border: 3px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--text-dim) 60%, transparent); }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* Painéis: borda de luz no topo, sombra em camadas, cantos generosos. */
+.panel, .rk-bloco, .rk-props, .rk-palco {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 7%, transparent), 0 1px 2px rgba(0, 0, 0, 0.12), 0 12px 32px -8px rgba(0, 0, 0, 0.28);
+}
+.panel { border-radius: 22px; }
+.rk-bloco, .rk-props, .rk-palco { border-radius: 16px; border-color: var(--line-soft); }
+.rk-bloco, .rk-props { padding: 14px; background: linear-gradient(180deg, var(--bg-panel), color-mix(in srgb, var(--bg-panel-2) 85%, transparent)); }
+
+/* Menu lateral: títulos de seção leves (sem caixa). */
+.nav { border-radius: 20px; }
+button.nav-label { background: transparent !important; border: 0 !important; box-shadow: none !important; text-align: left; display: flex; align-items: center; justify-content: space-between; width: 100%; cursor: pointer; transition: color var(--dur-rapida) ease, opacity var(--dur-rapida) ease; }
+button.nav-label:hover { color: var(--text); opacity: 1; }
+.nav-section + .nav-section { border-top: 1px solid color-mix(in srgb, var(--line-soft) 70%, transparent); padding-top: 6px; }
+.nav-item { border-radius: 12px; }
+.nav-item:hover { transform: translateX(2px); }
+
+/* Botão principal: degradê quente e brilho suave. */
+button.primary, .landing-botao {
+  background-color: var(--accent);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.35) inset, 0 6px 18px -4px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+button.primary:hover:not(:disabled) { box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) inset, 0 10px 26px -6px color-mix(in srgb, var(--accent) 75%, transparent); transform: translateY(-1px); }
+button.primary:active:not(:disabled) { transform: translateY(0) scale(0.98); }
+button.ghost { backdrop-filter: blur(6px); }
+:focus-visible { outline: 2px solid color-mix(in srgb, var(--teal) 80%, transparent); outline-offset: 2px; }
+
+/* Bayface: barra compacta em "pílulas", palco com luz de estúdio. */
+.rk { gap: 16px; }
+.rk-barra { gap: 6px; padding: 8px; border-radius: 14px; background: color-mix(in srgb, var(--text) 3%, transparent); border: 1px solid var(--line-soft); }
+.rk-titulo-rack { flex: 1 1 100%; padding: 2px 4px 4px; font-size: 0.95rem; }
+.rk-titulo-rack strong { font-size: 1.05rem; letter-spacing: -0.01em; margin-right: 6px; }
+.rk-grupo { padding: 2px; border-radius: 10px; background: color-mix(in srgb, var(--text) 4%, transparent); gap: 2px; }
+.rk-grupo button.ghost.small { border-color: transparent; background: transparent; }
+.rk-grupo button.ghost.small:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 8%, transparent); }
+.rk-grupo .ativo, .rk-barra button.ativo { background: color-mix(in srgb, var(--accent) 16%, transparent) !important; color: var(--accent) !important; border-color: color-mix(in srgb, var(--accent) 45%, transparent) !important; }
+.rk-exportar { margin-left: auto; }
+.rk-palco {
+  padding: 18px; max-height: 80vh;
+  background:
+    radial-gradient(60% 45% at 50% 0%, color-mix(in srgb, var(--teal) 9%, transparent), transparent 70%),
+    radial-gradient(circle, color-mix(in srgb, var(--text) 9%, transparent) 1px, transparent 1.4px) 0 0 / 18px 18px,
+    color-mix(in srgb, var(--bg-panel-2), var(--bg) 35%);
+}
+.rk-svg .rk-u-livre { stroke: color-mix(in srgb, var(--text) 9%, transparent); }
+.rk-msg { border-radius: 12px; font-weight: 500; }
+.rk-msg.ok { background: color-mix(in srgb, #2fbf71 16%, var(--bg-panel-2)); color: color-mix(in srgb, #2fbf71 60%, var(--text)); border: 1px solid color-mix(in srgb, #2fbf71 35%, transparent); }
+.rk-msg.erro { background: color-mix(in srgb, var(--danger) 14%, var(--bg-panel-2)); color: color-mix(in srgb, var(--danger) 65%, var(--text)); border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent); }
+.rk-peca { border-radius: 10px; padding: 6px 8px; border-color: var(--line-soft); background: color-mix(in srgb, var(--text) 2%, transparent); }
+.rk-peca:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); box-shadow: 0 6px 16px -8px rgba(0, 0, 0, 0.4); }
+.rk-sigla { border-radius: 6px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18); }
+.rk-peca-foto { height: 16px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); }
+.rk-rack-item { border-radius: 12px; padding: 9px 10px; border-color: var(--line-soft); }
+.rk-rack-item.ativo { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent); }
+.rk-barra-ocupacao { height: 5px; border-radius: 99px; }
+.rk-barra-ocupacao span { border-radius: 99px; background: linear-gradient(90deg, var(--teal), var(--accent)); }
+.rk-cabecalho strong { font-size: 0.95rem; letter-spacing: -0.01em; }
+.rk-foto-previa { border-radius: 10px; box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.5); }
+
+/* Legenda do diagrama em pílulas. */
+.legenda > * { padding: 3px 10px; border-radius: 99px; background: color-mix(in srgb, var(--text) 4%, transparent); border: 1px solid var(--line-soft); }

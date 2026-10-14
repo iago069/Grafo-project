@@ -121,23 +121,30 @@
     var p = [];
     p.push('<g class="rk-rack" font-family="Helvetica, Arial, sans-serif">');
     // Estrutura: laterais (trilhos) e topo/base.
-    p.push('<rect x="' + x0 + '" y="' + y0 + '" width="' + larguraRack + '" height="' + altura + '" rx="4" fill="#2B2F36" stroke="#1A1D22"/>');
+    p.push('<rect class="rk-moldura" x="' + x0 + '" y="' + y0 + '" width="' + larguraRack + '" height="' + altura + '" rx="7" fill="url(#rk-g-moldura)" stroke="#0E1014" filter="url(#rk-sombra)"/>');
+    // Tampas (topo e base) com fendas de ventilação.
+    [y0 + 3, y0 + altura - BORDA + 3].forEach(function (yt) {
+      for (var v = 0; v < 18; v++) p.push('<rect x="' + (xi + 30 + v * ((wi - 60) / 18)) + '" y="' + yt + '" width="' + ((wi - 60) / 18 - 6) + '" height="' + (BORDA - 6) + '" rx="2" fill="#0F1216" opacity="0.75"/>');
+    });
+    // Trilhos com brilho metálico.
+    p.push('<rect x="' + (x0 + TRILHO - 9) + '" y="' + (y0 + BORDA - 2) + '" width="8" height="' + (UH * rack.alturaU + 4) + '" fill="url(#rk-g-trilho)"/><rect x="' + (xi + wi + 1) + '" y="' + (y0 + BORDA - 2) + '" width="8" height="' + (UH * rack.alturaU + 4) + '" fill="url(#rk-g-trilho)"/>');
     p.push('<rect class="rk-interior" x="' + xi + '" y="' + (y0 + BORDA) + '" width="' + wi + '" height="' + (UH * rack.alturaU) + '" fill="#E9EDF1"/>');
+    p.push('<rect x="' + xi + '" y="' + (y0 + BORDA) + '" width="' + wi + '" height="' + (UH * rack.alturaU) + '" fill="url(#rk-g-fundo)" pointer-events="none"/>');
     // Unidades: numeração dos dois lados e linhas guia.
     var oc = E.ocupacaoRack(rack);
     for (var u = 1; u <= rack.alturaU; u++) {
       var y = topoU(u);
       var ocupadaAqui = oc.porU[u].some(function (it) { return face === "frente" ? it.face !== "tras" : it.face !== "frente"; });
       var fonte = Math.max(7, Math.min(10, UH * 0.48));
-      p.push('<text x="' + (x0 + TRILHO / 2) + '" y="' + (y + UH / 2 + fonte * 0.35) + '" font-size="' + fonte + '" fill="#C9D1D9" text-anchor="middle">' + u + '</text>');
-      p.push('<text x="' + (x0 + TRILHO + wi + TRILHO / 2) + '" y="' + (y + UH / 2 + fonte * 0.35) + '" font-size="' + fonte + '" fill="#C9D1D9" text-anchor="middle">' + u + '</text>');
+      p.push('<text x="' + (x0 + TRILHO / 2) + '" y="' + (y + UH / 2 + fonte * 0.35) + '" font-size="' + fonte + '" fill="#8C96A1" text-anchor="middle">' + u + '</text>');
+      p.push('<text x="' + (x0 + TRILHO + wi + TRILHO / 2) + '" y="' + (y + UH / 2 + fonte * 0.35) + '" font-size="' + fonte + '" fill="#8C96A1" text-anchor="middle">' + u + '</text>');
       // Furos dos trilhos (3 por U).
       for (var f = 0; f < 3; f++) {
         var yf = y + UH * (0.2 + f * 0.3);
-        p.push('<rect x="' + (x0 + TRILHO - 7) + '" y="' + (yf - 1.5) + '" width="4" height="3" fill="#5A626C"/><rect x="' + (xi + wi + 3) + '" y="' + (yf - 1.5) + '" width="4" height="3" fill="#5A626C"/>');
+        p.push('<rect x="' + (x0 + TRILHO - 7) + '" y="' + (yf - 1.6) + '" width="4" height="3.2" rx="0.6" fill="#16191E"/><rect x="' + (xi + wi + 3) + '" y="' + (yf - 1.6) + '" width="4" height="3.2" rx="0.6" fill="#16191E"/>');
       }
       if (!ocupadaAqui) {
-        p.push('<rect class="rk-u-livre' + (sel.u === u && !exportar && sel.rack === rack.id ? " rk-u-sel" : "") + '" data-u="' + u + '" x="' + (xi + 1) + '" y="' + (y + 1) + '" width="' + (wi - 2) + '" height="' + (UH - 2) + '" fill="' + (sel.u === u && !exportar && sel.rack === rack.id ? "#CDE8D6" : "#F6F8FA") + '" stroke="#C8D0D8" stroke-dasharray="3 3"/>');
+        p.push('<rect class="rk-u-livre' + (sel.u === u && !exportar && sel.rack === rack.id ? " rk-u-sel" : "") + '" data-u="' + u + '" x="' + (xi + 1) + '" y="' + (y + 1) + '" width="' + (wi - 2) + '" height="' + (UH - 2) + '" rx="2.5" fill="' + (sel.u === u && !exportar && sel.rack === rack.id ? "#CDE8D6" : "#F6F8FA") + '" stroke="#D5DCE3" stroke-width="0.7"/>');
       }
     }
     // Os cabos entram aqui (antes dos itens), para passarem por baixo dos
@@ -162,14 +169,16 @@
       p.push('<g class="rk-item' + (!exportar && destaque === it.id ? " rk-novo" : "") + '" data-item="' + esc(it.id) + '">');
       p.push('<title>' + esc(it.nome + " · " + cat.rotulo + " · " + faixaUTexto(it) + (it.modelo ? " · " + it.modelo : "")) + '</title>');
       p.push('<rect class="rk-item-corpo" x="' + (xi + 1) + '" y="' + (y + 0.5) + '" width="' + (wi - 2) + '" height="' + (h - 1) + '" rx="2" fill="' + fundo + '" stroke="' + (selecionado ? "#E8A33D" : destaque ? "#F2C94C" : "#14171B") + '" stroke-width="' + (selecionado || destaque ? 2.5 : 1) + '"' + tracejado + '/>');
+      p.push('<rect x="' + (xi + 1.5) + '" y="' + (y + 1) + '" width="' + (wi - 3) + '" height="' + Math.max(3, (h - 2) * 0.5) + '" rx="2" fill="url(#rk-g-brilho)" pointer-events="none"/>');
       // Orelhas de fixação.
-      p.push('<rect x="' + (xi - 6) + '" y="' + (y + 1.5) + '" width="7" height="' + (h - 3) + '" fill="#9AA3AD"/><rect x="' + (xi + wi - 1) + '" y="' + (y + 1.5) + '" width="7" height="' + (h - 3) + '" fill="#9AA3AD"/>');
+      p.push('<rect x="' + (xi - 6) + '" y="' + (y + 1.5) + '" width="7" height="' + (h - 3) + '" rx="1.5" fill="url(#rk-g-orelha)"/><rect x="' + (xi + wi - 1) + '" y="' + (y + 1.5) + '" width="7" height="' + (h - 3) + '" rx="1.5" fill="url(#rk-g-orelha)"/>');
       // Foto real do painel frontal (opcional): cobre o corpo, com a borda por cima.
       var comFoto = !!it.foto && opcoes.fotos !== false;
       if (comFoto) {
         var idClip = "rkf-" + String(it.id).replace(/[^a-zA-Z0-9_-]/g, "") + (exportar ? "-x" : "");
         p.push('<clipPath id="' + idClip + '"><rect x="' + (xi + 1) + '" y="' + (y + 0.5) + '" width="' + (wi - 2) + '" height="' + (h - 1) + '" rx="2"/></clipPath>');
         p.push('<image class="rk-foto" href="' + esc(it.foto) + '" x="' + (xi + 1) + '" y="' + (y + 0.5) + '" width="' + (wi - 2) + '" height="' + (h - 1) + '" preserveAspectRatio="none" clip-path="url(#' + idClip + ')"/>');
+        p.push('<rect x="' + (xi + 1.5) + '" y="' + (y + 1) + '" width="' + (wi - 3) + '" height="' + Math.max(3, (h - 2) * 0.4) + '" rx="2" fill="url(#rk-g-brilho)" opacity="0.6" pointer-events="none"/>');
         p.push('<rect x="' + (xi + 1) + '" y="' + (y + 0.5) + '" width="' + (wi - 2) + '" height="' + (h - 1) + '" rx="2" fill="none" stroke="' + (selecionado ? "#E8A33D" : destaque ? "#F2C94C" : "#14171B") + '" stroke-width="' + (selecionado || destaque ? 2.5 : 1) + '"' + tracejado + '/>');
       }
       // Sigla da categoria (identificação sem depender da cor).
@@ -276,7 +285,14 @@
     return { svg: p.join(""), largura: larguraTotal, altura: alturaDesenho, UH: UH, topoU: topoU };
   }
 
-  var DEFS = '<defs><pattern id="rk-hachura" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect class="rk-hachura-fundo" width="6" height="6" fill="#EEF1F4"/><line x1="0" y1="0" x2="0" y2="6" stroke="#C3CAD1" stroke-width="2"/></pattern></defs>';
+  var DEFS = '<defs>' +
+    '<linearGradient id="rk-g-moldura" x1="0" x2="1"><stop offset="0" stop-color="#1C2026"/><stop offset="0.06" stop-color="#3A4049"/><stop offset="0.5" stop-color="#2A2F37"/><stop offset="0.94" stop-color="#3A4049"/><stop offset="1" stop-color="#1C2026"/></linearGradient>' +
+    '<linearGradient id="rk-g-trilho" x1="0" x2="1"><stop offset="0" stop-color="#5D6570"/><stop offset="0.45" stop-color="#A9B2BC"/><stop offset="1" stop-color="#4B525C"/></linearGradient>' +
+    '<linearGradient id="rk-g-orelha" x1="0" x2="1"><stop offset="0" stop-color="#7C8590"/><stop offset="0.5" stop-color="#C3CBD3"/><stop offset="1" stop-color="#6E7782"/></linearGradient>' +
+    '<linearGradient id="rk-g-brilho" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.22"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>' +
+    '<linearGradient id="rk-g-fundo" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity="0.18"/><stop offset="0.08" stop-color="#000" stop-opacity="0"/><stop offset="0.92" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.18"/></linearGradient>' +
+    '<filter id="rk-sombra" x="-10%" y="-5%" width="120%" height="110%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity="0.35"/></filter>' +
+    '<pattern id="rk-hachura" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect class="rk-hachura-fundo" width="6" height="6" fill="#EEF1F4"/><line x1="0" y1="0" x2="0" y2="6" stroke="#C3CAD1" stroke-width="2"/></pattern></defs>';
 
   // ---- montagem da interface ---------------------------------------------------
   raiz.innerHTML =
@@ -435,10 +451,19 @@
     elTitulo.innerHTML = '<strong>' + esc(rack.nome) + '</strong> <span>' + oc.ocupadas + '/' + rack.alturaU + 'U ocupadas · ' + oc.livres + ' livres (' + Math.round(oc.ocupadas / rack.alturaU * 100) + '%)</span>';
     var d = desenharRack(rack, { zoom: vista.zoom, face: vista.face, inverter: vista.inverter, cabos: vista.cabos, fotos: vista.fotos, nomesAoLado: vista.nomes, x: 20, y: 24 });
     ultimoDesenho = d;
+    var rolarAte = destaque;
     var largura = d.largura + 40, altura = d.altura + 40;
     elPalco.innerHTML = '<svg class="rk-svg" xmlns="http://www.w3.org/2000/svg" width="' + largura + '" height="' + altura + '" viewBox="0 0 ' + largura + ' ' + altura + '">' + DEFS +
       '<text class="rk-legenda" x="20" y="16" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#4A5560">' + (vista.face === "frente" ? "Vista frontal" : "Vista traseira") + '</text>' +
       d.svg + '<rect class="rk-fantasma" x="0" y="0" width="0" height="0" visibility="hidden"/></svg>';
+    if (rolarAte) {
+      var alvo = elPalco.querySelector('.rk-item[data-item="' + String(rolarAte).replace(/"/g, "") + '"]');
+      // Rola só o palco (scrollIntoView rolaria a página inteira junto).
+      if (alvo) {
+        var ra = alvo.getBoundingClientRect(), rp = elPalco.getBoundingClientRect();
+        if (ra.top < rp.top || ra.bottom > rp.bottom) elPalco.scrollTo({ top: elPalco.scrollTop + ra.top - rp.top - (rp.height - ra.height) / 2, behavior: "smooth" });
+      }
+    }
   }
 
   // ---- painel de propriedades ----------------------------------------------------
