@@ -119,7 +119,7 @@
       };
     });
 
-    var CONFIG_PORTA = { largura: 52, alturaMaxima: 24, alturaMinima: 14, fonteMaxima: 10, fonteMinima: 7, paddingMaximo: 3, paddingMinimo: 1, fundo: "#FFFFFF", borda: "#202020", texto: "#111111", maxCaracteres: 11 };
+    var CONFIG_PORTA = { largura: 52, alturaMaxima: 24, alturaMinima: 14, fonteMaxima: 10, fonteMinima: 7, paddingMaximo: 3, paddingMinimo: 1, fundo: "#F7FAFC", borda: "#6B7D8C", texto: "#1E2C38", maxCaracteres: 11 };
     var ALTURA_BASE_EQUIPAMENTO = 92;
 
     function calcularFontePorta(altura) {
@@ -239,7 +239,7 @@
       linhas.push('  subgraph "cluster_' + indiceGrupo + '" {');
       linhas.push('    id="grupo_' + indiceGrupo + '";');
       linhas.push('    label="' + escapar(grupo) + '";');
-      linhas.push('    color="#6C8292"; style="rounded,dashed"; penwidth=1.0; fontname="Helvetica"; fontsize=9;');
+      linhas.push('    color="#C9D6E0"; style="rounded,filled"; fillcolor="#EEF4F8"; penwidth=1.2; fontname="Helvetica-Bold"; fontcolor="#4F6577"; fontsize=10;');
       grupos[grupo].forEach(function (eq) { linhas.push(linhaEquipamento(eq)); });
       linhas.push("  }");
     });
@@ -354,6 +354,53 @@
   function iconeSemMoldura(icone) {
     var arquivo = String(icone || "").split(/[\/]/).pop();
     return ICONES_SEM_MOLDURA.indexOf(arquivo) >= 0;
+  }
+
+  // Acabamento: cada equipamento vira um cartão (fundo branco, sombra suave e uma
+  // faixa na cor do tipo); as portas ficam "plugadas" na borda. As etiquetas dos
+  // cabos ganham contorno da cor do papel para ler por cima das linhas.
+  // Tudo em atributos do próprio SVG, para sair igual na exportação.
+  function aplicarCartoes(dados) {
+    var svgEl = elCanvas.querySelector("svg");
+    if (!svgEl) return;
+    var NS = "http://www.w3.org/2000/svg";
+    if (!svgEl.querySelector("#eq-sombra")) {
+      var defs = svgEl.querySelector("defs") || svgEl.insertBefore(document.createElementNS(NS, "defs"), svgEl.firstChild);
+      var filtro = document.createElementNS(NS, "filter");
+      filtro.setAttribute("id", "eq-sombra"); filtro.setAttribute("x", "-20%"); filtro.setAttribute("y", "-20%"); filtro.setAttribute("width", "140%"); filtro.setAttribute("height", "150%");
+      filtro.innerHTML = '<feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#0F2433" flood-opacity="0.16"/>';
+      defs.appendChild(filtro);
+    }
+    var porId = {};
+    dados.equipamentos.forEach(function (eq) { porId[eq.id] = eq; });
+    svgEl.querySelectorAll("g.node").forEach(function (g) {
+      var id = idEquipamentoDoNode(g);
+      var eq = id && porId[id];
+      if (!eq) return;
+      g.querySelectorAll("[data-eq-cartao='1']").forEach(function (x) { x.remove(); });
+      var b;
+      try { b = g.getBBox(); } catch (e) { return; }
+      if (!b || !b.width) return;
+      var info = portasRenderizadas[id] || { ordem: [] };
+      var lados = {};
+      (info.ordem || []).forEach(function (p) { lados[p.lado] = true; });
+      var meia = 26;
+      var x = b.x + (lados.esquerda ? meia : 0), y = b.y + (lados.cima ? meia : 0);
+      var w = b.width - (lados.esquerda ? meia : 0) - (lados.direita ? meia : 0);
+      var h = b.height - (lados.cima ? meia : 0) - (lados.baixo ? meia : 0);
+      var primeiro = g.querySelector("title") ? g.querySelector("title").nextSibling : g.firstChild;
+      var cartao = document.createElementNS(NS, "rect");
+      [["data-eq-cartao", "1"], ["class", "eq-cartao"], ["x", x], ["y", y], ["width", w], ["height", h], ["rx", 12], ["fill", "#FFFFFF"], ["stroke", "#D5E0E8"], ["stroke-width", 1], ["filter", "url(#eq-sombra)"], ["pointer-events", "none"]]
+        .forEach(function (a) { cartao.setAttribute(a[0], a[1]); });
+      var faixa = document.createElementNS(NS, "rect");
+      [["data-eq-cartao", "1"], ["x", x + 14], ["y", y + 1], ["width", Math.max(0, w - 28)], ["height", 3], ["rx", 1.5], ["fill", corPorTipo(eq.tipo || "outro")], ["pointer-events", "none"]]
+        .forEach(function (a) { faixa.setAttribute(a[0], a[1]); });
+      g.insertBefore(faixa, primeiro);
+      g.insertBefore(cartao, faixa);
+    });
+    svgEl.querySelectorAll("g.edge text").forEach(function (t) {
+      t.setAttribute("paint-order", "stroke"); t.setAttribute("stroke", "#F4F8FB"); t.setAttribute("stroke-width", "3.5"); t.setAttribute("stroke-linejoin", "round");
+    });
   }
 
   function aplicarImagensNoSvg(dados) {
@@ -1260,6 +1307,7 @@
       aplicarCaminho();
       aplicarImagensNoSvg(estado);
       girarNomesDasPortasEmPe(elCanvas.querySelector("svg"));
+      aplicarCartoes(estado);
       atualizarLegenda(estado);
       btnCopiar.disabled = false;
       btnBaixar.disabled = false;
