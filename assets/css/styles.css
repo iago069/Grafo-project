@@ -1571,3 +1571,6 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
 .rk-svg .rk-item-outra-face text { fill: var(--text-dim); }
 .rk-titulo-rack strong { color: var(--text); }
 .rk-filtro select { min-height: var(--ctl-h-sm); padding: 0 10px; display: inline-flex; align-items: center; font-size: 0.75rem; }
+
+/* Rack cabe na largura do palco (etiquetas dos cabos visíveis sem rolar para o lado). */
+.rk-svg { max-width: 100%; height: auto; }

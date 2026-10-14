@@ -112,6 +112,7 @@
     var altura = BORDA * 2 + UH * rack.alturaU;
     var canal = larguraRack + 10;   // cabos que voltam pela lateral direita
     var larguraTotal = larguraRack + (opcoes.semCanal ? 0 : 150);
+    var alturaDesenho = altura;
     function topoU(u) { return y0 + BORDA + (inverter ? (u - 1) : (rack.alturaU - u)) * UH; }
     function topoItem(it) { return inverter ? topoU(it.u) : topoU(it.u + it.alturaU - 1); }
     var xi = x0 + TRILHO, wi = LARGURA_19;
@@ -137,6 +138,9 @@
         p.push('<rect class="rk-u-livre' + (sel.u === u && !exportar && sel.rack === rack.id ? " rk-u-sel" : "") + '" data-u="' + u + '" x="' + (xi + 1) + '" y="' + (y + 1) + '" width="' + (wi - 2) + '" height="' + (UH - 2) + '" fill="' + (sel.u === u && !exportar && sel.rack === rack.id ? "#CDE8D6" : "#F6F8FA") + '" stroke="#C8D0D8" stroke-dasharray="3 3"/>');
       }
     }
+    // Os cabos entram aqui (antes dos itens), para passarem por baixo dos
+    // equipamentos e aparecerem saindo pela lateral, sem cruzar as outras portas.
+    var posicaoDosCabos = p.length;
     // Itens da face pedida; os da outra face aparecem só como contorno (ocupação).
     var portasPos = {};
     (rack.itens || []).slice().sort(function (a, b) { return a.u - b.u; }).forEach(function (it) {
@@ -201,29 +205,48 @@
       p.push('</g>');
     });
     // Cabos físicos: os do próprio rack voltam pela lateral direita (um trilho
-    // por cabo); os que vão para outro rack terminam numa etiqueta.
+    // por cabo). Os que vão para outro rack seguem cada um por seu trilho até uma
+    // etiqueta própria, numa coluna à direita, uma embaixo da outra (sem sobrepor).
     if (opcoes.cabos !== "ocultos") {
-      var indice = 0;
+      var PASSO_TRILHO = 6, ALTURA_ETIQUETA = 15;
+      // Um trilho por cabo visível (até 14): com poucos cabos, as etiquetas ficam perto do rack.
+      var TRILHOS = Math.max(1, Math.min(14, dados.cabos.filter(function (cb) { return portasPos[cb.deItem + "#" + cb.dePorta] || portasPos[cb.paraItem + "#" + cb.paraPorta]; }).length));
+      var xEtiquetas = x0 + canal + TRILHOS * PASSO_TRILHO + 8;
+      var indice = 0, saidas = [], linhas = [];
       dados.cabos.forEach(function (cb) {
         if (opcoes.cabos && opcoes.cabos !== "todos" && cb.tipo !== opcoes.cabos) return;
         var a = portasPos[cb.deItem + "#" + cb.dePorta], b = portasPos[cb.paraItem + "#" + cb.paraPorta];
         if (!a && !b) return;
         var cor = cb.cor || CORES_CABO[cb.tipo];
-        var xc = x0 + canal + (indice++ % 14) * 6;
+        var xc = x0 + canal + (indice++ % TRILHOS) * PASSO_TRILHO;
+        var titulo = '<title>' + esc((cb.etiqueta ? cb.etiqueta + " · " : "") + NOMES_CABO[cb.tipo]) + '</title>';
         if (a && b) {
-          p.push('<path d="M' + a.x + ' ' + a.y + ' H' + xc + ' V' + b.y + ' H' + b.x + '" fill="none" stroke="' + cor + '" stroke-width="1.6" stroke-opacity="0.85"><title>' + esc((cb.etiqueta ? cb.etiqueta + " · " : "") + NOMES_CABO[cb.tipo]) + '</title></path>');
+          linhas.push('<path d="M' + a.x + ' ' + a.y + ' H' + xc + ' V' + b.y + ' H' + b.x + '" fill="none" stroke="' + cor + '" stroke-width="1.6" stroke-opacity="0.85">' + titulo + '</path>');
         } else {
           var ponta = a || b;
           var outro = itemPorId(a ? cb.paraItem : cb.deItem);
           var portaOutro = a ? cb.paraPorta : cb.dePorta;
-          var texto = outro ? outro.rack.nome + " / " + outro.item.nome + " p" + portaOutro : "?";
-          p.push('<path d="M' + ponta.x + ' ' + ponta.y + ' H' + xc + '" fill="none" stroke="' + cor + '" stroke-width="1.6"/>');
-          p.push('<text class="rk-cabo-rotulo" x="' + (xc + 4) + '" y="' + (ponta.y + 3) + '" font-size="8" fill="#3A4652">' + esc("> " + texto.slice(0, 32)) + '</text>');
+          var texto = outro ? outro.rack.nome + " / " + outro.item.nome + " " + nomePorta(outro.item, portaOutro) : "?";
+          saidas.push({ ponta: ponta, xc: xc, cor: cor, texto: (cb.etiqueta ? cb.etiqueta + ": " : "") + texto, titulo: titulo });
         }
       });
+      // Etiquetas na ordem da altura das portas, cada uma na primeira linha livre.
+      saidas.sort(function (m, n) { return m.ponta.y - n.ponta.y || m.ponta.x - n.ponta.x; });
+      var ultimaY = -Infinity;
+      saidas.forEach(function (s) {
+        var yEtiqueta = Math.max(s.ponta.y, ultimaY + ALTURA_ETIQUETA);
+        ultimaY = yEtiqueta;
+        linhas.push('<path d="M' + s.ponta.x + ' ' + s.ponta.y + ' H' + s.xc + ' V' + yEtiqueta + ' H' + (xEtiquetas - 3) + '" fill="none" stroke="' + s.cor + '" stroke-width="1.6" stroke-opacity="0.9">' + s.titulo + '</path>');
+        p.push('<circle cx="' + (xEtiquetas - 3) + '" cy="' + yEtiqueta + '" r="2" fill="' + s.cor + '"/>');
+        p.push('<text class="rk-cabo-rotulo" x="' + xEtiquetas + '" y="' + (yEtiqueta + 4) + '" font-size="11" fill="#3A4652">' + esc(s.texto.length > 34 ? s.texto.slice(0, 32) + "..." : s.texto) + s.titulo + '</text>');
+      });
+      if (saidas.length) larguraTotal = Math.max(larguraTotal, xEtiquetas - x0 + 215);
+      p.splice.apply(p, [posicaoDosCabos, 0].concat(linhas));
+      // Etiquetas que passam da base do rack aumentam a altura do desenho.
+      if (saidas.length) alturaDesenho = Math.max(alturaDesenho, ultimaY + 10 - y0);
     }
     p.push('</g>');
-    return { svg: p.join(""), largura: larguraTotal, altura: altura, UH: UH, topoU: topoU };
+    return { svg: p.join(""), largura: larguraTotal, altura: alturaDesenho, UH: UH, topoU: topoU };
   }
 
   var DEFS = '<defs><pattern id="rk-hachura" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect class="rk-hachura-fundo" width="6" height="6" fill="#EEF1F4"/><line x1="0" y1="0" x2="0" y2="6" stroke="#C3CAD1" stroke-width="2"/></pattern></defs>';

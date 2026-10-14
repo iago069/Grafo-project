@@ -140,10 +140,10 @@ test("bayface: arrastar da biblioteca e tela estreita", async () => {
   await pagina.selectOption("#modoDiagrama", "racks");
   await pagina.click('.rk-palco-vazio [data-rk="novo-rack"]');
   await pagina.waitForSelector(".rk-svg");
-  // Arrasta "Switch" para a U5 (HTML5 drag and drop).
-  const alvo = pagina.locator('.rk-u-livre[data-u="5"]');
+  // Arrasta "Switch" para a U38 (HTML5 drag and drop; visível junto com a biblioteca).
+  const alvo = pagina.locator('.rk-u-livre[data-u="38"]');
   await pagina.locator('.rk-peca[data-categoria="switch"]').dragTo(alvo);
-  await pagina.waitForFunction(() => /instalado em U5/.test(document.querySelector(".rk-msg").textContent));
+  await pagina.waitForFunction(() => /instalado em U38/.test(document.querySelector(".rk-msg").textContent));
   // Clique numa peça com uma U selecionada instala ali.
   await pagina.click('.rk-u-livre[data-u="20"]');
   await pagina.click('.rk-peca[data-categoria="dwdm"]');
