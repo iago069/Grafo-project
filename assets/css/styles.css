@@ -1727,3 +1727,12 @@ button.ghost { backdrop-filter: blur(6px); }
 /* Datacenter: cada fileira num bloco. */
 .rk-svg-dc .rk-dc-fileira-fundo { fill: color-mix(in srgb, var(--text) 3%, transparent); stroke: var(--line-soft); }
 .rk-svg-dc .rk-dc-fileira-nome { fill: var(--accent); }
+/* Datacenter na tela: etiquetas e pílulas no tema. */
+.rk-svg-dc .rk-dc-etiqueta { fill: color-mix(in srgb, var(--bg-panel-2), var(--text) 8%); stroke: var(--line-soft); }
+.rk-svg-dc .rk-dc-pilula { fill: var(--accent); }
+.rk-svg-dc .rk-dc-fileira-nome { fill: var(--accent-ink); }
+.rk-svg-dc .rk-dc-barra-fundo { fill: color-mix(in srgb, var(--text) 12%, transparent); }
+.rk-svg-dc .rk-dc-fileira-faixa { fill: var(--teal); }
+.rk-svg-dc .rk-dc-atual .rk-dc-etiqueta { stroke: var(--accent); stroke-width: 2; }
+.rk-svg-dc .rk-dc-atual .rk-dc-nome { fill: var(--accent); }
+.rk-svg-dc .rk-dc-rack:hover .rk-dc-etiqueta { stroke: var(--teal); }
