@@ -428,7 +428,8 @@
     dados.racks.forEach(function (r) {
       var achouItem = (r.itens || []).some(itemConfere);
       if (vista.busca && !achouItem && ![r.nome, r.local, r.patrimonio, r.modelo].some(confere)) return;
-      (grupos[r.local || "Sem local"] = grupos[r.local || "Sem local"] || []).push(r);
+      var chave = (r.local || "Sem local") + (r.fileira ? " · Fileira " + r.fileira : "");
+      (grupos[chave] = grupos[chave] || []).push(r);
     });
     var locais = Object.keys(grupos).sort(function (a, b) { return a.localeCompare(b); });
     if (!locais.length) { elLista.innerHTML = '<p class="rk-vazio">Nada encontrado.</p>'; return; }
@@ -449,9 +450,27 @@
   function desenharDatacenter(exportar) {
     var atual = rackAtual();
     var racks = dados.racks.filter(function (r) { return !atual || (r.local || "") === (atual.local || ""); });
-    var x = 20, partes = [], alturaMax = 0, y = exportar ? 120 : 46;
+    var porFileira = {};
+    racks.forEach(function (r) { (porFileira[r.fileira || ""] = porFileira[r.fileira || ""] || []).push(r); });
+    var fileiras = Object.keys(porFileira).sort(function (a, b) { return (a === "") - (b === "") || a.localeCompare(b, "pt", { numeric: true }); });
+    var partes = [], larguraMax = 0, yLinha = exportar ? 100 : 20, temFileiras = fileiras.some(Boolean);
+    fileiras.forEach(function (fil) {
+      var lista = porFileira[fil].slice().sort(function (a, b) { return a.nome.localeCompare(b.nome, "pt", { numeric: true }); });
+      var linha = linhaDatacenter(lista, yLinha + (temFileiras ? 34 : 0), exportar);
+      if (temFileiras) partes.push('<g class="rk-dc-fileira"><rect x="12" y="' + yLinha + '" width="' + (linha.largura + 8) + '" height="' + (linha.altura + 44) + '" rx="14" class="rk-dc-fileira-fundo" fill="#F3F6F9" stroke="#D5DCE3"/>' +
+        '<text class="rk-dc-fileira-nome" x="28" y="' + (yLinha + 24) + '" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="bold" fill="#1F2B36">' + esc(fil ? "Fileira " + fil : "Sem fileira") + '</text>' +
+        '<text class="rk-dc-info" x="' + (28 + (fil ? "Fileira " + fil : "Sem fileira").length * 9.5 + 10) + '" y="' + (yLinha + 24) + '" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#5A6672">' + lista.length + ' rack' + (lista.length > 1 ? "s" : "") + '</text></g>');
+      partes.push(linha.svg);
+      larguraMax = Math.max(larguraMax, linha.largura);
+      yLinha += linha.altura + (temFileiras ? 44 : 0) + 30;
+    });
+    return { svg: partes.join(""), largura: larguraMax, altura: yLinha, racks: racks };
+  }
+  function linhaDatacenter(racks, y0, exportar) {
+    var atual = rackAtual();
+    var x = 20, partes = [], alturaMax = 0, y = y0 + 40;
     racks.forEach(function (r) {
-      var d = desenharRack(r, { zoom: exportar ? 1 : vista.zoom * 0.55, face: vista.face, inverter: vista.inverter, cabos: "ocultos", fotos: vista.fotos, nomesAoLado: vista.nomes, semCanal: true, exportar: true, x: x, y: y });
+      var d = desenharRack(r, { zoom: 1, face: vista.face, inverter: vista.inverter, cabos: "ocultos", fotos: vista.fotos, nomesAoLado: vista.nomes, semCanal: true, exportar: true, x: x, y: y });
       var meio = x + (vista.nomes ? 200 : 0) + (TRILHO * 2 + LARGURA_19) / 2;
       var oc = E.ocupacaoRack(r);
       partes.push('<g class="rk-dc-rack' + (atual && r.id === atual.id ? " rk-dc-atual" : "") + '" data-rack="' + esc(r.id) + '">' +
@@ -461,7 +480,7 @@
       x += d.largura + 50;
       alturaMax = Math.max(alturaMax, d.altura);
     });
-    return { svg: partes.join(""), largura: x - 30, altura: y + alturaMax + 20, racks: racks };
+    return { svg: partes.join(""), largura: x - 30, altura: alturaMax + 50 };
   }
   function svgDatacenter() {
     var d = desenharDatacenter(true);
@@ -479,7 +498,7 @@
       var dc = desenharDatacenter(false);
       elTitulo.innerHTML = '<strong>Datacenter</strong> <span>' + dc.racks.length + ' racks' + (rack.local ? ' · ' + esc(rack.local) : '') + ' · clique num rack para abrir</span>';
       ultimoDesenho = null;
-      elPalco.innerHTML = '<svg class="rk-svg rk-svg-dc" xmlns="http://www.w3.org/2000/svg" width="' + (dc.largura + 20) + '" height="' + dc.altura + '" viewBox="0 0 ' + (dc.largura + 20) + ' ' + dc.altura + '">' + DEFS + dc.svg + '</svg>';
+      elPalco.innerHTML = '<svg class="rk-svg rk-svg-dc" xmlns="http://www.w3.org/2000/svg" width="' + Math.round((dc.largura + 20) * vista.zoom * 0.6) + '" height="' + Math.round(dc.altura * vista.zoom * 0.6) + '" viewBox="0 0 ' + (dc.largura + 20) + ' ' + dc.altura + '">' + DEFS + dc.svg + '</svg>';
       return;
     }
     if (!rack) {
@@ -489,11 +508,11 @@
     }
     var oc = E.ocupacaoRack(rack);
     elTitulo.innerHTML = '<strong>' + esc(rack.nome) + '</strong> <span>' + oc.ocupadas + '/' + rack.alturaU + 'U ocupadas · ' + oc.livres + ' livres (' + Math.round(oc.ocupadas / rack.alturaU * 100) + '%)</span>';
-    var d = desenharRack(rack, { zoom: vista.zoom, face: vista.face, inverter: vista.inverter, cabos: vista.cabos, fotos: vista.fotos, nomesAoLado: vista.nomes, x: 20, y: 24 });
+    var d = desenharRack(rack, { zoom: 1, face: vista.face, inverter: vista.inverter, cabos: vista.cabos, fotos: vista.fotos, nomesAoLado: vista.nomes, x: 20, y: 24 });
     ultimoDesenho = d;
     var rolarAte = destaque;
     var largura = d.largura + 40, altura = d.altura + 40;
-    elPalco.innerHTML = '<svg class="rk-svg" xmlns="http://www.w3.org/2000/svg" width="' + largura + '" height="' + altura + '" viewBox="0 0 ' + largura + ' ' + altura + '">' + DEFS +
+    elPalco.innerHTML = '<svg class="rk-svg" xmlns="http://www.w3.org/2000/svg" width="' + Math.round(largura * vista.zoom) + '" height="' + Math.round(altura * vista.zoom) + '" viewBox="0 0 ' + largura + ' ' + altura + '">' + DEFS +
       '<text class="rk-legenda" x="20" y="16" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#4A5560">' + (vista.face === "frente" ? "Vista frontal" : "Vista traseira") + '</text>' +
       d.svg + '<rect class="rk-fantasma" x="0" y="0" width="0" height="0" visibility="hidden"/></svg>';
     if (rolarAte) {
@@ -530,6 +549,7 @@
         campo("Nome", entrada("nome", rack.nome, 'required maxlength="60"'), "full") +
         '<div class="nav-form-grid">' + campo("Patrimônio / código", entrada("patrimonio", rack.patrimonio, 'maxlength="40"')) + campo("Status", '<select name="status">' + opcoes(E.STATUS_RACK, rack.status, NOMES_STATUS) + '</select>') + '</div>' +
         campo("Local (unidade, sala, datacenter ou POP)", entrada("local", rack.local, 'maxlength="60" list="rk-locais"'), "full") +
+        campo("Fileira (ex.: A, B)", entrada("fileira", rack.fileira || "", 'maxlength="20" placeholder="A"'), "full") +
         '<datalist id="rk-locais">' + Array.from(new Set(dados.racks.map(function (r) { return r.local; }).filter(Boolean))).map(function (v) { return '<option value="' + esc(v) + '">'; }).join("") + '</datalist>' +
         '<div class="nav-form-grid">' + campo("Fabricante", entrada("fabricante", rack.fabricante, 'maxlength="40"')) + campo("Modelo", entrada("modelo", rack.modelo, 'maxlength="60"')) + '</div>' +
         '<div class="nav-form-grid">' +
@@ -702,7 +722,13 @@
     var nome = "RACK-" + String(n).padStart(2, "0");
     while (dados.racks.some(function (r) { return r.nome === nome; })) nome = "RACK-" + String(++n).padStart(2, "0");
     var anterior = rackAtual();
-    var rack = { id: novoId("rk"), nome: nome, patrimonio: "", local: anterior ? anterior.local : "", fabricante: "", modelo: "", alturaU: 42, largura: "", profundidade: "", status: "planejado", obs: "", itens: [] };
+    var fileira = anterior && anterior.fileira ? anterior.fileira : "";
+    if (fileira) {
+      var k = dados.racks.filter(function (r) { return r.fileira === fileira; }).length + 1;
+      nome = fileira + k;
+      while (dados.racks.some(function (r) { return r.nome === nome; })) nome = fileira + (++k);
+    }
+    var rack = { id: novoId("rk"), nome: nome, fileira: fileira, patrimonio: "", local: anterior ? anterior.local : "", fabricante: "", modelo: "", alturaU: 42, largura: "", profundidade: "", status: "planejado", obs: "", itens: [] };
     sel = { rack: rack.id, item: null, u: null };
     gravar(dados.racks.concat([rack]), dados.cabos, "Rack " + nome + " criado (42U).");
   }
@@ -763,7 +789,7 @@
       var acima = (rack.itens || []).filter(function (it) { return it.u + it.alturaU - 1 > alturaU; });
       if (acima.length) { mensagem("Não dá para reduzir para " + alturaU + "U: " + acima.map(function (it) { return it.nome + " (" + faixaU(it) + ")"; }).join(", ") + " ficaria fora do rack. Mova ou remova antes.", true); return; }
       comRack(rack.id, function (r, racks) {
-        Object.assign(r, { nome: v.nome, patrimonio: v.patrimonio, local: v.local, fabricante: v.fabricante, modelo: v.modelo, alturaU: alturaU, largura: v.largura, profundidade: v.profundidade, status: v.status, obs: v.obs });
+        Object.assign(r, { nome: v.nome, patrimonio: v.patrimonio, local: v.local, fileira: String(v.fileira || "").trim().toUpperCase(), fabricante: v.fabricante, modelo: v.modelo, alturaU: alturaU, largura: v.largura, profundidade: v.profundidade, status: v.status, obs: v.obs });
         return gravar(racks, dados.cabos, "Rack salvo.");
       });
     } else if (tipo === "novo" && rack) {
@@ -842,8 +868,8 @@
       var mesmos = mesmoModelo(achado.item);
       salvarFoto(mesmos.map(function (x) { return x.id; }), achado.item.foto, "Foto aplicada em " + mesmos.length + " equipamento" + (mesmos.length > 1 ? "s" : "") + " do modelo " + achado.item.modelo + ".");
     }
-    else if (acao === "zoom-mais") { vista.zoom = Math.min(2.5, Math.round((vista.zoom + 0.2) * 10) / 10); guardarVista(); render(); }
-    else if (acao === "zoom-menos") { vista.zoom = Math.max(0.5, Math.round((vista.zoom - 0.2) * 10) / 10); guardarVista(); render(); }
+    else if (acao === "zoom-mais") { vista.zoom = Math.min(ZOOM_MAX, Math.round((vista.zoom + 0.2) * 10) / 10); guardarVista(); render(); }
+    else if (acao === "zoom-menos") { vista.zoom = Math.max(ZOOM_MIN, Math.round((vista.zoom - 0.2) * 10) / 10); guardarVista(); render(); }
     else if (acao === "cancelar") { sel.u = null; render(); }
     else if (acao === "duplicar-rack" && rack) {
       if (dados.racks.length >= E.LIMITES.racks) { mensagem("Máximo de " + E.LIMITES.racks + " racks por projeto.", true); return; }
@@ -914,6 +940,49 @@
   }
 
   var arraste = null;
+  // Como no diagrama: a roda do mouse aproxima/afasta (mantendo o ponto embaixo
+  // do cursor) e arrastar o fundo move a área dos racks.
+  var ZOOM_MIN = 0.2, ZOOM_MAX = 3, rodaPendente = null;
+  elPalco.addEventListener("wheel", function (ev) {
+    if (!elPalco.querySelector("svg")) return;
+    ev.preventDefault();
+    var caixa = elPalco.getBoundingClientRect();
+    var px = ev.clientX - caixa.left, py = ev.clientY - caixa.top;
+    var base = rodaPendente || { zoom: vista.zoom, fx: (elPalco.scrollLeft + px), fy: (elPalco.scrollTop + py), z0: vista.zoom, px: px, py: py };
+    var fator = Math.exp(-ev.deltaY * (ev.deltaMode === 1 ? 0.05 : 0.0015));
+    base.zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, base.zoom * fator));
+    base.px = px; base.py = py;
+    if (rodaPendente) return;
+    rodaPendente = base;
+    requestAnimationFrame(function () {
+      var r = rodaPendente; rodaPendente = null;
+      var escala = r.zoom / vista.zoom;
+      var fx = elPalco.scrollLeft + r.px, fy = elPalco.scrollTop + r.py;
+      vista.zoom = Math.round(r.zoom * 100) / 100;
+      render();
+      elPalco.scrollLeft = fx * escala - r.px;
+      elPalco.scrollTop = fy * escala - r.py;
+      clearTimeout(timerZoom); timerZoom = setTimeout(guardarVista, 400);
+    });
+  }, { passive: false });
+  var timerZoom = null, panorama = null;
+  elPalco.addEventListener("pointerdown", function (ev) {
+    var fundo = !ev.target.closest(".rk-item, .rk-u-livre, .rk-dc-rack, .rk-porta, button, a, input, select");
+    if (ev.button !== 1 && !(ev.button === 0 && fundo)) return;
+    panorama = { x: ev.clientX, y: ev.clientY, sl: elPalco.scrollLeft, st: elPalco.scrollTop, moveu: false, id: ev.pointerId };
+    if (ev.button === 1) ev.preventDefault();
+  });
+  elPalco.addEventListener("pointermove", function (ev) {
+    if (!panorama) return;
+    var dx = ev.clientX - panorama.x, dy = ev.clientY - panorama.y;
+    if (!panorama.moveu && Math.abs(dx) + Math.abs(dy) < 4) return;
+    if (!panorama.moveu) { panorama.moveu = true; try { elPalco.setPointerCapture(panorama.id); } catch (e) {} elPalco.classList.add("rk-arrastando-palco"); }
+    elPalco.scrollLeft = panorama.sl - dx; elPalco.scrollTop = panorama.st - dy;
+  });
+  function fimPanorama() { if (panorama) { elPalco.classList.remove("rk-arrastando-palco"); panorama = null; } }
+  elPalco.addEventListener("pointerup", fimPanorama);
+  elPalco.addEventListener("pointercancel", fimPanorama);
+
   elPalco.addEventListener("pointerdown", function (ev) {
     if (vista.datacenter) {
       var grk = ev.target.closest(".rk-dc-rack");

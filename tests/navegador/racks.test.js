@@ -67,7 +67,7 @@ test("bayface: cria rack 42U, instala, move, impede sobreposição e limite, rem
   await pagina.mouse.move(caixa.x + caixa.width / 2, caixa.y + caixa.height / 2);
   await pagina.mouse.down();
   await pagina.mouse.move(caixa.x + caixa.width / 2, caixa.y + caixa.height / 2 + passoU * 5, { steps: 8 });
-  await pagina.mouse.move(caixa.x + caixa.width / 2, caixa.y + caixa.height / 2 + passoU * 10, { steps: 8 });
+  await pagina.mouse.move(caixa.x + caixa.width / 2, caixa.y + caixa.height / 2 + passoU * 10.3, { steps: 8 });
   await pagina.mouse.up();
   await pagina.waitForFunction(() => /SRV-01 movido para U20/.test(document.querySelector(".rk-msg").textContent));
   assert.deepEqual(await itens(pagina), ["SRV-01@20+2", "SW-CORE@41+1", "UPS-01@10+4"]);
@@ -184,6 +184,21 @@ test("bayface: arrastar da biblioteca e tela estreita", async () => {
   await pagina.locator(".rk-svg-dc .rk-dc-rack").first().locator(".rk-dc-nome").click();
   await pagina.waitForSelector(".rk-svg:not(.rk-svg-dc)");
   assert.match(await pagina.textContent(".rk-titulo-rack"), /RACK-01/);
+  // Fileiras: o rack ganha a fileira B; o próximo rack nasce B2 e o Datacenter mostra a linha.
+  await pagina.focus(".rk-palco"); await pagina.keyboard.press("Escape");
+  await pagina.waitForSelector('[data-rk-form="rack"] input[name=fileira]');
+  await pagina.fill('[data-rk-form="rack"] input[name=fileira]', "b");
+  await pagina.click('[data-rk-form="rack"] button[type=submit]');
+  await pagina.waitForFunction(() => window.GrafoRacks.dados().racks.some(r => r.fileira === "B"));
+  await pagina.click('.rk-cabecalho [data-rk="novo-rack"]');
+  await pagina.waitForFunction(() => window.GrafoRacks.dados().racks.some(r => r.nome === "B2" && r.fileira === "B"));
+  await pagina.click('[data-rk="datacenter"]');
+  assert.match(await pagina.textContent(".rk-svg-dc"), /Fileira B/);
+  // Roda do mouse aproxima/afasta (como no diagrama).
+  const zoomAntes = await pagina.textContent("[data-rk-zoom]");
+  await pagina.hover(".rk-palco"); await pagina.mouse.wheel(0, 400); await pagina.waitForTimeout(200);
+  assert.notEqual(await pagina.textContent("[data-rk-zoom]"), zoomAntes);
+  await pagina.click('[data-rk="datacenter"]');
   // Sem rolagem horizontal da página em tela menor.
   const sobra = await pagina.evaluate(() => {
     if (document.documentElement.scrollWidth <= window.innerWidth + 1) return [];

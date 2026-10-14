@@ -1719,3 +1719,11 @@ button.ghost { backdrop-filter: blur(6px); }
 @keyframes rkFlutua { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 @keyframes rkvEntra { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .rk-vazio-ilustra, .rkv-eq, .rkv-led { animation: none; } }
+
+/* Bayface: zoom pela roda e arrastar o fundo (o desenho fica no tamanho real, sem encolher). */
+.rk-palco .rk-svg { max-width: none; }
+.rk-palco { cursor: grab; overscroll-behavior: contain; }
+.rk-palco.rk-arrastando-palco { cursor: grabbing; user-select: none; }
+/* Datacenter: cada fileira num bloco. */
+.rk-svg-dc .rk-dc-fileira-fundo { fill: color-mix(in srgb, var(--text) 3%, transparent); stroke: var(--line-soft); }
+.rk-svg-dc .rk-dc-fileira-nome { fill: var(--accent); }

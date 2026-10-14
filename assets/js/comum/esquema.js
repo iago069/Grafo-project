@@ -582,6 +582,7 @@
     nome: { rotulo: "Nome", esquema: texto(LIMITES.textoRack, true), reparar: textoReparado(LIMITES.textoRack) },
     patrimonio: { rotulo: "Patrimônio", esquema: texto(40), reparar: truncar(40) },
     local: { rotulo: "Local", esquema: texto(LIMITES.textoRack), reparar: truncar(LIMITES.textoRack) },
+    fileira: { rotulo: "Fileira", esquema: texto(20), reparar: truncar(20) },
     fabricante: { rotulo: "Fabricante", esquema: texto(40), reparar: truncar(40) },
     modelo: { rotulo: "Modelo", esquema: texto(LIMITES.modelo), reparar: truncar(LIMITES.modelo) },
     alturaU: { rotulo: "Altura (U)", esquema: inteiro(1, LIMITES.alturaRackMax, 42), reparar: constante(42) },
