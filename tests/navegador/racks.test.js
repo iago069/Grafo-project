@@ -166,6 +166,7 @@ test("bayface: arrastar da biblioteca e tela estreita", async () => {
   await pagina.waitForFunction(() => /PowerEdge R720xd 1 instalado/.test(document.querySelector(".rk-msg").textContent));
   const r720 = await pagina.evaluate(() => window.GrafoRacks.dados().racks[0].itens.find(i => i.modelo === "PowerEdge R720xd"));
   assert.equal(r720.fabricante, "Dell"); assert.equal(r720.alturaU, 2); assert.equal(r720.categoria, "servidor");
+  assert.match(r720.foto || "", /^data:image\/jpeg;base64,/, "foto real do catálogo vem junto");
   await pagina.fill("[data-rk-busca-modelo]", "");
   // Nomes ao lado do rack, com seta (estilo planta de datacenter).
   await pagina.click('[data-rk="nomes"]');

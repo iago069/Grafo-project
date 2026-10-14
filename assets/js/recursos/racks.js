@@ -168,7 +168,7 @@
       if (comFoto) {
         var idClip = "rkf-" + String(it.id).replace(/[^a-zA-Z0-9_-]/g, "") + (exportar ? "-x" : "");
         p.push('<clipPath id="' + idClip + '"><rect x="' + (xi + 1) + '" y="' + (y + 0.5) + '" width="' + (wi - 2) + '" height="' + (h - 1) + '" rx="2"/></clipPath>');
-        p.push('<image class="rk-foto" href="' + esc(it.foto) + '" x="' + (xi + 1) + '" y="' + (y + 0.5) + '" width="' + (wi - 2) + '" height="' + (h - 1) + '" preserveAspectRatio="xMidYMid meet" clip-path="url(#' + idClip + ')"/>');
+        p.push('<image class="rk-foto" href="' + esc(it.foto) + '" x="' + (xi + 1) + '" y="' + (y + 0.5) + '" width="' + (wi - 2) + '" height="' + (h - 1) + '" preserveAspectRatio="none" clip-path="url(#' + idClip + ')"/>');
         p.push('<rect x="' + (xi + 1) + '" y="' + (y + 0.5) + '" width="' + (wi - 2) + '" height="' + (h - 1) + '" rx="2" fill="none" stroke="' + (selecionado ? "#E8A33D" : destaque ? "#F2C94C" : "#14171B") + '" stroke-width="' + (selecionado || destaque ? 2.5 : 1) + '"' + tracejado + '/>');
       }
       // Sigla da categoria (identificação sem depender da cor).
@@ -332,7 +332,7 @@
     elModelos.innerHTML = achados.length ? achados.slice(0, 12).map(function (i) {
       var m = MODELOS[i], c = CATEGORIAS[m.categoria];
       return '<button type="button" class="rk-peca" draggable="true" data-modelo="' + i + '" title="' + esc(m.fabricante + " " + m.modelo + " · " + m.altura + "U · " + m.portas + "x " + m.tipoPorta) + '">' +
-        '<span class="rk-sigla" style="background:' + CORES[m.categoria] + '">' + esc(c.sigla) + '</span><span>' + esc(m.fabricante + " " + m.modelo) + '</span><small>' + m.altura + 'U</small></button>';
+        (m.foto ? '<img class="rk-peca-foto" src="' + esc(m.foto) + '" alt="" loading="lazy">' : '<span class="rk-sigla" style="background:' + CORES[m.categoria] + '">' + esc(c.sigla) + '</span>') + '<span>' + esc(m.fabricante + " " + m.modelo) + '</span><small>' + m.altura + 'U</small></button>';
     }).join("") : '<p class="rk-dica">Nenhum modelo. Use uma categoria abaixo e preencha o modelo.</p>';
   }
   renderModelos("");
@@ -343,7 +343,7 @@
     if (chave.indexOf("m:") === 0) {
       var m = MODELOS[Number(chave.slice(2))];
       if (!m) return null;
-      return { altura: m.altura, categoria: m.categoria, nome: m.modelo, base: { categoria: m.categoria, fabricante: m.fabricante, modelo: m.modelo, alturaU: m.altura, portas: m.portas, tipoPorta: m.tipoPorta } };
+      return { altura: m.altura, categoria: m.categoria, nome: m.modelo, foto: m.foto, base: { categoria: m.categoria, fabricante: m.fabricante, modelo: m.modelo, alturaU: m.altura, portas: m.portas, tipoPorta: m.tipoPorta } };
     }
     var c = CATEGORIAS[chave];
     return c ? { altura: c.altura, categoria: c.valor, nome: c.rotulo, base: { categoria: c.valor } } : null;
@@ -353,9 +353,21 @@
     if (!peca) return null;
     return peca.hasAttribute("data-modelo") ? "m:" + peca.getAttribute("data-modelo") : peca.getAttribute("data-categoria");
   }
+  // Foto do catálogo (arquivo do site) vira data URL, para ficar salva no projeto e sair na exportação.
+  function fotoDoCatalogo(url) {
+    if (!url) return Promise.resolve("");
+    return fetch(url).then(function (r) { if (!r.ok) throw new Error(); return r.blob(); }).then(function (b) {
+      return new Promise(function (ok) { var leitor = new FileReader(); leitor.onload = function () { ok(String(leitor.result)); }; leitor.onerror = function () { ok(""); }; leitor.readAsDataURL(b); });
+    }).catch(function () { return ""; });
+  }
   function instalarPeca(rack, pc, u) {
     var n = (rack.itens || []).filter(function (x) { return pc.base.modelo ? x.modelo === pc.base.modelo : x.categoria === pc.categoria; }).length + 1;
-    adicionarItem(rack, Object.assign({}, pc.base, { u: u, nome: pc.nome + " " + n }));
+    var base = Object.assign({}, pc.base, { u: u, nome: pc.nome + " " + n });
+    if (!pc.foto) { adicionarItem(rack, base); return; }
+    fotoDoCatalogo(pc.foto).then(function (foto) {
+      if (foto && foto.length <= E.LIMITES.fotoRack) base.foto = foto;
+      adicionarItem(rackAtual() && rackAtual().id === rack.id ? rackAtual() : rack, base);
+    });
   }
 
   elBiblioteca.innerHTML = E.CATEGORIAS_RACK.map(function (c) {
@@ -690,8 +702,12 @@
       });
     } else if (tipo === "novo" && rack) {
       var pronto = v.modeloPronto ? MODELOS[Number(v.modeloPronto)] : null;
-      adicionarItem(rack, Object.assign(pronto && pronto.modelo === v.modelo ? { portas: pronto.portas, tipoPorta: pronto.tipoPorta } : {},
-        { categoria: v.categoria, nome: v.nome, alturaU: v.alturaU, face: v.face, fabricante: v.fabricante, modelo: v.modelo, u: sel.u }));
+      var usaPronto = pronto && pronto.modelo === v.modelo;
+      var novoItem = Object.assign(usaPronto ? { portas: pronto.portas, tipoPorta: pronto.tipoPorta } : {},
+        { categoria: v.categoria, nome: v.nome, alturaU: v.alturaU, face: v.face, fabricante: v.fabricante, modelo: v.modelo, u: sel.u });
+      if (usaPronto && pronto.foto && Number(v.alturaU) === pronto.altura) {
+        fotoDoCatalogo(pronto.foto).then(function (foto) { if (foto && foto.length <= E.LIMITES.fotoRack) novoItem.foto = foto; adicionarItem(rackAtual() || rack, novoItem); });
+      } else adicionarItem(rack, novoItem);
     } else if (tipo === "item") {
       var achado = itemPorId(sel.item);
       if (!achado) return;

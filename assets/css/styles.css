@@ -1326,6 +1326,8 @@ body[data-modo-diagrama="racks"] .so-diagrama { display: none !important; }
 .rk-vazio, .rk-dica { color: var(--text-dim); font-size: 0.72rem; margin: 0; }
 .rk-biblioteca { display: flex; flex-direction: column; gap: 3px; max-height: 40vh; overflow: auto; }
 .rk-modelos { margin-bottom: 8px; }
+.rk-modelos .rk-peca { grid-template-columns: 64px 1fr auto; }
+.rk-peca-foto { width: 64px; height: 14px; object-fit: contain; flex: none; border-radius: 2px; background: #1A1D22; }
 .rk-modelos[hidden] { display: none; }
 .rk-peca { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 6px; padding: 4px 6px; border: 1px solid var(--line, #dde3ea); border-radius: 5px; background: transparent; cursor: grab; font-size: 0.72rem; color: var(--text); text-align: left; }
 .rk-peca:hover { border-color: var(--accent); }
