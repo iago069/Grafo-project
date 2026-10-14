@@ -1169,13 +1169,15 @@ button.ghost:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 6
   /* Logo e nome centralizados em cima do painel. */
   .sidebar:not(.collapsed) .brand { justify-content: center; padding-left: 0; padding-right: 0; }
   .sidebar:not(.collapsed) .sidebar-collapse {
-    top: 98px; right: 14px; width: 32px; height: 32px; border: 0; border-radius: 8px;
+    top: 26px; right: 14px; width: 32px; height: 32px; border: 0; border-radius: 8px;
     background: transparent; box-shadow: none; color: var(--text);
   }
   .sidebar:not(.collapsed) .sidebar-collapse:hover { background: color-mix(in srgb, var(--text) 10%, transparent); color: var(--text); }
   /* Faixa do botão ‹ como borda (e não padding): ao rolar o menu, os itens
      somem antes dela em vez de passar por baixo do botão. */
-  .sidebar:not(.collapsed) .nav { border-top: 36px solid color-mix(in srgb, var(--bg-panel) 96%, var(--bg)); padding-top: 10px; }
+  .sidebar:not(.collapsed) .nav { padding-top: 10px; }
+  /* O painel do menu acompanha o conteúdo (sem um bloco vazio até o fim da tela). */
+  .sidebar .nav { flex: 0 1 auto; }
 }
 .nav { gap: 10px; padding-left: 8px; padding-right: 8px; }
 .nav-label {
