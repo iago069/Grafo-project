@@ -176,6 +176,14 @@ test("bayface: arrastar da biblioteca e tela estreita", async () => {
   await pagina.click('[data-rk="nomes"]');
   assert.equal(await pagina.locator(".rk-svg .rk-nome-lado").count(), 3);
   await pagina.click('[data-rk="nomes"]');
+  // Visão Datacenter: todos os racks lado a lado; clicar num rack abre ele.
+  await pagina.click('.rk-cabecalho [data-rk="novo-rack"]');
+  await pagina.waitForFunction(() => window.GrafoRacks.dados().racks.length === 2);
+  await pagina.click('[data-rk="datacenter"]');
+  assert.equal(await pagina.locator(".rk-svg-dc .rk-dc-rack").count(), 2);
+  await pagina.locator(".rk-svg-dc .rk-dc-rack").first().locator(".rk-dc-nome").click();
+  await pagina.waitForSelector(".rk-svg:not(.rk-svg-dc)");
+  assert.match(await pagina.textContent(".rk-titulo-rack"), /RACK-01/);
   // Sem rolagem horizontal da página em tela menor.
   const sobra = await pagina.evaluate(() => {
     if (document.documentElement.scrollWidth <= window.innerWidth + 1) return [];

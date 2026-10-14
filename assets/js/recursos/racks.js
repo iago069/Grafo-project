@@ -33,9 +33,9 @@
   var destaque = null, timerDestaque = null;
   function destacar(id) { destaque = id; clearTimeout(timerDestaque); timerDestaque = setTimeout(function () { destaque = null; }, 1500); }
   var sel = { rack: null, item: null, u: null };
-  var vista = { face: "frente", inverter: false, zoom: 1, cabos: "todos", busca: "", fotos: true, nomes: false };
+  var vista = { face: "frente", inverter: false, zoom: 1, cabos: "todos", busca: "", fotos: true, nomes: false, datacenter: false };
   try { Object.assign(vista, JSON.parse(localStorage.getItem("grafo-racks-vista") || "{}"), { busca: "" }); } catch (e) {}
-  function guardarVista() { try { localStorage.setItem("grafo-racks-vista", JSON.stringify({ face: vista.face, inverter: vista.inverter, zoom: vista.zoom, cabos: vista.cabos, fotos: vista.fotos, nomes: vista.nomes })); } catch (e) {} }
+  function guardarVista() { try { localStorage.setItem("grafo-racks-vista", JSON.stringify({ face: vista.face, inverter: vista.inverter, zoom: vista.zoom, cabos: vista.cabos, fotos: vista.fotos, nomes: vista.nomes, datacenter: vista.datacenter })); } catch (e) {} }
 
   // ---- utilidades ------------------------------------------------------------
   function esc(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -313,6 +313,7 @@
           '<div class="rk-grupo" role="group" aria-label="Face">' +
             '<button type="button" class="ghost small" data-rk-face="frente">Frente</button><button type="button" class="ghost small" data-rk-face="tras">Traseira</button></div>' +
           '<button type="button" class="ghost small" data-rk="inverter" title="Inverter a orientação na tela (U1 continua sendo a de baixo no rack)">U1 embaixo</button>' +
+          '<button type="button" class="ghost small" data-rk="datacenter" title="Todos os racks lado a lado, como a planta do datacenter">Datacenter</button>' +
           '<button type="button" class="ghost small" data-rk="nomes" title="Nomes dos equipamentos ao lado do rack, com seta">Nomes ao lado</button>' +
           '<button type="button" class="ghost small" data-rk="fotos" title="Mostrar ou esconder as fotos reais dos equipamentos">Fotos</button>' +
           '<div class="rk-grupo" role="group" aria-label="Zoom"><button type="button" class="ghost small" data-rk="zoom-menos" aria-label="Reduzir">−</button><span data-rk-zoom>100%</span><button type="button" class="ghost small" data-rk="zoom-mais" aria-label="Ampliar">+</button></div>' +
@@ -407,6 +408,10 @@
     renderProps();
     raiz.querySelectorAll("[data-rk-face]").forEach(function (b) { b.classList.toggle("ativo", b.getAttribute("data-rk-face") === vista.face); b.setAttribute("aria-pressed", String(b.getAttribute("data-rk-face") === vista.face)); });
     raiz.querySelector('[data-rk="inverter"]').textContent = vista.inverter ? "U1 em cima" : "U1 embaixo";
+    var botaoDc = raiz.querySelector('[data-rk="datacenter"]');
+    botaoDc.classList.toggle("ativo", vista.datacenter);
+    botaoDc.setAttribute("aria-pressed", String(vista.datacenter));
+    raiz.querySelector(".rk").classList.toggle("rk-modo-datacenter", vista.datacenter);
     var botaoNomes = raiz.querySelector('[data-rk="nomes"]');
     botaoNomes.classList.toggle("ativo", vista.nomes);
     botaoNomes.setAttribute("aria-pressed", String(vista.nomes));
@@ -440,8 +445,43 @@
     }).join("");
   }
 
+  // Todos os racks (ou os do mesmo local do rack aberto) lado a lado, com o nome em cima.
+  function desenharDatacenter(exportar) {
+    var atual = rackAtual();
+    var racks = dados.racks.filter(function (r) { return !atual || (r.local || "") === (atual.local || ""); });
+    var x = 20, partes = [], alturaMax = 0, y = exportar ? 120 : 46;
+    racks.forEach(function (r) {
+      var d = desenharRack(r, { zoom: exportar ? 1 : vista.zoom * 0.55, face: vista.face, inverter: vista.inverter, cabos: "ocultos", fotos: vista.fotos, nomesAoLado: vista.nomes, semCanal: true, exportar: true, x: x, y: y });
+      var meio = x + (vista.nomes ? 200 : 0) + (TRILHO * 2 + LARGURA_19) / 2;
+      var oc = E.ocupacaoRack(r);
+      partes.push('<g class="rk-dc-rack' + (atual && r.id === atual.id ? " rk-dc-atual" : "") + '" data-rack="' + esc(r.id) + '">' +
+        '<text class="rk-dc-nome" x="' + meio + '" y="' + (y - 24) + '" font-family="Helvetica, Arial, sans-serif" font-size="15" font-weight="bold" fill="#1F2B36" text-anchor="middle">' + esc(r.nome) + '</text>' +
+        '<text class="rk-dc-info" x="' + meio + '" y="' + (y - 9) + '" font-family="Helvetica, Arial, sans-serif" font-size="10" fill="#5A6672" text-anchor="middle">' + oc.ocupadas + '/' + r.alturaU + 'U · ' + Math.round(oc.ocupadas / r.alturaU * 100) + '%</text>' +
+        d.svg + '</g>');
+      x += d.largura + 50;
+      alturaMax = Math.max(alturaMax, d.altura);
+    });
+    return { svg: partes.join(""), largura: x - 30, altura: y + alturaMax + 20, racks: racks };
+  }
+  function svgDatacenter() {
+    var d = desenharDatacenter(true);
+    var largura = Math.max(d.largura + 20, 600), altura = d.altura + 10;
+    var local = (rackAtual() && rackAtual().local) || "";
+    var t = '<rect width="' + largura + '" height="' + altura + '" fill="#FFFFFF"/>' +
+      '<text x="' + (largura / 2) + '" y="44" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="bold" fill="#1F2B36" text-anchor="middle">' + esc((local || app.projetoAtual() || "Datacenter").toUpperCase()) + '</text>' +
+      '<text x="' + (largura / 2) + '" y="68" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#5A6672" text-anchor="middle">' + esc(d.racks.length + " racks  |  " + (vista.face === "frente" ? "Vista frontal" : "Vista traseira") + "  |  " + hoje()) + '</text>';
+    return { svg: '<svg xmlns="http://www.w3.org/2000/svg" width="' + largura + '" height="' + altura + '" viewBox="0 0 ' + largura + ' ' + altura + '">' + DEFS + t + d.svg + '</svg>', largura: largura, altura: altura, nome: local || app.projetoAtual() + "-datacenter" };
+  }
+
   function renderPalco() {
     var rack = rackAtual();
+    if (rack && vista.datacenter) {
+      var dc = desenharDatacenter(false);
+      elTitulo.innerHTML = '<strong>Datacenter</strong> <span>' + dc.racks.length + ' racks' + (rack.local ? ' · ' + esc(rack.local) : '') + ' · clique num rack para abrir</span>';
+      ultimoDesenho = null;
+      elPalco.innerHTML = '<svg class="rk-svg rk-svg-dc" xmlns="http://www.w3.org/2000/svg" width="' + (dc.largura + 20) + '" height="' + dc.altura + '" viewBox="0 0 ' + (dc.largura + 20) + ' ' + dc.altura + '">' + DEFS + dc.svg + '</svg>';
+      return;
+    }
     if (!rack) {
       elTitulo.textContent = "";
       elPalco.innerHTML = '<div class="rk-palco-vazio"><p>Este projeto ainda não tem racks.</p><button type="button" class="primary" data-rk="novo-rack">Criar o primeiro rack</button></div>';
@@ -792,6 +832,7 @@
     var achado = sel.item ? itemPorId(sel.item) : null;
     if (acao === "novo-rack") novoRack();
     else if (acao === "inverter") { vista.inverter = !vista.inverter; guardarVista(); render(); }
+    else if (acao === "datacenter") { vista.datacenter = !vista.datacenter; guardarVista(); render(); }
     else if (acao === "nomes") { vista.nomes = !vista.nomes; guardarVista(); render(); }
     else if (acao === "fotos") { vista.fotos = !vista.fotos; guardarVista(); render(); }
     else if (acao === "remover-foto" && achado) {
@@ -840,7 +881,8 @@
     } else if (acao === "remover-cabo") {
       var id = b.getAttribute("data-cabo");
       gravar(dados.racks, dados.cabos.filter(function (c) { return c.id !== id; }), "Cabo removido.");
-    } else if (acao === "png" || acao === "svg" || acao === "pdf") exportar(acao, rack ? [rack] : []);
+    } else if ((acao === "png" || acao === "svg" || acao === "pdf") && vista.datacenter && rack) exportarDatacenter(acao);
+    else if (acao === "png" || acao === "svg" || acao === "pdf") exportar(acao, rack ? [rack] : []);
     else if (acao === "pdf-todos") exportar("pdf", dados.racks);
     else if (acao === "relatorio") exportarRelatorio();
   });
@@ -873,6 +915,14 @@
 
   var arraste = null;
   elPalco.addEventListener("pointerdown", function (ev) {
+    if (vista.datacenter) {
+      var grk = ev.target.closest(".rk-dc-rack");
+      if (!grk) return;
+      var gi = ev.target.closest(".rk-item");
+      sel = { rack: grk.getAttribute("data-rack"), item: gi ? gi.getAttribute("data-item") : null, u: null };
+      vista.datacenter = false; guardarVista(); render();
+      return;
+    }
     var g = ev.target.closest(".rk-item");
     var livre = ev.target.closest(".rk-u-livre");
     if (livre) { sel = { rack: sel.rack, item: null, u: Number(livre.getAttribute("data-u")) }; render(); return; }
@@ -1064,6 +1114,33 @@
         } finally { suporte.remove(); }
       }
       mensagem(formato.toUpperCase() + " baixado.");
+    } catch (e) {
+      mensagem("Não foi possível exportar: " + e.message, true);
+    }
+  }
+
+  async function exportarDatacenter(formato) {
+    try {
+      var doc = svgDatacenter();
+      if (formato === "svg") app.baixarArquivo(new Blob([doc.svg], { type: "image/svg+xml" }), nomeArquivo(doc.nome, "svg"));
+      else if (formato === "png") app.baixarArquivo(await svgParaPng(doc), nomeArquivo(doc.nome, "png"));
+      else {
+        mensagem("Gerando PDF…");
+        var JsPdf = await app.bibliotecasPdf();
+        // Folha do tamanho do desenho (o datacenter costuma ser bem mais largo que um A4).
+        var mm = 0.2646, pw = doc.largura * mm, ph = doc.altura * mm;
+        var pdf = new JsPdf({ orientation: pw > ph ? "landscape" : "portrait", unit: "mm", format: [pw, ph], compress: true });
+        var suporte = document.createElement("div");
+        suporte.style.cssText = "position:fixed;left:-100000px;top:0;visibility:hidden;pointer-events:none;";
+        document.body.appendChild(suporte);
+        try {
+          suporte.innerHTML = doc.svg;
+          await pdf.svg(suporte.firstChild, { x: 0, y: 0, width: pw, height: ph });
+        } finally { suporte.remove(); }
+        pdf.setProperties({ title: doc.nome, creator: "Grafo" });
+        app.baixarArquivo(pdf.output("blob"), nomeArquivo(doc.nome, "pdf"));
+      }
+      mensagem(formato.toUpperCase() + " do datacenter baixado.");
     } catch (e) {
       mensagem("Não foi possível exportar: " + e.message, true);
     }

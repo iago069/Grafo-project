@@ -1657,3 +1657,16 @@ button.ghost { backdrop-filter: blur(6px); }
 
 /* Legenda do diagrama em pílulas. */
 .legenda > * { padding: 3px 10px; border-radius: 99px; background: color-mix(in srgb, var(--text) 4%, transparent); border: 1px solid var(--line-soft); }
+
+/* Bayface: visão Datacenter (todos os racks lado a lado). */
+.rk.rk-modo-datacenter { grid-template-columns: 230px minmax(0, 1fr); }
+.rk.rk-modo-datacenter .rk-props { display: none; }
+.rk-svg-dc .rk-dc-rack { cursor: pointer; transition: opacity 0.2s ease, filter 0.2s ease; }
+.rk-svg-dc .rk-dc-rack:hover { filter: drop-shadow(0 0 14px color-mix(in srgb, var(--teal) 45%, transparent)); }
+.rk-svg-dc .rk-dc-nome { fill: var(--text); }
+.rk-svg-dc .rk-dc-info { fill: var(--text-dim); }
+.rk-svg-dc .rk-dc-atual .rk-dc-nome { fill: var(--accent); }
+.rk-svg-dc .rk-u-livre { cursor: pointer; }
+@media (max-width: 760px) { .rk.rk-modo-datacenter { grid-template-columns: 1fr; } }
+.rk-palco .rk-svg-dc { max-width: none; height: auto; margin: 0; }
+.rk-svg-dc .rk-dc-nome { font-size: 17px; }
