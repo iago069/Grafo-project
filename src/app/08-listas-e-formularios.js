@@ -17,7 +17,13 @@
     if (/^[a-z][a-z0-9+.-]*:/i.test(s)) return "";
     return s;
   }
+  // Tipos comuns têm cor própria (nunca repetem); os outros saem da paleta pelo nome.
+  var CORES_TIPO_FIXAS = { olt: "#7DB4FF", onu: "#5EEAD4", switch: "#A8E06B", roteador: "#FF8FB8", router: "#FF8FB8", radio: "#FFC163",
+    dio: "#B69CFF", servidor: "#67D3F5", server: "#67D3F5", dwdm: "#F7A26B", nobreak: "#E8E36B", ups: "#E8E36B", firewall: "#FF6B6B",
+    storage: "#9AA8FF", mikrotik: "#FF8FB8", ap: "#7CE0B0", camera: "#C8A2F0", concentrador: "#F0B3E6" };
   function corPorTipo(tipo) {
+    var chave = String(tipo || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+    if (CORES_TIPO_FIXAS[chave]) return CORES_TIPO_FIXAS[chave];
     var paleta = ["#5EEAD4", "#7DB4FF", "#FFC163", "#FF8FB8", "#B69CFF", "#67D3F5", "#A8E06B"];
     var str = String(tipo || "outro"); var hash = 0;
     for (var i = 0; i < str.length; i++) { hash = (hash * 31 + str.charCodeAt(i)) & 0xffffffff; }

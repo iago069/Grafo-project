@@ -1998,3 +1998,18 @@ body[data-modo-diagrama="racks"] #menuExportar #btnBaixar, body[data-modo-diagra
 }
 @keyframes toastTempo { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @media (prefers-reduced-motion: reduce) { .toast::after { animation: none; } }
+
+/* ==== Carregando: esqueleto com brilho enquanto o diagrama ainda não apareceu ==== */
+.canvas-wrap:empty::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(100deg, transparent 30%, color-mix(in srgb, #fff 35%, transparent) 50%, transparent 70%) 0 0 / 220% 100% no-repeat,
+    radial-gradient(circle at 22% 38%, color-mix(in srgb, var(--text-dim) 22%, transparent) 0 34px, transparent 35px),
+    radial-gradient(circle at 50% 58%, color-mix(in srgb, var(--text-dim) 22%, transparent) 0 34px, transparent 35px),
+    radial-gradient(circle at 78% 38%, color-mix(in srgb, var(--text-dim) 22%, transparent) 0 34px, transparent 35px),
+    linear-gradient(color-mix(in srgb, var(--text-dim) 18%, transparent), color-mix(in srgb, var(--text-dim) 18%, transparent)) 26% 39% / 22% 3px no-repeat,
+    linear-gradient(color-mix(in srgb, var(--text-dim) 18%, transparent), color-mix(in srgb, var(--text-dim) 18%, transparent)) 74% 39% / 22% 3px no-repeat;
+  animation: esqueletoBrilho 1.4s ease-in-out infinite;
+}
+@keyframes esqueletoBrilho { from { background-position: 130% 0, 0 0, 0 0, 0 0, 26% 39%, 74% 39%; } to { background-position: -30% 0, 0 0, 0 0, 0 0, 26% 39%, 74% 39%; } }
+@media (prefers-reduced-motion: reduce) { .canvas-wrap:empty::before { animation: none; } }

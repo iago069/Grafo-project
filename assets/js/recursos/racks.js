@@ -448,7 +448,11 @@
   }
 
   // Todos os racks (ou os do mesmo local do rack aberto) lado a lado, com o nome em cima.
+  // Na tela, a planta costuma estar bem reduzida: os rótulos (nome do rack e da
+  // fileira) crescem na mesma proporção para continuarem legíveis (até 1,8x).
+  function fatorRotulosDc(exportar) { return exportar ? 1 : Math.min(1.8, Math.max(1, 0.75 / (vista.zoom * 0.6))); }
   function desenharDatacenter(exportar) {
+    var fr = fatorRotulosDc(exportar);
     var atual = rackAtual();
     var racks = dados.racks.filter(function (r) { return !atual || (r.local || "") === (atual.local || ""); });
     var porFileira = {};
@@ -457,7 +461,7 @@
     var partes = [], larguraMax = 0, yLinha = exportar ? 100 : 20, temFileiras = fileiras.some(Boolean);
     fileiras.forEach(function (fil) {
       var lista = porFileira[fil].slice().sort(function (a, b) { return a.nome.localeCompare(b.nome, "pt", { numeric: true }); });
-      var linha = linhaDatacenter(lista, yLinha + (temFileiras ? 40 : 0), exportar);
+      var linha = linhaDatacenter(lista, yLinha + (temFileiras ? 40 + (fr - 1) * 40 : 0), exportar);
       if (temFileiras) {
         var rotuloFil = fil ? "Fileira " + fil : "Sem fileira", wFil = linha.largura + 8, hFil = linha.altura + 44;
         var ocFil = lista.reduce(function (t, r) { var o = E.ocupacaoRack(r); t[0] += o.ocupadas; t[1] += r.alturaU; return t; }, [0, 0]);
@@ -466,36 +470,39 @@
           '<rect x="12" y="' + yLinha + '" width="' + wFil + '" height="' + hFil + '" rx="16" class="rk-dc-fileira-fundo" fill="#F3F6F9" stroke="#D5DCE3"/>' +
           '<rect x="12" y="' + yLinha + '" width="' + wFil + '" height="' + hFil + '" rx="16" fill="url(#rk-piso)" pointer-events="none"/>' +
           '<rect x="12" y="' + (yLinha + 14) + '" width="4" height="' + (hFil - 28) + '" rx="2" class="rk-dc-fileira-faixa" fill="#E0932F"/>' +
+          '<g transform="translate(26 ' + (yLinha + 8) + ') scale(' + fr + ') translate(-26 ' + (-(yLinha + 8)) + ')">' +
           '<rect x="26" y="' + (yLinha + 8) + '" width="' + wPilula + '" height="38" rx="19" class="rk-dc-pilula" fill="#1F2B36"/>' +
           '<text class="rk-dc-fileira-nome" x="' + (26 + wPilula / 2) + '" y="' + (yLinha + 34) + '" font-family="Helvetica, Arial, sans-serif" font-size="21" font-weight="bold" fill="#FFFFFF" text-anchor="middle">' + esc(rotuloFil) + '</text>' +
           '<text class="rk-dc-info" x="' + (40 + wPilula) + '" y="' + (yLinha + 33) + '" font-family="Helvetica, Arial, sans-serif" font-size="16" fill="#5A6672">' + lista.length + ' rack' + (lista.length > 1 ? "s" : "") + ' · ' + ocFil[0] + '/' + ocFil[1] + 'U ocupadas (' + Math.round(ocFil[0] / Math.max(1, ocFil[1]) * 100) + '%)</text>' +
-          '</g>');
+          '</g></g>');
       }
       partes.push(linha.svg);
       larguraMax = Math.max(larguraMax, linha.largura);
-      yLinha += linha.altura + (temFileiras ? 44 : 0) + 30;
+      yLinha += linha.altura + (temFileiras ? 44 + (fr - 1) * 40 : 0) + 30;
     });
     return { svg: partes.join(""), largura: larguraMax, altura: yLinha, racks: racks };
   }
   function linhaDatacenter(racks, y0, exportar) {
     var atual = rackAtual();
-    var x = 30, partes = [], alturaMax = 0, y = y0 + 76;
+    var fr = fatorRotulosDc(exportar);
+    var x = 30, partes = [], alturaMax = 0, y = y0 + 76 + (fr - 1) * 44;
     racks.forEach(function (r) {
       var d = desenharRack(r, { zoom: 1, face: vista.face, inverter: vista.inverter, cabos: "ocultos", fotos: vista.fotos, nomesAoLado: vista.nomes, semCanal: true, exportar: true, x: x, y: y });
       var meio = x + (vista.nomes ? 200 : 0) + (TRILHO * 2 + LARGURA_19) / 2;
       var oc = E.ocupacaoRack(r);
       partes.push('<g class="rk-dc-rack' + (atual && r.id === atual.id ? " rk-dc-atual" : "") + '" data-rack="' + esc(r.id) + '">' +
         '<ellipse cx="' + meio + '" cy="' + (y + d.altura + 4) + '" rx="' + ((TRILHO * 2 + LARGURA_19) / 2) + '" ry="9" fill="#000" opacity="0.22"/>' +
+        '<g transform="translate(' + meio + ' ' + (y - 6) + ') scale(' + fr + ') translate(' + (-meio) + ' ' + (-(y - 6)) + ')">' +
         '<rect class="rk-dc-etiqueta" x="' + (meio - 120) + '" y="' + (y - 52) + '" width="240" height="34" rx="9" fill="#FFFFFF" stroke="#D5DCE3"/>' +
         '<text class="rk-dc-nome" x="' + meio + '" y="' + (y - 28) + '" font-family="Helvetica, Arial, sans-serif" font-size="26" font-weight="bold" fill="#1F2B36" text-anchor="middle">' + esc(r.nome) + '</text>' +
         '<rect x="' + (meio - 120) + '" y="' + (y - 12) + '" width="240" height="6" rx="2" class="rk-dc-barra-fundo" fill="#D5DCE3"/>' +
         '<rect x="' + (meio - 120) + '" y="' + (y - 12) + '" width="' + Math.max(6, 240 * oc.ocupadas / r.alturaU) + '" height="6" rx="2" fill="' + (oc.ocupadas / r.alturaU > 0.85 ? "#D64545" : oc.ocupadas / r.alturaU > 0.6 ? "#E0932F" : "#2FBF71") + '"/>' +
-        '<text class="rk-dc-info" x="' + (meio + 128) + '" y="' + (y - 5) + '" font-family="Helvetica, Arial, sans-serif" font-size="14" fill="#5A6672">' + Math.round(oc.ocupadas / r.alturaU * 100) + '%</text>' +
+        '<text class="rk-dc-info" x="' + (meio + 128) + '" y="' + (y - 5) + '" font-family="Helvetica, Arial, sans-serif" font-size="14" fill="#5A6672">' + Math.round(oc.ocupadas / r.alturaU * 100) + '%</text></g>' +
         d.svg + '</g>');
       x += d.largura + 50;
       alturaMax = Math.max(alturaMax, d.altura);
     });
-    return { svg: partes.join(""), largura: x - 20, altura: alturaMax + 92 };
+    return { svg: partes.join(""), largura: x - 20, altura: alturaMax + 92 + (fr - 1) * 44 };
   }
   function svgDatacenter() {
     var d = desenharDatacenter(true);
