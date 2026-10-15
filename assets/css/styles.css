@@ -2319,3 +2319,26 @@ body[data-modo-diagrama="racks"] #menuExportar #btnBaixar, body[data-modo-diagra
 
 /* Itens do menu ocultos (ex.: NetBox por enquanto). */
 .nav-item[hidden] { display: none !important; }
+
+/* ==== Painel do administrador ==== */
+.nav-item[data-icon="admin"] { --icone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2 4 5v6c0 5 3.4 9.3 8 11 4.6-1.7 8-6 8-11V5z'/%3E%3Cpath d='m9 12 2 2 4-4'/%3E%3C/svg%3E"); }
+.sidebar:not(.collapsed) .nav-admin .nav-label::before { background: #FF6B6B !important; box-shadow: 0 0 8px rgba(255, 107, 107, 0.7) !important; }
+.sidebar-usuario.eh-admin strong::after { content: "ADMIN"; margin-left: 8px; padding: 1px 7px; border-radius: 99px; font: 800 0.58rem var(--mono); letter-spacing: 0.1em; vertical-align: middle; color: var(--accent-ink); background: var(--accent); -webkit-text-fill-color: var(--accent-ink); }
+.admin-corpo { flex: 1; min-height: 0; overflow-y: auto; padding: 18px 22px 22px; }
+.admin-cartoes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.admin-cartao { display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; border-radius: 14px; background: color-mix(in srgb, var(--text) 4%, transparent); border: 1px solid var(--line-soft); }
+.admin-cartao span { font: 700 0.62rem var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); }
+.admin-cartao strong { font: 700 1.7rem var(--display); color: var(--text); }
+.admin-cartao small { font-size: 0.72rem; color: var(--text-dim); }
+.admin-titulo { margin: 16px 0 8px; font: 700 0.95rem var(--display); }
+.admin-tabela { overflow-x: auto; border: 1px solid var(--line-soft); border-radius: 12px; }
+.admin-tabela table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.admin-tabela th { text-align: left; padding: 9px 12px; font: 700 0.64rem var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); background: color-mix(in srgb, var(--text) 4%, transparent); }
+.admin-tabela td { padding: 9px 12px; border-top: 1px solid var(--line-soft); vertical-align: top; }
+.admin-erro { max-width: 420px; word-break: break-word; }
+.admin-erro small { display: block; color: var(--text-dim); font: 0.68rem var(--mono); }
+.admin-tag { font: 700 0.62rem var(--sans); font-style: normal; padding: 2px 8px; border-radius: 99px; background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text-dim); }
+.admin-tag.admin { background: var(--accent); color: var(--accent-ink); }
+.admin-tag.aviso { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
+.admin-rodape { margin-top: 14px; font-size: 0.72rem; color: var(--text-dim); }
+@media (max-width: 760px) { .admin-cartoes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

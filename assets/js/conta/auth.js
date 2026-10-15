@@ -345,6 +345,8 @@
     loadScript("./assets/js/recursos/documentos.js").catch(function (error) { console.error(error); });
     if (convidado) { prepararBotoesQuePedemLogin(); return; }
     if (equipe) equipe.iniciarInterface();
+    // Painel do administrador: só aparece para contas em grafo_admins.
+    loadScript("./assets/js/recursos/admin.js").catch(function (error) { console.error(error); });
     // Opcional: sem ele o editor funciona, só não há o botão "Compartilhar".
     loadScript("./assets/js/recursos/compartilhar.js").catch(function (error) { console.error(error); });
     // Opcional: sem ele não há o botão "Histórico".
@@ -519,7 +521,7 @@
   function keepEditorOffline() {
     if (!("serviceWorker" in navigator) || !navigator.serviceWorker.controller) return;
     var urls = EDITOR_SCRIPTS.map(function (script) { return script[0]; })
-      .concat(["./assets/js/recursos/primeiros-passos.js", "./assets/js/recursos/compartilhar.js", "./assets/js/recursos/historico.js", "./assets/js/recursos/etiquetas.js", "./assets/js/recursos/integracao.js", "./assets/js/recursos/racks.js", "./assets/js/recursos/comandos.js", "./assets/js/recursos/documentos.js"]);
+      .concat(["./assets/js/recursos/primeiros-passos.js", "./assets/js/recursos/compartilhar.js", "./assets/js/recursos/historico.js", "./assets/js/recursos/etiquetas.js", "./assets/js/recursos/integracao.js", "./assets/js/recursos/racks.js", "./assets/js/recursos/comandos.js", "./assets/js/recursos/documentos.js", "./assets/js/recursos/admin.js"]);
     if (window.GrafoApp && window.GrafoApp.arquivosParaGuardar) urls = urls.concat(window.GrafoApp.arquivosParaGuardar());
     navigator.serviceWorker.controller.postMessage({ tipo: "guardar", urls: urls });
   }

@@ -115,6 +115,7 @@ function supabaseSimulado({ sessao = true, projetos = projetoExemplo(), vencida 
     from: consulta,
     rpc: function(nome, args){
       (window.__chamadasRpc = window.__chamadasRpc || []).push({ nome: nome, args: args });
+      if (!semRede() && window.__respostasRpc && nome in window.__respostasRpc) return Promise.resolve({ data: window.__respostasRpc[nome], error: null });
       return Promise.resolve(semRede() ? { data: null, error: FALHA_REDE } : { data: [], error: null });
     },
     channel: function(){ return canal; },
