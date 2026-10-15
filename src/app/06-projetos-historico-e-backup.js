@@ -202,7 +202,7 @@
     racks: { titulo: "Bayface de Racks", exportacao: "Bayface de racks" }
   };
   var elModoDiagrama = document.getElementById("modoDiagrama");
-  var modoNaTela = null;
+  var modoNaTela = null, modoJaMostrado = false;
   // (Seguro mesmo antes de estas variáveis existirem: 00-catalogo chama cedo.)
   function modoAtual() { return MODOS_DIAGRAMA && estado && MODOS_DIAGRAMA[estado.modo] ? estado.modo : "topologia"; }
   // Chamado a cada renderTudo: só refaz o que depende do modo quando ele muda.
@@ -212,6 +212,10 @@
     modoNaTela = modo;
     if (elModoDiagrama) elModoDiagrama.value = modo;
     document.body.setAttribute("data-modo-diagrama", modo);
+    // Troca de tipo com transição (o painel entra de novo, suave). Não anima na abertura.
+    var painel = document.querySelector(".render-panel");
+    if (painel && modoJaMostrado) { painel.classList.remove("trocando-modo"); void painel.offsetWidth; painel.classList.add("trocando-modo"); }
+    modoJaMostrado = true;
     ajustarLarguraDoSeletorDeModo();
     renderizarTiposSugeridos();
   }

@@ -2132,3 +2132,25 @@ body[data-modo-diagrama="racks"] #menuExportar #btnBaixar, body[data-modo-diagra
 .folha-teclas { display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; }
 .folha-teclas i { font-style: normal; font-size: 0.7rem; color: var(--text-dim); }
 @media (max-width: 640px) { .folha-grade { grid-template-columns: 1fr; } }
+
+/* ==== Transição ao trocar o tipo de diagrama ==== */
+.render-panel.trocando-modo > :not(h2) { animation: trocaModo 0.42s var(--ease-out) both; }
+.render-panel.trocando-modo > :nth-child(3) { animation-delay: 0.04s; }
+.render-panel.trocando-modo > :nth-child(4) { animation-delay: 0.08s; }
+@keyframes trocaModo { from { opacity: 0; transform: translateY(10px) scale(0.995); filter: blur(3px); } to { opacity: 1; transform: none; filter: none; } }
+@media (prefers-reduced-motion: reduce) { .render-panel.trocando-modo > * { animation: none; } }
+
+/* ==== Cartão de login: campos sempre legíveis (o cartão é branco em qualquer tema) ==== */
+.auth-card input, .auth-card input[type="email"], .auth-card input[type="password"], .auth-card input[type="text"] {
+  background-color: #F4F7FA !important; color: #14212B !important; border: 1px solid #C9D5DF !important;
+  border-radius: 12px; min-height: 46px; padding: 0 14px; font-size: 0.95rem; caret-color: #D78A2B;
+  -webkit-text-fill-color: #14212B;
+}
+.auth-card input::placeholder { color: #8796A3 !important; -webkit-text-fill-color: #8796A3; }
+.auth-card input:hover:not(:focus) { border-color: #9FB2C2 !important; background-color: #EEF3F7 !important; }
+.auth-card input:focus { background-color: #FFFFFF !important; border-color: #1F9D8D !important; box-shadow: 0 0 0 4px rgba(31, 157, 141, 0.16) !important; outline: none; }
+/* Preenchimento automático do navegador (Chrome pinta de amarelo/escuro). */
+.auth-card input:-webkit-autofill, .auth-card input:-webkit-autofill:hover, .auth-card input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #14212B; -webkit-box-shadow: 0 0 0 1000px #F4F7FA inset !important; transition: background-color 9999s ease-out;
+}
+.auth-card label { color: #14212B; font-weight: 600; }
