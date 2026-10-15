@@ -38,14 +38,20 @@
       }).join("");
       return (
         '<div class="equip-card" data-idx="' + i + '">' +
+          // Linha enxuta: marca na cor do tipo, nome inteiro com tipo/IP embaixo, status
+          // em ponto; detalhes e remover são ícones (aparecem ao passar o mouse).
           '<div class="equip-row1">' +
-            '<input type="text" data-field="nome" data-limite="nome" value="' + escaparHtml(eq.nome) + '" placeholder="Nome do equipamento" aria-label="Nome do equipamento">' +
-            '<select data-field="icone" aria-label="Ícone"><optgroup label="Símbolos">' + opcoesImagem + '</optgroup><optgroup label="Emojis">' + opcoesEmoji + '</optgroup></select>' +
-            '<span class="equip-status"><i class="equip-status-dot ' + (eq.status || "ativo") + '"></i>' + (eq.status === "manutencao" ? "Manutenção" : eq.status === "offline" ? "Offline" : "Ativo") + '</span>' +
-            '<button type="button" class="ghost small equip-advanced-toggle" data-action="toggle-avancado" aria-expanded="false">Detalhes</button>' +
+            '<span class="equip-marca" style="--cor-tipo:' + corPorTipo(eq.tipo || "outro") + '" aria-hidden="true">' + escaparHtml(String(eq.tipo || "?").trim().charAt(0).toUpperCase() || "?") + '</span>' +
+            '<div class="equip-titulo">' +
+              '<input type="text" data-field="nome" data-limite="nome" value="' + escaparHtml(eq.nome) + '" placeholder="Nome do equipamento" aria-label="Nome do equipamento" title="' + escaparHtml(eq.nome) + '">' +
+              '<span class="equip-sub">' + escaparHtml([eq.tipo || "Sem tipo", eq.modelo, eq.ip].filter(Boolean).join(" · ")) + '</span>' +
+            '</div>' +
+            '<span class="equip-status equip-status-' + (eq.status || "ativo") + '" title="' + (eq.status === "manutencao" ? "Manutenção" : eq.status === "offline" ? "Offline" : "Ativo") + '"><i class="equip-status-dot ' + (eq.status || "ativo") + '"></i><span>' + (eq.status === "manutencao" ? "Manutenção" : eq.status === "offline" ? "Offline" : "Ativo") + '</span></span>' +
+            '<button type="button" class="ghost small equip-advanced-toggle" data-action="toggle-avancado" aria-expanded="false" title="Detalhes" aria-label="Detalhes"></button>' +
             '<button type="button" class="ghost small" data-action="remover-equip" title="Remover" aria-label="Remover equipamento">×</button>' +
           '</div>' +
           '<div class="equip-advanced" data-advanced-panel>' +
+            '<div class="equip-row2"><label class="equip-campo-icone">Ícone <select data-field="icone" aria-label="Ícone"><optgroup label="Símbolos">' + opcoesImagem + '</optgroup><optgroup label="Emojis">' + opcoesEmoji + '</optgroup></select></label></div>' +
             '<div class="equip-row2">' +
               '<input type="text" data-field="modelo" data-limite="modelo" list="modelos-sugeridos" autocomplete="off" value="' + escaparHtml(eq.modelo) + '" placeholder="Modelo (fabricante)" aria-label="Modelo (fabricante)">' +
               '<input type="text" data-field="tipo" data-limite="tipo" value="' + escaparHtml(eq.tipo) + '" placeholder="Tipo" aria-label="Tipo" list="tipos-sugeridos">' +
@@ -300,8 +306,9 @@
     if (acao === "toggle-avancado") {
       var painelAvancado = card.querySelector("[data-advanced-panel]");
       var aberto = painelAvancado.classList.toggle("open");
-      e.target.textContent = aberto ? "Ocultar detalhes" : "Detalhes";
+      card.classList.toggle("aberto", aberto);
       e.target.setAttribute("aria-expanded", aberto ? "true" : "false");
+      e.target.title = aberto ? "Ocultar detalhes" : "Detalhes";
       return;
     }
     var idx = parseInt(card.getAttribute("data-idx"), 10);
