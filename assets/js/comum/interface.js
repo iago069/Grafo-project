@@ -192,6 +192,8 @@
         item.setAttribute("role", "menuitemradio");
         item.setAttribute("data-valor", opcao.value);
         item.textContent = opcao.textContent;
+        // Opção escondida (tema exclusivo ainda não liberado) não aparece no menu.
+        if (opcao.hidden) item.hidden = true;
         container.appendChild(item);
       });
     });

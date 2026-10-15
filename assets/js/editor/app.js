@@ -3270,6 +3270,13 @@
   }
 
   var temaSalvo = carregarTema();
+  // Tema exclusivo (opção escondida): só vale depois que o banco confirmar que esta
+  // conta tem o tema liberado (admin.js). Até lá fica o automático, sem apagar a escolha.
+  var opcaoSalva = temaSalvo && temaSelect.querySelector('option[value="' + temaSalvo + '"]');
+  if (opcaoSalva && opcaoSalva.hidden) {
+    window.__temaExclusivoPendente = temaSalvo;
+    temaSalvo = "";
+  }
   if (temaSalvo && themePresets[temaSalvo]) {
     temaSelect.value = temaSalvo;
     aplicarTemaSelecionado(temaSalvo);
