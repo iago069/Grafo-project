@@ -590,7 +590,6 @@
 
         <div class="nav-section">
           <button class="nav-label" type="button" aria-expanded="true">Importar e exportar</button>
-          <button class="nav-item" type="button" data-nav-action="export-diagram" data-icon="imagem" title="Exportar diagrama">Exportar diagrama</button>
           <button class="nav-item" type="button" data-nav-panel="navJsonCsv" data-icon="codigo" title="Ver e editar o projeto em JSON, ou importar uma planilha CSV">JSON e CSV</button>
           <div class="nav-panel" id="navJsonCsv">
             <div class="nav-form nav-json-csv">
@@ -605,7 +604,8 @@
               </div>
             </div>
           </div>
-          <button class="nav-item" type="button" data-nav-panel="navNetbox" data-icon="cabo" title="Gerar o diagrama de um POP a partir do cabeamento do NetBox e verificar quem está online">NetBox e status online</button>
+          <!-- NetBox oculto por enquanto (o código continua; para reativar, tire o "hidden" do botão). -->
+          <button class="nav-item" type="button" data-nav-panel="navNetbox" data-icon="cabo" hidden title="Gerar o diagrama de um POP a partir do cabeamento do NetBox e verificar quem está online">NetBox e status online</button>
           <div class="nav-panel" id="navNetbox">
             <div class="nav-form">
               <label class="full">Endereço do agente<input id="agenteUrl" type="url" placeholder="http://localhost:8787" spellcheck="false"></label>

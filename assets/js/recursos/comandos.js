@@ -31,7 +31,6 @@
     { titulo: "Relatório de inventário (.xlsx)", grupo: "Relatórios", icone: "planilha", fazer: clicar("btnInventario"), termos: "planilha excel inventario" },
     { titulo: "Etiquetas com QR code", grupo: "Relatórios", icone: "qrcode", fazer: clicar("btnEtiquetas"), termos: "etiqueta qr imprimir" },
     { titulo: "JSON e CSV", grupo: "Integração", icone: "codigo", fazer: abrirPainel("navJsonCsv"), termos: "json csv planilha importar" },
-    { titulo: "NetBox e status online", grupo: "Integração", icone: "cabo", fazer: abrirPainel("navNetbox"), termos: "netbox ping online agente" },
     { titulo: "Ir para Topologia", grupo: "Tipo de diagrama", icone: "topologia", fazer: modo("topologia") },
     { titulo: "Ir para Diagrama de redes", grupo: "Tipo de diagrama", icone: "redes", fazer: modo("redes"), termos: "vlan ip rede" },
     { titulo: "Ir para Monitoramento", grupo: "Tipo de diagrama", icone: "pulso", fazer: modo("monitoramento"), termos: "status offline" },

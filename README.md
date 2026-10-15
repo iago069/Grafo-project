@@ -83,7 +83,7 @@
 2. **Adicionar equipamento** (barra lateral): nome, tipo, modelo, IP, grupo, status e ícone.
 3. **Adicionar cabeamento**: origem, destino, portas, tipo de enlace, capacidade, cor e estilo.
 4. O diagrama é redesenhado sozinho. Arraste os equipamentos para ajustar, ou use **Organizar**.
-5. **Exportar diagrama** gera PNG ou SVG; **Exportar projeto (.json)** guarda um backup.
+5. **Exportar** (acima do diagrama) gera PDF, PNG ou SVG; **Exportar projeto (.json)**, no mesmo menu, guarda um backup.
 
 Esqueceu a senha? Na tela de login, clique em **Esqueci minha senha** e siga o link do e-mail.
 
@@ -210,7 +210,7 @@ Separador `;`, `,` ou tab. O arquivo pode estar em UTF-8 ou no formato padrão d
 
 ### Imagem do diagrama
 
-**Baixar PNG** e **Baixar SVG** (acima do diagrama) ou **Exportar diagrama** na barra lateral. O arquivo sai com cabeçalho (projeto, data, totais) e legenda.
+**Imagem PNG** e **Vetor SVG**, no menu **Exportar** acima do diagrama. O arquivo sai com cabeçalho (projeto, data, totais) e legenda.
 
 ### PDF
 

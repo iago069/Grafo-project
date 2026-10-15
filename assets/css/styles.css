@@ -2316,3 +2316,6 @@ body[data-modo-diagrama="racks"] #menuExportar #btnBaixar, body[data-modo-diagra
 @media (min-width: 901px) and (prefers-color-scheme: light) {
   :root:not([data-theme]) .sidebar:not(.collapsed) .nav-label { background: color-mix(in srgb, var(--text) 7%, transparent) !important; box-shadow: none; }
 }
+
+/* Itens do menu ocultos (ex.: NetBox por enquanto). */
+.nav-item[hidden] { display: none !important; }
