@@ -1972,3 +1972,29 @@ body[data-modo-diagrama="racks"] #menuExportar #btnBaixar, body[data-modo-diagra
 .render-actions > .menu-ancora > button, .render-actions > #btnCompartilhar { height: var(--barra-h); min-height: var(--barra-h); border-radius: 13px; padding: 0 16px; }
 .render-actions > .canvas-tools > #btnRefazer { margin-right: 4px; }
 .render-actions > .canvas-tools > #btnZoomOut { border-left: 1px solid var(--line-soft); border-radius: 0 9px 9px 0; }
+
+/* Legenda: quantidade de cada tipo num selo. */
+.legenda > span { display: inline-flex; align-items: center; gap: 7px; }
+.legenda > span > i { width: 10px; height: 10px; border-radius: 3px; box-shadow: 0 0 8px color-mix(in srgb, currentColor 0%, transparent); }
+.legenda-qtd { min-width: 18px; padding: 0 6px; border-radius: 99px; background: color-mix(in srgb, var(--text) 9%, transparent); color: var(--text); font: 700 0.66rem var(--mono); text-align: center; line-height: 16px; }
+
+/* ==== Avisos: ícone, vidro e barra de tempo até sumir ==== */
+.toast {
+  position: relative; overflow: hidden; display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px 14px 14px !important; border-radius: 14px !important;
+  background: color-mix(in srgb, var(--bg-panel-2) 92%, transparent) !important; color: var(--text) !important;
+  border: 1px solid color-mix(in srgb, var(--teal) 30%, transparent) !important; border-left-width: 1px !important;
+  box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font-weight: 500;
+}
+.toast::before {
+  content: ""; flex: 0 0 22px; height: 22px; border-radius: 50%; background-color: color-mix(in srgb, var(--teal) 20%, transparent);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2371ebd6' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E");
+  background-size: 13px; background-position: center; background-repeat: no-repeat;
+}
+.toast::after {
+  content: ""; position: absolute; left: 0; bottom: 0; height: 3px; width: 100%;
+  background: linear-gradient(90deg, var(--teal), var(--accent)); transform-origin: left; animation: toastTempo 2.8s linear forwards;
+}
+@keyframes toastTempo { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { .toast::after { animation: none; } }

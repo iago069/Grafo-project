@@ -3326,7 +3326,7 @@
     return s;
   }
   function corPorTipo(tipo) {
-    var paleta = ["#BFE7E3", "#C9D9FF", "#FFE0A8", "#F6C4D8", "#D8C7F2", "#B9E3F5", "#D8E8B8"];
+    var paleta = ["#5EEAD4", "#7DB4FF", "#FFC163", "#FF8FB8", "#B69CFF", "#67D3F5", "#A8E06B"];
     var str = String(tipo || "outro"); var hash = 0;
     for (var i = 0; i < str.length; i++) { hash = (hash * 31 + str.charCodeAt(i)) & 0xffffffff; }
     return paleta[Math.abs(hash) % paleta.length];
@@ -4484,6 +4484,12 @@
       if (item.status) span.setAttribute("data-status", item.status);
       var i = document.createElement("i"); i.style.background = item.cor;
       span.appendChild(i); span.appendChild(document.createTextNode(item.texto));
+      // Quantidade de cada tipo (só na tela; a exportação usa itensDaLegenda).
+      if (!item.status) {
+        var n = dados.equipamentos.filter(function (eq) { return (eq.tipo || "outro") === item.texto; }).length;
+        var b = document.createElement("b"); b.className = "legenda-qtd"; b.textContent = n;
+        span.appendChild(b);
+      }
       elLegenda.appendChild(span);
     });
   }

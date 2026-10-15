@@ -290,6 +290,12 @@
       if (item.status) span.setAttribute("data-status", item.status);
       var i = document.createElement("i"); i.style.background = item.cor;
       span.appendChild(i); span.appendChild(document.createTextNode(item.texto));
+      // Quantidade de cada tipo (só na tela; a exportação usa itensDaLegenda).
+      if (!item.status) {
+        var n = dados.equipamentos.filter(function (eq) { return (eq.tipo || "outro") === item.texto; }).length;
+        var b = document.createElement("b"); b.className = "legenda-qtd"; b.textContent = n;
+        span.appendChild(b);
+      }
       elLegenda.appendChild(span);
     });
   }
