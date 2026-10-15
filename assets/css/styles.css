@@ -1895,3 +1895,42 @@ label.menu-item:hover, label.menu-item:focus-visible { background: color-mix(in 
 [data-icone="pacote"] { --icone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 8v13H3V8M1 3h22v5H1zM10 12h4'/%3E%3C/svg%3E"); }
 body[data-modo-diagrama="racks"] #menuExportar #btnPaginaPdf, body[data-modo-diagrama="racks"] #menuExportar #btnBaixarPng,
 body[data-modo-diagrama="racks"] #menuExportar #btnBaixar, body[data-modo-diagrama="racks"] #menuExportar .menu-so-diagrama { display: none; }
+
+/* ==== Papel escuro no tema escuro (só na tela; PDF/PNG/SVG continuam claros) ====
+   As cores padrão do desenho são trocadas por versões claras; cores escolhidas
+   pelo usuário (fonte, cabo) ficam como estão. */
+:root[data-theme="dark"] { --papel-escuro: 1; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme]) { --papel-escuro: 1; } }
+:root[data-theme="dark"] .canvas-wrap:not(.vazio) {
+  background-color: #0E1C27;
+  background-image: linear-gradient(rgba(124, 170, 191, 0.09) 1px, transparent 1px), linear-gradient(90deg, rgba(124, 170, 191, 0.09) 1px, transparent 1px);
+  box-shadow: inset 0 0 0 1px var(--line-soft), inset 0 0 80px rgba(0, 0, 0, 0.35);
+}
+:root[data-theme="dark"] .canvas-wrap svg text[fill="#14212b"], :root[data-theme="dark"] .canvas-wrap svg text[fill="#111111"] { fill: #E8F1F8; }
+:root[data-theme="dark"] .canvas-wrap svg text[fill="#405363"], :root[data-theme="dark"] .canvas-wrap svg text[fill="#34495a"] { fill: #9CB7C8; }
+:root[data-theme="dark"] .canvas-wrap svg text[fill="#1f5f8b"] { fill: #71C7F0; }
+:root[data-theme="dark"] .canvas-wrap svg text[fill="#2ead68"] { fill: #4BE08C; }
+:root[data-theme="dark"] .canvas-wrap svg g.node polygon[fill="#ffffff"] { fill: #16293A; stroke: #5D7A90; }
+:root[data-theme="dark"] .canvas-wrap svg g.cluster path, :root[data-theme="dark"] .canvas-wrap svg g.cluster polygon { stroke: #4E6A80; }
+:root[data-theme="dark"] .canvas-wrap svg g.cluster text { fill: #9CB7C8; }
+:root[data-theme="dark"] .canvas-wrap svg g.edge path[stroke="#5a7284"] { stroke: #7FA3BC; }
+:root[data-theme="dark"] .canvas-wrap svg g.edge polygon[stroke="#5a7284"] { stroke: #7FA3BC; fill: #7FA3BC; }
+:root[data-theme="dark"] .canvas-wrap svg .eq-icone-catalogo { filter: invert(0.92) hue-rotate(180deg) brightness(1.05); }
+:root[data-theme="dark"] .canvas-wrap svg .eq-moldura-icone { stroke: #8FA9BC; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .canvas-wrap:not(.vazio) {
+    background-color: #0E1C27;
+    background-image: linear-gradient(rgba(124, 170, 191, 0.09) 1px, transparent 1px), linear-gradient(90deg, rgba(124, 170, 191, 0.09) 1px, transparent 1px);
+    box-shadow: inset 0 0 0 1px var(--line-soft), inset 0 0 80px rgba(0, 0, 0, 0.35);
+  }
+  :root:not([data-theme]) .canvas-wrap svg text[fill="#14212b"], :root:not([data-theme]) .canvas-wrap svg text[fill="#111111"] { fill: #E8F1F8; }
+  :root:not([data-theme]) .canvas-wrap svg text[fill="#405363"], :root:not([data-theme]) .canvas-wrap svg text[fill="#34495a"] { fill: #9CB7C8; }
+  :root:not([data-theme]) .canvas-wrap svg text[fill="#1f5f8b"] { fill: #71C7F0; }
+  :root:not([data-theme]) .canvas-wrap svg text[fill="#2ead68"] { fill: #4BE08C; }
+  :root:not([data-theme]) .canvas-wrap svg g.node polygon[fill="#ffffff"] { fill: #16293A; stroke: #5D7A90; }
+  :root:not([data-theme]) .canvas-wrap svg g.cluster path, :root:not([data-theme]) .canvas-wrap svg g.cluster polygon { stroke: #4E6A80; }
+  :root:not([data-theme]) .canvas-wrap svg g.cluster text { fill: #9CB7C8; }
+  :root:not([data-theme]) .canvas-wrap svg g.edge path[stroke="#5a7284"] { stroke: #7FA3BC; }
+  :root:not([data-theme]) .canvas-wrap svg .eq-icone-catalogo { filter: invert(0.92) hue-rotate(180deg) brightness(1.05); }
+  :root:not([data-theme]) .canvas-wrap svg .eq-moldura-icone { stroke: #8FA9BC; }
+}

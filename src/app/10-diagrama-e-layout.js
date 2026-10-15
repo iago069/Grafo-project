@@ -428,6 +428,7 @@
           var traco = Math.max(1.5, tam * 0.045);
           moldura = document.createElementNS("http://www.w3.org/2000/svg", "rect");
           moldura.setAttribute("data-equip-img", "1");
+          moldura.setAttribute("class", "eq-moldura-icone");
           moldura.setAttribute("x", x + traco / 2);
           moldura.setAttribute("y", y + traco / 2);
           moldura.setAttribute("width", tam - traco);
@@ -446,6 +447,8 @@
         var urlImagem = resolverUrlRelativa(origemImagem);
         var img = document.createElementNS("http://www.w3.org/2000/svg", "image");
         img.setAttribute("data-equip-img", "1");
+        // Na tela escura, o desenho do catálogo clareia (CSS); a imagem própria fica como veio.
+        img.setAttribute("class", ehCatalogo && !nomeAtualDaImagem(equipamento.imagem) ? "eq-icone-catalogo" : "eq-icone-proprio");
         img.setAttributeNS("http://www.w3.org/1999/xlink", "href", urlImagem);
         img.setAttribute("href", urlImagem);
         img.setAttribute("x", x);
