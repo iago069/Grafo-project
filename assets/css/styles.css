@@ -2154,3 +2154,32 @@ body[data-modo-diagrama="racks"] #menuExportar #btnBaixar, body[data-modo-diagra
   -webkit-text-fill-color: #14212B; -webkit-box-shadow: 0 0 0 1000px #F4F7FA inset !important; transition: background-color 9999s ease-out;
 }
 .auth-card label { color: #14212B; font-weight: 600; }
+
+/* ==== Galeria de projetos ==== */
+.galeria { width: min(980px, 100%); max-height: 80vh; padding: 0; }
+.galeria-acoes { display: flex; align-items: center; gap: 10px; }
+.galeria-busca { width: 220px; min-height: 34px !important; }
+.galeria-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; padding: 18px 20px 22px; overflow-y: auto; }
+.galeria-cartao {
+  display: flex; flex-direction: column; gap: 4px; padding: 10px 10px 12px; text-align: left; cursor: pointer; border-radius: 16px; color: var(--text);
+  background: color-mix(in srgb, var(--text) 3%, transparent); border: 1px solid var(--line-soft);
+  transition: transform 0.2s var(--ease-out), border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.galeria-cartao:hover, .galeria-cartao:focus-visible { transform: translateY(-3px); border-color: color-mix(in srgb, var(--teal) 50%, transparent); box-shadow: 0 16px 34px -16px rgba(0, 0, 0, 0.6); outline: none; }
+.galeria-cartao.atual { border-color: color-mix(in srgb, var(--accent) 60%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent); }
+.galeria-mini { width: 100%; height: 96px; margin-bottom: 6px; border-radius: 11px; color: var(--text-dim);
+  background: linear-gradient(rgba(124,170,191,0.08) 1px, transparent 1px) 0 0 / 12px 12px, linear-gradient(90deg, rgba(124,170,191,0.08) 1px, transparent 1px) 0 0 / 12px 12px, color-mix(in srgb, var(--bg) 70%, transparent); }
+.galeria-cabos path { fill: none; stroke: color-mix(in srgb, var(--text-dim) 60%, transparent); stroke-width: 1; }
+.galeria-nome { font: 700 0.92rem var(--sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.galeria-nome em { font: 700 0.6rem var(--mono); font-style: normal; color: var(--accent-ink); background: var(--accent); padding: 1px 6px; border-radius: 99px; vertical-align: middle; text-transform: uppercase; letter-spacing: 0.06em; }
+.galeria-info { font: 500 0.72rem var(--mono); color: var(--text-dim); }
+[data-icone="grade"] { --icone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='7' height='7' rx='1.5'/%3E%3Crect x='14' y='3' width='7' height='7' rx='1.5'/%3E%3Crect x='3' y='14' width='7' height='7' rx='1.5'/%3E%3Crect x='14' y='14' width='7' height='7' rx='1.5'/%3E%3C/svg%3E"); }
+@media (max-width: 640px) { .galeria-busca { width: 120px; } }
+
+/* ==== Identidade: fonte dos títulos ==== */
+:root { --display: "Space Grotesk", var(--sans); }
+.brand span, .landing-marca span, .landing-heroi h1, .auth-card h2, .panel .panel-title, .seletor-modo, .rk-titulo-rack strong, .rk-cabecalho strong,
+.modal-header h3, .folha-topo strong, .galeria-nome, .landing-recurso h3, .rk-palco-vazio h3, .estado-vazio strong {
+  font-family: var(--display); letter-spacing: -0.02em;
+}
+.brand span { font-weight: 700; }

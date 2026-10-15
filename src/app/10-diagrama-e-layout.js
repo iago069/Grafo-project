@@ -970,6 +970,7 @@
   }
 
   window.organizarDiagramaAutomaticamente = organizarDiagramaAutomaticamente;
+  window.GrafoCores = corPorTipo;
 
   // O que outros módulos (compartilhar.js) podem ler do editor.
   window.GrafoApp = {

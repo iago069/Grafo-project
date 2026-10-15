@@ -250,5 +250,69 @@
   });
   ACOES.push({ titulo: "Atalhos do teclado", grupo: "Ajuda", icone: "lista", fazer: function () { folha.hidden = false; }, termos: "teclado ajuda atalho", atalho: "?" });
 
-  window.GrafoComandos = { abrir: abrir, fechar: fechar };
+  // ---- galeria de projetos ----------------------------------------------------
+  var galeria = document.createElement("div");
+  galeria.className = "paleta-fundo galeria-fundo"; galeria.hidden = true;
+  galeria.innerHTML = '<div class="paleta galeria" role="dialog" aria-modal="true" aria-label="Projetos">' +
+    '<div class="folha-topo"><strong>Projetos</strong><div class="galeria-acoes"><input type="search" class="galeria-busca" placeholder="Filtrar projetos" aria-label="Filtrar projetos"><button type="button" class="primary small" data-galeria-novo>+ Novo projeto</button><kbd>Esc</kbd></div></div>' +
+    '<div class="galeria-grade"></div></div>';
+  document.body.appendChild(galeria);
+  var grade = galeria.querySelector(".galeria-grade"), buscaGaleria = galeria.querySelector(".galeria-busca");
+  // Desenho simbólico do projeto: um bloco por equipamento (cor do tipo), ligados pelos cabos.
+  function miniatura(dados) {
+    var eqs = (dados.equipamentos || []).slice(0, 24), n = eqs.length;
+    if (!n) return '<svg viewBox="0 0 200 90" class="galeria-mini"><text x="100" y="50" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.5">Vazio</text></svg>';
+    var colunas = Math.max(1, Math.ceil(Math.sqrt(n * 2.2))), linhas = Math.ceil(n / colunas), pos = {};
+    eqs.forEach(function (e, i) {
+      var cx = colunas > 1 ? 18 + (i % colunas) * (164 / (colunas - 1)) : 100;
+      var cy = linhas > 1 ? 16 + Math.floor(i / colunas) * (58 / (linhas - 1)) : 45;
+      pos[e.id] = [cx, cy];
+    });
+    var cabos = (dados.conexoes || []).filter(function (c) { return pos[c.de] && pos[c.para]; }).slice(0, 40).map(function (c) {
+      var a = pos[c.de], b = pos[c.para], m = (a[0] + b[0]) / 2;
+      return '<path d="M' + a[0] + ' ' + a[1] + ' C' + m + ' ' + a[1] + ' ' + m + ' ' + b[1] + ' ' + b[0] + ' ' + b[1] + '"/>';
+    }).join("");
+    var blocos = eqs.map(function (e) {
+      var p = pos[e.id];
+      return '<rect x="' + (p[0] - 6) + '" y="' + (p[1] - 5) + '" width="12" height="10" rx="2.5" fill="' + (window.GrafoCores ? window.GrafoCores(e.tipo) : "#71ebd6") + '"/>';
+    }).join("");
+    return '<svg viewBox="0 0 200 90" class="galeria-mini"><g class="galeria-cabos">' + cabos + '</g>' + blocos + '</svg>';
+  }
+  function renderGaleria() {
+    var q = semAcento(buscaGaleria.value).trim(), atual = app.projetoAtual();
+    var nomes = app.nomesProjetos().filter(function (n) { return !q || semAcento(n).indexOf(q) >= 0; })
+      .sort(function (a, b) { return (b === atual) - (a === atual) || a.localeCompare(b, "pt"); });
+    grade.innerHTML = nomes.map(function (nome) {
+      var d = app.dadosProjeto(nome) || {};
+      var ne = (d.equipamentos || []).length, nc = (d.conexoes || []).length, nr = (d.racks || []).length;
+      return '<button type="button" class="galeria-cartao' + (nome === atual ? " atual" : "") + '" data-projeto="' + esc(nome) + '">' + miniatura(d) +
+        '<span class="galeria-nome">' + esc(nome) + (nome === atual ? ' <em>aberto</em>' : '') + '</span>' +
+        '<span class="galeria-info">' + ne + ' equip. · ' + nc + ' cabos' + (nr ? ' · ' + nr + ' racks' : '') + '</span></button>';
+    }).join("") || '<div class="paleta-vazio">Nenhum projeto com esse nome.</div>';
+  }
+  function abrirGaleria() { galeria.hidden = false; buscaGaleria.value = ""; renderGaleria(); buscaGaleria.focus(); }
+  function fecharGaleria() { galeria.hidden = true; }
+  buscaGaleria.addEventListener("input", renderGaleria);
+  grade.addEventListener("click", function (ev) {
+    var c = ev.target.closest("[data-projeto]");
+    if (!c) return;
+    var nome = c.getAttribute("data-projeto");
+    fecharGaleria();
+    if (nome !== app.projetoAtual()) app.trocarProjeto(nome);
+  });
+  galeria.querySelector("[data-galeria-novo]").addEventListener("click", function () { fecharGaleria(); clicar("btnNovoProjeto")(); });
+  galeria.addEventListener("mousedown", function (ev) { if (ev.target === galeria) fecharGaleria(); });
+  document.addEventListener("keydown", function (ev) { if (ev.key === "Escape" && !galeria.hidden) { ev.preventDefault(); fecharGaleria(); } });
+  ACOES.unshift({ titulo: "Ver todos os projetos", grupo: "Projeto", icone: "pasta", fazer: abrirGaleria, termos: "galeria lista projetos abrir trocar" });
+  var ferramentasProjeto = document.querySelector(".project-tools");
+  if (ferramentasProjeto && !document.getElementById("btnGaleria")) {
+    var botaoGaleria = document.createElement("button");
+    botaoGaleria.type = "button"; botaoGaleria.id = "btnGaleria"; botaoGaleria.className = "ghost ferramenta";
+    botaoGaleria.setAttribute("data-icone", "grade"); botaoGaleria.setAttribute("data-dica", "Todos os projetos"); botaoGaleria.setAttribute("aria-label", "Todos os projetos");
+    botaoGaleria.addEventListener("click", abrirGaleria);
+    var seletorProjeto = document.getElementById("projetoSelect");
+    ferramentasProjeto.insertBefore(botaoGaleria, seletorProjeto ? seletorProjeto.nextSibling : null);
+  }
+
+  window.GrafoComandos = { abrir: abrir, fechar: fechar, galeria: abrirGaleria };
 })();
