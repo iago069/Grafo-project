@@ -1737,64 +1737,6 @@ button.ghost { backdrop-filter: blur(6px); }
 .rk-svg-dc .rk-dc-atual .rk-dc-nome { fill: var(--accent); }
 .rk-svg-dc .rk-dc-rack:hover .rk-dc-etiqueta { stroke: var(--teal); }
 
-/* ==== Barra lateral: coluna inteira, ícones em blocos, usuário no pé (2026-10) ==== */
-@media (min-width: 901px) {
-  .sidebar:not(.collapsed) {
-    margin: 0; padding: 0 12px 14px; gap: 6px;
-    background: linear-gradient(180deg, color-mix(in srgb, var(--bg-panel) 92%, var(--teal) 8%) 0%, var(--bg-panel) 40%, color-mix(in srgb, var(--bg-panel) 94%, var(--accent) 6%) 100%);
-    border-right: 1px solid var(--line-soft);
-    box-shadow: inset -1px 0 0 color-mix(in srgb, #fff 4%, transparent), 12px 0 40px -24px rgba(0, 0, 0, 0.5);
-  }
-  .sidebar:not(.collapsed) .brand { min-height: 76px; padding-top: 16px; border-bottom: 1px solid var(--line-soft); margin: 0 4px 6px; }
-  .sidebar:not(.collapsed) .sidebar-collapse { top: 24px; }
-  .sidebar:not(.collapsed) .nav {
-    flex: 1 1 auto; background: transparent; border: 0; box-shadow: none; border-radius: 0; padding: 6px 0 0; gap: 14px;
-    backdrop-filter: none; -webkit-backdrop-filter: none;
-  }
-  .sidebar:not(.collapsed) .nav-section + .nav-section { border-top: 0; padding-top: 0; }
-  .sidebar:not(.collapsed) .nav-label {
-    background: transparent !important; padding: 4px 10px 6px; margin: 0; border-radius: 6px;
-    font: 700 0.62rem var(--mono); letter-spacing: 0.18em; color: color-mix(in srgb, var(--text-dim) 85%, transparent);
-  }
-  .sidebar:not(.collapsed) .nav-label:hover { color: var(--text); }
-  .sidebar:not(.collapsed) .nav-item {
-    position: relative; padding: 7px 10px; gap: 12px; border-radius: 12px; font-weight: 600; font-size: 0.86rem;
-    color: color-mix(in srgb, var(--text) 88%, transparent);
-  }
-  /* Ícone num bloquinho (o bloco é o ::before; o desenho, o ::after por cima). */
-  .sidebar:not(.collapsed) .nav-item[data-icon]::before {
-    flex: 0 0 34px; width: 34px; height: 34px; border-radius: 10px; opacity: 1;
-    background-color: color-mix(in srgb, var(--text) 6%, transparent);
-    -webkit-mask: none; mask: none;
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 8%, transparent);
-  }
-  .sidebar:not(.collapsed) .nav-item[data-icon]::after {
-    content: ""; position: absolute; left: 18px; top: 50%; width: 18px; height: 18px; translate: 0 -50%;
-    background-color: var(--teal); -webkit-mask: var(--icone) center / contain no-repeat; mask: var(--icone) center / contain no-repeat;
-    transition: background-color var(--dur-rapida) ease, transform var(--dur-media) var(--ease-mola);
-  }
-  .sidebar:not(.collapsed) .nav-item:hover { background: color-mix(in srgb, var(--text) 5%, transparent); transform: none; color: var(--text); }
-  .sidebar:not(.collapsed) .nav-item:hover::before { background-color: color-mix(in srgb, var(--teal) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--teal) 40%, transparent); transform: none; }
-  .sidebar:not(.collapsed) .nav-item:hover::after { transform: scale(1.1); }
-  .sidebar:not(.collapsed) .nav-item.active { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--text); box-shadow: inset 3px 0 0 var(--accent); }
-  .sidebar:not(.collapsed) .nav-item.active::before { background-color: var(--accent); box-shadow: none; }
-  .sidebar:not(.collapsed) .nav-item.active::after { background-color: var(--accent-ink); }
-  /* Usuário: cartão fixo no pé, com a inicial num círculo. */
-  .sidebar:not(.collapsed) .sidebar-usuario {
-    margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 10px 12px; text-align: left;
-    border-radius: 14px; background: color-mix(in srgb, var(--text) 5%, transparent); border: 1px solid var(--line-soft);
-  }
-  .sidebar:not(.collapsed) .sidebar-usuario[hidden] { display: none; }
-  .sidebar:not(.collapsed) .sidebar-usuario::before {
-    content: attr(data-inicial); flex: 0 0 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
-    background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 50%, var(--teal))); color: var(--accent-ink); font: 800 0.95rem var(--sans);
-    box-shadow: 0 4px 12px -4px color-mix(in srgb, var(--accent) 70%, transparent);
-  }
-  .sidebar:not(.collapsed) .sidebar-usuario strong { font-size: 0.95rem; }
-  .sidebar:not(.collapsed) .sidebar-usuario::after { content: "Conectado"; margin-left: auto; font: 600 0.62rem var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: #2fbf71; }
-  .sidebar:not(.collapsed) .sidebar-usuario.convidado::after { content: "Local"; color: var(--text-dim); }
-}
-
 /* ==== Tipo de diagrama: menu com ícone e descrição (Chrome/Edge 135+) ==== */
 .seletor-modo { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.01em; }
 @supports (appearance: base-select) {
@@ -1841,8 +1783,43 @@ button.ghost { backdrop-filter: blur(6px); }
 
 /* Tema claro: nome do tipo escolhido legível e ícones mais fortes. */
 @supports (appearance: base-select) { .seletor-modo option:checked { color: var(--text); } }
-:root[data-theme="light"] .seletor-modo option:not(:checked)::before, :root[data-theme="light"] .sidebar .nav-item[data-icon]:not(.active)::after { filter: brightness(0.62) saturate(1.4); }
+:root[data-theme="light"] .seletor-modo option:not(:checked)::before { filter: brightness(0.62) saturate(1.4); }
 :root[data-theme="light"] .seletor-modo { background-blend-mode: normal; }
 @media (prefers-color-scheme: light) {
-  :root:not([data-theme]) .seletor-modo option:not(:checked)::before, :root:not([data-theme]) .sidebar .nav-item[data-icon]:not(.active)::after { filter: brightness(0.62) saturate(1.4); }
+  :root:not([data-theme]) .seletor-modo option:not(:checked)::before { filter: brightness(0.62) saturate(1.4); }
+}
+
+/* ==== Barra lateral no modelo de cartão (KronOS) ==== */
+@media (min-width: 901px) {
+  .sidebar:not(.collapsed) .nav {
+    margin: 0 6px; padding: 44px 8px 0; gap: 8px; border-radius: 18px;
+    background: color-mix(in srgb, var(--bg-panel-2) 88%, var(--text) 4%);
+    border: 1px solid var(--line-soft);
+    box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.55), inset 0 1px 0 color-mix(in srgb, #fff 6%, transparent);
+  }
+  .sidebar:not(.collapsed) .sidebar-collapse { top: 96px; right: 20px; }
+  .sidebar:not(.collapsed) .nav-section { gap: 2px; }
+  .sidebar:not(.collapsed) .nav-section + .nav-section { border-top: 0; padding-top: 0; }
+  /* Título de seção: bloco escuro, letras espaçadas, seta à direita. */
+  .sidebar:not(.collapsed) .nav-label {
+    padding: 12px 16px; margin: 0 0 4px; border-radius: 12px;
+    background: color-mix(in srgb, var(--bg) 70%, transparent) !important;
+    color: color-mix(in srgb, var(--text) 78%, transparent);
+    font: 800 0.68rem var(--sans); letter-spacing: 0.16em;
+  }
+  .sidebar:not(.collapsed) .nav-label:hover { background: color-mix(in srgb, var(--bg) 85%, transparent) !important; color: var(--text); }
+  .sidebar:not(.collapsed) .nav-item { padding: 10px 16px 10px 18px; margin-left: 8px; width: calc(100% - 8px); border-radius: 12px; gap: 14px; font-weight: 500; font-size: 0.9rem; }
+  .sidebar:not(.collapsed) .nav-item::before { flex-basis: 20px; width: 20px; height: 20px; opacity: 0.95; }
+  .sidebar:not(.collapsed) .nav-item:hover { background: color-mix(in srgb, var(--text) 7%, transparent); transform: none; }
+  .sidebar:not(.collapsed) .nav-item.active, .sidebar:not(.collapsed) .nav-item.active:hover { background: var(--accent); color: var(--accent-ink); box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--accent) 80%, transparent); font-weight: 600; }
+  /* Nome no pé do cartão, separado por uma linha. */
+  .sidebar:not(.collapsed) .sidebar-usuario { margin-top: 8px; padding: 16px 10px 18px; border-top: 1px solid var(--line-soft); text-align: center; }
+  .sidebar:not(.collapsed) .sidebar-usuario strong { font-size: 1.15rem; font-weight: 800; }
+}
+
+@media (min-width: 901px) {
+  :root[data-theme="light"] .sidebar:not(.collapsed) .nav-label { background: color-mix(in srgb, var(--text) 8%, transparent) !important; }
+}
+@media (min-width: 901px) and (prefers-color-scheme: light) {
+  :root:not([data-theme]) .sidebar:not(.collapsed) .nav-label { background: color-mix(in srgb, var(--text) 8%, transparent) !important; }
 }
