@@ -323,9 +323,14 @@
 
   // ---- Seções do menu lateral que abrem e fecham pelo título -------------------
   // As fechadas ficam guardadas neste navegador (só uma conveniência).
-  var CHAVE_SECOES = "grafo-menu-fechado";
-  var fechadas = [];
-  try { fechadas = JSON.parse(localStorage.getItem(CHAVE_SECOES) || "[]") || []; } catch (e) {}
+  // Sem escolha guardada: só o primeiro grupo aberto, os demais recolhidos.
+  // (v2: os grupos mudaram de nome em 2026-10; a escolha antiga não vale mais.)
+  var CHAVE_SECOES = "grafo-menu-fechado-v2";
+  var fechadas = null;
+  try { fechadas = JSON.parse(localStorage.getItem(CHAVE_SECOES)); } catch (e) {}
+  if (!Array.isArray(fechadas)) {
+    fechadas = Array.prototype.slice.call(document.querySelectorAll(".nav-section > .nav-label"), 1).map(function (t) { return t.textContent.trim(); });
+  }
   document.querySelectorAll(".nav-section > .nav-label").forEach(function (titulo) {
     var secao = titulo.parentNode;
     var nome = titulo.textContent.trim();

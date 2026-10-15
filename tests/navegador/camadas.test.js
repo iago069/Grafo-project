@@ -47,3 +47,17 @@ test("menus, paleta, galeria e documentos ficam por cima, antes e depois de troc
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("menu lateral: grupos Editar diagrama, Documentação e Importar e exportar; só o primeiro aberto por padrão", async () => {
+  const pagina = await abrirPagina(navegador, site, { antes: () => localStorage.removeItem("grafo-menu-fechado-v2") });
+  await esperarDiagrama(pagina);
+  const grupos = await pagina.evaluate(() => [...document.querySelectorAll(".nav-section > .nav-label")].map(l => [l.textContent.trim(), l.getAttribute("aria-expanded")]));
+  assert.deepEqual(grupos, [["Editar diagrama", "true"], ["Documentação", "false"], ["Importar e exportar", "false"]]);
+  assert.equal(await pagina.isVisible("#btnModoAvancado"), true);
+  assert.equal(await pagina.isVisible("#btnDocumentos"), false);
+  await pagina.click(".nav-section:has(#btnDocumentos) > .nav-label");
+  assert.equal(await pagina.isVisible("#btnDocumentos"), true);
+  assert.equal(await pagina.isVisible("#btnEtiquetas"), true);
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

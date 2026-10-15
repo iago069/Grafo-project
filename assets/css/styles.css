@@ -2265,3 +2265,35 @@ body[data-modo-diagrama="racks"] #menuExportar #btnBaixar, body[data-modo-diagra
 .docs-msg.erro { color: color-mix(in srgb, var(--danger) 70%, var(--text)); }
 .docs-do-equip { margin-top: 8px; width: 100%; }
 @media (max-width: 760px) { .docs-corpo { grid-template-columns: 1fr; grid-template-rows: 40% 60%; } .docs-lista-lado { border-right: 0; border-bottom: 1px solid var(--line-soft); } }
+
+/* ==== Menu lateral compacto (2026-10): títulos discretos, menos espaço, ícones alinhados ==== */
+@media (min-width: 901px) {
+  /* Faixa do topo do cartão com o botão de recolher, fixa enquanto o menu rola. */
+  .sidebar:not(.collapsed) .nav { padding-top: 0; gap: 2px; }
+  .sidebar:not(.collapsed) .nav::before {
+    content: ""; position: sticky; top: 0; z-index: 2; display: block; flex: 0 0 44px; margin: 0 -8px 2px;
+    background: inherit; border-bottom: 1px solid var(--line-soft); border-radius: 18px 18px 0 0;
+  }
+  .sidebar:not(.collapsed) .sidebar-collapse { top: 94px; right: 18px; z-index: 5; }
+  .sidebar:not(.collapsed) .nav-section { gap: 0; padding: 4px 0; }
+  .sidebar:not(.collapsed) .nav-section + .nav-section { border-top: 1px solid color-mix(in srgb, var(--line-soft) 70%, transparent); }
+  /* Título do grupo: só texto pequeno, sem caixa escura. */
+  .sidebar:not(.collapsed) .nav-label,
+  :root[data-theme="light"] .sidebar:not(.collapsed) .nav-label {
+    background: transparent !important; box-shadow: none; padding: 8px 12px 6px; margin: 0; border-radius: 8px;
+    font: 700 0.64rem var(--sans); letter-spacing: 0.14em; color: color-mix(in srgb, var(--text-dim) 90%, transparent);
+  }
+  .sidebar:not(.collapsed) .nav-label:hover { background: color-mix(in srgb, var(--text) 5%, transparent) !important; color: var(--text); }
+  .sidebar:not(.collapsed) .nav-label::after { width: 12px; height: 12px; flex-basis: 12px; opacity: 0.7; }
+  /* Itens: altura menor, ícone fixo de 18 px, texto alinhado na mesma coluna. */
+  .sidebar:not(.collapsed) .nav-item {
+    min-height: 36px; padding: 7px 12px 7px 14px !important; margin: 1px 0 1px 0; width: 100%; gap: 12px;
+    font-size: 0.86rem; font-weight: 500; line-height: 1.25; border-radius: 10px;
+  }
+  .sidebar:not(.collapsed) .nav-item::before { flex: 0 0 18px; width: 18px; height: 18px; opacity: 0.9; }
+  .sidebar:not(.collapsed) .nav-panel.open { margin: 4px 0 6px; }
+  .sidebar:not(.collapsed) .sidebar-usuario { padding: 12px 10px 14px; }
+}
+@media (min-width: 901px) and (prefers-color-scheme: light) {
+  :root:not([data-theme]) .sidebar:not(.collapsed) .nav-label { background: transparent !important; }
+}

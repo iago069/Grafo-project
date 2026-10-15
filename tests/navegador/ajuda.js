@@ -139,6 +139,9 @@ async function abrirPagina(navegador, site, { viewport = { width: 1400, height: 
   ));
   const script = supabaseSimulado({ sessao, projetos, vencida });
   await contexto.route("**/@supabase/supabase-js@*/**", r => r.fulfill({ contentType: "text/javascript", body: script }));
+  // Nos testes, todas as seções do menu começam abertas (o padrão do app recolhe
+  // os grupos depois do primeiro); só vale se a página ainda não guardou escolha.
+  await contexto.addInitScript(() => { try { if (localStorage.getItem("grafo-menu-fechado-v2") === null) localStorage.setItem("grafo-menu-fechado-v2", "[]"); } catch (e) {} });
   if (antes) await contexto.addInitScript(antes);
   const pagina = await contexto.newPage();
   pagina.erros = [];
