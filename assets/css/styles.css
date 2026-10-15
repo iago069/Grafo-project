@@ -1910,7 +1910,7 @@ body[data-modo-diagrama="racks"] #menuExportar #btnBaixar, body[data-modo-diagra
 :root[data-theme="dark"] .canvas-wrap svg text[fill="#405363"], :root[data-theme="dark"] .canvas-wrap svg text[fill="#34495a"] { fill: #9CB7C8; }
 :root[data-theme="dark"] .canvas-wrap svg text[fill="#1f5f8b"] { fill: #71C7F0; }
 :root[data-theme="dark"] .canvas-wrap svg text[fill="#2ead68"] { fill: #4BE08C; }
-:root[data-theme="dark"] .canvas-wrap svg g.node polygon[fill="#ffffff"] { fill: #16293A; stroke: #5D7A90; }
+:root[data-theme="dark"] .canvas-wrap svg g.node polygon[fill="#ffffff"] { fill: #132636; stroke: #DCEBF5; stroke-width: 1.4px; filter: drop-shadow(0 0 3px rgba(113, 235, 214, 0.55)); }
 :root[data-theme="dark"] .canvas-wrap svg g.cluster path, :root[data-theme="dark"] .canvas-wrap svg g.cluster polygon { stroke: #4E6A80; }
 :root[data-theme="dark"] .canvas-wrap svg g.cluster text { fill: #9CB7C8; }
 :root[data-theme="dark"] .canvas-wrap svg g.edge path[stroke="#5a7284"] { stroke: #7FA3BC; }
@@ -1927,7 +1927,7 @@ body[data-modo-diagrama="racks"] #menuExportar #btnBaixar, body[data-modo-diagra
   :root:not([data-theme]) .canvas-wrap svg text[fill="#405363"], :root:not([data-theme]) .canvas-wrap svg text[fill="#34495a"] { fill: #9CB7C8; }
   :root:not([data-theme]) .canvas-wrap svg text[fill="#1f5f8b"] { fill: #71C7F0; }
   :root:not([data-theme]) .canvas-wrap svg text[fill="#2ead68"] { fill: #4BE08C; }
-  :root:not([data-theme]) .canvas-wrap svg g.node polygon[fill="#ffffff"] { fill: #16293A; stroke: #5D7A90; }
+  :root:not([data-theme]) .canvas-wrap svg g.node polygon[fill="#ffffff"] { fill: #132636; stroke: #DCEBF5; stroke-width: 1.4px; filter: drop-shadow(0 0 3px rgba(113, 235, 214, 0.55)); }
   :root:not([data-theme]) .canvas-wrap svg g.cluster path, :root:not([data-theme]) .canvas-wrap svg g.cluster polygon { stroke: #4E6A80; }
   :root:not([data-theme]) .canvas-wrap svg g.cluster text { fill: #9CB7C8; }
   :root:not([data-theme]) .canvas-wrap svg g.edge path[stroke="#5a7284"] { stroke: #7FA3BC; }
