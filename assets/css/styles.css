@@ -2083,3 +2083,22 @@ body[data-modo-diagrama="racks"] #menuExportar #btnBaixar, body[data-modo-diagra
 .paleta-icone[data-icone="tema"] { --icone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 3a9 9 0 0 0 0 18z' fill='%23000'/%3E%3C/svg%3E"); }
 .paleta-icone[data-icone="pasta"] { --icone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linejoin='round'%3E%3Cpath d='M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'/%3E%3C/svg%3E"); }
 @media (prefers-reduced-motion: reduce) { .paleta, .paleta-fundo { animation: none; } }
+
+/* ==== Editor de equipamento/cabo como painel lateral (desliza da direita) ====
+   O diagrama continua visível e clicável atrás; Esc ou × fecha. */
+@media (min-width: 901px) {
+  #editorModal { background: transparent; justify-content: flex-end; align-items: stretch; padding: 88px 18px 28px; pointer-events: none; }
+  #editorModal .modal-box {
+    pointer-events: auto; width: 380px; max-height: none; height: 100%; overflow-y: auto; border-radius: 20px; padding: 20px;
+    box-shadow: -24px 0 60px -20px rgba(0, 0, 0, 0.55), 0 0 0 1px color-mix(in srgb, #fff 4%, transparent);
+    animation: painelEntrar 0.32s var(--ease-out) both;
+  }
+  #editorModal.saindo { animation: none; }
+  #editorModal.saindo .modal-box { animation: painelSair 0.18s var(--ease-in) forwards; }
+  #editorModal .modal-header { position: sticky; top: -20px; margin: -20px -20px 14px; padding: 18px 20px 14px; background: inherit; z-index: 1; border-bottom: 1px solid var(--line-soft); border-radius: 20px 20px 0 0; }
+  #editorModal .modal-header h3 { font-size: 1.05rem; }
+  #editorModal .nav-form label { font-size: 0.7rem; }
+  #editorModal .nav-form input, #editorModal .nav-form select { font-size: 0.86rem; padding: 9px 10px; }
+}
+@keyframes painelEntrar { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: none; } }
+@keyframes painelSair { to { opacity: 0; transform: translateX(40px); } }
