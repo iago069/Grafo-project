@@ -2924,7 +2924,7 @@
     document.body.setAttribute("data-modo-diagrama", modo);
     // Troca de tipo com transição (o painel entra de novo, suave). Não anima na abertura.
     var painel = document.querySelector(".render-panel");
-    if (painel && modoJaMostrado) { painel.classList.remove("trocando-modo"); void painel.offsetWidth; painel.classList.add("trocando-modo"); }
+    if (painel && modoJaMostrado) { painel.classList.remove("trocando-modo"); void painel.offsetWidth; painel.classList.add("trocando-modo"); clearTimeout(aplicarModoNaTela.t); aplicarModoNaTela.t = setTimeout(function () { painel.classList.remove("trocando-modo"); }, 600); }
     modoJaMostrado = true;
     ajustarLarguraDoSeletorDeModo();
     renderizarTiposSugeridos();

@@ -2134,7 +2134,9 @@ body[data-modo-diagrama="racks"] #menuExportar #btnBaixar, body[data-modo-diagra
 @media (max-width: 640px) { .folha-grade { grid-template-columns: 1fr; } }
 
 /* ==== Transição ao trocar o tipo de diagrama ==== */
-.render-panel.trocando-modo > :not(h2) { animation: trocaModo 0.42s var(--ease-out) both; }
+/* backwards (e não both): ao terminar, nada fica preso nos elementos — um transform
+   "preso" cria camada própria e o quadro passava por cima dos menus (Exportar). */
+.render-panel.trocando-modo > :not(h2) { animation: trocaModo 0.42s var(--ease-out) backwards; }
 .render-panel.trocando-modo > :nth-child(3) { animation-delay: 0.04s; }
 .render-panel.trocando-modo > :nth-child(4) { animation-delay: 0.08s; }
 @keyframes trocaModo { from { opacity: 0; transform: translateY(10px) scale(0.995); filter: blur(3px); } to { opacity: 1; transform: none; filter: none; } }
