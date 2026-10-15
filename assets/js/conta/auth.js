@@ -411,6 +411,7 @@
     var email = !convidado && user && user.email || "";
     // O primeiro nome (ou o começo do e-mail, para quem ainda não tem nome).
     document.getElementById("sidebarUsuarioNome").textContent = convidado ? "Sem login" : (nome ? nome.split(" ")[0] : email.split("@")[0]);
+    caixa.setAttribute("data-inicial", (convidado ? "?" : (nome || email || "?").trim().charAt(0)).toUpperCase());
     caixa.title = convidado ? "Usando sem login" : (nome || "Adicione seu nome em Minha conta");
     caixa.classList.toggle("convidado", convidado);
     caixa.hidden = false;

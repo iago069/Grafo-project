@@ -2933,7 +2933,9 @@
     medida.textContent = elModoDiagrama.options[elModoDiagrama.selectedIndex].text;
     document.body.appendChild(medida);
     var largura = medida.getBoundingClientRect().width + parseFloat(estilo.paddingLeft) + parseFloat(estilo.paddingRight) +
-      parseFloat(estilo.borderLeftWidth) + parseFloat(estilo.borderRightWidth) + 2;
+      parseFloat(estilo.borderLeftWidth) + parseFloat(estilo.borderRightWidth) + 2 +
+      // Lista personalizável (base-select): a seta e o espaço antes dela ficam por dentro.
+      (window.CSS && CSS.supports && CSS.supports("appearance", "base-select") ? 14 + (parseFloat(estilo.columnGap) || 0) : 0);
     medida.remove();
     elModoDiagrama.style.width = Math.ceil(largura) + "px";
   }
