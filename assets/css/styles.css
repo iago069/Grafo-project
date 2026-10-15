@@ -2183,3 +2183,6 @@ body[data-modo-diagrama="racks"] #menuExportar #btnBaixar, body[data-modo-diagra
   font-family: var(--display); letter-spacing: -0.02em;
 }
 .brand span { font-weight: 700; }
+
+/* Nada do app cria rolagem lateral da página (desenhos grandes rolam por dentro dos seus painéis). */
+.app-shell { overflow-x: clip; }
