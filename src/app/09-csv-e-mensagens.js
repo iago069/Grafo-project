@@ -207,18 +207,26 @@
   // Aviso rápido no canto (sucesso de exportar, importar, copiar…). Some sozinho;
   // erros continuam no #erro, que fica até a pessoa fechar.
   var elToasts = document.getElementById("toasts");
-  function avisar(msg) {
+  function avisar(msg, opcoes) {
     if (!elToasts) return;
     var toast = document.createElement("div");
     toast.className = "toast";
     toast.setAttribute("role", "status");
     toast.textContent = msg;
+    // Ação desfeita direto no aviso (no lugar de perguntar "tem certeza?" antes).
+    if (opcoes && opcoes.desfazer) {
+      toast.classList.add("com-acao");
+      var botao = document.createElement("button");
+      botao.type = "button"; botao.className = "toast-acao"; botao.textContent = "Desfazer";
+      botao.addEventListener("click", function () { btnDesfazer.click(); toast.remove(); });
+      toast.appendChild(botao);
+    }
     elToasts.appendChild(toast);
     while (elToasts.children.length > 3) elToasts.removeChild(elToasts.firstChild);
     setTimeout(function () {
       toast.classList.add("saindo");
       setTimeout(function () { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 200);
-    }, 2800);
+    }, opcoes && opcoes.desfazer ? 6000 : 2800);
   }
 
   // msg: texto principal. itens (opcional): [{ onde, mensagem }] da validação,

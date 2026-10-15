@@ -13,16 +13,18 @@ test("Ctrl+K abre a paleta, acha equipamento e ação, e Esc fecha", async () =>
   await pagina.waitForFunction(() => window.GrafoComandos);
   await pagina.keyboard.press("Control+k");
   await pagina.waitForSelector("#paletaComandos:not([hidden]) .paleta-input");
-  await pagina.keyboard.type("olt");
-  assert.match(await pagina.textContent(".paleta-item.ativo"), /OLT/);
+  await pagina.fill(".paleta-input", "olt");
+  await pagina.waitForFunction(() => /OLT/.test((document.querySelector(".paleta-item.ativo") || {}).textContent || ""));
   await pagina.keyboard.press("Enter");
   await pagina.waitForSelector("#editorEquipForm:not(.hidden)");
   assert.match(await pagina.inputValue("#editEquipNome"), /OLT/i);
   await pagina.keyboard.press("Escape");
   // Ação pelo botão da barra do topo.
+  await pagina.waitForSelector("#editorModal.hidden", { state: "attached" });
   await pagina.click("#btnPaleta");
-  await pagina.keyboard.type("bayface");
-  await pagina.keyboard.press("Enter");
+  await pagina.fill(".paleta-input", "bayface");
+  await pagina.waitForFunction(() => /Bayface/.test((document.querySelector(".paleta-item.ativo") || {}).textContent || ""));
+  await pagina.press(".paleta-input", "Enter");
   await pagina.waitForFunction(() => document.body.getAttribute("data-modo-diagrama") === "racks");
   await pagina.keyboard.press("Control+k");
   await pagina.keyboard.press("Escape");

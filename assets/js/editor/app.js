@@ -1729,7 +1729,7 @@
     estado.conexoes = estado.conexoes.filter(function (c) { return !sai[c.de] && !sai[c.para]; });
     selecao = {};
     renderTudo();
-    avisar(plural(ids.length, "equipamento excluído", "equipamentos excluídos") + ". Ctrl+Z desfaz.");
+    avisar(plural(ids.length, "equipamento excluído", "equipamentos excluídos") + ".", { desfazer: true });
   }
 
   function digitandoEmCampo(alvo) {
@@ -1948,7 +1948,7 @@
     estado.anotacoes = listaAnotacoes().filter(function (item) { return item !== a; });
     fecharEditorAnotacao();
     renderTudo();
-    avisar("Anotação excluída. Ctrl+Z desfaz.");
+    avisar("Anotação excluída.", { desfazer: true });
   }
 
   function criarAnotacao() {
@@ -2682,20 +2682,15 @@
       var c = editor.conexao;
       var nome = eq ? (eq.nome || eq.id) : "este cabo";
       fecharEditor();
-      abrirModal({
-        title: eq ? "Excluir equipamento" : "Excluir cabo",
-        message: eq ? "Excluir " + nome + " e os cabos ligados a ele?" : "Excluir este cabo?",
-        confirmText: "Excluir"
-      }).then(function (confirmou) {
-        if (!confirmou) return;
-        if (eq) {
-          estado.equipamentos = estado.equipamentos.filter(function (item) { return item !== eq; });
-          estado.conexoes = estado.conexoes.filter(function (item) { return item.de !== eq.id && item.para !== eq.id; });
-        } else if (c) {
-          estado.conexoes = estado.conexoes.filter(function (item) { return item !== c; });
-        }
-        renderTudo();
-      });
+      // Exclui na hora; o aviso traz "Desfazer" (o histórico do Ctrl+Z guarda o antes).
+      if (eq) {
+        estado.equipamentos = estado.equipamentos.filter(function (item) { return item !== eq; });
+        estado.conexoes = estado.conexoes.filter(function (item) { return item.de !== eq.id && item.para !== eq.id; });
+      } else if (c) {
+        estado.conexoes = estado.conexoes.filter(function (item) { return item !== c; });
+      }
+      renderTudo();
+      avisar((eq ? nome + " excluído" : "Cabo excluído") + ".", { desfazer: true });
     });
   });
   editor.backdrop.addEventListener("click", function (event) {
@@ -2840,6 +2835,14 @@
   function mostrarEstadoVazio() {
     elCanvas.innerHTML =
       '<div class="estado-vazio">' +
+        // Ilustração: três equipamentos se ligando (cabos desenhando, LEDs piscando).
+        '<svg class="vazio-ilustra" viewBox="0 0 220 120" aria-hidden="true">' +
+          '<path class="vi-cabo" d="M58 60 C85 60 85 30 110 30"/><path class="vi-cabo vi-c2" d="M58 60 C85 60 85 90 110 90"/><path class="vi-cabo vi-c3" d="M150 30 C170 30 170 60 180 60"/>' +
+          '<rect class="vi-eq" x="14" y="44" width="44" height="32" rx="7"/><rect class="vi-eq vi-e2" x="110" y="16" width="40" height="28" rx="7"/>' +
+          '<rect class="vi-eq vi-e3" x="110" y="76" width="40" height="28" rx="7"/><rect class="vi-eq vi-e4 vi-tracejado" x="180" y="46" width="30" height="28" rx="7"/>' +
+          '<circle class="vi-led" cx="26" cy="60" r="2.5"/><circle class="vi-led vi-l2" cx="120" cy="30" r="2.5"/><circle class="vi-led vi-l3" cx="120" cy="90" r="2.5"/>' +
+          '<path class="vi-mais" d="M195 54v12M189 60h12"/>' +
+        '</svg>' +
         '<strong>Nenhum equipamento ainda</strong>' +
         '<span>Adicione equipamentos pela barra lateral ou veja um exemplo pronto.</span>' +
         '<button type="button" class="primary" data-carregar-exemplo>Carregar exemplo</button>' +
@@ -3635,6 +3638,7 @@
       estado.equipamentos.splice(idx, 1);
       estado.conexoes = estado.conexoes.filter(function (c) { return c.de !== idRemovido && c.para !== idRemovido; });
       renderTudo();
+      avisar("Equipamento excluído.", { desfazer: true });
     } else if (acao === "remover-imagem") {
       estado.equipamentos[idx].imagem = "";
       renderEquipamentos();
@@ -4105,18 +4109,26 @@
   // Aviso rápido no canto (sucesso de exportar, importar, copiar…). Some sozinho;
   // erros continuam no #erro, que fica até a pessoa fechar.
   var elToasts = document.getElementById("toasts");
-  function avisar(msg) {
+  function avisar(msg, opcoes) {
     if (!elToasts) return;
     var toast = document.createElement("div");
     toast.className = "toast";
     toast.setAttribute("role", "status");
     toast.textContent = msg;
+    // Ação desfeita direto no aviso (no lugar de perguntar "tem certeza?" antes).
+    if (opcoes && opcoes.desfazer) {
+      toast.classList.add("com-acao");
+      var botao = document.createElement("button");
+      botao.type = "button"; botao.className = "toast-acao"; botao.textContent = "Desfazer";
+      botao.addEventListener("click", function () { btnDesfazer.click(); toast.remove(); });
+      toast.appendChild(botao);
+    }
     elToasts.appendChild(toast);
     while (elToasts.children.length > 3) elToasts.removeChild(elToasts.firstChild);
     setTimeout(function () {
       toast.classList.add("saindo");
       setTimeout(function () { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 200);
-    }, 2800);
+    }, opcoes && opcoes.desfazer ? 6000 : 2800);
   }
 
   // msg: texto principal. itens (opcional): [{ onde, mensagem }] da validação,

@@ -842,7 +842,7 @@
     estado.conexoes = estado.conexoes.filter(function (c) { return !sai[c.de] && !sai[c.para]; });
     selecao = {};
     renderTudo();
-    avisar(plural(ids.length, "equipamento excluído", "equipamentos excluídos") + ". Ctrl+Z desfaz.");
+    avisar(plural(ids.length, "equipamento excluído", "equipamentos excluídos") + ".", { desfazer: true });
   }
 
   function digitandoEmCampo(alvo) {
@@ -1061,7 +1061,7 @@
     estado.anotacoes = listaAnotacoes().filter(function (item) { return item !== a; });
     fecharEditorAnotacao();
     renderTudo();
-    avisar("Anotação excluída. Ctrl+Z desfaz.");
+    avisar("Anotação excluída.", { desfazer: true });
   }
 
   function criarAnotacao() {

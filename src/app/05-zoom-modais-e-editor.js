@@ -390,20 +390,15 @@
       var c = editor.conexao;
       var nome = eq ? (eq.nome || eq.id) : "este cabo";
       fecharEditor();
-      abrirModal({
-        title: eq ? "Excluir equipamento" : "Excluir cabo",
-        message: eq ? "Excluir " + nome + " e os cabos ligados a ele?" : "Excluir este cabo?",
-        confirmText: "Excluir"
-      }).then(function (confirmou) {
-        if (!confirmou) return;
-        if (eq) {
-          estado.equipamentos = estado.equipamentos.filter(function (item) { return item !== eq; });
-          estado.conexoes = estado.conexoes.filter(function (item) { return item.de !== eq.id && item.para !== eq.id; });
-        } else if (c) {
-          estado.conexoes = estado.conexoes.filter(function (item) { return item !== c; });
-        }
-        renderTudo();
-      });
+      // Exclui na hora; o aviso traz "Desfazer" (o histórico do Ctrl+Z guarda o antes).
+      if (eq) {
+        estado.equipamentos = estado.equipamentos.filter(function (item) { return item !== eq; });
+        estado.conexoes = estado.conexoes.filter(function (item) { return item.de !== eq.id && item.para !== eq.id; });
+      } else if (c) {
+        estado.conexoes = estado.conexoes.filter(function (item) { return item !== c; });
+      }
+      renderTudo();
+      avisar((eq ? nome + " excluído" : "Cabo excluído") + ".", { desfazer: true });
     });
   });
   editor.backdrop.addEventListener("click", function (event) {

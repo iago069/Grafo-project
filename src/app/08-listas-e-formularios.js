@@ -323,6 +323,7 @@
       estado.equipamentos.splice(idx, 1);
       estado.conexoes = estado.conexoes.filter(function (c) { return c.de !== idRemovido && c.para !== idRemovido; });
       renderTudo();
+      avisar("Equipamento excluído.", { desfazer: true });
     } else if (acao === "remover-imagem") {
       estado.equipamentos[idx].imagem = "";
       renderEquipamentos();

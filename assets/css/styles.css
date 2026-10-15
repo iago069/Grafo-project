@@ -2186,3 +2186,32 @@ body[data-modo-diagrama="racks"] #menuExportar #btnBaixar, body[data-modo-diagra
 
 /* Nada do app cria rolagem lateral da página (desenhos grandes rolam por dentro dos seus painéis). */
 .app-shell { overflow-x: clip; }
+
+/* Aviso com ação (Desfazer). */
+.toast.com-acao { pointer-events: auto; }
+.toast-acao {
+  margin-left: 8px; padding: 5px 12px; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); font: 700 0.76rem var(--sans); cursor: pointer;
+}
+.toast-acao:hover { background: var(--accent); color: var(--accent-ink); }
+.toast.com-acao::after { animation-duration: 6s; }
+
+/* Guias de alinhamento ao arrastar: verde-água com brilho, tracejado correndo. */
+.canvas-wrap svg g.guias-alinhamento line {
+  stroke: #1FC7B0; stroke-width: 1.5px; stroke-dasharray: 6 4;
+  filter: drop-shadow(0 0 3px rgba(31, 199, 176, 0.7)); animation: guiaMarcha 0.6s linear infinite;
+}
+@keyframes guiaMarcha { to { stroke-dashoffset: -10; } }
+
+/* Tela vazia do diagrama: ilustração animada. */
+.vazio-ilustra { width: 220px; height: auto; margin-bottom: 6px; filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.22)); }
+.vazio-ilustra .vi-eq { fill: color-mix(in srgb, var(--teal) 16%, var(--paper)); stroke: color-mix(in srgb, var(--teal) 70%, var(--ink)); stroke-width: 1.5; animation: rkvEntra 0.7s var(--ease-mola) both; }
+.vazio-ilustra .vi-e2 { animation-delay: 0.15s; } .vazio-ilustra .vi-e3 { animation-delay: 0.3s; } .vazio-ilustra .vi-e4 { animation-delay: 0.45s; }
+.vazio-ilustra .vi-tracejado { fill: none; stroke-dasharray: 4 3; stroke: color-mix(in srgb, var(--accent) 80%, transparent); }
+.vazio-ilustra .vi-mais { stroke: var(--accent); stroke-width: 2; stroke-linecap: round; }
+.vazio-ilustra .vi-cabo { fill: none; stroke: color-mix(in srgb, var(--ink) 45%, transparent); stroke-width: 1.6; stroke-dasharray: 120; stroke-dashoffset: 120; animation: caboDesenhar 1.2s var(--ease-out) 0.5s forwards; }
+.vazio-ilustra .vi-c2 { animation-delay: 0.7s; } .vazio-ilustra .vi-c3 { animation-delay: 0.9s; stroke: color-mix(in srgb, var(--accent) 70%, transparent); stroke-dasharray: 4 3; stroke-dashoffset: 0; animation: guiaMarcha 0.8s linear infinite; }
+.vazio-ilustra .vi-led { fill: #2fbf71; animation: ledPisca 1.6s ease-in-out infinite; } .vazio-ilustra .vi-l2 { animation-delay: 0.5s; } .vazio-ilustra .vi-l3 { animation-delay: 1s; }
+:root[data-theme="dark"] .vazio-ilustra .vi-cabo:not(.vi-c3) { stroke: rgba(156, 183, 200, 0.6); }
+@media (prefers-reduced-motion: reduce) { .vazio-ilustra * { animation: none !important; stroke-dashoffset: 0 !important; } }
+@media (prefers-reduced-motion: reduce) { .canvas-wrap svg g.guias-alinhamento line { animation: none; } }

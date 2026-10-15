@@ -133,6 +133,14 @@
   function mostrarEstadoVazio() {
     elCanvas.innerHTML =
       '<div class="estado-vazio">' +
+        // Ilustração: três equipamentos se ligando (cabos desenhando, LEDs piscando).
+        '<svg class="vazio-ilustra" viewBox="0 0 220 120" aria-hidden="true">' +
+          '<path class="vi-cabo" d="M58 60 C85 60 85 30 110 30"/><path class="vi-cabo vi-c2" d="M58 60 C85 60 85 90 110 90"/><path class="vi-cabo vi-c3" d="M150 30 C170 30 170 60 180 60"/>' +
+          '<rect class="vi-eq" x="14" y="44" width="44" height="32" rx="7"/><rect class="vi-eq vi-e2" x="110" y="16" width="40" height="28" rx="7"/>' +
+          '<rect class="vi-eq vi-e3" x="110" y="76" width="40" height="28" rx="7"/><rect class="vi-eq vi-e4 vi-tracejado" x="180" y="46" width="30" height="28" rx="7"/>' +
+          '<circle class="vi-led" cx="26" cy="60" r="2.5"/><circle class="vi-led vi-l2" cx="120" cy="30" r="2.5"/><circle class="vi-led vi-l3" cx="120" cy="90" r="2.5"/>' +
+          '<path class="vi-mais" d="M195 54v12M189 60h12"/>' +
+        '</svg>' +
         '<strong>Nenhum equipamento ainda</strong>' +
         '<span>Adicione equipamentos pela barra lateral ou veja um exemplo pronto.</span>' +
         '<button type="button" class="primary" data-carregar-exemplo>Carregar exemplo</button>' +
