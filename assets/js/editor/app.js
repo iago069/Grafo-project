@@ -5186,6 +5186,7 @@
     avisar: function (texto) { avisar(texto); },
     // Paleta de comandos (comandos.js): abrir o editor de um equipamento e trocar de projeto.
     editarEquipamento: function (id) { var eq = estado.equipamentos.find(function (e) { return e.id === id; }); if (eq) abrirEditorEquipamento(eq); return !!eq; },
+    idDoNo: function (no) { return idEquipamentoDoNode(no); },
     trocarProjeto: function (nome) { var sel = document.getElementById("projetoSelect"); if (!sel || !projetos[nome]) return false; sel.value = nome; sel.dispatchEvent(new Event("change", { bubbles: true })); return true; },
     // Usados por equipe.js (projetos de equipe).
     dadosProjeto: function (nome) {

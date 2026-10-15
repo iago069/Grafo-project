@@ -2102,3 +2102,33 @@ body[data-modo-diagrama="racks"] #menuExportar #btnBaixar, body[data-modo-diagra
 }
 @keyframes painelEntrar { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: none; } }
 @keyframes painelSair { to { opacity: 0; transform: translateX(40px); } }
+
+/* ==== Ficha do equipamento (ao passar o mouse no diagrama) ==== */
+.ficha-equip {
+  position: fixed; z-index: 11000; width: 260px; padding: 12px 14px; border-radius: 14px; pointer-events: none;
+  background: color-mix(in srgb, var(--bg-panel-2) 94%, transparent); border: 1px solid var(--line-soft); color: var(--text);
+  box-shadow: 0 20px 50px -14px rgba(0, 0, 0, 0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  animation: fichaEntrar 0.16s var(--ease-out) both; font-size: 0.8rem;
+}
+.ficha-equip[hidden] { display: none; }
+@keyframes fichaEntrar { from { opacity: 0; transform: translateY(4px) scale(0.98); } to { opacity: 1; transform: none; } }
+.ficha-topo { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--line-soft); }
+.ficha-topo strong { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.9rem; }
+.ficha-topo em { font: 600 0.66rem var(--sans); font-style: normal; color: var(--text-dim); }
+.ficha-led { width: 9px; height: 9px; border-radius: 50%; background: #35c759; box-shadow: 0 0 8px #35c759; animation: ledPisca 2s ease-in-out infinite; }
+.ficha-led.manutencao { background: #f2b84b; box-shadow: 0 0 8px #f2b84b; }
+.ficha-led.offline { background: #ef5b67; box-shadow: 0 0 8px #ef5b67; animation: none; }
+.ficha-linha { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; }
+.ficha-linha span { color: var(--text-dim); }
+.ficha-linha b { font: 600 0.76rem var(--mono); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ficha-dica { margin-top: 8px; font-size: 0.66rem; color: var(--text-dim); text-align: center; opacity: 0.8; }
+
+/* ==== Folha de atalhos (?) ==== */
+.folha { width: min(760px, 100%); padding: 0; }
+.folha-topo { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--line-soft); font-size: 1rem; }
+.folha-grade { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 28px; padding: 14px 20px 20px; overflow-y: auto; }
+.folha-grade h4 { margin: 10px 0 6px; font: 700 0.62rem var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--teal); }
+.folha-linha { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 0; border-bottom: 1px dashed color-mix(in srgb, var(--line-soft) 70%, transparent); font-size: 0.84rem; }
+.folha-teclas { display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; }
+.folha-teclas i { font-style: normal; font-size: 0.7rem; color: var(--text-dim); }
+@media (max-width: 640px) { .folha-grade { grid-template-columns: 1fr; } }

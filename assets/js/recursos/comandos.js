@@ -183,5 +183,72 @@
       if (fundo.hidden) abrir(); else fechar();
     }
   });
+  // ---- ficha ao passar o mouse num equipamento do diagrama ----------------------
+  var ficha = document.createElement("div");
+  ficha.className = "ficha-equip"; ficha.hidden = true; ficha.setAttribute("role", "tooltip");
+  document.body.appendChild(ficha);
+  var timerFicha = null, noFicha = null;
+  var NOMES_STATUS = { ativo: "Ativo", manutencao: "Manutenção", offline: "Offline" };
+  function mostrarFicha(no, ev) {
+    var id = app.idDoNo ? app.idDoNo(no) : null;
+    var dados = id && app.dadosProjeto(app.projetoAtual());
+    var eq = dados && dados.equipamentos.find(function (e) { return e.id === id; });
+    if (!eq) return;
+    var cabos = (dados.conexoes || []).filter(function (c) { return c.de === id || c.para === id; });
+    var st = eq.status || "ativo";
+    function linha(rotulo, valor) { return valor ? '<div class="ficha-linha"><span>' + rotulo + '</span><b>' + esc(valor) + '</b></div>' : ""; }
+    ficha.innerHTML = '<div class="ficha-topo"><i class="ficha-led ' + st + '"></i><strong>' + esc(eq.nome || eq.id) + '</strong><em>' + esc(NOMES_STATUS[st] || st) + '</em></div>' +
+      linha("Tipo", eq.tipo) + linha("Modelo", eq.modelo) + linha("IP", eq.ip) + linha("Rede", eq.rede) + linha("Grupo", eq.grupo) +
+      linha("Cabos", cabos.length ? cabos.length + " · " + cabos.slice(0, 3).map(function (c) { return c.de === id ? c.saida : c.chegada; }).filter(Boolean).join(", ") + (cabos.length > 3 ? "…" : "") : "nenhum") +
+      '<div class="ficha-dica">Duplo clique para editar</div>';
+    ficha.hidden = false;
+    posicionarFicha(ev);
+  }
+  function posicionarFicha(ev) {
+    var w = ficha.offsetWidth, h = ficha.offsetHeight, x = ev.clientX + 16, y = ev.clientY + 16;
+    if (x + w > innerWidth - 8) x = ev.clientX - w - 16;
+    if (y + h > innerHeight - 8) y = ev.clientY - h - 16;
+    ficha.style.left = x + "px"; ficha.style.top = y + "px";
+  }
+  function esconderFicha() { clearTimeout(timerFicha); noFicha = null; ficha.hidden = true; }
+  var canvas = document.getElementById("canvas");
+  if (canvas) {
+    canvas.addEventListener("mousemove", function (ev) {
+      if (ev.buttons) { esconderFicha(); return; }
+      var no = ev.target.closest && ev.target.closest("g.node");
+      if (no !== noFicha) {
+        esconderFicha(); noFicha = no;
+        if (no) timerFicha = setTimeout(function () { mostrarFicha(no, ev); }, 350);
+      } else if (!ficha.hidden) posicionarFicha(ev);
+    });
+    canvas.addEventListener("mouseleave", esconderFicha);
+    canvas.addEventListener("pointerdown", esconderFicha);
+    canvas.addEventListener("wheel", esconderFicha, { passive: true });
+  }
+
+  // ---- folha de atalhos (tecla ?) ---------------------------------------------
+  var ATALHOS = [
+    ["Geral", [["Ctrl+K", "Paleta de comandos"], ["Ctrl+S", "Exportar projeto (.json)"], ["?", "Esta folha de atalhos"], ["Esc", "Fechar janela ou limpar seleção"]]],
+    ["Edição", [["Ctrl+Z", "Desfazer"], ["Ctrl+Y", "Refazer"], ["Ctrl+C", "Copiar selecionados"], ["Ctrl+V", "Colar"], ["Ctrl+D", "Duplicar selecionados"], ["Ctrl+A", "Selecionar todos"], ["Delete", "Excluir selecionados"]]],
+    ["Diagrama", [["Enter|F2", "Editar o equipamento em foco"], ["Setas", "Mover o equipamento em foco"], ["Duplo clique", "Editar equipamento ou cabo"], ["Roda do mouse", "Aproximar e afastar"], ["Arrastar o fundo", "Mover a vista"]]],
+    ["Busca", [["Enter", "Próximo resultado"], ["Shift+Enter", "Resultado anterior"]]]
+  ];
+  var folha = document.createElement("div");
+  folha.className = "paleta-fundo folha-atalhos"; folha.hidden = true;
+  folha.innerHTML = '<div class="paleta folha" role="dialog" aria-modal="true" aria-label="Atalhos do teclado"><div class="folha-topo"><strong>Atalhos do teclado</strong><kbd>Esc</kbd></div><div class="folha-grade">' +
+    ATALHOS.map(function (g) {
+      return '<section><h4>' + esc(g[0]) + '</h4>' + g[1].map(function (a) {
+        return '<div class="folha-linha"><span>' + esc(a[1]) + '</span><span class="folha-teclas">' + a[0].split("|").map(function (alt) { return alt.split("+").map(function (k) { return "<kbd>" + esc(k) + "</kbd>"; }).join(""); }).join("<i>ou</i>") + '</span></div>';
+      }).join("") + '</section>';
+    }).join("") + '</div></div>';
+  document.body.appendChild(folha);
+  function campoDeTexto(el) { return el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)); }
+  folha.addEventListener("mousedown", function (ev) { if (ev.target === folha) folha.hidden = true; });
+  document.addEventListener("keydown", function (ev) {
+    if (!folha.hidden && (ev.key === "Escape" || ev.key === "?")) { ev.preventDefault(); folha.hidden = true; return; }
+    if (ev.key === "?" && !ev.ctrlKey && !ev.metaKey && !campoDeTexto(ev.target) && fundo.hidden && !document.body.classList.contains("auth-locked")) { ev.preventDefault(); folha.hidden = false; }
+  });
+  ACOES.push({ titulo: "Atalhos do teclado", grupo: "Ajuda", icone: "lista", fazer: function () { folha.hidden = false; }, termos: "teclado ajuda atalho", atalho: "?" });
+
   window.GrafoComandos = { abrir: abrir, fechar: fechar };
 })();
