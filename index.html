@@ -592,11 +592,8 @@
           <button class="nav-item" id="btnEtiquetas" type="button" data-icon="qrcode" title="PDF com etiquetas para imprimir: equipamentos com QR code e cabos">Etiquetas com QR code</button>
         </div>
 
-        <div class="nav-section nav-grade">
-          <button class="nav-label" type="button" aria-expanded="true">Projeto</button>
-          <button class="nav-item" id="btnExportarProjeto" type="button" data-icon="baixar" title="Exportar projeto (.json) — atalho: Ctrl+S">Exportar</button>
-          <label class="nav-item nav-item-file" data-icon="enviar" title="Importar projeto (.json) ou backup de todos os projetos" tabindex="0" role="button" data-botao-arquivo>Importar<input id="arquivoProjeto" type="file" accept=".json,application/json" hidden></label>
-          <button class="nav-item" id="btnExportarTodos" type="button" data-icon="pacote" title="Baixar todos os projetos da conta num arquivo só (.json)">Baixar tudo</button>
+        <div class="nav-section">
+          <button class="nav-label" type="button" aria-expanded="true">Integração</button>
           <button class="nav-item" type="button" data-nav-panel="navJsonCsv" data-icon="codigo" title="Ver e editar o projeto em JSON, ou importar uma planilha CSV">JSON e CSV</button>
           <div class="nav-panel" id="navJsonCsv">
             <div class="nav-form nav-json-csv">
@@ -611,10 +608,6 @@
               </div>
             </div>
           </div>
-        </div>
-
-        <div class="nav-section">
-          <button class="nav-label" type="button" aria-expanded="true">Integração</button>
           <button class="nav-item" type="button" data-nav-panel="navNetbox" data-icon="cabo" title="Gerar o diagrama de um POP a partir do cabeamento do NetBox e verificar quem está online">NetBox e status online</button>
           <div class="nav-panel" id="navNetbox">
             <div class="nav-form">
@@ -888,6 +881,11 @@
                   <button class="menu-item" id="btnPaginaPdf" type="button" role="menuitem" data-icone="pdf" aria-expanded="false" aria-controls="painelPagina" title="Formato da página, escala, prévia e exportação em PDF">PDF para imprimir…</button>
                   <button class="menu-item" id="btnBaixarPng" type="button" role="menuitem" data-icone="imagem" disabled>Imagem PNG</button>
                   <button class="menu-item" id="btnBaixar" type="button" role="menuitem" data-icone="vetor" disabled>Vetor SVG</button>
+                  <div class="menu-separador menu-so-diagrama" role="separator"></div>
+                  <div class="menu-rotulo">Projeto</div>
+                  <button class="menu-item" id="btnExportarProjeto" type="button" role="menuitem" data-icone="baixar" title="Atalho: Ctrl+S">Exportar projeto (.json)</button>
+                  <label class="menu-item" role="menuitem" data-icone="enviar" title="Importar projeto (.json) ou backup de todos os projetos" tabindex="-1" data-botao-arquivo>Importar projeto (.json)<input id="arquivoProjeto" type="file" accept=".json,application/json" hidden></label>
+                  <button class="menu-item" id="btnExportarTodos" type="button" role="menuitem" data-icone="pacote" title="Baixar todos os projetos da conta num arquivo só (.json)">Baixar todos os projetos</button>
                 </div>
               </div>
               <button class="primary botao-com-icone" id="btnCompartilhar" type="button" data-icone="compartilhar" aria-haspopup="dialog" title="Link para ver o diagrama sem editar" hidden>Compartilhar</button>

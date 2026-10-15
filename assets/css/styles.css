@@ -1304,7 +1304,6 @@ body[data-modo-diagrama="racks"] #btnZoomOut,
 body[data-modo-diagrama="racks"] #btnZoomIn,
 body[data-modo-diagrama="racks"] #zoomValue,
 body[data-modo-diagrama="racks"] #btnZoomReset,
-body[data-modo-diagrama="racks"] .render-actions > .menu-ancora,
 body[data-modo-diagrama="racks"] #barraSelecao,
 body[data-modo-diagrama="racks"] #caminhoBar,
 body[data-modo-diagrama="racks"] #primeirosPassos,
@@ -1885,3 +1884,14 @@ button.ghost { backdrop-filter: blur(6px); }
 .sidebar:not(.collapsed) .nav-grade > .nav-item:hover::before { color: var(--teal); background-color: var(--teal); }
 .sidebar:not(.collapsed) .nav-grade > .nav-item.active { border-color: var(--accent); }
 .nav-item[data-icon="pacote"] { --icone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 8v13H3V8M1 3h22v5H1zM10 12h4'/%3E%3C/svg%3E"); }
+
+/* Menu Exportar: itens do projeto (também no Bayface, onde só eles aparecem). */
+label.menu-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border-radius: 9px; color: var(--text);
+  font: 500 0.86rem var(--sans); cursor: pointer; white-space: nowrap; transition: background-color var(--dur-rapida) ease;
+}
+label.menu-item:hover, label.menu-item:focus-visible { background: color-mix(in srgb, var(--text) 8%, transparent); outline: none; }
+[data-icone="enviar"] { --icone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12'/%3E%3C/svg%3E"); }
+[data-icone="pacote"] { --icone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 8v13H3V8M1 3h22v5H1zM10 12h4'/%3E%3C/svg%3E"); }
+body[data-modo-diagrama="racks"] #menuExportar #btnPaginaPdf, body[data-modo-diagrama="racks"] #menuExportar #btnBaixarPng,
+body[data-modo-diagrama="racks"] #menuExportar #btnBaixar, body[data-modo-diagrama="racks"] #menuExportar .menu-so-diagrama { display: none; }

@@ -235,11 +235,12 @@ test("projeto salvo com os ícones antigos (.jpeg) abre com os novos, sem fundo 
   await pagina.context().close();
 });
 
-test("JSON e CSV fica na seção Projeto da barra lateral (e não mais em Editar em lista)", async () => {
+test("JSON e CSV fica na seção Integração da barra lateral (e não mais em Editar em lista)", async () => {
   const pagina = await abrirPagina(navegador, site);
   await esperarDiagrama(pagina);
   assert.equal(await pagina.$("#painelDados #jsonAvancado"), null, "saiu de Editar em lista");
-  assert.ok(await pagina.$('.nav-section:has(#btnExportarProjeto) [data-nav-panel="navJsonCsv"]'), "item na seção Projeto");
+  assert.ok(await pagina.$('.nav-section:has([data-nav-panel="navNetbox"]) [data-nav-panel="navJsonCsv"]'), "item na seção Integração");
+  assert.ok(await pagina.$("#menuExportar #btnExportarProjeto"), "Exportar projeto fica no menu Exportar");
   await pagina.click('[data-nav-panel="navJsonCsv"]');
   await pagina.waitForSelector("#jsonAvancado", { state: "visible" });
   const json = JSON.parse(await pagina.inputValue("#jsonAvancado"));
@@ -257,6 +258,7 @@ test("Exportar projeto (.json) leva as anotações; importar o arquivo traz de v
     anotacoes: [{ id: "n1", texto: "Trocar fonte em março", x: 10, y: 10, cor: "#FFF3B0" }] } };
   const pagina = await abrirPagina(navegador, site, { projetos });
   await esperarDiagrama(pagina);
+  await pagina.click("#btnExportarMenu"); // fica no menu Exportar da barra do diagrama
   const [download] = await Promise.all([pagina.waitForEvent("download"), pagina.click("#btnExportarProjeto")]);
   const arquivo = JSON.parse(require("fs").readFileSync(await download.path(), "utf8"));
   assert.equal(arquivo.anotacoes.length, 1);
@@ -292,6 +294,7 @@ test("Importar projeto e Importar CSV abrem pelo teclado (Tab + Enter)", async (
   const abertos = [];
   pagina.on("filechooser", s => abertos.push(s));
   await pagina.waitForTimeout(300);
+  await pagina.click("#btnExportarMenu"); // Importar projeto fica no menu Exportar
   await pagina.focus('label[data-botao-arquivo]:has(#arquivoProjeto)');
   await pagina.keyboard.press("Enter");
   await assert.doesNotReject(async () => { for (let t = 0; !abertos.length; t++) { if (t > 50) throw new Error("seletor não abriu"); await pagina.waitForTimeout(100); } });
