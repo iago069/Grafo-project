@@ -1934,3 +1934,41 @@ body[data-modo-diagrama="racks"] #menuExportar #btnBaixar, body[data-modo-diagra
   :root:not([data-theme]) .canvas-wrap svg .eq-icone-catalogo { filter: invert(0.92) hue-rotate(180deg) brightness(1.05); }
   :root:not([data-theme]) .canvas-wrap svg .eq-moldura-icone { stroke: #8FA9BC; }
 }
+
+/* ==== Barra do topo: ferramentas do projeto numa pílula só, com divisórias ==== */
+.project-tools {
+  gap: 2px; padding: 4px; border-radius: 16px;
+  background: color-mix(in srgb, var(--bg-panel) 80%, transparent); border: 1px solid var(--line-soft);
+  box-shadow: 0 10px 28px -14px rgba(0, 0, 0, 0.5), inset 0 1px 0 color-mix(in srgb, #fff 5%, transparent);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+.project-tools > * { border-color: transparent !important; background-color: transparent !important; box-shadow: none !important; }
+.project-tools > button:hover:not(:disabled), .project-tools > select:hover { background-color: color-mix(in srgb, var(--text) 8%, transparent) !important; }
+.project-tools > button:not([hidden]) + button:not([hidden]), .project-tools > select + button { position: relative; }
+.project-tools > #btnEquipe::before, .project-tools > #btnNovoProjeto { margin-left: 0; }
+.project-tools > #btnEquipe:not([hidden]) { margin-left: 6px; }
+.project-tools > #btnEquipe:not([hidden])::after {
+  content: ""; position: absolute; left: -5px; top: 22%; height: 56%; width: 1px; background: var(--line-soft);
+}
+.project-tools > #btnEquipe { position: relative; }
+/* Status da nuvem: ponto que pulsa enquanto salva. */
+.nuvem-status { border-radius: 999px; }
+.nuvem-status.salvando::before, .nuvem-status[data-estado="salvando"]::before { animation: ledPisca 1s ease-in-out infinite; }
+
+/* Nome do projeto centralizado na pílula do topo. */
+.project-tools #projetoSelect { display: inline-flex; align-items: center; min-height: 34px; line-height: 1.2; padding-top: 0; padding-bottom: 0; }
+
+/* ==== Barra do diagrama: todos os grupos na mesma altura e no mesmo estilo ==== */
+.render-actions { --barra-h: 40px; flex-wrap: wrap; }
+.render-actions > .canvas-tools, .render-actions > .ferramentas {
+  height: var(--barra-h); padding: 3px; gap: 2px; border-radius: 13px; align-items: center;
+  background: color-mix(in srgb, var(--text) 4%, transparent); border: 1px solid var(--line-soft);
+}
+.render-actions > .canvas-tools > button, .render-actions > .ferramentas button.ferramenta {
+  width: 32px; min-width: 32px; height: 32px; min-height: 32px; padding: 0; border-radius: 9px; border-color: transparent; background: transparent;
+}
+.render-actions > .canvas-tools > button:hover:not(:disabled), .render-actions > .ferramentas button.ferramenta:hover { background: color-mix(in srgb, var(--text) 9%, transparent); }
+.render-actions > .canvas-tools #zoomValue { min-width: 48px; text-align: center; font: 600 0.74rem var(--mono); color: var(--text-dim); }
+.render-actions > .menu-ancora > button, .render-actions > #btnCompartilhar { height: var(--barra-h); min-height: var(--barra-h); border-radius: 13px; padding: 0 16px; }
+.render-actions > .canvas-tools > #btnRefazer { margin-right: 4px; }
+.render-actions > .canvas-tools > #btnZoomOut { border-left: 1px solid var(--line-soft); border-radius: 0 9px 9px 0; }
