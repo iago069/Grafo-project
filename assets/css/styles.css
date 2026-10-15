@@ -1871,3 +1871,17 @@ button.ghost { backdrop-filter: blur(6px); }
 
 /* Nome do usuário sempre no pé do cartão (altura fixa). */
 @media (min-width: 901px) { .sidebar:not(.collapsed) .nav > .sidebar-usuario { margin-top: auto; } }
+
+/* Seção Projeto resumida: grade 2x2 de blocos (ícone em cima, nome curto embaixo). */
+.sidebar:not(.collapsed) .nav-grade:not(.fechada) { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.sidebar:not(.collapsed) .nav-grade > .nav-label, .sidebar:not(.collapsed) .nav-grade > .nav-panel { grid-column: 1 / -1; }
+.sidebar:not(.collapsed) .nav-grade > .nav-item {
+  flex-direction: column; justify-content: center; gap: 6px; width: auto; margin: 0; min-height: 66px; padding: 10px 6px !important;
+  text-align: center; font-size: 0.76rem; font-weight: 600; border-radius: 12px;
+  background: color-mix(in srgb, var(--text) 4%, transparent); border: 1px solid var(--line-soft);
+}
+.sidebar:not(.collapsed) .nav-grade > .nav-item::before { width: 20px; height: 20px; flex: 0 0 20px; }
+.sidebar:not(.collapsed) .nav-grade > .nav-item:hover { background: color-mix(in srgb, var(--teal) 10%, transparent); border-color: color-mix(in srgb, var(--teal) 40%, transparent); transform: translateY(-1px); }
+.sidebar:not(.collapsed) .nav-grade > .nav-item:hover::before { color: var(--teal); background-color: var(--teal); }
+.sidebar:not(.collapsed) .nav-grade > .nav-item.active { border-color: var(--accent); }
+.nav-item[data-icon="pacote"] { --icone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 8v13H3V8M1 3h22v5H1zM10 12h4'/%3E%3C/svg%3E"); }
