@@ -1401,7 +1401,7 @@ button.primary:hover:not(:disabled), .landing-botao:hover { background-position:
 
 /* Painéis em vidro: o fundo com a grade aparece de leve por trás. */
 @supports (backdrop-filter: blur(1px)) {
-  .panel, .sidebar, .rk-props, .rk-bloco, .menu-flutuante, .modal-box { backdrop-filter: blur(14px) saturate(1.25); -webkit-backdrop-filter: blur(14px) saturate(1.25); }
+  .panel, .sidebar .nav, .rk-props, .rk-bloco, .menu-flutuante, .modal-box { backdrop-filter: blur(14px) saturate(1.25); -webkit-backdrop-filter: blur(14px) saturate(1.25); }
 }
 .panel { transition: box-shadow var(--dur-media) ease, border-color var(--dur-media) ease; }
 .render-panel:hover { box-shadow: var(--shadow-soft), 0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent); }
