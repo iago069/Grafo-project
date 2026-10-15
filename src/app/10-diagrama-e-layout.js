@@ -1027,6 +1027,15 @@
       renderTudo();
       return r;
     },
+    // Usados por documentos.js (procedimentos e manuais do projeto).
+    documentosDoProjeto: function () { return clonarDados(estado.documentos || []); },
+    salvarDocumentos: function (lista) {
+      var r = Esquema.validarProjeto({ equipamentos: [], conexoes: [], documentos: lista }, "estrito");
+      if (!r.ok) return r;
+      estado.documentos = r.dados.documentos || [];
+      renderTudo();
+      return r;
+    },
     equipamentosDoDiagrama: function () {
       return estado.equipamentos.map(function (eq) { return { id: eq.id, nome: eq.nome, tipo: eq.tipo || "", modelo: eq.modelo || "" }; });
     },

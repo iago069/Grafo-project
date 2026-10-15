@@ -33,6 +33,9 @@
     grossuraMax: 10,
     coordenada: 20000,
     canvas: { minX: -4200, maxX: 4200, minY: -3200, maxY: 3200 },
+    // Documentos (procedimentos e arquivos anexados)
+    documentos: 300,
+    textoDocumento: 20000,
     // Bayface de Racks
     racks: 60,
     itensPorRack: 120,
@@ -206,6 +209,23 @@
   var CORES_ANOTACAO = ["#FFF3B0", "#D6ECFF", "#DDF5D8", "#FFDDE4", "#ECEFF3"];
   var ESQUEMA_COORDENADA = z.coerce.number({ invalid_type_error: "precisa ser um número" }).finite("precisa ser um número")
     .min(-LIMITES.coordenada).max(LIMITES.coordenada);
+  // Documento do projeto: procedimento escrito no Grafo ou arquivo guardado no
+  // Supabase Storage (aqui fica só a referência: caminho, nome, tamanho, tipo).
+  // vinculo: "" (projeto), "equip:<id>" ou "modelo:<fabricante modelo>".
+  var CAMPOS_DOCUMENTO = {
+    id: { rotulo: "id", esquema: texto(LIMITES.id, true), reparar: null },
+    titulo: { rotulo: "Título", esquema: texto(120, true), reparar: function (v) { var t = typeof v === "string" ? v.trim().slice(0, 120) : ""; return t || null; } },
+    tipo: { rotulo: "Tipo", esquema: enumTolerante(["procedimento", "arquivo"], {}, "procedimento", "use procedimento ou arquivo"), reparar: constante("procedimento") },
+    pasta: { rotulo: "Pasta", esquema: texto(60), reparar: truncar(60) },
+    texto: { rotulo: "Texto", esquema: texto(LIMITES.textoDocumento), reparar: truncar(LIMITES.textoDocumento) },
+    vinculo: { rotulo: "Vínculo", esquema: texto(160), reparar: truncar(160) },
+    caminho: { rotulo: "Arquivo", esquema: texto(300), reparar: truncar(300) },
+    nomeArquivo: { rotulo: "Nome do arquivo", esquema: texto(160), reparar: truncar(160) },
+    tamanho: { rotulo: "Tamanho", esquema: inteiro(0, 2000000000, 0), reparar: constante(0) },
+    mime: { rotulo: "Tipo do arquivo", esquema: texto(100), reparar: truncar(100) },
+    atualizado: { rotulo: "Atualizado", esquema: texto(40), reparar: truncar(40) }
+  };
+
   var CAMPOS_ANOTACAO = {
     id: { rotulo: "id", esquema: texto(LIMITES.id, true), reparar: null },
     texto: { rotulo: "Texto", esquema: texto(LIMITES.anotacaoTexto, true), reparar: function (v) {
@@ -365,6 +385,22 @@
         if (idsAnotacao[a.id]) { falha(onde + " › id", '"' + a.id + '" repetido' + (modo === "reparar" ? " — descartada" : "")); return; }
         idsAnotacao[a.id] = true;
         dados.anotacoes.push(a);
+      });
+    }
+    // Documentos (opcional): procedimentos e referências de arquivos.
+    if (entrada.documentos != null) {
+      var docsBrutos = Array.isArray(entrada.documentos) ? entrada.documentos : [];
+      if (!Array.isArray(entrada.documentos)) falha("documentos", "precisa ser uma lista");
+      if (docsBrutos.length > LIMITES.documentos) { falha("documentos", "máximo de " + LIMITES.documentos + " documentos"); docsBrutos = docsBrutos.slice(0, LIMITES.documentos); }
+      var idsDoc = {};
+      dados.documentos = [];
+      docsBrutos.forEach(function (bruto, i) {
+        var onde = "Documento " + (i + 1);
+        if (!ehObjeto(bruto)) { falha(onde, "precisa ser um objeto { id, titulo, tipo }"); return; }
+        var d = validarCampos(bruto, CAMPOS_DOCUMENTO, modo, onde, relatorio);
+        if (!d || idsDoc[d.id]) return;
+        idsDoc[d.id] = true;
+        dados.documentos.push(d);
       });
     }
     // Bayface de Racks (opcional): disposição física, independente do diagrama.

@@ -80,7 +80,9 @@
       if (nome === nomeAtual) return;
       lista.push({ titulo: nome, sub: "Abrir projeto", grupo: "Projetos", icone: "pasta", fazer: function () { app.trocarProjeto(nome); } });
     });
+    if (window.GrafoDocumentos) lista = lista.concat(window.GrafoDocumentos.candidatos());
     ACOES.forEach(function (a) { if (!a.visivel || a.visivel()) lista.push(a); });
+    if (window.GrafoDocumentos) lista.push({ titulo: "Abrir documentos do projeto", grupo: "Documentação", icone: "lista", termos: "manual procedimento pdf arquivo", fazer: function () { window.GrafoDocumentos.abrir(); } });
     return lista;
   }
 

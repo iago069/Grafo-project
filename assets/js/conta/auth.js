@@ -341,6 +341,8 @@
     loadScript("./assets/js/recursos/integracao.js").catch(function (error) { console.error(error); });
     // Paleta de comandos (Ctrl+K).
     loadScript("./assets/js/recursos/comandos.js").catch(function (error) { console.error(error); });
+    // Documentos (procedimentos ficam no projeto; arquivos pedem conta).
+    loadScript("./assets/js/recursos/documentos.js").catch(function (error) { console.error(error); });
     if (convidado) { prepararBotoesQuePedemLogin(); return; }
     if (equipe) equipe.iniciarInterface();
     // Opcional: sem ele o editor funciona, só não há o botão "Compartilhar".
@@ -517,7 +519,7 @@
   function keepEditorOffline() {
     if (!("serviceWorker" in navigator) || !navigator.serviceWorker.controller) return;
     var urls = EDITOR_SCRIPTS.map(function (script) { return script[0]; })
-      .concat(["./assets/js/recursos/primeiros-passos.js", "./assets/js/recursos/compartilhar.js", "./assets/js/recursos/historico.js", "./assets/js/recursos/etiquetas.js", "./assets/js/recursos/integracao.js", "./assets/js/recursos/racks.js", "./assets/js/recursos/comandos.js"]);
+      .concat(["./assets/js/recursos/primeiros-passos.js", "./assets/js/recursos/compartilhar.js", "./assets/js/recursos/historico.js", "./assets/js/recursos/etiquetas.js", "./assets/js/recursos/integracao.js", "./assets/js/recursos/racks.js", "./assets/js/recursos/comandos.js", "./assets/js/recursos/documentos.js"]);
     if (window.GrafoApp && window.GrafoApp.arquivosParaGuardar) urls = urls.concat(window.GrafoApp.arquivosParaGuardar());
     navigator.serviceWorker.controller.postMessage({ tipo: "guardar", urls: urls });
   }
