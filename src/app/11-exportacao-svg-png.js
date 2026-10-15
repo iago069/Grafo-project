@@ -131,6 +131,36 @@
     return tingida;
   }
 
+  // Papel escuro: inverte a claridade do desenho do catálogo mantendo o tom
+  // (o mesmo que o filtro invert + hue-rotate da tela), pixel a pixel.
+  function clarearIcone(dataUrl) {
+    return new Promise(function (resolver) {
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var c = document.createElement("canvas");
+          c.width = img.naturalWidth; c.height = img.naturalHeight;
+          var ctx = c.getContext("2d");
+          ctx.drawImage(img, 0, 0);
+          var d = ctx.getImageData(0, 0, c.width, c.height), p = d.data;
+          for (var i = 0; i < p.length; i += 4) {
+            var r = p[i], g = p[i + 1], b = p[i + 2];
+            var max = Math.max(r, g, b), min = Math.min(r, g, b);
+            // Nova claridade = 255 - claridade (com um teto, para não estourar no branco).
+            var desloc = (255 - (max + min)) * 0.92;
+            p[i] = Math.max(0, Math.min(255, r + desloc));
+            p[i + 1] = Math.max(0, Math.min(255, g + desloc));
+            p[i + 2] = Math.max(0, Math.min(255, b + desloc));
+          }
+          ctx.putImageData(d, 0, 0);
+          resolver(c.toDataURL("image/png"));
+        } catch (e) { resolver(null); }
+      };
+      img.onerror = function () { resolver(null); };
+      img.src = dataUrl;
+    });
+  }
+
   async function prepararSvgParaExportacao(svgEl, removerImagens) {
     var copia = svgEl.cloneNode(true);
     copia.setAttribute("xmlns", "http://www.w3.org/2000/svg");
@@ -159,6 +189,7 @@
         var dataUrl = await fonteImagemComoDataUrl(origem, imagensVivas[indice]);
         if (!dataUrl) return;
         dataUrl = await aplicarTomNaImagem(imagem, dataUrl);
+        if (imagem.getAttribute("class") === "eq-icone-catalogo" && papelEscuroNaTela()) dataUrl = (await clarearIcone(dataUrl)) || dataUrl;
         imagem.setAttribute("href", dataUrl);
         imagem.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", dataUrl);
       } catch (erroImagem) {
@@ -180,6 +211,35 @@
     return base + sufixo + "-" + data + "." + extensao;
   }
 
+  // Tema escuro: o papel da tela é escuro, e a exportação acompanha. As cores
+  // padrão do desenho (claras na tela via CSS) são gravadas na cópia, porque o
+  // CSS da página não vai junto para o PDF/PNG/SVG. Cores escolhidas pelo usuário ficam.
+  var CORES_PAPEL_ESCURO = {
+    text: { "#14212b": "#E8F1F8", "#111111": "#E8F1F8", "#405363": "#9CB7C8", "#34495a": "#9CB7C8", "#1f5f8b": "#71C7F0", "#2ead68": "#4BE08C" }
+  };
+  function papelEscuroNaTela() {
+    var m = String(getComputedStyle(elCanvas).backgroundColor || "").match(/\d+(\.\d+)?/g);
+    if (!m || m.length < 3) return false;
+    return (0.299 * m[0] + 0.587 * m[1] + 0.114 * m[2]) < 90;
+  }
+  function aplicarPapelEscuroNaCopia(svg) {
+    svg.querySelectorAll("text").forEach(function (t) {
+      var nova = CORES_PAPEL_ESCURO.text[String(t.getAttribute("fill") || "").toLowerCase()];
+      if (nova) t.setAttribute("fill", nova);
+    });
+    svg.querySelectorAll("g.node polygon").forEach(function (p) {
+      if (String(p.getAttribute("fill") || "").toLowerCase() === "#ffffff") { p.setAttribute("fill", "#132636"); p.setAttribute("stroke", "#DCEBF5"); p.setAttribute("stroke-width", "1.4"); }
+    });
+    svg.querySelectorAll("g.cluster path, g.cluster polygon").forEach(function (p) { if (p.getAttribute("stroke") && p.getAttribute("stroke") !== "none") p.setAttribute("stroke", "#4E6A80"); });
+    svg.querySelectorAll("g.cluster text").forEach(function (t) { t.setAttribute("fill", "#9CB7C8"); });
+    svg.querySelectorAll("g.edge path, g.edge polygon").forEach(function (p) {
+      if (String(p.getAttribute("stroke") || "").toLowerCase() === "#5a7284") { p.setAttribute("stroke", "#7FA3BC"); if (p.tagName.toLowerCase() === "polygon") p.setAttribute("fill", "#7FA3BC"); }
+    });
+    svg.querySelectorAll(".eq-moldura-icone").forEach(function (r) { r.setAttribute("stroke", "#8FA9BC"); });
+    // Etiquetas de cabo e IPs ficam legíveis por cima das linhas.
+    svg.querySelectorAll("g.edge text").forEach(function (t) { t.setAttribute("fill", "#9CB7C8"); });
+  }
+
   // Emoldura a cópia exportada: cabeçalho (projeto, data, totais), rodapé com a
   // legenda de tipos e fundo sólido. Aumenta o viewBox em volta do desenho.
   function adicionarMolduraDeExportacao(svg) {
@@ -194,8 +254,10 @@
     var baseRodape = vb[1] + vb[3];
 
     var estilo = getComputedStyle(elCanvas);
-    var fundo = estilo.backgroundColor || "#ffffff";
-    var tinta = estilo.getPropertyValue("--ink").trim() || "#16323D";
+    var escuro = papelEscuroNaTela();
+    var fundo = escuro ? "#0E1C27" : (estilo.backgroundColor || "#ffffff");
+    var tinta = escuro ? "#E8F1F8" : (estilo.getPropertyValue("--ink").trim() || "#16323D");
+    if (escuro) aplicarPapelEscuroNaCopia(svg);
 
     function el(tag, atributos, texto) {
       var no = document.createElementNS(NS, tag);
@@ -379,6 +441,7 @@
       var dataUrl = await imagemParaExportacao(origem);
       if (dataUrl) {
         dataUrl = await aplicarTomNaImagem(imagem, dataUrl);
+        if (imagem.getAttribute("class") === "eq-icone-catalogo" && papelEscuroNaTela()) dataUrl = (await clarearIcone(dataUrl)) || dataUrl;
         imagem.setAttribute("href", dataUrl);
         imagem.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", dataUrl);
       } else {
