@@ -176,11 +176,15 @@
       return (i ? '<span class="bib-trilha-sep">›</span>' : "") + (it.ir ? '<button type="button" class="bib-trilha-item" data-ir=\'' + esc(JSON.stringify(it.ir)) + '\'>' + esc(it.nome) + '</button>' : '<span class="bib-trilha-atual">' + esc(it.nome) + '</span>');
     }).join("") + '</nav>';
   }
+  // Livro em pé na estante, visto de lado: a lombada com o nome na vertical.
+  // Altura e largura variam um pouco (pelo nome) para a prateleira parecer de verdade.
   function capaLivro(l) {
-    var n = paginasDo(l.id).length;
-    return '<button type="button" class="bib-livro" data-ir=\'' + esc(JSON.stringify({ nome: "livro", livroId: l.id })) + '\' style="--cor-livro:' + esc(l.cor || CORES[0]) + '">' +
-      '<span class="bib-livro-capa"><span class="bib-livro-lombada"></span><strong>' + esc(l.nome) + '</strong>' + (l.projeto ? '<em class="bib-selo">diagrama</em>' : '') + '</span>' +
-      '<span class="bib-livro-info">' + n + (n === 1 ? " página" : " páginas") + '</span></button>';
+    var n = paginasDo(l.id).length, h = 0;
+    for (var i = 0; i < l.nome.length; i++) h = (h * 31 + l.nome.charCodeAt(i)) & 0xffff;
+    var altura = 184 + (h % 5) * 9, largura = 46 + Math.min(16, n * 2) + (h % 3) * 3;
+    return '<button type="button" class="bib-livro" data-ir=\'' + esc(JSON.stringify({ nome: "livro", livroId: l.id })) + '\' style="--cor-livro:' + esc(l.cor || CORES[0]) + ';--alt:' + altura + 'px;--larg:' + largura + 'px" title="' + esc(l.nome + " · " + n + (n === 1 ? " página" : " páginas")) + '">' +
+      '<span class="bib-lombada"><span class="bib-lombada-faixa"></span><strong>' + esc(l.nome) + '</strong>' + (l.projeto ? '<em class="bib-lombada-selo" title="Ligado a um diagrama"></em>' : '') +
+      '<span class="bib-lombada-paginas">' + n + '</span><span class="bib-lombada-faixa baixo"></span></span></button>';
   }
 
   function render() {
@@ -425,7 +429,16 @@
 
   raiz.addEventListener("click", async function (ev) {
     var ir = ev.target.closest("[data-ir]");
-    if (ir) { try { irPara(JSON.parse(ir.getAttribute("data-ir"))); } catch (e) {} return; }
+    if (ir) {
+      var destino;
+      try { destino = JSON.parse(ir.getAttribute("data-ir")); } catch (e) { return; }
+      // Livro: anima sendo puxado da estante antes de abrir.
+      if (ir.classList.contains("bib-livro") && !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) {
+        ir.classList.add("puxando");
+        setTimeout(function () { irPara(destino); }, 380);
+      } else irPara(destino);
+      return;
+    }
     var proj = ev.target.closest("[data-abrir-projeto]");
     if (proj) { abrirDiagrama(proj.getAttribute("data-abrir-projeto")); return; }
     var ab = ev.target.closest("[data-abrir-anexo]");

@@ -2688,3 +2688,38 @@ body[data-vista="inicio"] .project-tools { display: none; }
   .entra, .hr-cabo, .hr-no, .hr-halo, .hr-led, .home-lombada, .home-mini *, .home-heroi-luz, .home-heroi-luz::after, .home-nome, .home-selo-ponto { animation: none !important; stroke-dashoffset: 0 !important; }
   .hr-pacote { display: none; }
 }
+
+/* ==== Livros de lado na estante (lombada com o nome na vertical) ==== */
+.bib-prateleira, .bib-livros-grade { display: flex; flex-wrap: nowrap; align-items: flex-end; gap: 3px; overflow-x: auto; overflow-y: visible;
+  padding: 30px 14px 0; min-height: 240px; perspective: 900px;
+  border-bottom: 10px solid color-mix(in srgb, var(--text) 13%, transparent); border-radius: 0 0 6px 6px;
+  box-shadow: inset 0 -14px 18px -14px rgba(0, 0, 0, 0.55); }
+.bib-livros-grade { flex-wrap: wrap; row-gap: 26px; padding-bottom: 0; }
+.bib-livro { flex: 0 0 auto; width: var(--larg, 52px); height: var(--alt, 160px); padding: 0; border: 0; background: transparent; cursor: pointer;
+  transform-origin: 50% 100%; transition: transform 0.35s var(--ease-out), filter 0.25s ease; }
+.bib-lombada { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: space-between; width: 100%; height: 100%;
+  padding: 10px 0 8px; border-radius: 4px 4px 2px 2px; overflow: hidden; color: #fff;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.32) 0%, rgba(255, 255, 255, 0.10) 18%, rgba(255, 255, 255, 0.18) 30%, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.28) 100%),
+    var(--cor-livro);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18), 2px 0 0 rgba(0, 0, 0, 0.18), 0 6px 10px -6px rgba(0, 0, 0, 0.6);
+  transition: box-shadow 0.35s ease; }
+.bib-lombada strong { flex: 1; min-height: 0; writing-mode: vertical-rl; transform: rotate(180deg); padding: 6px 0;
+  font: 700 0.78rem/1 var(--display); letter-spacing: 0.02em; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bib-lombada-faixa { flex: 0 0 auto; width: 70%; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.55); box-shadow: 0 5px 0 rgba(255, 255, 255, 0.3); }
+.bib-lombada-faixa.baixo { box-shadow: 0 -5px 0 rgba(255, 255, 255, 0.3); }
+.bib-lombada-selo { width: 9px; height: 9px; border-radius: 50%; margin: 2px 0 6px; background: #fff; box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.2), 0 0 8px rgba(255, 255, 255, 0.7); }
+.bib-lombada-paginas { flex: 0 0 auto; margin: 4px 0 6px; padding: 1px 6px; border-radius: 99px; font: 700 0.6rem var(--mono); background: rgba(0, 0, 0, 0.28); }
+/* Passar o mouse: o livro sai um pouco da estante (sobe e vem para frente). */
+.bib-livro:hover, .bib-livro:focus-visible { transform: translateY(-18px) rotateX(-6deg) scale(1.04); z-index: 2; outline: none; }
+.bib-livro:hover .bib-lombada, .bib-livro:focus-visible .bib-lombada { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25), 0 22px 26px -12px rgba(0, 0, 0, 0.75), 0 0 0 2px color-mix(in srgb, var(--cor-livro) 50%, #fff); }
+.bib-livro:hover + .bib-livro { transform: rotate(-2deg); }
+/* Clique: o livro é puxado para fora da estante antes de abrir. */
+.bib-livro.puxando { animation: livroPuxado 0.4s var(--ease-in) forwards; z-index: 3; }
+@keyframes livroPuxado {
+  0% { transform: translateY(-18px) scale(1.04); }
+  45% { transform: translateY(-42px) rotate(-6deg) scale(1.12); }
+  100% { transform: translateY(-60px) rotate(-14deg) scale(1.18); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .bib-livro, .bib-livro:hover { transform: none; transition: none; } }
