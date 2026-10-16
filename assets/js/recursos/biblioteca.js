@@ -189,40 +189,77 @@
     else renderLivro();
   }
 
+  // Miniatura simbólica do diagrama: um bloco por equipamento (cor do tipo) ligados pelos cabos.
+  function miniatura(d) {
+    var eqs = (d.equipamentos || []).slice(0, 24), n = eqs.length;
+    if (!n) return '<svg viewBox="0 0 200 80" class="inicio-mini"><text x="100" y="45" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.55">Diagrama vazio</text></svg>';
+    var colunas = Math.max(1, Math.ceil(Math.sqrt(n * 2.4))), linhas = Math.ceil(n / colunas), pos = {};
+    eqs.forEach(function (e, i) {
+      pos[e.id] = [colunas > 1 ? 18 + (i % colunas) * (164 / (colunas - 1)) : 100, linhas > 1 ? 16 + Math.floor(i / colunas) * (48 / (linhas - 1)) : 40];
+    });
+    var cabos = (d.conexoes || []).filter(function (c) { return pos[c.de] && pos[c.para]; }).slice(0, 40).map(function (c) {
+      var a = pos[c.de], b = pos[c.para], m = (a[0] + b[0]) / 2;
+      return '<path d="M' + a[0] + ' ' + a[1] + ' C' + m + ' ' + a[1] + ' ' + m + ' ' + b[1] + ' ' + b[0] + ' ' + b[1] + '"/>';
+    }).join("");
+    var blocos = eqs.map(function (e) { var p = pos[e.id]; return '<rect x="' + (p[0] - 6) + '" y="' + (p[1] - 5) + '" width="12" height="10" rx="2.5" fill="' + (window.GrafoCores ? window.GrafoCores(e.tipo) : "#71ebd6") + '"/>'; }).join("");
+    return '<svg viewBox="0 0 200 80" class="inicio-mini"><g class="inicio-mini-cabos">' + cabos + '</g>' + blocos + '</svg>';
+  }
+  var ILUSTRA_ESTANTE = '<svg class="bib-ilustra" viewBox="0 0 220 130" aria-hidden="true">' +
+    '<rect x="10" y="104" width="200" height="8" rx="3" class="bi-tabua"/><rect x="10" y="44" width="200" height="6" rx="3" class="bi-tabua"/>' +
+    '<rect x="26" y="58" width="18" height="46" rx="3" class="bi-l1"/><rect x="47" y="64" width="14" height="40" rx="3" class="bi-l2"/><rect x="64" y="54" width="20" height="50" rx="3" class="bi-l3"/>' +
+    '<rect x="96" y="70" width="16" height="34" rx="3" class="bi-l4" transform="rotate(-12 104 104)"/><rect x="150" y="60" width="18" height="44" rx="3" class="bi-l2"/><rect x="171" y="66" width="14" height="38" rx="3" class="bi-l1"/>' +
+    '<rect x="34" y="14" width="16" height="30" rx="3" class="bi-l3"/><rect x="53" y="20" width="12" height="24" rx="3" class="bi-l4"/>' +
+    '<rect x="128" y="18" width="40" height="26" rx="4" class="bi-tracejado"/><path d="M148 25v12M142 31h12" class="bi-mais"/></svg>';
+
   function renderInicio() {
     var nome = (document.getElementById("sidebarUsuarioNome") || {}).textContent || "";
     var hora = new Date().getHours();
     var saudacao = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite";
-    var projetos = (app.nomesProjetos ? app.nomesProjetos() : []).slice(0, 8);
+    var todos = app.nomesProjetos ? app.nomesProjetos() : [];
+    var atual = app.projetoAtual ? app.projetoAtual() : "";
+    var projetos = todos.slice().sort(function (a, b) { return (b === atual) - (a === atual); }).slice(0, 6);
+    var totalEquip = todos.reduce(function (t, n) { var d = app.dadosProjeto(n) || {}; return t + (d.equipamentos || []).length; }, 0);
     var recentes = dados.paginas.slice().sort(function (a, b) { return String(b.atualizado).localeCompare(String(a.atualizado)); }).slice(0, 6);
+    function numero(valor, rotulo) { return '<div class="inicio-numero"><strong>' + valor + '</strong><span>' + rotulo + '</span></div>'; }
+    function atalho(acao, icone, titulo, sub) { return '<button type="button" class="inicio-atalho" data-acao="' + acao + '"><span class="inicio-atalho-icone" data-ico="' + icone + '"></span><span><strong>' + esc(titulo) + '</strong><small>' + esc(sub) + '</small></span></button>'; }
     raiz.innerHTML =
-      '<div class="inicio-topo"><div><span class="inicio-sobre">Grafo</span><h1>' + esc(saudacao + (nome && nome !== "Sem login" ? ", " + nome : "")) + '</h1>' +
-        '<p>Seus diagramas e a documentação da rede num lugar só.</p></div>' +
-        '<label class="inicio-busca"><span class="paleta-lupa" aria-hidden="true"></span><input type="search" data-bib-busca placeholder="Buscar na biblioteca (páginas, livros, estantes)" aria-label="Buscar na biblioteca"></label></div>' +
+      '<header class="inicio-heroi">' +
+        '<div class="inicio-heroi-texto"><h1>' + esc(saudacao + (nome && nome !== "Sem login" ? ", " + nome : "")) + '</h1>' +
+          '<p>Seus diagramas e a documentação da rede num lugar só.</p>' +
+          '<label class="inicio-busca"><span class="paleta-lupa" aria-hidden="true"></span><input type="search" data-bib-busca placeholder="Buscar na biblioteca: páginas, livros, estantes" aria-label="Buscar na biblioteca"></label></div>' +
+        '<div class="inicio-numeros">' + numero(todos.length, todos.length === 1 ? "diagrama" : "diagramas") + numero(totalEquip, "equipamentos") +
+          numero(dados.livros.length, dados.livros.length === 1 ? "livro" : "livros") + numero(dados.paginas.length, dados.paginas.length === 1 ? "página" : "páginas") + '</div>' +
+      '</header>' +
       '<div class="bib-resultados" data-bib-resultados hidden></div>' +
-      '<section class="inicio-bloco"><div class="inicio-bloco-topo"><h2>Diagramas</h2><div class="inicio-acoes">' +
-        '<button type="button" class="ghost small" data-acao="todos-diagramas">Ver todos</button><button type="button" class="primary small" data-acao="novo-diagrama">+ Novo diagrama</button></div></div>' +
+      '<div class="inicio-atalhos">' +
+        atalho("novo-diagrama", "mais", "Novo diagrama", "Começar do zero") +
+        atalho("abrir-atual", "diagrama", "Continuar", atual || "Último diagrama") +
+        atalho("documentar-atual", "livro", "Documentar", "Livro de " + (atual || "este diagrama")) +
+        atalho("nova-estante", "estante", "Nova estante", "Organizar a biblioteca") +
+      '</div>' +
+      '<section class="inicio-bloco"><div class="inicio-bloco-topo"><h2>Diagramas</h2><button type="button" class="ghost small" data-acao="todos-diagramas">Ver todos</button></div>' +
         '<div class="inicio-diagramas">' + projetos.map(function (n) {
-          var d = app.dadosProjeto(n) || {};
-          var lv = livroDoProjeto(n, false);
-          return '<button type="button" class="inicio-diagrama' + (n === app.projetoAtual() ? " atual" : "") + '" data-abrir-projeto="' + esc(n) + '">' +
-            '<span class="inicio-diagrama-icone" aria-hidden="true"></span><span class="inicio-diagrama-textos"><strong>' + esc(n) + '</strong>' +
-            '<small>' + (d.equipamentos || []).length + ' equip. · ' + (d.conexoes || []).length + ' cabos' + ((d.racks || []).length ? ' · ' + d.racks.length + ' racks' : '') + (lv ? ' · com documentação' : '') + '</small></span></button>';
+          var d = app.dadosProjeto(n) || {}, lv = livroDoProjeto(n, false);
+          return '<button type="button" class="inicio-diagrama' + (n === atual ? " atual" : "") + '" data-abrir-projeto="' + esc(n) + '">' + miniatura(d) +
+            '<span class="inicio-diagrama-textos"><strong>' + esc(n) + (n === atual ? ' <em class="inicio-selo">aberto</em>' : '') + '</strong>' +
+            '<small>' + (d.equipamentos || []).length + ' equip. · ' + (d.conexoes || []).length + ' cabos' + ((d.racks || []).length ? ' · ' + d.racks.length + ' racks' : '') + '</small>' +
+            (lv ? '<span class="inicio-tem-doc">📘 documentado</span>' : '') + '</span></button>';
         }).join("") + '</div></section>' +
-      '<section class="inicio-bloco"><div class="inicio-bloco-topo"><h2>Biblioteca</h2><div class="inicio-acoes"><button type="button" class="primary small" data-acao="nova-estante">+ Estante</button></div></div>' +
+      '<section class="inicio-bloco"><div class="inicio-bloco-topo"><h2>Biblioteca</h2>' + (dados.estantes.length ? '<button type="button" class="primary small" data-acao="nova-estante">+ Estante</button>' : '') + '</div>' +
         (dados.estantes.length ? '<div class="bib-estantes">' + dados.estantes.map(function (e) {
           var livros = livrosDa(e.id);
           return '<article class="bib-estante" style="--cor-estante:' + esc(e.cor || CORES[0]) + '"><button type="button" class="bib-estante-topo" data-ir=\'' + esc(JSON.stringify({ nome: "estante", estanteId: e.id })) + '\'>' +
             '<strong>' + esc(e.nome) + '</strong><span>' + livros.length + (livros.length === 1 ? " livro" : " livros") + '</span></button>' +
-            '<div class="bib-prateleira">' + (livros.slice(0, 6).map(capaLivro).join("") || '<p class="bib-vazio">Estante vazia.</p>') + '</div></article>';
+            '<div class="bib-prateleira">' + (livros.slice(0, 7).map(capaLivro).join("") || '<p class="bib-vazio">Estante vazia.</p>') + '</div></article>';
         }).join("") + '</div>'
-        : '<div class="bib-boas-vindas"><strong>Monte a sua biblioteca</strong><p>Crie estantes (ex.: POPs, Procedimentos, Fornecedores), livros dentro delas e páginas com manuais, procedimentos e anexos. A documentação de um diagrama vai para a estante POPs pelo item <em>Documentos</em> da barra lateral.</p><button type="button" class="primary" data-acao="nova-estante">Criar a primeira estante</button></div>') +
+        : '<div class="bib-vazia">' + ILUSTRA_ESTANTE + '<div><strong>Monte a sua biblioteca</strong><p>Crie estantes (POPs, Procedimentos, Fornecedores), livros dentro delas e páginas com manuais, procedimentos e anexos. A documentação de um diagrama vai para a estante <em>POPs</em>.</p>' +
+          '<div class="inicio-acoes"><button type="button" class="primary" data-acao="nova-estante">Criar a primeira estante</button><button type="button" class="ghost" data-acao="documentar-atual">Documentar ' + esc(atual || "este diagrama") + '</button></div></div></div>') +
       '</section>' +
       (recentes.length ? '<section class="inicio-bloco"><div class="inicio-bloco-topo"><h2>Páginas recentes</h2></div><div class="bib-recentes">' + recentes.map(function (p) {
         var l = livro(p.livroId);
-        return '<button type="button" class="bib-recente" data-ir=\'' + esc(JSON.stringify({ nome: "livro", livroId: p.livroId, paginaId: p.id })) + '\'><strong>' + esc(p.titulo) + '</strong><small>' + esc(l ? l.nome : "") + ' · ' + esc(dataLegivel(p.atualizado)) + '</small></button>';
+        return '<button type="button" class="bib-recente" data-ir=\'' + esc(JSON.stringify({ nome: "livro", livroId: p.livroId, paginaId: p.id })) + '\' style="--cor-livro:' + esc(l ? l.cor : CORES[0]) + '"><strong>' + esc(p.titulo) + '</strong><small>' + esc(l ? l.nome : "") + ' · ' + esc(dataLegivel(p.atualizado)) + '</small></button>';
       }).join("") + '</div></section>' : '') +
-      (usuario() && !nuvemOk ? '<p class="bib-nota">A biblioteca está salva só neste navegador (a tabela da biblioteca ainda não existe no Supabase).</p>' : '');
+      (usuario() && !nuvemOk ? '<p class="bib-nota"><span></span>Biblioteca salva só neste navegador: falta criar a tabela da biblioteca no Supabase.</p>' : '');
   }
 
   function renderEstante() {
@@ -341,7 +378,9 @@
     var b = ev.target.closest("[data-acao]");
     if (!b) return;
     var acao = b.getAttribute("data-acao"), nome;
-    if (acao === "novo-diagrama") { mostrarEditor(); var bn = document.getElementById("btnNovoProjeto"); if (bn) bn.click(); }
+    if (acao === "abrir-atual") mostrarEditor();
+    else if (acao === "documentar-atual") abrirLivroDoProjeto();
+    else if (acao === "novo-diagrama") { mostrarEditor(); var bn = document.getElementById("btnNovoProjeto"); if (bn) bn.click(); }
     else if (acao === "todos-diagramas") { if (window.GrafoComandos && window.GrafoComandos.galeria) window.GrafoComandos.galeria(); }
     else if (acao === "nova-estante" && (nome = perguntar("Nome da estante (ex.: POPs, Procedimentos, Fornecedores):"))) {
       var e = estanteChamada(nome, true); salvar(); irPara({ nome: "estante", estanteId: e.id });
