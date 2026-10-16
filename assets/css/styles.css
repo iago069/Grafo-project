@@ -2387,3 +2387,124 @@ body[data-modo-diagrama="racks"] #menuExportar #btnBaixar, body[data-modo-diagra
 .admin-linha-bloqueada td { background: color-mix(in srgb, var(--danger) 7%, transparent); }
 .admin-motivo { display: block; color: var(--danger); font-size: 0.7rem; margin-top: 2px; }
 .admin-tema input:disabled { cursor: not-allowed; opacity: 0.5; }
+
+/* ==== Vistas: Início (biblioteca) x Diagrama ==== */
+.inicio { display: none; }
+body[data-vista="inicio"] .inicio { display: block; }
+body[data-vista="inicio"] .workspace, body[data-vista="inicio"] .sidebar { display: none !important; }
+body[data-vista="inicio"] .project-tools { display: none; }
+.vista-alternador { display: inline-flex; gap: 2px; padding: 4px; border-radius: 14px; background: color-mix(in srgb, var(--bg-panel) 80%, transparent); border: 1px solid var(--line-soft); }
+.vista-alternador button { padding: 7px 16px; border: 0; border-radius: 10px; background: transparent; color: var(--text-dim); font: 600 0.86rem var(--sans); cursor: pointer; }
+.vista-alternador button:hover { color: var(--text); background: color-mix(in srgb, var(--text) 6%, transparent); }
+.vista-alternador button.ativo { background: var(--accent); color: var(--accent-ink); box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--accent) 80%, transparent); }
+
+/* ==== Tela de Início ==== */
+.inicio { width: 100%; max-width: 1240px; margin: 0 auto; padding: 24px clamp(16px, 4vw, 40px) 48px; animation: entrarBaixo 0.4s var(--ease-out) both; }
+.inicio-topo { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap; margin-bottom: 18px; }
+.inicio-sobre { font: 700 0.7rem var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--teal); }
+.inicio-topo h1 { margin: 6px 0 4px; font: 700 clamp(1.7rem, 3vw, 2.4rem) var(--display); letter-spacing: -0.02em; }
+.inicio-topo p { margin: 0; color: var(--text-dim); }
+.inicio-busca { display: flex; align-items: center; gap: 10px; flex: 0 1 420px; padding: 0 14px; border-radius: 14px; background: color-mix(in srgb, var(--bg-panel) 85%, transparent); border: 1px solid var(--line-soft); }
+.inicio-busca input { flex: 1; border: 0 !important; background: transparent !important; box-shadow: none !important; min-height: 46px; font-size: 0.95rem; }
+.bib-resultados { display: grid; gap: 6px; margin: 0 0 18px; padding: 10px; border-radius: 16px; background: var(--bg-panel-2); border: 1px solid var(--line-soft); box-shadow: var(--shadow-card); }
+.bib-resultados[hidden] { display: none; }
+.bib-resultado { display: grid; grid-template-columns: 70px 1fr; gap: 2px 12px; padding: 9px 12px; border: 0; border-radius: 10px; background: transparent; color: var(--text); text-align: left; cursor: pointer; }
+.bib-resultado:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
+.bib-resultado em { grid-row: 1 / 3; align-self: center; font: 700 0.62rem var(--mono); font-style: normal; text-transform: uppercase; letter-spacing: 0.1em; color: var(--teal); }
+.bib-resultado small { color: var(--text-dim); font-size: 0.74rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inicio-bloco { margin-top: 26px; }
+.inicio-bloco-topo { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+.inicio-bloco-topo h2 { margin: 0; font: 700 1.15rem var(--display); }
+.inicio-acoes { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.inicio-diagramas { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.inicio-diagrama { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 14px; text-align: left; cursor: pointer; color: var(--text);
+  background: linear-gradient(180deg, var(--bg-panel), color-mix(in srgb, var(--bg-panel-2) 85%, transparent)); border: 1px solid var(--line-soft); transition: transform 0.2s var(--ease-out), border-color 0.2s ease; }
+.inicio-diagrama:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--teal) 50%, transparent); }
+.inicio-diagrama.atual { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+.inicio-diagrama-icone { flex: 0 0 40px; height: 40px; border-radius: 11px; position: relative; background: color-mix(in srgb, var(--teal) 16%, transparent); }
+.inicio-diagrama-icone::before { content: ""; position: absolute; inset: 10px; background: var(--teal); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='2' width='6' height='6' rx='1'/%3E%3Crect x='2' y='16' width='6' height='6' rx='1'/%3E%3Crect x='16' y='16' width='6' height='6' rx='1'/%3E%3Cpath d='M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3M12 12V8'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='2' width='6' height='6' rx='1'/%3E%3Crect x='2' y='16' width='6' height='6' rx='1'/%3E%3Crect x='16' y='16' width='6' height='6' rx='1'/%3E%3Cpath d='M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3M12 12V8'/%3E%3C/svg%3E") center / contain no-repeat; }
+.inicio-diagrama-textos { min-width: 0; display: flex; flex-direction: column; }
+.inicio-diagrama-textos strong { font: 700 0.95rem var(--display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inicio-diagrama-textos small { color: var(--text-dim); font: 500 0.72rem var(--mono); }
+
+/* ==== Estantes e livros ==== */
+.bib-estantes { display: grid; gap: 16px; }
+.bib-estante { padding: 14px 16px 6px; border-radius: 18px; background: color-mix(in srgb, var(--bg-panel) 90%, transparent); border: 1px solid var(--line-soft); box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 5%, transparent); }
+.bib-estante-topo { display: flex; align-items: baseline; gap: 10px; width: 100%; padding: 0 0 10px; border: 0; background: transparent; color: var(--text); text-align: left; cursor: pointer; }
+.bib-estante-topo strong { font: 700 1.05rem var(--display); position: relative; padding-left: 16px; }
+.bib-estante-topo strong::before { content: ""; position: absolute; left: 0; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--cor-estante); box-shadow: 0 0 8px var(--cor-estante); }
+.bib-estante-topo span { color: var(--text-dim); font-size: 0.78rem; }
+.bib-estante-topo:hover strong { color: var(--accent); }
+/* Prateleira: livros em pé sobre uma tábua. */
+.bib-prateleira { display: flex; gap: 14px; align-items: flex-end; overflow-x: auto; padding: 4px 4px 14px; min-height: 120px;
+  border-bottom: 6px solid color-mix(in srgb, var(--text) 10%, transparent); border-radius: 0 0 6px 6px; }
+.bib-livro { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; width: 132px; padding: 0; border: 0; background: transparent; color: var(--text); cursor: pointer; text-align: left; }
+.bib-livro-capa { position: relative; display: flex; flex-direction: column; justify-content: space-between; height: 160px; padding: 14px 12px 12px 22px; border-radius: 6px 12px 12px 6px; overflow: hidden;
+  background: linear-gradient(135deg, var(--cor-livro), color-mix(in srgb, var(--cor-livro) 55%, #000)); color: #fff;
+  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.55), inset -3px 0 0 rgba(255, 255, 255, 0.12); transition: transform 0.25s var(--ease-out), box-shadow 0.25s ease; }
+.bib-livro-capa strong { font: 700 0.92rem/1.25 var(--display); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); overflow-wrap: anywhere; }
+.bib-livro-lombada { position: absolute; left: 0; top: 0; bottom: 0; width: 10px; background: rgba(0, 0, 0, 0.25); box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.15); }
+.bib-livro:hover .bib-livro-capa { transform: translateY(-6px) rotate(-1deg); box-shadow: 0 20px 30px -12px rgba(0, 0, 0, 0.6); }
+.bib-livro-info { font-size: 0.72rem; color: var(--text-dim); padding-left: 4px; }
+.bib-selo { align-self: flex-start; font: 700 0.56rem var(--mono); font-style: normal; text-transform: uppercase; letter-spacing: 0.1em; padding: 2px 6px; border-radius: 99px; background: rgba(255, 255, 255, 0.22); }
+.bib-livros-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 20px 16px; }
+.bib-livros-grade .bib-livro { width: auto; }
+.bib-recentes { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.bib-recente { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line-soft); background: color-mix(in srgb, var(--text) 3%, transparent); color: var(--text); text-align: left; cursor: pointer; }
+.bib-recente:hover { border-color: color-mix(in srgb, var(--teal) 45%, transparent); }
+.bib-recente small { color: var(--text-dim); font-size: 0.72rem; }
+.bib-boas-vindas { max-width: 60ch; margin: 10px auto; padding: 30px; text-align: center; border-radius: 18px; border: 1px dashed var(--line-soft); color: var(--text-dim); line-height: 1.6; }
+.bib-boas-vindas strong { display: block; font: 700 1.15rem var(--display); color: var(--text); margin-bottom: 6px; }
+.bib-boas-vindas button { margin-top: 10px; }
+.bib-vazio { color: var(--text-dim); font-size: 0.84rem; margin: 6px 0; }
+.bib-nota { margin-top: 20px; font-size: 0.76rem; color: var(--text-dim); }
+
+/* ==== Trilha, estante aberta, livro aberto ==== */
+.bib-trilha { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; font-size: 0.84rem; }
+.bib-trilha-item { border: 0; background: transparent; color: var(--teal); cursor: pointer; padding: 2px 4px; border-radius: 6px; font: inherit; }
+.bib-trilha-item:hover { background: color-mix(in srgb, var(--teal) 12%, transparent); }
+.bib-trilha-sep { color: var(--text-dim); }
+.bib-trilha-atual { color: var(--text); font-weight: 600; }
+.bib-cabecalho { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px solid var(--cor-estante, var(--accent)); }
+.bib-cabecalho h1 { margin: 0 0 4px; font: 700 1.8rem var(--display); }
+.bib-cabecalho p { margin: 0; color: var(--text-dim); }
+.bib-livro-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 18px; align-items: start; }
+.bib-indice { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 18px; background: color-mix(in srgb, var(--bg-panel) 92%, transparent); border: 1px solid var(--line-soft); max-height: calc(100vh - 140px); overflow-y: auto; }
+.bib-indice-capa { padding: 14px; border-radius: 12px; color: #fff; background: linear-gradient(135deg, var(--cor-livro), color-mix(in srgb, var(--cor-livro) 55%, #000)); }
+.bib-indice-capa strong { display: block; font: 700 1.05rem var(--display); }
+.bib-indice-capa small { display: block; margin-top: 4px; opacity: 0.85; font-size: 0.74rem; }
+.bib-indice-lista { display: flex; flex-direction: column; gap: 2px; }
+.bib-capitulo { padding: 10px 8px 4px; font: 700 0.62rem var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim); }
+.bib-indice-item { padding: 8px 10px; border: 0; border-radius: 9px; background: transparent; color: var(--text); text-align: left; cursor: pointer; font-size: 0.86rem; }
+.bib-indice-item:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
+.bib-indice-item.ativo { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); font-weight: 600; box-shadow: inset 3px 0 0 var(--accent); }
+.bib-indice-rodape { display: flex; gap: 6px; flex-wrap: wrap; padding-top: 8px; border-top: 1px solid var(--line-soft); }
+.bib-conteudo { min-width: 0; padding: 26px 30px; border-radius: 18px; background: color-mix(in srgb, var(--bg-panel) 92%, transparent); border: 1px solid var(--line-soft); min-height: 420px; }
+.bib-pagina-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; padding-bottom: 14px; margin-bottom: 18px; border-bottom: 1px solid var(--line-soft); }
+.bib-pagina-topo h1 { margin: 0 0 4px; font: 700 1.6rem var(--display); }
+.bib-meta { font-size: 0.76rem; color: var(--text-dim); }
+.bib-anexar { display: inline-flex; align-items: center; cursor: pointer; min-height: var(--ctl-h-sm); padding: 4px 11px; border-radius: 8px; border: 1px solid var(--ctl-borda); background: var(--ctl-bg); color: var(--text); font-size: 0.75rem; font-weight: 600; }
+.bib-texto { max-width: 76ch; font-size: 0.96rem; line-height: 1.7; }
+.bib-texto h2, .bib-texto h3, .bib-texto h4 { font-family: var(--display); margin: 22px 0 8px; }
+.bib-texto ol, .bib-texto ul { padding-left: 24px; }
+.bib-texto ol li::marker { color: var(--accent); font-weight: 700; }
+.bib-texto code { font: 500 0.86em var(--mono); padding: 1px 6px; border-radius: 6px; background: color-mix(in srgb, var(--text) 8%, transparent); }
+.bib-texto pre { font: 0.84rem/1.5 var(--mono); padding: 12px 14px; border-radius: 10px; background: #0E1C27; color: #DCEBF5; overflow-x: auto; }
+.bib-texto blockquote { margin: 10px 0; padding: 8px 14px; border-left: 3px solid var(--teal); background: color-mix(in srgb, var(--teal) 8%, transparent); border-radius: 0 8px 8px 0; }
+.bib-texto a { color: var(--teal); }
+.bib-anexos { margin-top: 24px; padding-top: 14px; border-top: 1px solid var(--line-soft); }
+.bib-anexos h4 { margin: 0 0 10px; font: 700 0.9rem var(--display); }
+.bib-anexo { display: flex; align-items: center; gap: 12px; padding: 10px 12px; margin-bottom: 6px; border-radius: 12px; border: 1px solid var(--line-soft); background: color-mix(in srgb, var(--text) 3%, transparent); }
+.bib-anexo div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.bib-anexo small { color: var(--text-dim); font-size: 0.72rem; }
+.bib-editor textarea { width: 100%; font: 0.88rem/1.6 var(--mono); padding: 12px 14px; border-radius: 12px; resize: vertical; }
+.bib-editor .nav-form-actions button { flex: 0 0 auto; padding: 9px 18px; font-size: 0.84rem; }
+@media (max-width: 860px) {
+  .bib-livro-layout { grid-template-columns: 1fr; }
+  .bib-indice { position: static; max-height: none; }
+  .bib-conteudo { padding: 18px; }
+}
+/* Barra do topo cabe na tela com o alternador Início/Diagrama: encolhe e quebra linha se precisar. */
+.header-bar > .theme-toolbar { flex: 0 1 auto; min-width: 0; flex-wrap: wrap; justify-content: flex-end; row-gap: 8px; }
+@media (max-width: 1520px) { .paleta-gatilho-texto, .paleta-gatilho kbd { display: none; } .paleta-gatilho { padding: 0 12px; } }
+@media (max-width: 1280px) { .vista-alternador button { padding: 7px 12px; } }

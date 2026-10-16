@@ -1027,7 +1027,7 @@
       renderTudo();
       return r;
     },
-    // Usados por documentos.js (procedimentos e manuais do projeto).
+    // Documentos antigos guardados no projeto (biblioteca.js os migra para a Biblioteca).
     documentosDoProjeto: function () { return clonarDados(estado.documentos || []); },
     salvarDocumentos: function (lista) {
       var r = Esquema.validarProjeto({ equipamentos: [], conexoes: [], documentos: lista }, "estrito");

@@ -79,9 +79,12 @@
       if (nome === nomeAtual) return;
       lista.push({ titulo: nome, sub: "Abrir projeto", grupo: "Projetos", icone: "pasta", fazer: function () { app.trocarProjeto(nome); } });
     });
-    if (window.GrafoDocumentos) lista = lista.concat(window.GrafoDocumentos.candidatos());
+    if (window.GrafoBiblioteca) lista = lista.concat(window.GrafoBiblioteca.candidatos());
     ACOES.forEach(function (a) { if (!a.visivel || a.visivel()) lista.push(a); });
-    if (window.GrafoDocumentos) lista.push({ titulo: "Abrir documentos do projeto", grupo: "Documentação", icone: "lista", termos: "manual procedimento pdf arquivo", fazer: function () { window.GrafoDocumentos.abrir(); } });
+    if (window.GrafoBiblioteca) {
+      lista.push({ titulo: "Ir para o Início", grupo: "Navegar", icone: "pasta", termos: "inicio home biblioteca estantes", fazer: function () { window.GrafoBiblioteca.inicio(); } });
+      lista.push({ titulo: "Documentação deste diagrama", grupo: "Navegar", icone: "lista", termos: "documentos manual procedimento livro pop", fazer: function () { window.GrafoBiblioteca.livroDoProjeto(); } });
+    }
     return lista;
   }
 

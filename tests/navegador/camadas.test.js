@@ -21,7 +21,7 @@ const visivelPorCima = (pagina, seletor) => pagina.evaluate(sel => {
 test("menus, paleta, galeria e documentos ficam por cima, antes e depois de trocar o tipo", async () => {
   const pagina = await abrirPagina(navegador, site, { viewport: { width: 1440, height: 900 } });
   await esperarDiagrama(pagina);
-  await pagina.waitForFunction(() => window.GrafoComandos && window.GrafoDocumentos);
+  await pagina.waitForFunction(() => window.GrafoComandos && window.GrafoBiblioteca);
   for (const rodada of ["antes", "depois"]) {
     if (rodada === "depois") {
       await pagina.selectOption("#modoDiagrama", "redes"); await pagina.waitForTimeout(200);
@@ -40,9 +40,10 @@ test("menus, paleta, galeria e documentos ficam por cima, antes e depois de troc
     await pagina.click("#btnGaleria");
     assert.equal(await visivelPorCima(pagina, ".galeria-busca"), true, rodada + ": galeria");
     await pagina.keyboard.press("Escape");
-    await pagina.click("#btnDocumentos");
-    assert.equal(await visivelPorCima(pagina, ".docs-busca"), true, rodada + ": documentos");
-    await pagina.keyboard.press("Escape");
+    await pagina.click('[data-vista-ir="inicio"]');
+    assert.equal(await visivelPorCima(pagina, "[data-bib-busca]"), true, rodada + ": início");
+    await pagina.click('[data-vista-ir="editor"]');
+    await pagina.waitForSelector("#canvas svg g.node");
   }
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
