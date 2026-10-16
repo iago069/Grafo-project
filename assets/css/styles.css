@@ -2351,3 +2351,39 @@ body[data-modo-diagrama="racks"] #menuExportar #btnBaixar, body[data-modo-diagra
 .admin-salvar[hidden] { display: none; }
 .admin-salvar span { flex: 1; font-weight: 600; font-size: 0.84rem; color: var(--accent); }
 .admin-tema.alterado { padding: 2px 8px; border-radius: 99px; background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+
+/* ==== Conta bloqueada ==== */
+.conta-bloqueada { position: fixed; inset: 0; z-index: 20000; display: grid; place-items: center; padding: 16px; background: color-mix(in srgb, #050b12 82%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.conta-bloqueada-caixa { width: min(420px, 100%); padding: 32px 28px; text-align: center; border-radius: 22px; background: var(--bg-panel-2); border: 1px solid var(--line-soft); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6); color: var(--text); }
+.conta-bloqueada-caixa h2 { margin: 12px 0 8px; font: 700 1.4rem var(--display); }
+.conta-bloqueada-caixa p { margin: 0 0 8px; color: var(--text-dim); line-height: 1.5; }
+.conta-bloqueada-motivo { font-weight: 600; color: var(--text) !important; }
+.conta-bloqueada-caixa button { margin-top: 12px; min-width: 140px; }
+.conta-bloqueada-icone { display: inline-grid; width: 64px; height: 64px; border-radius: 50%; background: color-mix(in srgb, var(--danger) 18%, transparent); position: relative; }
+.conta-bloqueada-icone::before { content: ""; position: absolute; inset: 16px; background: var(--danger); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round'%3E%3Crect x='5' y='11' width='14' height='10' rx='2'/%3E%3Cpath d='M8 11V7a4 4 0 0 1 8 0v4'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round'%3E%3Crect x='5' y='11' width='14' height='10' rx='2'/%3E%3Cpath d='M8 11V7a4 4 0 0 1 8 0v4'/%3E%3C/svg%3E") center / contain no-repeat; }
+
+/* ==== Comunicado para todos (faixa no topo) ==== */
+.faixa-aviso {
+  position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 11500; display: flex; align-items: center; gap: 12px;
+  max-width: min(760px, calc(100vw - 32px)); padding: 10px 10px 10px 14px; border-radius: 14px; font-size: 0.88rem; font-weight: 500;
+  background: color-mix(in srgb, var(--teal) 16%, var(--bg-panel-2)); border: 1px solid color-mix(in srgb, var(--teal) 45%, transparent); color: var(--text);
+  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.5);
+}
+.faixa-aviso.alerta { background: color-mix(in srgb, var(--accent) 18%, var(--bg-panel-2)); border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+.faixa-aviso.sucesso { background: color-mix(in srgb, #2fbf71 16%, var(--bg-panel-2)); border-color: color-mix(in srgb, #2fbf71 45%, transparent); }
+.faixa-aviso [data-texto] { flex: 1; line-height: 1.4; }
+.faixa-aviso-icone { flex: 0 0 8px; height: 8px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 10px var(--teal); animation: ledPisca 1.6s ease-in-out infinite; }
+.faixa-aviso.alerta .faixa-aviso-icone { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+.faixa-aviso.sucesso .faixa-aviso-icone { background: #2fbf71; box-shadow: 0 0 10px #2fbf71; }
+
+/* ==== Painel do admin: comunicado e bloqueio ==== */
+.admin-aviso { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line-soft); background: color-mix(in srgb, var(--text) 3%, transparent); }
+.admin-aviso-atual { margin: 0 0 10px; font-size: 0.82rem; color: var(--text-dim); }
+.admin-aviso-atual strong { color: var(--text); }
+.admin-aviso-form { display: flex; gap: 8px; flex-wrap: wrap; }
+.admin-aviso-form input { flex: 1 1 320px; min-width: 0; }
+.admin-aviso-form select { width: 150px; }
+.admin-tema.perigo input:checked { accent-color: var(--danger); }
+.admin-linha-bloqueada td { background: color-mix(in srgb, var(--danger) 7%, transparent); }
+.admin-motivo { display: block; color: var(--danger); font-size: 0.7rem; margin-top: 2px; }
+.admin-tema input:disabled { cursor: not-allowed; opacity: 0.5; }
