@@ -21,26 +21,36 @@
   document.querySelectorAll("#temaSelect option[data-tema-exclusivo]").forEach(function (o) { TEMAS_EXCLUSIVOS[o.getAttribute("data-tema-exclusivo")] = o.textContent; });
 
   // ---- temas liberados para esta conta ------------------------------------------
-  function liberarTemas(lista) {
+  // Mostra os temas liberados e esconde os retirados (quem perdeu o acesso volta
+  // para o tema automático na hora, sem precisar recarregar a página).
+  function aplicarTemasLiberados(lista) {
     var select = document.getElementById("temaSelect");
     if (!select) return;
-    (lista || []).forEach(function (nome) {
-      var opcao = select.querySelector('option[data-tema-exclusivo="' + nome + '"]');
-      if (!opcao) return;
-      opcao.hidden = false;
-      document.querySelectorAll('[data-opcoes-de="temaSelect"] [data-valor="' + opcao.value + '"]').forEach(function (item) { item.hidden = false; });
-      // Era o tema escolhido da última vez: aplica agora que foi confirmado.
-      if (window.__temaExclusivoPendente === opcao.value) {
+    lista = lista || [];
+    select.querySelectorAll("option[data-tema-exclusivo]").forEach(function (opcao) {
+      var liberado = lista.indexOf(opcao.getAttribute("data-tema-exclusivo")) >= 0;
+      opcao.hidden = !liberado;
+      document.querySelectorAll('[data-opcoes-de="temaSelect"] [data-valor="' + opcao.value + '"]').forEach(function (item) { item.hidden = !liberado; });
+      if (liberado && window.__temaExclusivoPendente === opcao.value) {
+        // Era o tema escolhido da última vez: aplica agora que foi confirmado.
         window.__temaExclusivoPendente = null;
         select.value = opcao.value;
         select.dispatchEvent(new Event("change", { bubbles: true }));
+      } else if (!liberado && select.value === opcao.value) {
+        select.value = "auto";
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        avisar("O tema " + opcao.textContent + " não está mais liberado para esta conta.");
       }
     });
   }
   function conferirMeusTemas() {
-    return sb.rpc("grafo_meus_temas").then(function (r) { if (!r.error && Array.isArray(r.data)) liberarTemas(r.data); });
+    return sb.rpc("grafo_meus_temas").then(function (r) { if (!r.error && Array.isArray(r.data)) aplicarTemasLiberados(r.data); });
   }
   conferirMeusTemas();
+  // Reconfere sozinho: a cada minuto e ao voltar para a aba (mudanças do admin valem sem F5).
+  setInterval(function () { if (!document.hidden) conferirMeusTemas(); }, 60000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) conferirMeusTemas(); });
+  window.addEventListener("focus", conferirMeusTemas);
 
   sb.rpc("grafo_eh_admin").then(function (r) {
     if (r.error || r.data !== true) return; // usuário comum (ou migração não instalada)
@@ -69,29 +79,62 @@
     fundo.innerHTML = '<div class="paleta docs admin" role="dialog" aria-modal="true" aria-labelledby="adminTitulo">' +
       '<div class="folha-topo"><strong id="adminTitulo">Painel do administrador</strong><div class="galeria-acoes">' +
       '<button type="button" class="ghost small" data-admin="atualizar">Atualizar</button><button type="button" class="ghost small" data-admin="fechar" aria-label="Fechar">×</button></div></div>' +
-      '<div class="admin-corpo" data-admin-corpo><p class="docs-vazio">Carregando…</p></div></div>';
+      '<div class="admin-corpo" data-admin-corpo><p class="docs-vazio">Carregando…</p></div>' +
+      '<div class="admin-salvar" data-admin-salvar hidden><span data-admin-pendentes></span>' +
+        '<button type="button" class="ghost small" data-admin="descartar">Descartar</button>' +
+        '<button type="button" class="primary small" data-admin="salvar">Salvar alterações</button></div></div>';
     document.body.appendChild(fundo);
     var corpo = fundo.querySelector("[data-admin-corpo]");
+    var barraSalvar = fundo.querySelector("[data-admin-salvar]");
+    // Alterações ainda não salvas: "usuario|tema" -> { usuario, tema, liberar, email }.
+    var pendentes = {};
 
-    function abrir() { fundo.hidden = false; carregar(); }
-    function fechar() { fundo.hidden = true; }
+    function atualizarBarra() {
+      var n = Object.keys(pendentes).length;
+      barraSalvar.hidden = !n;
+      fundo.querySelector("[data-admin-pendentes]").textContent = n + (n === 1 ? " alteração não salva" : " alterações não salvas");
+    }
+    function abrir() { fundo.hidden = false; pendentes = {}; atualizarBarra(); carregar(); }
+    function fechar() {
+      if (Object.keys(pendentes).length && !window.confirm("Há alterações não salvas no painel. Fechar mesmo assim?")) return;
+      fundo.hidden = true;
+    }
+    async function salvar() {
+      var lista = Object.keys(pendentes).map(function (k) { return pendentes[k]; });
+      var botao = fundo.querySelector('[data-admin="salvar"]');
+      botao.disabled = true; botao.textContent = "Salvando…";
+      var falhas = [];
+      for (var i = 0; i < lista.length; i++) {
+        var p = lista[i];
+        var r = await sb.rpc("grafo_admin_definir_tema", { p_usuario: p.usuario, p_tema: p.tema, p_liberar: p.liberar });
+        if (r.error) falhas.push(p.email + ": " + r.error.message);
+        else delete pendentes[p.usuario + "|" + p.tema];
+      }
+      botao.disabled = false; botao.textContent = "Salvar alterações";
+      atualizarBarra();
+      if (falhas.length) { avisar("Não foi possível salvar: " + falhas[0]); return; }
+      avisar(lista.length + (lista.length === 1 ? " alteração salva." : " alterações salvas.") + " Vale para as pessoas em até 1 minuto, sem recarregar.");
+      conferirMeusTemas();
+      carregar();
+    }
     fundo.addEventListener("click", function (ev) {
       var b = ev.target.closest("[data-admin]");
-      if (b && b.getAttribute("data-admin") === "fechar") fechar();
-      else if (b && b.getAttribute("data-admin") === "atualizar") carregar();
+      if (!b) return;
+      var acao = b.getAttribute("data-admin");
+      if (acao === "fechar") fechar();
+      else if (acao === "atualizar") { pendentes = {}; atualizarBarra(); carregar(); }
+      else if (acao === "descartar") { pendentes = {}; atualizarBarra(); carregar(); }
+      else if (acao === "salvar") salvar();
     });
-    // Liberar ou tirar um tema exclusivo de alguém.
+    // Marcar/desmarcar um tema só registra a alteração; vale ao clicar em Salvar.
     fundo.addEventListener("change", function (ev) {
       var caixa = ev.target.closest("[data-liberar-tema]");
       if (!caixa) return;
-      var usuario = caixa.getAttribute("data-usuario"), tema = caixa.getAttribute("data-liberar-tema"), liberar = caixa.checked;
-      caixa.disabled = true;
-      sb.rpc("grafo_admin_definir_tema", { p_usuario: usuario, p_tema: tema, p_liberar: liberar }).then(function (r) {
-        caixa.disabled = false;
-        if (r.error) { caixa.checked = !liberar; avisar("Não foi possível alterar: " + r.error.message); return; }
-        avisar("Tema " + (TEMAS_EXCLUSIVOS[tema] || tema) + (liberar ? " liberado para " : " retirado de ") + caixa.getAttribute("data-email") + ".");
-        if (usuario === auth.userId()) conferirMeusTemas();
-      });
+      var chave = caixa.getAttribute("data-usuario") + "|" + caixa.getAttribute("data-liberar-tema");
+      if (caixa.checked === (caixa.getAttribute("data-original") === "1")) delete pendentes[chave];
+      else pendentes[chave] = { usuario: caixa.getAttribute("data-usuario"), tema: caixa.getAttribute("data-liberar-tema"), liberar: caixa.checked, email: caixa.getAttribute("data-email") };
+      caixa.closest("label").classList.toggle("alterado", !!pendentes[chave]);
+      atualizarBarra();
     });
     fundo.addEventListener("mousedown", function (ev) { if (ev.target === fundo) fechar(); });
     document.addEventListener("keydown", function (ev) { if (ev.key === "Escape" && !fundo.hidden) fechar(); });
@@ -113,7 +156,7 @@
       function caixasTemas(u) {
         var temas = u.temas || [];
         return nomesTemas.map(function (t) {
-          return '<label class="admin-tema"><input type="checkbox" data-liberar-tema="' + esc(t) + '" data-usuario="' + esc(u.id) + '" data-email="' + esc(u.email) + '"' + (temas.indexOf(t) >= 0 ? " checked" : "") + '> ' + esc(TEMAS_EXCLUSIVOS[t]) + '</label>';
+          return '<label class="admin-tema"><input type="checkbox" data-liberar-tema="' + esc(t) + '" data-usuario="' + esc(u.id) + '" data-email="' + esc(u.email) + '" data-original="' + (temas.indexOf(t) >= 0 ? "1" : "0") + '"' + (temas.indexOf(t) >= 0 ? " checked" : "") + '> ' + esc(TEMAS_EXCLUSIVOS[t]) + '</label>';
         }).join("") || "—";
       }
       corpo.innerHTML =
@@ -135,7 +178,7 @@
         (erros.length ? '<div class="admin-tabela"><table><thead><tr><th>Mensagem</th><th>Vezes</th><th>Pessoas</th><th>Última vez</th></tr></thead><tbody>' +
           erros.map(function (e) { return '<tr><td class="admin-erro">' + esc(e.mensagem) + (e.origem ? '<small>' + esc(e.origem) + '</small>' : '') + '</td><td>' + esc(e.vezes) + '</td><td>' + esc(e.pessoas) + '</td><td>' + data(e.ultima_vez) + '</td></tr>'; }).join("") +
           '</tbody></table></div>' : '<p class="docs-vazio">Nenhum erro nos últimos 7 dias.</p>') +
-        '<p class="admin-rodape">Atualizado em ' + esc(data(d.gerado_em)) + '. Marque "Fernando" para liberar o tema para a pessoa (ela vê na próxima vez que abrir o Grafo). Para tornar alguém admin, use a tabela <code>grafo_admins</code> no Supabase.</p>';
+        '<p class="admin-rodape">Atualizado em ' + esc(data(d.gerado_em)) + '. Marque ou desmarque "Fernando" e clique em <strong>Salvar alterações</strong>: vale para a pessoa em até 1 minuto, sem recarregar. Para tornar alguém admin, use a tabela <code>grafo_admins</code> no Supabase.</p>';
     }
     window.GrafoAdmin = { abrir: abrir };
   }

@@ -86,3 +86,7 @@ $$;
 insert into public.grafo_temas_liberados (user_id, tema)
 select user_id, 'fernando' from public.grafo_admins
 on conflict do nothing;
+
+-- Avisa a API do Supabase que há funções novas (sem isso, o app pode receber
+-- "Could not find the function ... in the schema cache" por alguns minutos).
+notify pgrst, 'reload schema';

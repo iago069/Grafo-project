@@ -64,7 +64,23 @@ test("admin: painel no menu da conta, com papéis, liberação de tema e erros",
   assert.match(texto, /TypeError/);
   // Libera o Fernando para o técnico.
   await pagina.check('[data-liberar-tema="fernando"][data-usuario="2"]');
+  await pagina.waitForSelector("[data-admin-salvar]:not([hidden])");
+  assert.equal(await pagina.evaluate(() => (window.__chamadasRpc || []).some(c => c.nome === "grafo_admin_definir_tema")), false, "só grava ao salvar");
+  await pagina.click('[data-admin="salvar"]');
   await pagina.waitForFunction(() => (window.__chamadasRpc || []).some(c => c.nome === "grafo_admin_definir_tema" && c.args.p_usuario === "2" && c.args.p_liberar === true));
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});
+
+test("tema retirado pelo admin some na hora para a pessoa, sem recarregar", async () => {
+  const pagina = await abrirPagina(navegador, site, { antes: () => { window.__respostasRpc = { grafo_meus_temas: ["fernando"] }; } });
+  await esperarDiagrama(pagina);
+  await pagina.waitForFunction(() => { const i = document.querySelector('[data-opcoes-de="temaSelect"] [data-valor="theme-fernando"]'); return i && !i.hidden; });
+  await pagina.evaluate(() => { const s = document.getElementById("temaSelect"); s.value = "theme-fernando"; s.dispatchEvent(new Event("change", { bubbles: true })); });
+  // O admin retira o tema: a próxima conferência (ao voltar para a aba) já esconde e troca o tema.
+  await pagina.evaluate(() => { window.__respostasRpc.grafo_meus_temas = []; window.dispatchEvent(new Event("focus")); });
+  await pagina.waitForFunction(() => document.getElementById("temaSelect").value === "auto");
+  assert.equal(await temFernandoNoMenu(pagina), false);
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
