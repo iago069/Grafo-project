@@ -141,7 +141,7 @@
   var alternador = document.createElement("div");
   alternador.className = "vista-alternador";
   alternador.setAttribute("role", "tablist");
-  alternador.innerHTML = '<button type="button" role="tab" data-vista-ir="inicio">Início</button><button type="button" role="tab" data-vista-ir="editor">Diagrama</button><button type="button" role="tab" data-vista-ir="biblioteca">Biblioteca</button>';
+  alternador.innerHTML = '<button type="button" role="tab" data-vista-ir="editor">Diagrama</button><button type="button" role="tab" data-vista-ir="biblioteca">Biblioteca</button>';
   if (barra) barra.insertBefore(alternador, barra.firstChild);
   alternador.addEventListener("click", function (ev) {
     var b = ev.target.closest("[data-vista-ir]");
@@ -154,7 +154,11 @@
 
   function definirVista(v) {
     document.body.setAttribute("data-vista", v);
-    var aba = v === "editor" ? "editor" : (tela.nome === "inicio" ? "inicio" : "biblioteca");
+    var aba = v === "editor" ? "editor" : (tela.nome === "inicio" ? "" : "biblioteca");
+    // Guarda onde a pessoa parou, para abrir ali na próxima vez (o Início animado não conta).
+    if (v === "editor" || tela.nome !== "inicio") {
+      try { localStorage.setItem("grafo-ultima-vista", JSON.stringify(v === "editor" ? { vista: "editor" } : { vista: "biblioteca", tela: { nome: tela.nome, estanteId: tela.estanteId, livroId: tela.livroId, paginaId: tela.paginaId } })); } catch (e) {}
+    }
     alternador.querySelectorAll("[data-vista-ir]").forEach(function (b) { var on = b.getAttribute("data-vista-ir") === aba; b.classList.toggle("ativo", on); b.setAttribute("aria-selected", String(on)); });
     if (v === "editor") window.dispatchEvent(new Event("resize"));
   }
@@ -189,8 +193,8 @@
 
   function render() {
     if (tela.nome !== "inicio") pararCena();
-    if (tela.nome === "estante" && !estante(tela.estanteId)) tela = { nome: "inicio" };
-    if (tela.nome === "livro" && !livro(tela.livroId)) tela = { nome: "inicio" };
+    if (tela.nome === "estante" && !estante(tela.estanteId)) tela = { nome: "biblioteca" };
+    if (tela.nome === "livro" && !livro(tela.livroId)) tela = { nome: "biblioteca" };
     if (tela.nome === "inicio") renderInicio();
     else if (tela.nome === "biblioteca") renderBiblioteca();
     else if (tela.nome === "estante") renderEstante();
@@ -374,7 +378,7 @@
 
   // Tela da Biblioteca: estantes com os livros nas prateleiras.
   function renderBiblioteca() {
-    raiz.innerHTML = trilha([{ nome: "Início", ir: { nome: "inicio" } }, { nome: "Biblioteca" }]) +
+    raiz.innerHTML = trilha([{ nome: "Biblioteca" }]) +
       '<div class="bib-cabecalho"><div><h1>Biblioteca</h1><p>' + dados.estantes.length + (dados.estantes.length === 1 ? " estante" : " estantes") + ' · ' + dados.livros.length + (dados.livros.length === 1 ? " livro" : " livros") + ' · ' + dados.paginas.length + (dados.paginas.length === 1 ? " página" : " páginas") + '</p></div>' +
       '<div class="inicio-acoes"><label class="inicio-busca bib-busca-pequena"><span class="paleta-lupa" aria-hidden="true"></span><input type="search" data-bib-busca placeholder="Buscar na biblioteca" aria-label="Buscar na biblioteca"></label>' +
       (dados.estantes.length ? '<button type="button" class="primary small" data-acao="nova-estante">+ Estante</button>' : '') + '</div></div>' +
@@ -391,7 +395,7 @@
 
   function renderEstante() {
     var e = estante(tela.estanteId), livros = livrosDa(e.id);
-    raiz.innerHTML = trilha([{ nome: "Início", ir: { nome: "inicio" } }, { nome: "Biblioteca", ir: { nome: "biblioteca" } }, { nome: e.nome }]) +
+    raiz.innerHTML = trilha([{ nome: "Biblioteca", ir: { nome: "biblioteca" } }, { nome: e.nome }]) +
       '<div class="bib-cabecalho" style="--cor-estante:' + esc(e.cor) + '"><div><h1>' + esc(e.nome) + '</h1><p>' + esc(e.descricao || livros.length + (livros.length === 1 ? " livro" : " livros")) + '</p></div>' +
       '<div class="inicio-acoes"><button type="button" class="ghost small" data-acao="renomear-estante">Renomear</button><button type="button" class="ghost small danger-texto" data-acao="excluir-estante">Excluir estante</button>' +
       '<button type="button" class="primary small" data-acao="novo-livro">+ Livro</button></div></div>' +
@@ -430,7 +434,7 @@
             '<button type="button" class="ghost small" data-abrir-anexo="' + i + '">Abrir</button><button type="button" class="ghost small danger-texto" data-remover-anexo="' + i + '" aria-label="Remover anexo">×</button></div>';
         }).join("") + '</div>' : '');
     }
-    raiz.innerHTML = trilha([{ nome: "Início", ir: { nome: "inicio" } }, { nome: "Biblioteca", ir: { nome: "biblioteca" } }, { nome: e ? e.nome : "Sem estante", ir: e ? { nome: "estante", estanteId: e.id } : null }, { nome: l.nome }]) +
+    raiz.innerHTML = trilha([{ nome: "Biblioteca", ir: { nome: "biblioteca" } }, { nome: e ? e.nome : "Sem estante", ir: e ? { nome: "estante", estanteId: e.id } : null }, { nome: l.nome }]) +
       '<div class="bib-livro-layout">' +
         '<aside class="bib-indice" style="--cor-livro:' + esc(l.cor) + '"><div class="bib-indice-capa"><strong>' + esc(l.nome) + '</strong>' + (l.descricao ? '<small>' + esc(l.descricao) + '</small>' : '') + '</div>' +
           (l.projeto ? '<button type="button" class="ghost small bib-abrir-diagrama" data-abrir-projeto="' + esc(l.projeto) + '">Abrir o diagrama</button>' : '') +
@@ -613,14 +617,17 @@
     botaoDocs.addEventListener("click", abrirLivroDoProjeto);
   }
 
-  // ---- início ------------------------------------------------------------------------
-  // Começa no Início, a não ser que a página tenha sido aberta para um equipamento
-  // (QR code: ?abrir=) ou que esteja guardado para abrir direto no diagrama.
-  var abrirNoEditor = /[?&]abrir=/.test(location.search);
+  // ---- abertura ----------------------------------------------------------------------
+  // Abre onde a pessoa parou (diagrama ou biblioteca). O QR code (?abrir=) vai sempre
+  // para o diagrama. O Início animado fica na logo "Grafo" e na paleta (Ctrl+K).
+  var ultima = null;
+  try { ultima = JSON.parse(localStorage.getItem("grafo-ultima-vista")); } catch (e) {}
+  var abrirNoEditor = /[?&]abrir=/.test(location.search) || !ultima || ultima.vista !== "biblioteca";
   try { if (localStorage.getItem("grafo-vista-inicial") === "editor") abrirNoEditor = true; } catch (e) {}
   if (migrarDocumentosAntigos()) salvar();
+  if (!abrirNoEditor) tela = ultima.tela && ultima.tela.nome && ultima.tela.nome !== "inicio" ? ultima.tela : { nome: "biblioteca" };
   definirVista(abrirNoEditor ? "editor" : "inicio");
-  render();
+  if (!abrirNoEditor) render();
   carregarDaNuvem().then(function () {
     if (migrarDocumentosAntigos()) salvar();
     if (document.body.getAttribute("data-vista") === "inicio" && !tela.editando) render();
