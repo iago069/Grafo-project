@@ -13,10 +13,10 @@ const comoUsuario = { antes: () => localStorage.removeItem("grafo-vista-inicial"
 test("abre no Início; estante, livro e página; busca; volta ao diagrama", async () => {
   const pagina = await abrirPagina(navegador, site, Object.assign({ viewport: { width: 1400, height: 900 } }, comoUsuario));
   await esperarEditor(pagina);
-  await pagina.waitForSelector(".home-heroi h1");
+  await pagina.waitForSelector(".cena h1");
   assert.equal(await pagina.getAttribute("body", "data-vista"), "inicio");
   assert.equal(await pagina.isVisible(".sidebar"), false, "Início fica separado do editor");
-  assert.match(await pagina.textContent(".home-cartao-diagrama"), /Projeto Ação/);
+  assert.match(await pagina.textContent(".cena-rodape"), /Projeto Ação/);
   // Estante → livro → página.
   await pagina.click('[data-vista-ir="biblioteca"]');
   await pagina.click('.bib-vazia [data-acao="nova-estante"]');

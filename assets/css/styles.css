@@ -2800,3 +2800,104 @@ body[data-vista="inicio"] .inicio:has(.vitrine) { max-width: 1360px; padding-top
 @media (prefers-reduced-motion: reduce) {
   .vitrine-heroi, .vb, .vitrine-arte .heroi-rede, .vitrine-heroi h1, .vitrine-cartao, .vitrine-sobre, .vitrine-heroi p, .vitrine-botoes { animation: none !important; }
 }
+
+/* ==== Início: cena em tela cheia (constelação, órbitas, tipografia) ==== */
+body[data-vista="inicio"] .inicio:has(.cena) { max-width: none; padding: 0 clamp(10px, 1.5vw, 20px) 16px; }
+.cena {
+  position: relative; overflow: hidden; isolation: isolate; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: calc(100vh - 96px); min-height: calc(100dvh - 96px); border-radius: 28px; padding: 60px 24px 110px;
+  background:
+    radial-gradient(60% 55% at 50% 42%, rgba(31, 199, 176, 0.16), transparent 70%),
+    radial-gradient(40% 40% at 85% 90%, rgba(255, 159, 67, 0.16), transparent 70%),
+    radial-gradient(45% 45% at 12% 12%, rgba(123, 97, 255, 0.18), transparent 70%),
+    linear-gradient(180deg, #071521, #0A1B2B 50%, #08141F);
+  border: 1px solid rgba(143, 243, 227, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 40px 100px -50px rgba(0, 0, 0, 0.9);
+  --px: 0; --py: 0;
+}
+.cena-ceu { position: absolute; inset: 0; z-index: -2; }
+.cena::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(55% 50% at 50% 45%, transparent 40%, rgba(4, 12, 20, 0.75) 100%); }
+
+/* Órbitas (radar) atrás do texto, com parallax. */
+.cena-orbita { position: absolute; left: 50%; top: 46%; width: 0; height: 0; z-index: -1; transform: translate(calc(var(--px) * -24px), calc(var(--py) * -24px)); transition: transform 0.4s var(--ease-out); }
+.co { position: absolute; left: 0; top: 0; border-radius: 50%; border: 1px solid rgba(143, 243, 227, 0.14); transform: translate(-50%, -50%); animation: orbitaGira linear infinite; }
+.co i { position: absolute; top: -4px; left: 50%; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: #8FF3E3; box-shadow: 0 0 14px #8FF3E3, 0 0 30px rgba(143, 243, 227, 0.6); }
+.co1 { width: 520px; height: 520px; animation-duration: 26s; }
+.co2 { width: 760px; height: 760px; animation-duration: 40s; animation-direction: reverse; border-style: dashed; border-color: rgba(143, 243, 227, 0.09); }
+.co2 i { background: #FFD38A; box-shadow: 0 0 14px #FFD38A, 0 0 30px rgba(255, 159, 67, 0.6); }
+.co3 { width: 1020px; height: 1020px; animation-duration: 60s; border-color: rgba(182, 156, 255, 0.08); }
+.co3 i { background: #B69CFF; box-shadow: 0 0 14px #B69CFF; }
+@keyframes orbitaGira { to { transform: translate(-50%, -50%) rotate(360deg); } }
+.cena-orbita::before { content: ""; position: absolute; left: 0; top: 0; width: 520px; height: 520px; border-radius: 50%; transform: translate(-50%, -50%);
+  background: conic-gradient(from 0deg, rgba(143, 243, 227, 0.18), transparent 25%); animation: orbitaGira 6s linear infinite;
+  -webkit-mask: radial-gradient(circle, transparent 0 55%, #000 56% 100%); mask: radial-gradient(circle, transparent 0 55%, #000 56% 100%); }
+
+/* Etiquetas flutuantes. */
+.cena-etiqueta { position: absolute; z-index: 0; padding: 6px 12px; border-radius: 99px; pointer-events: none;
+  font: 600 0.74rem var(--mono); letter-spacing: 0.04em; color: rgba(220, 240, 250, 0.82);
+  background: rgba(12, 30, 46, 0.55); border: 1px solid rgba(143, 243, 227, 0.22); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  translate: calc(var(--px) * (20px + var(--k) * 6px)) calc(var(--py) * (20px + var(--k) * 6px));
+  animation: etiquetaEntra 0.8s var(--ease-out) both, etiquetaFlutua 6s ease-in-out infinite;
+  animation-delay: calc(0.8s + var(--k) * 0.12s), calc(var(--k) * -0.7s); }
+.cena-etiqueta::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 7px; border-radius: 50%; background: #4BE08C; box-shadow: 0 0 8px #4BE08C; vertical-align: middle; }
+@keyframes etiquetaEntra { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: none; } }
+@keyframes etiquetaFlutua { 0%, 100% { margin-top: 0; } 50% { margin-top: -10px; } }
+
+/* Centro: tipografia. */
+.cena-centro { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; text-align: center; max-width: 980px; }
+.cena-selo { display: inline-flex; align-items: center; gap: 10px; padding: 8px 16px; border-radius: 99px; margin-bottom: 26px;
+  font: 600 0.86rem var(--sans); color: #DDF7F2; background: rgba(143, 243, 227, 0.08); border: 1px solid rgba(143, 243, 227, 0.28);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); animation: homeEntra 0.7s var(--ease-out) 0.1s both; }
+.cena-selo-ponto { width: 8px; height: 8px; border-radius: 50%; background: #4BE08C; box-shadow: 0 0 0 4px rgba(75, 224, 140, 0.18), 0 0 12px #4BE08C; animation: ledPisca 1.6s ease-in-out infinite; }
+.cena h1 { margin: 0 0 22px; font: 800 clamp(2.8rem, 7vw, 6.4rem)/0.98 var(--display); letter-spacing: -0.05em; color: #F4FBFF; text-shadow: 0 10px 40px rgba(0, 0, 0, 0.45); }
+.cena-palavra { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: 0.08em; }
+.cena-palavra > span { display: inline-block; animation: palavraSobe 0.9s var(--ease-out) both; animation-delay: calc(0.25s + var(--w) * 0.09s); }
+@keyframes palavraSobe { from { transform: translateY(105%) rotate(4deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.cena-destaque .cena-palavra > span { background: linear-gradient(100deg, #8FF3E3 0%, #FFD38A 35%, #FF9F43 55%, #B69CFF 80%, #8FF3E3 100%); background-size: 240% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none;
+  animation: palavraSobe 0.9s var(--ease-out) both, homeBrilho 8s ease-in-out 1.4s infinite; animation-delay: calc(0.25s + var(--w) * 0.09s), 1.4s; }
+.cena p { margin: 0 0 34px; max-width: 46ch; font-size: clamp(1rem, 1.3vw, 1.18rem); line-height: 1.6; color: rgba(214, 232, 242, 0.75); animation: homeEntra 0.8s var(--ease-out) 0.85s both; }
+
+/* Botões em pílula; o principal com borda luminosa girando. */
+.cena-botoes { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; animation: homeEntra 0.8s var(--ease-out) 1s both; }
+.cena-btn { position: relative; display: inline-flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 30px; border-radius: 99px; cursor: pointer;
+  font: 700 1.02rem var(--sans); color: #EAF7FF; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); transition: transform 0.25s var(--ease-out), background 0.2s ease; }
+.cena-btn:hover { transform: translateY(-2px); background: rgba(255, 255, 255, 0.12); }
+.cena-btn.principal { isolation: isolate; border: 0; color: #14181F; background: linear-gradient(135deg, #FFE0A8, #FF9F43); box-shadow: 0 18px 50px -14px rgba(255, 159, 67, 0.85); }
+.cena-btn.principal::before { content: ""; position: absolute; inset: -3px; z-index: -1; border-radius: inherit; padding: 3px;
+  background: conic-gradient(from var(--ang, 0deg), #8FF3E3, #FFD38A, #FF9F43, #B69CFF, #8FF3E3);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: anguloGira 4s linear infinite; }
+@property --ang { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@keyframes anguloGira { to { --ang: 360deg; } }
+.cena-btn b { font-size: 1.2rem; transition: transform 0.25s var(--ease-out); }
+.cena-btn:hover b { transform: translateX(5px); }
+
+/* Faixa de baixo: diagrama aberto e biblioteca, discretos. */
+.cena-rodape { position: absolute; z-index: 1; left: 50%; bottom: 26px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center;
+  max-width: calc(100% - 32px); padding: 6px; border-radius: 99px; background: rgba(8, 20, 31, 0.6); border: 1px solid rgba(143, 243, 227, 0.14);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); animation: homeEntra 0.8s var(--ease-out) 1.2s both; }
+.cena-link { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: 0; border-radius: 99px; background: transparent; cursor: pointer;
+  font: 500 0.84rem var(--sans); color: rgba(214, 232, 242, 0.75); transition: background 0.2s ease, color 0.2s ease; }
+.cena-link:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+.cena-link strong { color: #fff; font-weight: 700; }
+.cena-link em { font-style: normal; font: 500 0.74rem var(--mono); color: rgba(214, 232, 242, 0.55); }
+.cena-sep { width: 1px; height: 18px; background: rgba(143, 243, 227, 0.18); }
+.cena-ponto { width: 8px; height: 8px; border-radius: 50%; }
+.cena-ponto.verde { background: #4BE08C; box-shadow: 0 0 8px #4BE08C; }
+.cena-ponto.laranja { background: #FFB454; box-shadow: 0 0 8px #FFB454; }
+.cena-ponto.azul { background: #7DB4FF; box-shadow: 0 0 8px #7DB4FF; }
+
+@media (max-width: 760px) {
+  .cena { padding: 40px 18px 150px; }
+  .cena-etiqueta:nth-of-type(n+5) { display: none; }
+  .cena-rodape { border-radius: 18px; }
+  .cena-sep { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .co, .cena-orbita::before, .cena-etiqueta, .cena-palavra > span, .cena-destaque .cena-palavra > span, .cena-selo, .cena p, .cena-botoes, .cena-rodape, .cena-btn.principal::before, .cena-selo-ponto { animation: none !important; }
+}
+/* Faixa de baixo centralizada sem transform (a animação de entrada usa transform). */
+.cena-rodape { left: 0; right: 0; margin: 0 auto; width: fit-content; transform: none; }
+.cena h1 { text-transform: none; }

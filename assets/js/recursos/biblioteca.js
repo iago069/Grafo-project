@@ -158,7 +158,7 @@
     alternador.querySelectorAll("[data-vista-ir]").forEach(function (b) { var on = b.getAttribute("data-vista-ir") === aba; b.classList.toggle("ativo", on); b.setAttribute("aria-selected", String(on)); });
     if (v === "editor") window.dispatchEvent(new Event("resize"));
   }
-  function mostrarEditor() { definirVista("editor"); }
+  function mostrarEditor() { pararCena(); definirVista("editor"); }
   async function irPara(t) {
     if (tela.editando && !(t.nome === tela.nome && t.paginaId === tela.paginaId)) {
       if (!await confirmar("Há uma página sendo editada. Sair sem salvar?", "Página não salva", "Sair sem salvar")) return;
@@ -188,6 +188,7 @@
   }
 
   function render() {
+    if (tela.nome !== "inicio") pararCena();
     if (tela.nome === "estante" && !estante(tela.estanteId)) tela = { nome: "inicio" };
     if (tela.nome === "livro" && !livro(tela.livroId)) tela = { nome: "inicio" };
     if (tela.nome === "inicio") renderInicio();
@@ -249,41 +250,126 @@
     });
   }
 
+  // ---- Início: cena em tela cheia ------------------------------------------------
+  // Constelação de equipamentos no fundo (canvas): pontos que se ligam quando estão
+  // perto, pacotes de luz correndo nas ligações e atração leve pelo mouse.
+  var cena = null;
+  function pararCena() { if (cena) { cancelAnimationFrame(cena.quadro); window.removeEventListener("resize", cena.medir); cena = null; } }
+  function iniciarCena(canvas, palco) {
+    pararCena();
+    var ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    var reduzir = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var cores = ["#5EEAD4", "#7DB4FF", "#FFC163", "#FF8FB8", "#B69CFF", "#A8E06B"];
+    var nos = [], pacotes = [], w = 0, h = 0, dpr = Math.min(2, window.devicePixelRatio || 1), mouse = { x: -9999, y: -9999 };
+    function medir() {
+      var r = palco.getBoundingClientRect();
+      w = r.width; h = r.height;
+      canvas.width = w * dpr; canvas.height = h * dpr; canvas.style.width = w + "px"; canvas.style.height = h + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      var alvo = Math.round(Math.min(110, (w * h) / 13000));
+      while (nos.length < alvo) nos.push({ x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - 0.5) * 0.35, vy: (Math.random() - 0.5) * 0.35, r: 1.2 + Math.random() * 2.2, cor: cores[nos.length % cores.length], fase: Math.random() * 6.28 });
+      nos.length = alvo;
+    }
+    medir();
+    palco.addEventListener("pointermove", function (ev) { var r = palco.getBoundingClientRect(); mouse.x = ev.clientX - r.left; mouse.y = ev.clientY - r.top; });
+    palco.addEventListener("pointerleave", function () { mouse.x = mouse.y = -9999; });
+    var LIGA = 130;
+    function quadro(t) {
+      ctx.clearRect(0, 0, w, h);
+      // Movimento.
+      nos.forEach(function (n) {
+        if (!reduzir) {
+          var dx = mouse.x - n.x, dy = mouse.y - n.y, d2 = dx * dx + dy * dy;
+          if (d2 < 32000) { n.vx += dx * 0.00004; n.vy += dy * 0.00004; }
+          n.x += n.vx; n.y += n.vy;
+          n.vx *= 0.995; n.vy *= 0.995;
+          if (Math.abs(n.vx) < 0.05) n.vx += (Math.random() - 0.5) * 0.04;
+          if (Math.abs(n.vy) < 0.05) n.vy += (Math.random() - 0.5) * 0.04;
+          if (n.x < -20) n.x = w + 20; if (n.x > w + 20) n.x = -20;
+          if (n.y < -20) n.y = h + 20; if (n.y > h + 20) n.y = -20;
+        }
+      });
+      // Ligações.
+      var ligacoes = [];
+      for (var i = 0; i < nos.length; i++) for (var j = i + 1; j < nos.length; j++) {
+        var a = nos[i], b = nos[j], dx2 = a.x - b.x, dy2 = a.y - b.y, d = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+        if (d < LIGA) {
+          var perto = Math.max(0, 1 - Math.hypot(mouse.x - (a.x + b.x) / 2, mouse.y - (a.y + b.y) / 2) / 220);
+          ctx.strokeStyle = "rgba(143, 243, 227, " + ((1 - d / LIGA) * (0.22 + perto * 0.5)).toFixed(3) + ")";
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+          ligacoes.push([a, b]);
+        }
+      }
+      // Pacotes: nascem em ligações aleatórias e correm até a ponta.
+      if (!reduzir && ligacoes.length && pacotes.length < 14 && Math.random() < 0.06) {
+        var l = ligacoes[(Math.random() * ligacoes.length) | 0];
+        pacotes.push({ a: l[0], b: l[1], p: 0, v: 0.008 + Math.random() * 0.014 });
+      }
+      pacotes = pacotes.filter(function (pk) {
+        pk.p += pk.v;
+        if (pk.p >= 1) return false;
+        var x = pk.a.x + (pk.b.x - pk.a.x) * pk.p, y = pk.a.y + (pk.b.y - pk.a.y) * pk.p;
+        var g = ctx.createRadialGradient(x, y, 0, x, y, 9);
+        g.addColorStop(0, "rgba(255, 211, 138, 0.95)"); g.addColorStop(1, "rgba(255, 159, 67, 0)");
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 9, 0, 6.283); ctx.fill();
+        return true;
+      });
+      // Nós (com brilho que pulsa).
+      nos.forEach(function (n) {
+        var pulso = reduzir ? 1 : 0.7 + 0.3 * Math.sin(t / 900 + n.fase);
+        ctx.fillStyle = n.cor; ctx.globalAlpha = 0.18 * pulso;
+        ctx.beginPath(); ctx.arc(n.x, n.y, n.r * 4, 0, 6.283); ctx.fill();
+        ctx.globalAlpha = 0.9; ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, 6.283); ctx.fill();
+        ctx.globalAlpha = 1;
+      });
+      if (!reduzir && cena) cena.quadro = requestAnimationFrame(quadro);
+    }
+    cena = { quadro: 0, medir: medir };
+    window.addEventListener("resize", medir);
+    cena.quadro = requestAnimationFrame(quadro);
+    // Parallax das etiquetas flutuantes e da órbita.
+    if (!reduzir) palco.addEventListener("pointermove", function (ev) {
+      var r = palco.getBoundingClientRect(), px = (ev.clientX - r.left) / r.width - 0.5, py = (ev.clientY - r.top) / r.height - 0.5;
+      palco.style.setProperty("--px", px.toFixed(3)); palco.style.setProperty("--py", py.toFixed(3));
+    });
+  }
+
   function renderInicio() {
     var nome = (document.getElementById("sidebarUsuarioNome") || {}).textContent || "";
     var hora = new Date().getHours();
     var saudacao = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite";
     var atual = app.projetoAtual ? app.projetoAtual() : "";
     var dAtual = app.dadosProjeto(atual) || {};
-    var lombadas = dados.livros.slice(0, 9);
+    var palavras1 = ["Sua", "rede", "inteira,"], palavras2 = ["num", "lugar", "só."];
+    var etiquetas = [["OLT", 8, 22], ["Rack 42U", 82, 18], ["Fibra 100G", 14, 70], ["Switch", 86, 64], ["DIO 48F", 72, 84], ["POP Centro", 24, 86], ["VLAN 100", 90, 40], ["Datacenter", 6, 46]];
+    var i = 0;
+    function palavra(p) { return '<span class="cena-palavra" style="--w:' + (i++) + '"><span>' + esc(p) + '</span></span>'; }
     raiz.innerHTML =
-      '<div class="vitrine">' +
-        '<header class="home-heroi vitrine-heroi">' +
-          '<div class="vitrine-fundo" aria-hidden="true"><span class="vb vb1"></span><span class="vb vb2"></span><span class="vb vb3"></span></div>' +
-          '<div class="vitrine-texto">' +
-            '<span class="vitrine-sobre">' + esc(saudacao) + '</span>' +
-            '<h1>' + (nome && nome !== "Sem login" ? esc(nome) : "Bem-vindo") + '</h1>' +
-            '<p>Sua rede inteira, num lugar só. Desenhe, monte os racks e documente cada POP.</p>' +
-            '<div class="vitrine-botoes"><button type="button" class="vitrine-btn principal" data-acao="abrir-atual">Abrir diagrama<span aria-hidden="true">→</span></button>' +
-            '<button type="button" class="vitrine-btn" data-acao="ir-biblioteca">Biblioteca</button></div>' +
+      '<section class="cena" data-cena>' +
+        '<canvas class="cena-ceu" aria-hidden="true"></canvas>' +
+        '<div class="cena-orbita" aria-hidden="true"><span class="co co1"><i></i></span><span class="co co2"><i></i></span><span class="co co3"><i></i></span></div>' +
+        etiquetas.map(function (e, k) { return '<span class="cena-etiqueta" aria-hidden="true" style="left:' + e[1] + '%;top:' + e[2] + '%;--k:' + k + '">' + esc(e[0]) + '</span>'; }).join("") +
+        '<div class="cena-centro">' +
+          '<span class="cena-selo"><span class="cena-selo-ponto"></span>' + esc(saudacao) + (nome && nome !== "Sem login" ? ", " + esc(nome) : "") + '</span>' +
+          '<h1>' + palavras1.map(palavra).join(" ") + '<br><span class="cena-destaque">' + palavras2.map(palavra).join(" ") + '</span></h1>' +
+          '<p>Desenhe a topologia, monte os racks e documente cada POP. O Grafo junta tudo e deixa pronto para o cliente.</p>' +
+          '<div class="cena-botoes">' +
+            '<button type="button" class="cena-btn principal" data-acao="abrir-atual"><span>Abrir diagrama</span><b aria-hidden="true">→</b></button>' +
+            '<button type="button" class="cena-btn" data-acao="ir-biblioteca"><span>Biblioteca</span></button>' +
           '</div>' +
-          '<div class="vitrine-arte">' + REDE_HEROI + '</div>' +
-        '</header>' +
-        '<div class="vitrine-cartoes">' +
-          '<button type="button" class="vitrine-cartao home-cartao-diagrama" data-acao="abrir-atual">' +
-            '<span class="vitrine-imagem">' + miniatura(dAtual, "home-mini") + '</span>' +
-            '<span class="vitrine-legenda"><span class="vitrine-rotulo">Diagramas</span><strong>' + esc(atual || "Seu diagrama") + '</strong>' +
-              '<small>' + (dAtual.equipamentos || []).length + ' equipamentos · ' + (dAtual.conexoes || []).length + ' cabos</small></span>' +
-            '<span class="vitrine-seta" aria-hidden="true">→</span></button>' +
-          '<button type="button" class="vitrine-cartao home-cartao-biblioteca" data-acao="ir-biblioteca">' +
-            '<span class="vitrine-imagem home-lombadas">' +
-              (lombadas.length ? lombadas.map(function (l, i) { return '<span class="home-lombada" style="--cor-livro:' + esc(l.cor) + ';--i:' + i + ';--h:' + (62 + (i * 37) % 34) + '%"><em>' + esc(l.nome) + '</em></span>'; }).join("") : ILUSTRA_ESTANTE) +
-            '</span>' +
-            '<span class="vitrine-legenda"><span class="vitrine-rotulo">Biblioteca</span><strong>' + (dados.livros.length ? dados.livros.length + (dados.livros.length === 1 ? " livro" : " livros") : "Comece a documentar") + '</strong>' +
-              '<small>Manuais, procedimentos e a documentação dos POPs</small></span>' +
-            '<span class="vitrine-seta" aria-hidden="true">→</span></button>' +
         '</div>' +
-      '</div>';
+        '<div class="cena-rodape">' +
+          '<button type="button" class="cena-link" data-acao="abrir-atual"><span class="cena-ponto verde"></span>Diagrama aberto <strong>' + esc(atual || "—") + '</strong><em>' + (dAtual.equipamentos || []).length + ' equip. · ' + (dAtual.conexoes || []).length + ' cabos</em></button>' +
+          '<span class="cena-sep" aria-hidden="true"></span>' +
+          '<button type="button" class="cena-link" data-acao="ir-biblioteca"><span class="cena-ponto laranja"></span>Biblioteca <strong>' + dados.livros.length + (dados.livros.length === 1 ? " livro" : " livros") + '</strong><em>' + dados.paginas.length + (dados.paginas.length === 1 ? " página" : " páginas") + '</em></button>' +
+          '<span class="cena-sep" aria-hidden="true"></span>' +
+          '<button type="button" class="cena-link" data-acao="novo-diagrama"><span class="cena-ponto azul"></span>Novo diagrama</button>' +
+        '</div>' +
+      '</section>';
+    var palco = raiz.querySelector("[data-cena]");
+    iniciarCena(raiz.querySelector(".cena-ceu"), palco);
   }
 
   // Tela da Biblioteca: estantes com os livros nas prateleiras.
