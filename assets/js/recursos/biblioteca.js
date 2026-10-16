@@ -162,7 +162,8 @@
     alternador.querySelectorAll("[data-vista-ir]").forEach(function (b) { var on = b.getAttribute("data-vista-ir") === aba; b.classList.toggle("ativo", on); b.setAttribute("aria-selected", String(on)); });
     if (v === "editor") window.dispatchEvent(new Event("resize"));
   }
-  function mostrarEditor() { pararCena(); definirVista("editor"); }
+  // O diagrama só mede direito com o editor visível: mostra primeiro, depois redesenha.
+  function mostrarEditor() { pararCena(); definirVista("editor"); if (app.redesenhar) app.redesenhar(); }
   async function irPara(t) {
     if (tela.editando && !(t.nome === tela.nome && t.paginaId === tela.paginaId)) {
       if (!await confirmar("Há uma página sendo editada. Sair sem salvar?", "Página não salva", "Sair sem salvar")) return;
@@ -600,8 +601,8 @@
   });
 
   function abrirDiagrama(nome) {
-    if (nome && nome !== app.projetoAtual() && app.trocarProjeto) app.trocarProjeto(nome);
     mostrarEditor();
+    if (nome && nome !== app.projetoAtual() && app.trocarProjeto) app.trocarProjeto(nome);
   }
   // "Documentos" na barra lateral: abre o livro do diagrama aberto (cria na estante POPs).
   function abrirLivroDoProjeto() {

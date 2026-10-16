@@ -69,6 +69,10 @@ test("Documentação do diagrama abre o livro do projeto na estante POPs; docume
   // "Abrir o diagrama" volta para o editor.
   await pagina.click(".bib-abrir-diagrama");
   await pagina.waitForSelector("#canvas svg g.node");
+  // Desenhado com o editor visível: o equipamento tem tamanho de verdade, não espremido.
+  await pagina.waitForTimeout(400);
+  const larg = await pagina.evaluate(() => document.querySelector("#canvas svg g.node").getBBox().width);
+  assert.ok(larg > 40, "equipamento com largura real: " + larg);
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
