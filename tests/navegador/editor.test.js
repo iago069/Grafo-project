@@ -270,6 +270,19 @@ test("Exportar projeto (.json) leva as anotações; importar o arquivo traz de v
   await pagina.context().close();
 });
 
+test("Importar JSON sem ícone usa a foto do tipo", async () => {
+  const pagina = await abrirPagina(navegador, site);
+  await esperarDiagrama(pagina);
+  const arquivo = { equipamentos: [{ id: "a", nome: "SW-JSON", tipo: "Switch" }, { id: "b", nome: "CACHE-JSON", tipo: "Servidor" }], conexoes: [{ de: "a", para: "b" }] };
+  await pagina.setInputFiles("#arquivoProjeto", { name: "sem-icone.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(arquivo)) });
+  await pagina.waitForFunction(() => document.getElementById("canvas").textContent.includes("CACHE-JSON"), null, { timeout: 20000 });
+  const icones = await pagina.evaluate(() => window.GrafoApp.dadosProjeto(window.GrafoApp.projetoAtual()).equipamentos.map(e => e.icone));
+  assert.match(icones[0], /SWITCH.png$/);
+  assert.match(icones[1], /SERVIDOR.svg$/);
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});
+
 test("Importar CSV num projeto com conteúdo pergunta antes; Cancelar mantém o projeto", async () => {
   const pagina = await abrirPagina(navegador, site);
   await esperarDiagrama(pagina);

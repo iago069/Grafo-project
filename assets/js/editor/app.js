@@ -3209,6 +3209,8 @@
       for (var i = 2; projetos[nome]; i++) nome = base.slice(0, LIMITES.nomeProjeto - 5) + " (" + i + ")";
 
       salvarLocal();
+      // Sem ícone no arquivo: usa a foto do tipo (Switch, OLT, Servidor…), como no CSV.
+      resultado.dados.equipamentos.forEach(function (eq) { if (!eq.icone && !eq.imagem) eq.icone = iconePorTipo(eq.tipo || eq.nome); });
       projetos[nome] = resultado.dados;
       abrirProjeto(nome);
       salvarLocal();
