@@ -141,25 +141,27 @@
   var alternador = document.createElement("div");
   alternador.className = "vista-alternador";
   alternador.setAttribute("role", "tablist");
-  alternador.innerHTML = '<button type="button" role="tab" data-vista-ir="inicio">Início</button><button type="button" role="tab" data-vista-ir="editor">Diagrama</button>';
+  alternador.innerHTML = '<button type="button" role="tab" data-vista-ir="inicio">Início</button><button type="button" role="tab" data-vista-ir="editor">Diagrama</button><button type="button" role="tab" data-vista-ir="biblioteca">Biblioteca</button>';
   if (barra) barra.insertBefore(alternador, barra.firstChild);
   alternador.addEventListener("click", function (ev) {
     var b = ev.target.closest("[data-vista-ir]");
     if (!b) return;
-    if (b.getAttribute("data-vista-ir") === "inicio") irPara({ nome: "inicio" }); else mostrarEditor();
+    var alvo = b.getAttribute("data-vista-ir");
+    if (alvo === "editor") mostrarEditor(); else irPara({ nome: alvo });
   });
   var marca = document.querySelector(".sidebar .brand");
   if (marca) { marca.style.cursor = "pointer"; marca.title = "Ir para o Início"; marca.addEventListener("click", function () { irPara({ nome: "inicio" }); }); }
 
   function definirVista(v) {
     document.body.setAttribute("data-vista", v);
-    alternador.querySelectorAll("[data-vista-ir]").forEach(function (b) { var on = b.getAttribute("data-vista-ir") === v; b.classList.toggle("ativo", on); b.setAttribute("aria-selected", String(on)); });
+    var aba = v === "editor" ? "editor" : (tela.nome === "inicio" ? "inicio" : "biblioteca");
+    alternador.querySelectorAll("[data-vista-ir]").forEach(function (b) { var on = b.getAttribute("data-vista-ir") === aba; b.classList.toggle("ativo", on); b.setAttribute("aria-selected", String(on)); });
     if (v === "editor") window.dispatchEvent(new Event("resize"));
   }
   function mostrarEditor() { definirVista("editor"); }
-  function irPara(t) {
+  async function irPara(t) {
     if (tela.editando && !(t.nome === tela.nome && t.paginaId === tela.paginaId)) {
-      if (!window.confirm("Há uma página sendo editada. Sair sem salvar?")) return;
+      if (!await confirmar("Há uma página sendo editada. Sair sem salvar?", "Página não salva", "Sair sem salvar")) return;
     }
     tela = t;
     definirVista("inicio");
@@ -185,24 +187,25 @@
     if (tela.nome === "estante" && !estante(tela.estanteId)) tela = { nome: "inicio" };
     if (tela.nome === "livro" && !livro(tela.livroId)) tela = { nome: "inicio" };
     if (tela.nome === "inicio") renderInicio();
+    else if (tela.nome === "biblioteca") renderBiblioteca();
     else if (tela.nome === "estante") renderEstante();
     else renderLivro();
   }
 
   // Miniatura simbólica do diagrama: um bloco por equipamento (cor do tipo) ligados pelos cabos.
-  function miniatura(d) {
+  function miniatura(d, classe) {
     var eqs = (d.equipamentos || []).slice(0, 24), n = eqs.length;
-    if (!n) return '<svg viewBox="0 0 200 80" class="inicio-mini"><text x="100" y="45" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.55">Diagrama vazio</text></svg>';
+    if (!n) return '<svg viewBox="0 0 200 80" class="' + (classe || "inicio-mini") + '"><text x="100" y="45" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.55">Diagrama vazio</text></svg>';
     var colunas = Math.max(1, Math.ceil(Math.sqrt(n * 2.4))), linhas = Math.ceil(n / colunas), pos = {};
     eqs.forEach(function (e, i) {
       pos[e.id] = [colunas > 1 ? 18 + (i % colunas) * (164 / (colunas - 1)) : 100, linhas > 1 ? 16 + Math.floor(i / colunas) * (48 / (linhas - 1)) : 40];
     });
-    var cabos = (d.conexoes || []).filter(function (c) { return pos[c.de] && pos[c.para]; }).slice(0, 40).map(function (c) {
+    var cabos = (d.conexoes || []).filter(function (c) { return pos[c.de] && pos[c.para]; }).slice(0, 40).map(function (c, i) {
       var a = pos[c.de], b = pos[c.para], m = (a[0] + b[0]) / 2;
-      return '<path d="M' + a[0] + ' ' + a[1] + ' C' + m + ' ' + a[1] + ' ' + m + ' ' + b[1] + ' ' + b[0] + ' ' + b[1] + '"/>';
+      return '<path style="--i:' + i + '" d="M' + a[0] + ' ' + a[1] + ' C' + m + ' ' + a[1] + ' ' + m + ' ' + b[1] + ' ' + b[0] + ' ' + b[1] + '"/>';
     }).join("");
-    var blocos = eqs.map(function (e) { var p = pos[e.id]; return '<rect x="' + (p[0] - 6) + '" y="' + (p[1] - 5) + '" width="12" height="10" rx="2.5" fill="' + (window.GrafoCores ? window.GrafoCores(e.tipo) : "#71ebd6") + '"/>'; }).join("");
-    return '<svg viewBox="0 0 200 80" class="inicio-mini"><g class="inicio-mini-cabos">' + cabos + '</g>' + blocos + '</svg>';
+    var blocos = eqs.map(function (e, i) { var p = pos[e.id]; return '<rect style="--i:' + i + '" x="' + (p[0] - 6) + '" y="' + (p[1] - 5) + '" width="12" height="10" rx="2.5" fill="' + (window.GrafoCores ? window.GrafoCores(e.tipo) : "#71ebd6") + '"/>'; }).join("");
+    return '<svg viewBox="0 0 200 80" class="' + (classe || "inicio-mini") + '"><g class="inicio-mini-cabos">' + cabos + '</g><g class="inicio-mini-blocos">' + blocos + '</g></svg>';
   }
   var ILUSTRA_ESTANTE = '<svg class="bib-ilustra" viewBox="0 0 220 130" aria-hidden="true">' +
     '<rect x="10" y="104" width="200" height="8" rx="3" class="bi-tabua"/><rect x="10" y="44" width="200" height="6" rx="3" class="bi-tabua"/>' +
@@ -211,60 +214,111 @@
     '<rect x="34" y="14" width="16" height="30" rx="3" class="bi-l3"/><rect x="53" y="20" width="12" height="24" rx="3" class="bi-l4"/>' +
     '<rect x="128" y="18" width="40" height="26" rx="4" class="bi-tracejado"/><path d="M148 25v12M142 31h12" class="bi-mais"/></svg>';
 
+  // Ilustração animada do banner: rede com cabos se desenhando e pacotes correndo.
+  var REDE_HEROI = (function () {
+    var nos = [[70, 70, "olt"], [210, 40, "sw"], [210, 150, "sw"], [350, 90, "rt"], [120, 190, "onu"], [300, 200, "onu"], [420, 30, "nuvem"], [440, 170, "srv"]];
+    var cabos = [[0, 1], [0, 2], [1, 3], [2, 3], [0, 4], [2, 5], [3, 6], [3, 7], [1, 6]];
+    function caminho(c) { var a = nos[c[0]], b = nos[c[1]], m = (a[0] + b[0]) / 2; return "M" + a[0] + " " + a[1] + " C" + m + " " + a[1] + " " + m + " " + b[1] + " " + b[0] + " " + b[1]; }
+    var cores = { olt: "#7DB4FF", sw: "#A8E06B", rt: "#FF8FB8", onu: "#5EEAD4", nuvem: "#FFC163", srv: "#67D3F5" };
+    return '<svg class="heroi-rede" viewBox="0 0 500 240" aria-hidden="true"><defs><filter id="heroiBrilho"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>' +
+      cabos.map(function (c, i) { return '<path id="hc' + i + '" class="hr-cabo" style="--i:' + i + '" d="' + caminho(c) + '"/>'; }).join("") +
+      cabos.map(function (c, i) { return '<circle r="3.2" class="hr-pacote" opacity="0" style="--i:' + i + '" filter="url(#heroiBrilho)"><set attributeName="opacity" to="1" begin="' + (1.2 + i * 0.35) + 's"/><animateMotion dur="' + (2.6 + (i % 4) * 0.7) + 's" begin="' + (1.2 + i * 0.35) + 's" repeatCount="indefinite"' + (i % 2 ? ' keyPoints="1;0" keyTimes="0;1" calcMode="linear"' : '') + '><mpath href="#hc' + i + '"/></animateMotion></circle>'; }).join("") +
+      nos.map(function (n, i) {
+        return '<g class="hr-no" style="--i:' + i + ';--cor:' + cores[n[2]] + '" transform="translate(' + n[0] + ' ' + n[1] + ')"><circle r="22" class="hr-halo"/><rect x="-15" y="-11" width="30" height="22" rx="6" class="hr-corpo"/><circle cx="-7" cy="0" r="2.2" class="hr-led"/><rect x="-2" y="-1.5" width="11" height="3" rx="1.5" class="hr-traco"/></g>';
+      }).join("") + '</svg>';
+  })();
+
+  // Números que contam de 0 até o valor ao aparecer.
+  function contarNumeros() {
+    var reduzir = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    raiz.querySelectorAll("[data-contar]").forEach(function (el) {
+      var alvo = Number(el.getAttribute("data-contar")) || 0;
+      if (reduzir || !alvo) { el.textContent = alvo; return; }
+      var inicio = null, duracao = 900 + Math.min(alvo, 50) * 12;
+      function passo(t) {
+        if (!inicio) inicio = t;
+        var p = Math.min(1, (t - inicio) / duracao), e = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.round(alvo * e);
+        if (p < 1) requestAnimationFrame(passo);
+      }
+      requestAnimationFrame(passo);
+    });
+  }
+
   function renderInicio() {
     var nome = (document.getElementById("sidebarUsuarioNome") || {}).textContent || "";
     var hora = new Date().getHours();
     var saudacao = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite";
     var todos = app.nomesProjetos ? app.nomesProjetos() : [];
     var atual = app.projetoAtual ? app.projetoAtual() : "";
-    var projetos = todos.slice().sort(function (a, b) { return (b === atual) - (a === atual); }).slice(0, 6);
+    var dAtual = app.dadosProjeto(atual) || {};
     var totalEquip = todos.reduce(function (t, n) { var d = app.dadosProjeto(n) || {}; return t + (d.equipamentos || []).length; }, 0);
-    var recentes = dados.paginas.slice().sort(function (a, b) { return String(b.atualizado).localeCompare(String(a.atualizado)); }).slice(0, 6);
-    function numero(valor, rotulo) { return '<div class="inicio-numero"><strong>' + valor + '</strong><span>' + rotulo + '</span></div>'; }
-    function atalho(acao, icone, titulo, sub) { return '<button type="button" class="inicio-atalho" data-acao="' + acao + '"><span class="inicio-atalho-icone" data-ico="' + icone + '"></span><span><strong>' + esc(titulo) + '</strong><small>' + esc(sub) + '</small></span></button>'; }
+    var totalCabos = todos.reduce(function (t, n) { var d = app.dadosProjeto(n) || {}; return t + (d.conexoes || []).length; }, 0);
+    var recentes = dados.paginas.slice().sort(function (a, b) { return String(b.atualizado).localeCompare(String(a.atualizado)); }).slice(0, 4);
+    var outros = todos.filter(function (n) { return n !== atual; }).slice(0, 3);
+    var lombadas = dados.livros.slice(0, 7);
+    function numero(valor, rotulo) { return '<div class="home-numero"><strong data-contar="' + valor + '">0</strong><span>' + rotulo + '</span></div>'; }
     raiz.innerHTML =
-      '<header class="inicio-heroi">' +
-        '<div class="inicio-heroi-texto"><h1>' + esc(saudacao + (nome && nome !== "Sem login" ? ", " + nome : "")) + '</h1>' +
-          '<p>Seus diagramas e a documentação da rede num lugar só.</p>' +
-          '<label class="inicio-busca"><span class="paleta-lupa" aria-hidden="true"></span><input type="search" data-bib-busca placeholder="Buscar na biblioteca: páginas, livros, estantes" aria-label="Buscar na biblioteca"></label></div>' +
-        '<div class="inicio-numeros">' + numero(todos.length, todos.length === 1 ? "diagrama" : "diagramas") + numero(totalEquip, "equipamentos") +
-          numero(dados.livros.length, dados.livros.length === 1 ? "livro" : "livros") + numero(dados.paginas.length, dados.paginas.length === 1 ? "página" : "páginas") + '</div>' +
+      '<div class="home">' +
+      '<header class="home-heroi entra" style="--d:0">' +
+        '<div class="home-heroi-luz" aria-hidden="true"></div>' +
+        '<div class="home-heroi-texto">' +
+          '<span class="home-selo"><span class="home-selo-ponto"></span>Grafo · documentação de rede</span>' +
+          '<h1><span class="home-saudacao">' + esc(saudacao) + '</span>' + (nome && nome !== "Sem login" ? ', <span class="home-nome">' + esc(nome) + '</span>' : '') + '</h1>' +
+          '<p>Desenhe a rede, monte os racks e documente cada POP, tudo num lugar só.</p>' +
+          '<label class="home-busca"><span class="paleta-lupa" aria-hidden="true"></span><input type="search" data-bib-busca placeholder="Buscar páginas, livros e estantes…" aria-label="Buscar na biblioteca"><kbd>Ctrl K</kbd></label>' +
+          '<div class="bib-resultados" data-bib-resultados hidden></div>' +
+        '</div>' +
+        '<div class="home-heroi-arte">' + REDE_HEROI + '</div>' +
       '</header>' +
-      '<div class="bib-resultados" data-bib-resultados hidden></div>' +
-      '<div class="inicio-atalhos">' +
-        atalho("novo-diagrama", "mais", "Novo diagrama", "Começar do zero") +
-        atalho("abrir-atual", "diagrama", "Continuar", atual || "Último diagrama") +
-        atalho("documentar-atual", "livro", "Documentar", "Livro de " + (atual || "este diagrama")) +
-        atalho("nova-estante", "estante", "Nova estante", "Organizar a biblioteca") +
+      '<div class="home-numeros entra" style="--d:1">' + numero(todos.length, todos.length === 1 ? "diagrama" : "diagramas") + numero(totalEquip, "equipamentos") +
+        numero(totalCabos, "cabos") + numero(dados.livros.length, dados.livros.length === 1 ? "livro" : "livros") + numero(dados.paginas.length, dados.paginas.length === 1 ? "página" : "páginas") + '</div>' +
+      '<div class="home-cartoes">' +
+        '<article class="home-cartao home-cartao-diagrama entra" style="--d:2">' +
+          '<div class="home-cartao-topo"><span class="home-cartao-icone" data-ico="diagrama"></span><div><span class="home-cartao-rotulo">Diagramas</span><h2>' + esc(atual || "Seu diagrama") + '</h2></div></div>' +
+          '<button type="button" class="home-cartao-arte" data-acao="abrir-atual" aria-label="Abrir ' + esc(atual) + '">' + miniatura(dAtual, "home-mini") + '</button>' +
+          '<p class="home-cartao-info">' + (dAtual.equipamentos || []).length + ' equipamentos · ' + (dAtual.conexoes || []).length + ' cabos' + ((dAtual.racks || []).length ? ' · ' + dAtual.racks.length + ' racks' : '') + '</p>' +
+          (outros.length ? '<div class="home-outros">' + outros.map(function (n) { return '<button type="button" class="home-chip" data-abrir-projeto="' + esc(n) + '">' + esc(n) + '</button>'; }).join("") + '</div>' : '') +
+          '<div class="home-cartao-acoes"><button type="button" class="primary" data-acao="abrir-atual">Abrir o editor</button><button type="button" class="ghost" data-acao="novo-diagrama">+ Novo diagrama</button><button type="button" class="ghost" data-acao="todos-diagramas">Todos</button></div>' +
+        '</article>' +
+        '<article class="home-cartao home-cartao-biblioteca entra" style="--d:3">' +
+          '<div class="home-cartao-topo"><span class="home-cartao-icone" data-ico="livro"></span><div><span class="home-cartao-rotulo">Biblioteca</span><h2>' + (dados.estantes.length ? dados.estantes.length + (dados.estantes.length === 1 ? " estante" : " estantes") : "Comece a documentar") + '</h2></div></div>' +
+          '<button type="button" class="home-cartao-arte home-lombadas" data-acao="ir-biblioteca" aria-label="Abrir a biblioteca">' +
+            (lombadas.length ? lombadas.map(function (l, i) { return '<span class="home-lombada" style="--cor-livro:' + esc(l.cor) + ';--i:' + i + ';--h:' + (70 + (i * 37) % 30) + '%"><em>' + esc(l.nome) + '</em></span>'; }).join("") : ILUSTRA_ESTANTE) +
+          '</button>' +
+          '<p class="home-cartao-info">' + dados.livros.length + (dados.livros.length === 1 ? " livro" : " livros") + ' · ' + dados.paginas.length + (dados.paginas.length === 1 ? " página" : " páginas") + ' · manuais, procedimentos e POPs</p>' +
+          '<div class="home-cartao-acoes"><button type="button" class="primary" data-acao="ir-biblioteca">Abrir a biblioteca</button><button type="button" class="ghost" data-acao="documentar-atual">Documentar ' + esc(atual || "diagrama") + '</button></div>' +
+        '</article>' +
       '</div>' +
-      '<section class="inicio-bloco"><div class="inicio-bloco-topo"><h2>Diagramas</h2><button type="button" class="ghost small" data-acao="todos-diagramas">Ver todos</button></div>' +
-        '<div class="inicio-diagramas">' + projetos.map(function (n) {
-          var d = app.dadosProjeto(n) || {}, lv = livroDoProjeto(n, false);
-          return '<button type="button" class="inicio-diagrama' + (n === atual ? " atual" : "") + '" data-abrir-projeto="' + esc(n) + '">' + miniatura(d) +
-            '<span class="inicio-diagrama-textos"><strong>' + esc(n) + (n === atual ? ' <em class="inicio-selo">aberto</em>' : '') + '</strong>' +
-            '<small>' + (d.equipamentos || []).length + ' equip. · ' + (d.conexoes || []).length + ' cabos' + ((d.racks || []).length ? ' · ' + d.racks.length + ' racks' : '') + '</small>' +
-            (lv ? '<span class="inicio-tem-doc">📘 documentado</span>' : '') + '</span></button>';
-        }).join("") + '</div></section>' +
-      '<section class="inicio-bloco"><div class="inicio-bloco-topo"><h2>Biblioteca</h2>' + (dados.estantes.length ? '<button type="button" class="primary small" data-acao="nova-estante">+ Estante</button>' : '') + '</div>' +
-        (dados.estantes.length ? '<div class="bib-estantes">' + dados.estantes.map(function (e) {
-          var livros = livrosDa(e.id);
-          return '<article class="bib-estante" style="--cor-estante:' + esc(e.cor || CORES[0]) + '"><button type="button" class="bib-estante-topo" data-ir=\'' + esc(JSON.stringify({ nome: "estante", estanteId: e.id })) + '\'>' +
-            '<strong>' + esc(e.nome) + '</strong><span>' + livros.length + (livros.length === 1 ? " livro" : " livros") + '</span></button>' +
-            '<div class="bib-prateleira">' + (livros.slice(0, 7).map(capaLivro).join("") || '<p class="bib-vazio">Estante vazia.</p>') + '</div></article>';
-        }).join("") + '</div>'
-        : '<div class="bib-vazia">' + ILUSTRA_ESTANTE + '<div><strong>Monte a sua biblioteca</strong><p>Crie estantes (POPs, Procedimentos, Fornecedores), livros dentro delas e páginas com manuais, procedimentos e anexos. A documentação de um diagrama vai para a estante <em>POPs</em>.</p>' +
-          '<div class="inicio-acoes"><button type="button" class="primary" data-acao="nova-estante">Criar a primeira estante</button><button type="button" class="ghost" data-acao="documentar-atual">Documentar ' + esc(atual || "este diagrama") + '</button></div></div></div>') +
-      '</section>' +
-      (recentes.length ? '<section class="inicio-bloco"><div class="inicio-bloco-topo"><h2>Páginas recentes</h2></div><div class="bib-recentes">' + recentes.map(function (p) {
+      (recentes.length ? '<section class="home-bloco entra" style="--d:4"><h3>Continue de onde parou</h3><div class="home-recentes">' + recentes.map(function (p) {
         var l = livro(p.livroId);
-        return '<button type="button" class="bib-recente" data-ir=\'' + esc(JSON.stringify({ nome: "livro", livroId: p.livroId, paginaId: p.id })) + '\' style="--cor-livro:' + esc(l ? l.cor : CORES[0]) + '"><strong>' + esc(p.titulo) + '</strong><small>' + esc(l ? l.nome : "") + ' · ' + esc(dataLegivel(p.atualizado)) + '</small></button>';
+        return '<button type="button" class="home-recente" data-ir=\'' + esc(JSON.stringify({ nome: "livro", livroId: p.livroId, paginaId: p.id })) + '\' style="--cor-livro:' + esc(l ? l.cor : CORES[0]) + '"><span class="home-recente-livro">' + esc(l ? l.nome : "") + '</span><strong>' + esc(p.titulo) + '</strong><small>atualizada em ' + esc(dataLegivel(p.atualizado)) + '</small></button>';
       }).join("") + '</div></section>' : '') +
-      (usuario() && !nuvemOk ? '<p class="bib-nota"><span></span>Biblioteca salva só neste navegador: falta criar a tabela da biblioteca no Supabase.</p>' : '');
+      (usuario() && !nuvemOk ? '<p class="bib-nota entra" style="--d:5"><span></span>Biblioteca salva só neste navegador: falta criar a tabela da biblioteca no Supabase.</p>' : '') +
+      '</div>';
+    contarNumeros();
+  }
+
+  // Tela da Biblioteca: estantes com os livros nas prateleiras.
+  function renderBiblioteca() {
+    raiz.innerHTML = trilha([{ nome: "Início", ir: { nome: "inicio" } }, { nome: "Biblioteca" }]) +
+      '<div class="bib-cabecalho"><div><h1>Biblioteca</h1><p>' + dados.estantes.length + (dados.estantes.length === 1 ? " estante" : " estantes") + ' · ' + dados.livros.length + (dados.livros.length === 1 ? " livro" : " livros") + ' · ' + dados.paginas.length + (dados.paginas.length === 1 ? " página" : " páginas") + '</p></div>' +
+      '<div class="inicio-acoes"><label class="inicio-busca bib-busca-pequena"><span class="paleta-lupa" aria-hidden="true"></span><input type="search" data-bib-busca placeholder="Buscar na biblioteca" aria-label="Buscar na biblioteca"></label>' +
+      (dados.estantes.length ? '<button type="button" class="primary small" data-acao="nova-estante">+ Estante</button>' : '') + '</div></div>' +
+      '<div class="bib-resultados" data-bib-resultados hidden></div>' +
+      (dados.estantes.length ? '<div class="bib-estantes">' + dados.estantes.map(function (e, i) {
+        var livros = livrosDa(e.id);
+        return '<article class="bib-estante entra" style="--cor-estante:' + esc(e.cor || CORES[0]) + ';--d:' + i + '"><button type="button" class="bib-estante-topo" data-ir=\'' + esc(JSON.stringify({ nome: "estante", estanteId: e.id })) + '\'>' +
+          '<strong>' + esc(e.nome) + '</strong><span>' + livros.length + (livros.length === 1 ? " livro" : " livros") + '</span></button>' +
+          '<div class="bib-prateleira">' + (livros.slice(0, 8).map(capaLivro).join("") || '<p class="bib-vazio">Estante vazia.</p>') + '</div></article>';
+      }).join("") + '</div>'
+      : '<div class="bib-vazia">' + ILUSTRA_ESTANTE + '<div><strong>Monte a sua biblioteca</strong><p>Crie estantes (POPs, Procedimentos, Fornecedores), livros dentro delas e páginas com manuais, procedimentos e anexos. A documentação de um diagrama vai para a estante <em>POPs</em>.</p>' +
+        '<div class="inicio-acoes"><button type="button" class="primary" data-acao="nova-estante">Criar a primeira estante</button><button type="button" class="ghost" data-acao="documentar-atual">Documentar o diagrama aberto</button></div></div></div>');
   }
 
   function renderEstante() {
     var e = estante(tela.estanteId), livros = livrosDa(e.id);
-    raiz.innerHTML = trilha([{ nome: "Início", ir: { nome: "inicio" } }, { nome: e.nome }]) +
+    raiz.innerHTML = trilha([{ nome: "Início", ir: { nome: "inicio" } }, { nome: "Biblioteca", ir: { nome: "biblioteca" } }, { nome: e.nome }]) +
       '<div class="bib-cabecalho" style="--cor-estante:' + esc(e.cor) + '"><div><h1>' + esc(e.nome) + '</h1><p>' + esc(e.descricao || livros.length + (livros.length === 1 ? " livro" : " livros")) + '</p></div>' +
       '<div class="inicio-acoes"><button type="button" class="ghost small" data-acao="renomear-estante">Renomear</button><button type="button" class="ghost small danger-texto" data-acao="excluir-estante">Excluir estante</button>' +
       '<button type="button" class="primary small" data-acao="novo-livro">+ Livro</button></div></div>' +
@@ -303,7 +357,7 @@
             '<button type="button" class="ghost small" data-abrir-anexo="' + i + '">Abrir</button><button type="button" class="ghost small danger-texto" data-remover-anexo="' + i + '" aria-label="Remover anexo">×</button></div>';
         }).join("") + '</div>' : '');
     }
-    raiz.innerHTML = trilha([{ nome: "Início", ir: { nome: "inicio" } }, { nome: e ? e.nome : "Sem estante", ir: e ? { nome: "estante", estanteId: e.id } : null }, { nome: l.nome }]) +
+    raiz.innerHTML = trilha([{ nome: "Início", ir: { nome: "inicio" } }, { nome: "Biblioteca", ir: { nome: "biblioteca" } }, { nome: e ? e.nome : "Sem estante", ir: e ? { nome: "estante", estanteId: e.id } : null }, { nome: l.nome }]) +
       '<div class="bib-livro-layout">' +
         '<aside class="bib-indice" style="--cor-livro:' + esc(l.cor) + '"><div class="bib-indice-capa"><strong>' + esc(l.nome) + '</strong>' + (l.descricao ? '<small>' + esc(l.descricao) + '</small>' : '') + '</div>' +
           (l.projeto ? '<button type="button" class="ghost small bib-abrir-diagrama" data-abrir-projeto="' + esc(l.projeto) + '">Abrir o diagrama</button>' : '') +
@@ -332,7 +386,15 @@
   }
 
   // ---- ações -------------------------------------------------------------------------
-  function perguntar(texto, padrao) { var v = window.prompt(texto, padrao || ""); return v === null ? null : v.trim(); }
+  // Perguntas na janela do Grafo (bonita e no tema), não na caixa do navegador.
+  function perguntar(texto, padrao, titulo) {
+    if (app.janela) return app.janela({ title: titulo || "Biblioteca", message: texto, defaultValue: padrao || "", kind: "prompt", confirmText: "Salvar" }).then(function (v) { return v ? String(v).trim() : null; });
+    var v = window.prompt(texto, padrao || ""); return Promise.resolve(v === null ? null : v.trim());
+  }
+  function confirmar(texto, titulo, botao) {
+    if (app.janela) return app.janela({ title: titulo || "Confirmar", message: texto, kind: "confirm", confirmText: botao || "Excluir" }).then(function (v) { return !!v; });
+    return Promise.resolve(window.confirm(texto));
+  }
   async function anexar(arquivo) {
     var p = pagina(tela.paginaId) || paginasDo(tela.livroId)[0];
     var sb = cliente(), uid = usuario();
@@ -361,7 +423,7 @@
     if (sb && caminhos.length) sb.storage.from(BUCKET).remove(caminhos);
   }
 
-  raiz.addEventListener("click", function (ev) {
+  raiz.addEventListener("click", async function (ev) {
     var ir = ev.target.closest("[data-ir]");
     if (ir) { try { irPara(JSON.parse(ir.getAttribute("data-ir"))); } catch (e) {} return; }
     var proj = ev.target.closest("[data-abrir-projeto]");
@@ -372,37 +434,38 @@
     if (rm) {
       var pr = pagina(tela.paginaId) || paginasDo(tela.livroId)[0];
       var a = pr && pr.anexos[Number(rm.getAttribute("data-remover-anexo"))];
-      if (a && window.confirm('Remover o anexo "' + a.nome + '"?')) { pr.anexos = pr.anexos.filter(function (x) { return x !== a; }); removerArquivos([a.caminho]); salvar(); render(); }
+      if (a && await confirmar('Remover o anexo "' + a.nome + '"?')) { pr.anexos = pr.anexos.filter(function (x) { return x !== a; }); removerArquivos([a.caminho]); salvar(); render(); }
       return;
     }
     var b = ev.target.closest("[data-acao]");
     if (!b) return;
     var acao = b.getAttribute("data-acao"), nome;
     if (acao === "abrir-atual") mostrarEditor();
+    else if (acao === "ir-biblioteca") irPara({ nome: "biblioteca" });
     else if (acao === "documentar-atual") abrirLivroDoProjeto();
     else if (acao === "novo-diagrama") { mostrarEditor(); var bn = document.getElementById("btnNovoProjeto"); if (bn) bn.click(); }
     else if (acao === "todos-diagramas") { if (window.GrafoComandos && window.GrafoComandos.galeria) window.GrafoComandos.galeria(); }
-    else if (acao === "nova-estante" && (nome = perguntar("Nome da estante (ex.: POPs, Procedimentos, Fornecedores):"))) {
+    else if (acao === "nova-estante" && (nome = await perguntar("Nome da estante (ex.: POPs, Procedimentos, Fornecedores):"))) {
       var e = estanteChamada(nome, true); salvar(); irPara({ nome: "estante", estanteId: e.id });
-    } else if (acao === "renomear-estante" && (nome = perguntar("Novo nome da estante:", estante(tela.estanteId).nome))) {
+    } else if (acao === "renomear-estante" && (nome = await perguntar("Novo nome da estante:", estante(tela.estanteId).nome))) {
       estante(tela.estanteId).nome = nome; salvar(); render();
     } else if (acao === "excluir-estante") {
       var es = estante(tela.estanteId), lvs = livrosDa(es.id);
-      if (!window.confirm('Excluir a estante "' + es.nome + '"' + (lvs.length ? " e os " + lvs.length + " livros dela (com todas as páginas)" : "") + "?")) return;
+      if (!await confirmar('Excluir a estante "' + es.nome + '"' + (lvs.length ? " e os " + lvs.length + " livros dela (com todas as páginas)" : "") + "?")) return;
       var ids = lvs.map(function (l) { return l.id; });
       removerArquivos(dados.paginas.filter(function (p) { return ids.indexOf(p.livroId) >= 0; }).reduce(function (t, p) { return t.concat((p.anexos || []).map(function (a) { return a.caminho; })); }, []));
       dados.paginas = dados.paginas.filter(function (p) { return ids.indexOf(p.livroId) < 0; });
       dados.livros = dados.livros.filter(function (l) { return l.estanteId !== es.id; });
       dados.estantes = dados.estantes.filter(function (x) { return x.id !== es.id; });
-      salvar(); irPara({ nome: "inicio" });
-    } else if (acao === "novo-livro" && (nome = perguntar("Nome do livro (ex.: POP Centro, Manuais Datacom):"))) {
+      salvar(); irPara({ nome: "biblioteca" });
+    } else if (acao === "novo-livro" && (nome = await perguntar("Nome do livro (ex.: POP Centro, Manuais Datacom):"))) {
       var l = { id: novoId("lv"), estanteId: tela.estanteId, nome: nome, descricao: "", projeto: "", cor: CORES[dados.livros.length % CORES.length] };
       dados.livros.push(l); salvar(); irPara({ nome: "livro", livroId: l.id });
-    } else if (acao === "renomear-livro" && (nome = perguntar("Novo nome do livro:", livro(tela.livroId).nome))) {
+    } else if (acao === "renomear-livro" && (nome = await perguntar("Novo nome do livro:", livro(tela.livroId).nome))) {
       livro(tela.livroId).nome = nome; salvar(); render();
     } else if (acao === "excluir-livro") {
       var lv = livro(tela.livroId), pgs = paginasDo(lv.id);
-      if (!window.confirm('Excluir o livro "' + lv.nome + '"' + (pgs.length ? " e as " + pgs.length + " páginas dele" : "") + "?")) return;
+      if (!await confirmar('Excluir o livro "' + lv.nome + '"' + (pgs.length ? " e as " + pgs.length + " páginas dele" : "") + "?")) return;
       removerArquivos(pgs.reduce(function (t, p) { return t.concat((p.anexos || []).map(function (a) { return a.caminho; })); }, []));
       dados.paginas = dados.paginas.filter(function (p) { return p.livroId !== lv.id; });
       dados.livros = dados.livros.filter(function (x) { return x.id !== lv.id; });
@@ -416,7 +479,7 @@
     } else if (acao === "cancelar-edicao") { tela.editando = false; render(); }
     else if (acao === "excluir-pagina") {
       var pe = pagina(tela.paginaId) || paginasDo(tela.livroId)[0];
-      if (!pe || !window.confirm('Excluir a página "' + pe.titulo + '"?')) return;
+      if (!pe || !await confirmar('Excluir a página "' + pe.titulo + '"?')) return;
       removerArquivos((pe.anexos || []).map(function (a) { return a.caminho; }));
       dados.paginas = dados.paginas.filter(function (x) { return x !== pe; });
       salvar(); tela = { nome: "livro", livroId: tela.livroId }; render();

@@ -13,16 +13,19 @@ const comoUsuario = { antes: () => localStorage.removeItem("grafo-vista-inicial"
 test("abre no Início; estante, livro e página; busca; volta ao diagrama", async () => {
   const pagina = await abrirPagina(navegador, site, Object.assign({ viewport: { width: 1400, height: 900 } }, comoUsuario));
   await esperarEditor(pagina);
-  await pagina.waitForSelector(".inicio-heroi h1");
+  await pagina.waitForSelector(".home-heroi h1");
   assert.equal(await pagina.getAttribute("body", "data-vista"), "inicio");
   assert.equal(await pagina.isVisible(".sidebar"), false, "Início fica separado do editor");
-  assert.match(await pagina.textContent(".inicio-diagramas"), /Projeto Ação/);
+  assert.match(await pagina.textContent(".home-cartao-diagrama"), /Projeto Ação/);
   // Estante → livro → página.
-  pagina.once("dialog", d => d.accept("Procedimentos"));
+  await pagina.click('[data-vista-ir="biblioteca"]');
   await pagina.click('.bib-vazia [data-acao="nova-estante"]');
+  await pagina.fill("#modalInput", "Procedimentos");
+  await pagina.click("[data-modal-confirm]");
   await pagina.waitForSelector(".bib-cabecalho h1");
-  pagina.once("dialog", d => d.accept("Configurar OLT"));
   await pagina.click('[data-acao="novo-livro"]');
+  await pagina.fill("#modalInput", "Configurar OLT");
+  await pagina.click("[data-modal-confirm]");
   await pagina.waitForSelector(".bib-indice");
   await pagina.click('.bib-boas-vindas [data-acao="nova-pagina"]');
   await pagina.waitForSelector("[data-bib-form]");

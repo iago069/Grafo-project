@@ -223,8 +223,9 @@
     esconderModal(modalRef.backdrop);
     if (modalRef.resolver) {
       var resposta = valor;
+      // Pergunta com texto: Cancelar (ou Esc) responde null, não o que foi digitado.
       if (modalRef.mode === "prompt") {
-        resposta = modalRef.input.value.trim();
+        resposta = valor === false || valor == null ? null : modalRef.input.value.trim();
       }
       modalRef.resolver(resposta);
       modalRef.resolver = null;

@@ -2515,8 +2515,9 @@
     esconderModal(modalRef.backdrop);
     if (modalRef.resolver) {
       var resposta = valor;
+      // Pergunta com texto: Cancelar (ou Esc) responde null, não o que foi digitado.
       if (modalRef.mode === "prompt") {
-        resposta = modalRef.input.value.trim();
+        resposta = valor === false || valor == null ? null : modalRef.input.value.trim();
       }
       modalRef.resolver(resposta);
       modalRef.resolver = null;
@@ -5208,6 +5209,8 @@
       return new XMLSerializer().serializeToString(copia);
     },
     avisar: function (texto) { avisar(texto); },
+    // Janela do próprio Grafo (no lugar do prompt/confirm do navegador): { title, message, kind: "prompt"|"confirm", defaultValue, confirmText }.
+    janela: function (opcoes) { return abrirModal(opcoes); },
     // Paleta de comandos (comandos.js): abrir o editor de um equipamento e trocar de projeto.
     editarEquipamento: function (id) { var eq = estado.equipamentos.find(function (e) { return e.id === id; }); if (eq) abrirEditorEquipamento(eq); return !!eq; },
     idDoNo: function (no) { return idEquipamentoDoNode(no); },
