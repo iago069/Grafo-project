@@ -41,7 +41,7 @@ test("menus, paleta, galeria e documentos ficam por cima, antes e depois de troc
     assert.equal(await visivelPorCima(pagina, ".galeria-busca"), true, rodada + ": galeria");
     await pagina.keyboard.press("Escape");
     await pagina.click('[data-vista-ir="inicio"]');
-    assert.equal(await visivelPorCima(pagina, "[data-bib-busca]"), true, rodada + ": início");
+    assert.equal(await visivelPorCima(pagina, ".vitrine-heroi h1"), true, rodada + ": início");
     await pagina.click('[data-vista-ir="editor"]');
     await pagina.waitForSelector("#canvas svg g.node");
   }

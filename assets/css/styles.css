@@ -2723,3 +2723,80 @@ body[data-vista="inicio"] .project-tools { display: none; }
   100% { transform: translateY(-60px) rotate(-14deg) scale(1.18); opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .bib-livro, .bib-livro:hover { transform: none; transition: none; } }
+
+/* ==== Início em estilo vitrine: banner cheio e colorido + dois cartões grandes ==== */
+body[data-vista="inicio"] .inicio:has(.vitrine) { max-width: 1360px; padding-top: 14px; }
+.vitrine { display: flex; flex-direction: column; gap: 22px; }
+.vitrine-heroi {
+  position: relative; overflow: hidden; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); align-items: center;
+  min-height: min(72vh, 620px); padding: 56px 0 56px 64px; border-radius: 32px; border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(125deg, #0B2A3F 0%, #123C5E 35%, #1D2A6B 65%, #3A1F5C 100%);
+  box-shadow: 0 50px 120px -50px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  animation: vitrineEntra 0.9s var(--ease-out) both;
+}
+@keyframes vitrineEntra { from { opacity: 0; transform: translateY(24px) scale(0.98); } to { opacity: 1; transform: none; } }
+.vitrine-fundo { position: absolute; inset: 0; z-index: -1; overflow: hidden; }
+.vitrine-fundo::after { content: ""; position: absolute; inset: 0; opacity: 0.35;
+  background: linear-gradient(rgba(255,255,255,0.07) 1px, transparent 1px) 0 0 / 32px 32px, linear-gradient(90deg, rgba(255,255,255,0.07) 1px, transparent 1px) 0 0 / 32px 32px;
+  -webkit-mask-image: radial-gradient(70% 80% at 70% 50%, #000, transparent 80%); mask-image: radial-gradient(70% 80% at 70% 50%, #000, transparent 80%); }
+.vb { position: absolute; border-radius: 50%; filter: blur(60px); opacity: 0.75; }
+.vb1 { width: 520px; height: 520px; left: -120px; top: -160px; background: #1FC7B0; animation: vbMove 12s ease-in-out infinite alternate; }
+.vb2 { width: 480px; height: 480px; right: -80px; bottom: -200px; background: #FF9F43; opacity: 0.55; animation: vbMove 14s ease-in-out infinite alternate-reverse; }
+.vb3 { width: 420px; height: 420px; right: 28%; top: -180px; background: #7B61FF; opacity: 0.6; animation: vbMove 16s ease-in-out infinite alternate; }
+@keyframes vbMove { from { transform: translate(0, 0) scale(1); } to { transform: translate(60px, 40px) scale(1.15); } }
+.vitrine-texto { position: relative; z-index: 1; color: #fff; }
+.vitrine-sobre { display: inline-block; margin-bottom: 10px; font: 700 0.85rem var(--mono); letter-spacing: 0.22em; text-transform: uppercase; color: #8FF3E3;
+  animation: homeEntra 0.7s var(--ease-out) 0.15s both; }
+.vitrine-heroi h1 { margin: 0 0 18px; font: 800 clamp(3rem, 6.2vw, 5.6rem)/0.95 var(--display); letter-spacing: -0.045em; text-transform: uppercase;
+  background: linear-gradient(100deg, #FFFFFF 0%, #FFFFFF 45%, #FFD38A 60%, #8FF3E3 80%, #FFFFFF 100%); background-size: 220% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: homeEntra 0.8s var(--ease-out) 0.25s both, homeBrilho 7s ease-in-out 1.2s infinite; overflow-wrap: anywhere; }
+.vitrine-heroi p { margin: 0 0 30px; max-width: 34ch; font-size: 1.2rem; line-height: 1.5; color: rgba(255, 255, 255, 0.78); animation: homeEntra 0.8s var(--ease-out) 0.35s both; }
+.vitrine-botoes { display: flex; flex-wrap: wrap; gap: 12px; animation: homeEntra 0.8s var(--ease-out) 0.45s both; }
+.vitrine-btn { display: inline-flex; align-items: center; gap: 10px; min-height: 54px; padding: 0 26px; border-radius: 16px; cursor: pointer;
+  font: 700 1.02rem var(--sans); color: #fff; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); transition: transform 0.25s var(--ease-out), background 0.2s ease, box-shadow 0.25s ease; }
+.vitrine-btn:hover { transform: translateY(-2px); background: rgba(255, 255, 255, 0.18); }
+.vitrine-btn.principal { color: #1B1F2A; border: 0; background: linear-gradient(135deg, #FFD38A, #FF9F43); box-shadow: 0 16px 40px -14px rgba(255, 159, 67, 0.8); }
+.vitrine-btn.principal:hover { box-shadow: 0 22px 50px -14px rgba(255, 159, 67, 0.95); background: linear-gradient(135deg, #FFE0A8, #FFAA55); }
+.vitrine-btn span { transition: transform 0.25s var(--ease-out); }
+.vitrine-btn:hover span { transform: translateX(4px); }
+.vitrine-arte { position: relative; perspective: 1100px; padding-right: 30px; }
+.vitrine-arte .heroi-rede { transform: rotateY(-14deg) rotateX(8deg) scale(1.08); transform-origin: 40% 50%; animation: vitrineFlutua 7s ease-in-out infinite; filter: drop-shadow(0 30px 40px rgba(0, 0, 0, 0.45)); }
+@keyframes vitrineFlutua { 0%, 100% { transform: rotateY(-14deg) rotateX(8deg) scale(1.08) translateY(0); } 50% { transform: rotateY(-10deg) rotateX(6deg) scale(1.08) translateY(-12px); } }
+.vitrine-arte .hr-cabo { stroke: rgba(143, 243, 227, 0.75); stroke-width: 2; }
+.vitrine-arte .hr-corpo { fill: rgba(10, 30, 50, 0.85); }
+.vitrine-arte .hr-pacote { fill: #FFD38A; }
+
+.vitrine-cartoes { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+.vitrine-cartao { position: relative; display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: 26px; cursor: pointer; text-align: left; color: var(--text);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bg-panel) 96%, transparent), var(--bg-panel-2)); border: 1px solid var(--line-soft);
+  box-shadow: 0 30px 60px -36px rgba(0, 0, 0, 0.8); animation: homeEntra 0.8s var(--ease-out) both; transition: transform 0.35s var(--ease-out), box-shadow 0.35s ease, border-color 0.3s ease; }
+.vitrine-cartao:nth-child(1) { animation-delay: 0.35s; } .vitrine-cartao:nth-child(2) { animation-delay: 0.45s; }
+.vitrine-cartao:hover { transform: translateY(-6px); border-color: color-mix(in srgb, var(--teal) 50%, transparent); box-shadow: 0 40px 80px -36px rgba(0, 0, 0, 0.9), 0 0 0 1px color-mix(in srgb, var(--teal) 25%, transparent); }
+.vitrine-cartao.home-cartao-biblioteca:hover { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+.vitrine-imagem { display: block; height: 240px; position: relative; overflow: hidden;
+  background: radial-gradient(80% 100% at 50% 0%, color-mix(in srgb, var(--teal) 18%, transparent), transparent 70%),
+    linear-gradient(rgba(124,170,191,0.08) 1px, transparent 1px) 0 0 / 16px 16px, linear-gradient(90deg, rgba(124,170,191,0.08) 1px, transparent 1px) 0 0 / 16px 16px, color-mix(in srgb, var(--bg) 75%, transparent); }
+.home-cartao-biblioteca .vitrine-imagem { background: radial-gradient(80% 100% at 50% 0%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%), color-mix(in srgb, var(--bg) 75%, transparent); }
+.vitrine-imagem .home-mini { height: 240px; padding: 18px 24px; transition: transform 0.6s var(--ease-out); }
+.vitrine-cartao:hover .home-mini { transform: scale(1.05); }
+.vitrine-imagem.home-lombadas { display: flex; height: 240px; padding: 30px 30px 0; border-bottom: 10px solid color-mix(in srgb, var(--text) 13%, transparent); }
+.vitrine-imagem .home-lombada { flex-basis: 40px; }
+.vitrine-legenda { display: flex; flex-direction: column; gap: 4px; padding: 22px 26px 26px; }
+.vitrine-rotulo { font: 700 0.7rem var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--teal); }
+.home-cartao-biblioteca .vitrine-rotulo { color: var(--accent); }
+.vitrine-legenda strong { font: 700 1.7rem var(--display); letter-spacing: -0.02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vitrine-legenda small { color: var(--text-dim); font-size: 0.92rem; }
+.vitrine-seta { position: absolute; right: 24px; bottom: 26px; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%;
+  font-size: 1.3rem; color: var(--text); background: color-mix(in srgb, var(--text) 8%, transparent); border: 1px solid var(--line-soft); transition: transform 0.3s var(--ease-out), background 0.25s ease, color 0.25s ease; }
+.vitrine-cartao:hover .vitrine-seta { transform: translateX(4px); background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+
+@media (max-width: 980px) {
+  .vitrine-heroi { grid-template-columns: 1fr; padding: 36px 26px; min-height: 0; }
+  .vitrine-arte { order: -1; max-width: 520px; padding: 0; }
+  .vitrine-cartoes { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vitrine-heroi, .vb, .vitrine-arte .heroi-rede, .vitrine-heroi h1, .vitrine-cartao, .vitrine-sobre, .vitrine-heroi p, .vitrine-botoes { animation: none !important; }
+}

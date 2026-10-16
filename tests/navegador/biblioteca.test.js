@@ -36,8 +36,8 @@ test("abre no Início; estante, livro e página; busca; volta ao diagrama", asyn
   await pagina.waitForSelector(".bib-texto ol li");
   assert.match(await pagina.textContent(".bib-indice"), /Acesso/);
   assert.match(await pagina.textContent(".bib-trilha"), /Procedimentos/);
-  // Busca no Início acha a página pelo conteúdo.
-  await pagina.click('[data-vista-ir="inicio"]');
+  // Busca da Biblioteca acha a página pelo conteúdo.
+  await pagina.click('[data-vista-ir="biblioteca"]');
   await pagina.fill("[data-bib-busca]", "display version");
   await pagina.waitForSelector(".bib-resultado");
   assert.match(await pagina.textContent(".bib-resultados"), /Primeiro acesso/);

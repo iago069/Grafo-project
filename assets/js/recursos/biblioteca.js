@@ -253,54 +253,37 @@
     var nome = (document.getElementById("sidebarUsuarioNome") || {}).textContent || "";
     var hora = new Date().getHours();
     var saudacao = hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite";
-    var todos = app.nomesProjetos ? app.nomesProjetos() : [];
     var atual = app.projetoAtual ? app.projetoAtual() : "";
     var dAtual = app.dadosProjeto(atual) || {};
-    var totalEquip = todos.reduce(function (t, n) { var d = app.dadosProjeto(n) || {}; return t + (d.equipamentos || []).length; }, 0);
-    var totalCabos = todos.reduce(function (t, n) { var d = app.dadosProjeto(n) || {}; return t + (d.conexoes || []).length; }, 0);
-    var recentes = dados.paginas.slice().sort(function (a, b) { return String(b.atualizado).localeCompare(String(a.atualizado)); }).slice(0, 4);
-    var outros = todos.filter(function (n) { return n !== atual; }).slice(0, 3);
-    var lombadas = dados.livros.slice(0, 7);
-    function numero(valor, rotulo) { return '<div class="home-numero"><strong data-contar="' + valor + '">0</strong><span>' + rotulo + '</span></div>'; }
+    var lombadas = dados.livros.slice(0, 9);
     raiz.innerHTML =
-      '<div class="home">' +
-      '<header class="home-heroi entra" style="--d:0">' +
-        '<div class="home-heroi-luz" aria-hidden="true"></div>' +
-        '<div class="home-heroi-texto">' +
-          '<span class="home-selo"><span class="home-selo-ponto"></span>Grafo · documentação de rede</span>' +
-          '<h1><span class="home-saudacao">' + esc(saudacao) + '</span>' + (nome && nome !== "Sem login" ? ', <span class="home-nome">' + esc(nome) + '</span>' : '') + '</h1>' +
-          '<p>Desenhe a rede, monte os racks e documente cada POP, tudo num lugar só.</p>' +
-          '<label class="home-busca"><span class="paleta-lupa" aria-hidden="true"></span><input type="search" data-bib-busca placeholder="Buscar páginas, livros e estantes…" aria-label="Buscar na biblioteca"><kbd>Ctrl K</kbd></label>' +
-          '<div class="bib-resultados" data-bib-resultados hidden></div>' +
+      '<div class="vitrine">' +
+        '<header class="home-heroi vitrine-heroi">' +
+          '<div class="vitrine-fundo" aria-hidden="true"><span class="vb vb1"></span><span class="vb vb2"></span><span class="vb vb3"></span></div>' +
+          '<div class="vitrine-texto">' +
+            '<span class="vitrine-sobre">' + esc(saudacao) + '</span>' +
+            '<h1>' + (nome && nome !== "Sem login" ? esc(nome) : "Bem-vindo") + '</h1>' +
+            '<p>Sua rede inteira, num lugar só. Desenhe, monte os racks e documente cada POP.</p>' +
+            '<div class="vitrine-botoes"><button type="button" class="vitrine-btn principal" data-acao="abrir-atual">Abrir diagrama<span aria-hidden="true">→</span></button>' +
+            '<button type="button" class="vitrine-btn" data-acao="ir-biblioteca">Biblioteca</button></div>' +
+          '</div>' +
+          '<div class="vitrine-arte">' + REDE_HEROI + '</div>' +
+        '</header>' +
+        '<div class="vitrine-cartoes">' +
+          '<button type="button" class="vitrine-cartao home-cartao-diagrama" data-acao="abrir-atual">' +
+            '<span class="vitrine-imagem">' + miniatura(dAtual, "home-mini") + '</span>' +
+            '<span class="vitrine-legenda"><span class="vitrine-rotulo">Diagramas</span><strong>' + esc(atual || "Seu diagrama") + '</strong>' +
+              '<small>' + (dAtual.equipamentos || []).length + ' equipamentos · ' + (dAtual.conexoes || []).length + ' cabos</small></span>' +
+            '<span class="vitrine-seta" aria-hidden="true">→</span></button>' +
+          '<button type="button" class="vitrine-cartao home-cartao-biblioteca" data-acao="ir-biblioteca">' +
+            '<span class="vitrine-imagem home-lombadas">' +
+              (lombadas.length ? lombadas.map(function (l, i) { return '<span class="home-lombada" style="--cor-livro:' + esc(l.cor) + ';--i:' + i + ';--h:' + (62 + (i * 37) % 34) + '%"><em>' + esc(l.nome) + '</em></span>'; }).join("") : ILUSTRA_ESTANTE) +
+            '</span>' +
+            '<span class="vitrine-legenda"><span class="vitrine-rotulo">Biblioteca</span><strong>' + (dados.livros.length ? dados.livros.length + (dados.livros.length === 1 ? " livro" : " livros") : "Comece a documentar") + '</strong>' +
+              '<small>Manuais, procedimentos e a documentação dos POPs</small></span>' +
+            '<span class="vitrine-seta" aria-hidden="true">→</span></button>' +
         '</div>' +
-        '<div class="home-heroi-arte">' + REDE_HEROI + '</div>' +
-      '</header>' +
-      '<div class="home-numeros entra" style="--d:1">' + numero(todos.length, todos.length === 1 ? "diagrama" : "diagramas") + numero(totalEquip, "equipamentos") +
-        numero(totalCabos, "cabos") + numero(dados.livros.length, dados.livros.length === 1 ? "livro" : "livros") + numero(dados.paginas.length, dados.paginas.length === 1 ? "página" : "páginas") + '</div>' +
-      '<div class="home-cartoes">' +
-        '<article class="home-cartao home-cartao-diagrama entra" style="--d:2">' +
-          '<div class="home-cartao-topo"><span class="home-cartao-icone" data-ico="diagrama"></span><div><span class="home-cartao-rotulo">Diagramas</span><h2>' + esc(atual || "Seu diagrama") + '</h2></div></div>' +
-          '<button type="button" class="home-cartao-arte" data-acao="abrir-atual" aria-label="Abrir ' + esc(atual) + '">' + miniatura(dAtual, "home-mini") + '</button>' +
-          '<p class="home-cartao-info">' + (dAtual.equipamentos || []).length + ' equipamentos · ' + (dAtual.conexoes || []).length + ' cabos' + ((dAtual.racks || []).length ? ' · ' + dAtual.racks.length + ' racks' : '') + '</p>' +
-          (outros.length ? '<div class="home-outros">' + outros.map(function (n) { return '<button type="button" class="home-chip" data-abrir-projeto="' + esc(n) + '">' + esc(n) + '</button>'; }).join("") + '</div>' : '') +
-          '<div class="home-cartao-acoes"><button type="button" class="primary" data-acao="abrir-atual">Abrir o editor</button><button type="button" class="ghost" data-acao="novo-diagrama">+ Novo diagrama</button><button type="button" class="ghost" data-acao="todos-diagramas">Todos</button></div>' +
-        '</article>' +
-        '<article class="home-cartao home-cartao-biblioteca entra" style="--d:3">' +
-          '<div class="home-cartao-topo"><span class="home-cartao-icone" data-ico="livro"></span><div><span class="home-cartao-rotulo">Biblioteca</span><h2>' + (dados.estantes.length ? dados.estantes.length + (dados.estantes.length === 1 ? " estante" : " estantes") : "Comece a documentar") + '</h2></div></div>' +
-          '<button type="button" class="home-cartao-arte home-lombadas" data-acao="ir-biblioteca" aria-label="Abrir a biblioteca">' +
-            (lombadas.length ? lombadas.map(function (l, i) { return '<span class="home-lombada" style="--cor-livro:' + esc(l.cor) + ';--i:' + i + ';--h:' + (70 + (i * 37) % 30) + '%"><em>' + esc(l.nome) + '</em></span>'; }).join("") : ILUSTRA_ESTANTE) +
-          '</button>' +
-          '<p class="home-cartao-info">' + dados.livros.length + (dados.livros.length === 1 ? " livro" : " livros") + ' · ' + dados.paginas.length + (dados.paginas.length === 1 ? " página" : " páginas") + ' · manuais, procedimentos e POPs</p>' +
-          '<div class="home-cartao-acoes"><button type="button" class="primary" data-acao="ir-biblioteca">Abrir a biblioteca</button><button type="button" class="ghost" data-acao="documentar-atual">Documentar ' + esc(atual || "diagrama") + '</button></div>' +
-        '</article>' +
-      '</div>' +
-      (recentes.length ? '<section class="home-bloco entra" style="--d:4"><h3>Continue de onde parou</h3><div class="home-recentes">' + recentes.map(function (p) {
-        var l = livro(p.livroId);
-        return '<button type="button" class="home-recente" data-ir=\'' + esc(JSON.stringify({ nome: "livro", livroId: p.livroId, paginaId: p.id })) + '\' style="--cor-livro:' + esc(l ? l.cor : CORES[0]) + '"><span class="home-recente-livro">' + esc(l ? l.nome : "") + '</span><strong>' + esc(p.titulo) + '</strong><small>atualizada em ' + esc(dataLegivel(p.atualizado)) + '</small></button>';
-      }).join("") + '</div></section>' : '') +
-      (usuario() && !nuvemOk ? '<p class="bib-nota entra" style="--d:5"><span></span>Biblioteca salva só neste navegador: falta criar a tabela da biblioteca no Supabase.</p>' : '') +
       '</div>';
-    contarNumeros();
   }
 
   // Tela da Biblioteca: estantes com os livros nas prateleiras.
