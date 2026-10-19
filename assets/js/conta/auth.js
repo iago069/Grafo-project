@@ -343,6 +343,8 @@
     loadScript("./assets/js/recursos/comandos.js").catch(function (error) { console.error(error); });
     // Início e Biblioteca (documentação separada dos diagramas).
     loadScript("./assets/js/recursos/biblioteca.js").catch(function (error) { console.error(error); });
+    // Gerar diagrama a partir de texto colado (Grafana, NetBox, Junos).
+    loadScript("./assets/js/recursos/leitor.js").catch(function (error) { console.error(error); });
     if (convidado) { prepararBotoesQuePedemLogin(); return; }
     if (equipe) equipe.iniciarInterface();
     // Painel do administrador: só aparece para contas em grafo_admins.
@@ -521,7 +523,7 @@
   function keepEditorOffline() {
     if (!("serviceWorker" in navigator) || !navigator.serviceWorker.controller) return;
     var urls = EDITOR_SCRIPTS.map(function (script) { return script[0]; })
-      .concat(["./assets/js/recursos/primeiros-passos.js", "./assets/js/recursos/compartilhar.js", "./assets/js/recursos/historico.js", "./assets/js/recursos/etiquetas.js", "./assets/js/recursos/integracao.js", "./assets/js/recursos/racks.js", "./assets/js/recursos/comandos.js", "./assets/js/recursos/biblioteca.js", "./assets/js/recursos/admin.js"]);
+      .concat(["./assets/js/recursos/primeiros-passos.js", "./assets/js/recursos/compartilhar.js", "./assets/js/recursos/historico.js", "./assets/js/recursos/etiquetas.js", "./assets/js/recursos/integracao.js", "./assets/js/recursos/racks.js", "./assets/js/recursos/comandos.js", "./assets/js/recursos/biblioteca.js", "./assets/js/recursos/leitor.js", "./assets/js/recursos/admin.js"]);
     if (window.GrafoApp && window.GrafoApp.arquivosParaGuardar) urls = urls.concat(window.GrafoApp.arquivosParaGuardar());
     navigator.serviceWorker.controller.postMessage({ tipo: "guardar", urls: urls });
   }
