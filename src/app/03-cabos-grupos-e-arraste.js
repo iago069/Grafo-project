@@ -286,9 +286,8 @@
     rotasDesenhadas = {};
     rotas.forEach(function (rota) {
       // Rota feita à mão (10-desenho-e-ferramentas.js) passa pelas dobras escolhidas.
-      var manual = Array.isArray(rota.conexao.rota) && rota.conexao.rota.length;
-      var pts = manual ? rotaManualDoCabo(rota.s, rota.e, rota.conexao.rota)
-        : tracarRota(rota.s, rota.e, existentes, obstaculosDoCabo(obstaculos, rota.conexao, rota.s, rota.e));
+      var pts = rotaManualDoCabo(rota.s, rota.e, rota.conexao.rota)
+        || tracarRota(rota.s, rota.e, existentes, obstaculosDoCabo(obstaculos, rota.conexao, rota.s, rota.e));
       existentes.push.apply(existentes, segmentosDaRota(pts));
       rota.path.setAttribute("d", caminhoOrtogonalArredondado(pts));
       posicionarRotuloDaAresta(rota.aresta, pts, rotulos);

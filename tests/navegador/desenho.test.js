@@ -111,3 +111,25 @@ test("etiqueta de VLAN e números nas pontas pelo editor do cabo; rota do cabo �
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("Organizar: nota longe vem para perto do diagrama e rota à mão volta a ser automática", async () => {
+  const projetos = { "Longe": {
+    equipamentos: [{ id: "a", nome: "SW-A", tipo: "Switch" }, { id: "b", nome: "SW-B", tipo: "Switch" }],
+    conexoes: [{ de: "a", para: "b", saida: "p1", chegada: "p2", rota: [{ x: 0, y: 0 }, { x: -3000, y: 0 }, { x: -3000, y: 3000 }, { x: 0, y: 3000 }] }],
+    anotacoes: [{ id: "n1", texto: "nota esquecida", x: -6000, y: 9000, cor: "#FFF3B0" }]
+  } };
+  const pagina = await abrirPagina(navegador, site, { projetos });
+  await esperarDiagrama(pagina);
+  await pagina.click("#btnLayoutMenu");
+  await pagina.click("#btnOrganizarDiagrama");
+  await pagina.waitForFunction(() => {
+    const d = window.GrafoApp.dadosProjeto(window.GrafoApp.projetoAtual());
+    return d.anotacoes[0].y < 3000 && !d.conexoes[0].rota;
+  });
+  const d = await dados(pagina);
+  const ys = d.equipamentos.map(e => e.posicao.y);
+  assert.ok(d.anotacoes[0].y - Math.max(...ys) < 400, "a nota fica logo abaixo dos equipamentos");
+  assert.ok(Math.abs(d.anotacoes[0].x - Math.min(...d.equipamentos.map(e => e.posicao.x))) < 400);
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

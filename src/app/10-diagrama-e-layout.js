@@ -528,6 +528,8 @@
     // Grade: o layout do Graphviz acima só serve para medir os equipamentos.
     if (selDirecao.value === "GRADE" && posicionarEmGrade()) gerar();
     if (selDirecao.value === "LADO" && posicionarGruposLadoALado()) gerar();
+    arrumarDepoisDeOrganizar(); // rotas à mão saem; notas e desenhos longe vêm para perto
+    gerar();
   }
 
   // Arruma blocos {w, h} em prateleiras (linhas), testando larguras máximas e

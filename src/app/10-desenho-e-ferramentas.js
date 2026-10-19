@@ -565,8 +565,55 @@
     });
   }
 
+  // A rota guarda as duas pontas de quando foi feita. Se um equipamento mudou de
+  // lugar (arrastar, Organizar), ela não vale mais: o cabo volta para a rota
+  // automática em vez de dar voltas pelo desenho. Retorna null nesse caso.
+  var TOLERANCIA_PONTA = 30;
   function rotaManualDoCabo(s, e, rota) {
-    return limparPontos(ortogonalizar([s].concat(rota.map(function (p) { return { x: p.x, y: p.y }; }), [e])));
+    if (!Array.isArray(rota) || rota.length < 3) return null;
+    var a = rota[0], b = rota[rota.length - 1];
+    if (Math.hypot(a.x - s.x, a.y - s.y) > TOLERANCIA_PONTA || Math.hypot(b.x - e.x, b.y - e.y) > TOLERANCIA_PONTA) return null;
+    var meio = rota.slice(1, -1).map(function (p) { return { x: p.x, y: p.y }; });
+    return limparPontos(ortogonalizar([s].concat(meio, [e])));
+  }
+
+  // Depois de Organizar: rotas à mão saem, e notas e desenhos vêm para logo
+  // abaixo dos equipamentos (senão ficam longe e o zoom vai lá embaixo).
+  function arrumarDepoisDeOrganizar() {
+    estado.conexoes.forEach(function (c) { delete c.rota; delete c.etiqueta; });
+    var svg = elCanvas.querySelector("svg");
+    var grafo = svg && svg.querySelector("g.graph");
+    var m = grafo && grafo.getScreenCTM();
+    if (!m) return false;
+    var inv = m.inverse(), caixa = null;
+    svg.querySelectorAll("g.node").forEach(function (no) {
+      var r = no.getBoundingClientRect();
+      [[r.left, r.top], [r.right, r.bottom]].forEach(function (c) {
+        var q = svg.createSVGPoint(); q.x = c[0]; q.y = c[1];
+        var t = q.matrixTransform(inv);
+        if (!caixa) caixa = { x: t.x, y: t.y, x2: t.x, y2: t.y };
+        caixa.x = Math.min(caixa.x, t.x); caixa.y = Math.min(caixa.y, t.y);
+        caixa.x2 = Math.max(caixa.x2, t.x); caixa.y2 = Math.max(caixa.y2, t.y);
+      });
+    });
+    if (!caixa) return false;
+    var mudou = false, y = caixa.y2 + 50;
+    var longe = function (b) { return b.x2 < caixa.x - 200 || b.x > caixa.x2 + 200 || b.y2 < caixa.y - 200 || b.y > caixa.y2 + 200; };
+    (estado.anotacoes || []).forEach(function (a) {
+      if (!longe({ x: a.x, y: a.y, x2: a.x + 200, y2: a.y + 40 })) return;
+      a.x = Math.round(caixa.x); a.y = Math.round(y); y += 60; mudou = true;
+    });
+    var desenhos = listaDesenhos();
+    if (desenhos.length) {
+      var bd = null;
+      desenhos.forEach(function (d) { var b = caixaDoDesenho(d); bd = bd ? { x: Math.min(bd.x, b.x), y: Math.min(bd.y, b.y), x2: Math.max(bd.x2, b.x2), y2: Math.max(bd.y2, b.y2) } : b; });
+      if (bd && longe(bd)) {
+        var dx = caixa.x - bd.x, dy = y + 10 - bd.y;
+        desenhos.forEach(function (d) { moverDesenho(d, dx, dy); });
+        mudou = true;
+      }
+    }
+    return mudou;
   }
 
   function selecionarCabo(indice) {
@@ -624,13 +671,13 @@
       if (horizontal) { P[k].y = naGrade(p.y); P[k + 1].y = naGrade(p.y); }
       else { P[k].x = naGrade(p.x); P[k + 1].x = naGrade(p.x); }
       moveu = true;
-      conexao.rota = P.slice(1, -1).map(function (q) { return { x: q.x, y: q.y }; });
+      conexao.rota = P.map(function (q) { return { x: q.x, y: q.y }; });
       rotearCabosOrtogonalmente();
       desenharAlcasDaRota();
     }, function () {
       if (!moveu) return;
-      var limpa = limparPontos(rotaManualDoCabo(P[0], P[P.length - 1], conexao.rota));
-      conexao.rota = limpa.slice(1, -1).slice(0, LIMITES.pontosRota || 40);
+      var limpa = rotaManualDoCabo(P[0], P[P.length - 1], conexao.rota) || P;
+      conexao.rota = limpa.slice(0, LIMITES.pontosRota || 40).map(function (q) { return { x: q.x, y: q.y }; });
       confirmarMudanca();
     });
   }
