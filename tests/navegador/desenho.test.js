@@ -1,0 +1,113 @@
+// Ferramentas no estilo draw.io: formas, texto, caneta, borracha, etiqueta de VLAN e rota à mão.
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const { iniciarServidor, abrirNavegador, abrirPagina, esperarDiagrama } = require("./ajuda");
+
+let site, navegador;
+test.before(async () => { site = await iniciarServidor(); navegador = await abrirNavegador(); });
+test.after(async () => { await navegador?.close(); await site?.fechar(); });
+
+const dados = pagina => pagina.evaluate(() => window.GrafoApp.dadosProjeto(window.GrafoApp.projetoAtual()));
+
+async function arrastarNoCanvas(pagina, de, para) {
+  const caixa = await pagina.locator("#canvas").boundingBox();
+  await pagina.mouse.move(caixa.x + de[0], caixa.y + de[1]);
+  await pagina.mouse.down();
+  await pagina.mouse.move(caixa.x + (de[0] + para[0]) / 2, caixa.y + (de[1] + para[1]) / 2, { steps: 4 });
+  await pagina.mouse.move(caixa.x + para[0], caixa.y + para[1], { steps: 4 });
+  await pagina.mouse.up();
+}
+
+test("desenha retângulo, seta e caneta; muda a cor; apaga com a borracha e com Delete", async () => {
+  const pagina = await abrirPagina(navegador, site);
+  await esperarDiagrama(pagina);
+  await pagina.click('[data-ferramenta="retangulo"]');
+  assert.equal(await pagina.isVisible(".barra-estilo-desenho"), true, "a barra de estilo aparece com a ferramenta");
+  await arrastarNoCanvas(pagina, [300, 200], [420, 280]);
+  await pagina.waitForSelector("#canvas g.desenho-retangulo");
+  let d = await dados(pagina);
+  assert.equal(d.desenhos.length, 1);
+  assert.ok(d.desenhos[0].x2 - d.desenhos[0].x > 40, "o retângulo tem a largura arrastada");
+  // Depois de desenhar, volta para "selecionar" com a forma selecionada: muda a cor.
+  assert.equal(await pagina.getAttribute('[data-ferramenta="selecionar"]', "aria-pressed"), "true");
+  await pagina.click('.be-cor[data-cor="#3B82F6"]');
+  d = await dados(pagina);
+  assert.equal(d.desenhos[0].cor, "#3B82F6");
+
+  await pagina.keyboard.press("a");
+  await arrastarNoCanvas(pagina, [500, 300], [600, 300]);
+  await pagina.waitForSelector("#canvas g.desenho-seta polygon");
+
+  await pagina.click('[data-ferramenta="caneta"]');
+  await arrastarNoCanvas(pagina, [250, 350], [350, 420]);
+  await pagina.waitForSelector("#canvas g.desenho-caneta path");
+  d = await dados(pagina);
+  assert.equal(d.desenhos.length, 3);
+  assert.ok(d.desenhos[2].pontos.length >= 3, "o traço guarda os pontos");
+
+  await pagina.click('[data-ferramenta="borracha"]');
+  await pagina.locator("#canvas g.desenho-caneta .desenho-toque").click({ force: true });
+  await pagina.waitForFunction(() => !document.querySelector("#canvas g.desenho-caneta"));
+  // Selecionar a seta e apagar com Delete.
+  await pagina.keyboard.press("v");
+  await pagina.locator("#canvas g.desenho-seta .desenho-toque").click({ force: true });
+  await pagina.keyboard.press("Delete");
+  await pagina.waitForFunction(() => !document.querySelector("#canvas g.desenho-seta"));
+  d = await dados(pagina);
+  assert.deepEqual(d.desenhos.map(x => x.tipo), ["retangulo"]);
+  // Ctrl+Z traz a seta de volta.
+  await pagina.keyboard.press("Control+z");
+  await pagina.waitForSelector("#canvas g.desenho-seta");
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});
+
+test("texto livre: clica, digita e aparece no diagrama", async () => {
+  const pagina = await abrirPagina(navegador, site);
+  await esperarDiagrama(pagina);
+  await pagina.click('[data-ferramenta="texto"]');
+  const caixa = await pagina.locator("#canvas").boundingBox();
+  await pagina.mouse.click(caixa.x + 320, caixa.y + 240);
+  await pagina.waitForSelector("#appModal:not(.hidden)");
+  await pagina.fill("#modalInput", "TRANSPORTE UNIFIQUE");
+  await pagina.click("[data-modal-confirm]");
+  await pagina.waitForFunction(() => /TRANSPORTE UNIFIQUE/.test((document.querySelector("#canvas g.desenho-texto") || {}).textContent || ""));
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});
+
+test("etiqueta de VLAN e números nas pontas pelo editor do cabo; rota do cabo à mão", async () => {
+  const pagina = await abrirPagina(navegador, site);
+  await esperarDiagrama(pagina);
+  await pagina.locator("#canvas g.edge").first().focus();
+  await pagina.keyboard.press("Enter");
+  await pagina.waitForSelector("#editorCaboForm:not(.hidden)");
+  await pagina.fill("#editCaboVlan", "2047");
+  await pagina.fill("#editCaboRedeVlan", "172.20.8.168/30");
+  await pagina.fill("#editCaboNumSaida", "169");
+  await pagina.fill("#editCaboNumChegada", "170");
+  await pagina.click('#editorCaboForm button[type="submit"]');
+  await pagina.waitForSelector("#canvas g.cabo-etiqueta");
+  assert.match(await pagina.textContent("#canvas g.cabo-etiqueta"), /VLAN 2047.*172\.20\.8\.168\/30/);
+  assert.equal(await pagina.locator("#canvas text.cabo-num").count(), 2);
+
+  // Clique no cabo: aparecem as alças; arrastar uma muda a rota e salva.
+  await pagina.locator("#canvas g.edge").first().dispatchEvent("click");
+  await pagina.waitForSelector("#canvas .rota-alca");
+  assert.match(await pagina.textContent(".barra-estilo-desenho"), /Rota automática/);
+  const alca = await pagina.locator("#canvas .rota-alca").first().boundingBox();
+  await pagina.mouse.move(alca.x + alca.width / 2, alca.y + alca.height / 2);
+  await pagina.mouse.down();
+  await pagina.mouse.move(alca.x + 40, alca.y + 40, { steps: 5 });
+  await pagina.mouse.up();
+  await pagina.waitForFunction(() => {
+    const d = window.GrafoApp.dadosProjeto(window.GrafoApp.projetoAtual());
+    return d.conexoes.some(c => Array.isArray(c.rota) && c.rota.length);
+  });
+  // "Rota automática" desfaz.
+  await pagina.locator("#canvas g.edge").first().dispatchEvent("click");
+  await pagina.click('[data-be-acao="rota-auto"]');
+  await pagina.waitForFunction(() => !window.GrafoApp.dadosProjeto(window.GrafoApp.projetoAtual()).conexoes.some(c => c.rota));
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

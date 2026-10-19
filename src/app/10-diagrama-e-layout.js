@@ -1262,6 +1262,7 @@
         ajustarCaixasDosGrupos();
       }
       rotearCabosOrtogonalmente();
+      desenharDesenhos(); // formas, textos e caneta (10-desenho-e-ferramentas.js)
       desenharAnotacoes(); // antes do viewBox: as anotações também contam na área do desenho
       ajustarViewBoxAoConteudo(false);
       var revelarAgora = ajustarNaProximaRenderizacao;
@@ -1280,6 +1281,7 @@
       }
       ativarArrasteDosEquipamentos();
       ativarEdicaoDosCabos();
+      ativarSelecaoDosCabos();
       ativarFocoAoPassar();
       if (revelarAgora) revelarDiagrama();
       aplicarBusca();

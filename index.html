@@ -270,6 +270,14 @@
             <label>Espessura<input id="editCaboGrossura" type="number" min="1" max="10"></label>
           </div>
           <label>Estilo<select id="editCaboEstilo"><option value="solid">Contínuo</option><option value="dashed">Tracejado</option><option value="dotted">Pontilhado</option></select></label>
+          <div class="nav-form-grid">
+            <label>VLAN<input id="editCaboVlan" maxlength="30" placeholder="Ex.: 2047" autocomplete="off"></label>
+            <label>Rede da VLAN<input id="editCaboRedeVlan" maxlength="45" placeholder="Ex.: 172.20.8.168/30" autocomplete="off"></label>
+          </div>
+          <div class="nav-form-grid">
+            <label>Número na origem<input id="editCaboNumSaida" maxlength="10" placeholder="Ex.: 169" autocomplete="off"></label>
+            <label>Número no destino<input id="editCaboNumChegada" maxlength="10" placeholder="Ex.: 170" autocomplete="off"></label>
+          </div>
           <div class="nav-panel-message" id="editCaboMensagem"></div>
           <div class="nav-form-actions">
             <button class="ghost" type="button" data-editor-excluir>Excluir</button>

@@ -283,11 +283,17 @@
     function comprimento(r) { return Math.abs(r.s.x - r.e.x) + Math.abs(r.s.y - r.e.y); }
     rotas.sort(function (a, b) { return comprimento(a) - comprimento(b); });
     var existentes = [], rotulos = [];
+    rotasDesenhadas = {};
     rotas.forEach(function (rota) {
-      var pts = tracarRota(rota.s, rota.e, existentes, obstaculosDoCabo(obstaculos, rota.conexao, rota.s, rota.e));
+      // Rota feita à mão (10-desenho-e-ferramentas.js) passa pelas dobras escolhidas.
+      var manual = Array.isArray(rota.conexao.rota) && rota.conexao.rota.length;
+      var pts = manual ? rotaManualDoCabo(rota.s, rota.e, rota.conexao.rota)
+        : tracarRota(rota.s, rota.e, existentes, obstaculosDoCabo(obstaculos, rota.conexao, rota.s, rota.e));
       existentes.push.apply(existentes, segmentosDaRota(pts));
       rota.path.setAttribute("d", caminhoOrtogonalArredondado(pts));
       posicionarRotuloDaAresta(rota.aresta, pts, rotulos);
+      rotasDesenhadas[estado.conexoes.indexOf(rota.conexao)] = pts;
+      desenharExtrasDoCabo(rota.aresta, pts, rota.conexao);
     });
   }
 

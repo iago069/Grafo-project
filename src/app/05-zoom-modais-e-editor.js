@@ -330,6 +330,10 @@
     campoEditor("editCaboCor").value = corValida(c.cor, "#5A7284");
     campoEditor("editCaboGrossura").value = Number(c.grossura) || 2;
     selecionarOpcao(campoEditor("editCaboEstilo"), c.estilo || "solid");
+    campoEditor("editCaboVlan").value = c.vlan || "";
+    campoEditor("editCaboRedeVlan").value = c.redeVlan || "";
+    campoEditor("editCaboNumSaida").value = c.numSaida || "";
+    campoEditor("editCaboNumChegada").value = c.numChegada || "";
     campoEditor("editCaboMensagem").textContent = "";
     var de = estado.equipamentos.find(function (eq) { return eq.id === c.de; });
     var para = estado.equipamentos.find(function (eq) { return eq.id === c.para; });
@@ -371,11 +375,15 @@
     var validacao = Esquema.validarConexao(Object.assign({}, c, {
       de: de, para: para, saida: campoEditor("editCaboSaida").value, chegada: campoEditor("editCaboChegada").value,
       tipo: campoEditor("editCaboTipo").value, potencia: campoEditor("editCaboPotencia").value, cor: campoEditor("editCaboCor").value,
-      grossura: campoEditor("editCaboGrossura").value, estilo: campoEditor("editCaboEstilo").value
+      grossura: campoEditor("editCaboGrossura").value, estilo: campoEditor("editCaboEstilo").value,
+      vlan: campoEditor("editCaboVlan").value, redeVlan: campoEditor("editCaboRedeVlan").value,
+      numSaida: campoEditor("editCaboNumSaida").value, numChegada: campoEditor("editCaboNumChegada").value
     }), estado.equipamentos.map(function (eq) { return eq.id; }));
     if (!validacao.ok) { campoEditor("editCaboMensagem").textContent = textoDosErros(validacao.erros); return; }
     // Trocou as pontas: o arraste manual do cabo antigo não vale mais.
-    if (de !== c.de || para !== c.para) { delete c.deslocamento; delete validacao.dados.deslocamento; }
+    if (de !== c.de || para !== c.para) { delete c.deslocamento; delete validacao.dados.deslocamento; delete c.rota; delete validacao.dados.rota; }
+    // Campo da etiqueta apagado: não guarda texto vazio.
+    ["vlan", "redeVlan", "numSaida", "numChegada"].forEach(function (k) { if (!validacao.dados[k]) { delete validacao.dados[k]; delete c[k]; } });
     Object.assign(c, validacao.dados);
     fecharEditor();
     renderTudo();

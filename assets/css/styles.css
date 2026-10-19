@@ -2968,3 +2968,36 @@ body[data-somente-leitura] .canvas-wrap::before, body[data-somente-leitura] #can
 }
 .equipe-pessoa header { justify-content: flex-start; padding: 10px 14px; min-height: 0; }
 .equipe-pessoa header strong { margin-right: auto; font-size: 0.92rem; }
+
+/* ==== Ferramentas de desenho (10-desenho-e-ferramentas.js) ==== */
+.caixa-ferramentas { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); z-index: 6; display: flex; flex-direction: column; gap: 4px; padding: 6px;
+  border-radius: 14px; background: color-mix(in srgb, var(--bg-panel-2) 92%, transparent); border: 1px solid var(--line-soft); box-shadow: 0 12px 30px -12px rgba(0,0,0,.45);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.ferramenta-desenho { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 10px; background: transparent; color: var(--text-dim); cursor: pointer; box-shadow: none; }
+.ferramenta-desenho:hover { color: var(--text); background: color-mix(in srgb, var(--text) 8%, transparent); }
+.ferramenta-desenho[aria-pressed="true"] { color: var(--accent-ink, #1B1F2A); background: var(--accent, #FF9F43); }
+.barra-estilo-desenho { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); z-index: 6; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; max-width: calc(100% - 120px);
+  padding: 6px 8px; border-radius: 14px; background: color-mix(in srgb, var(--bg-panel-2) 94%, transparent); border: 1px solid var(--line-soft); box-shadow: 0 12px 30px -12px rgba(0,0,0,.45); }
+.barra-estilo-desenho[hidden], .barra-estilo-desenho .be-grupo[hidden], .barra-estilo-desenho button[hidden] { display: none; }
+.be-grupo { display: flex; align-items: center; gap: 4px; padding-right: 6px; border-right: 1px solid var(--line-soft); }
+.be-grupo:last-child { border-right: 0; padding-right: 0; }
+.be-cor { width: 22px; height: 22px; padding: 0; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--text) 20%, transparent); background: var(--c); cursor: pointer; box-shadow: none; }
+.be-cor.ativo { outline: 2px solid var(--accent, #FF9F43); outline-offset: 2px; }
+.be-esp, .be-alt { min-width: 30px; height: 30px; padding: 0 8px; border: 0; border-radius: 8px; background: transparent; color: var(--text-dim); font: 700 0.8rem var(--sans); cursor: pointer; box-shadow: none; display: grid; place-items: center; }
+.be-esp span { display: block; width: 18px; border-radius: 4px; background: currentColor; }
+.be-esp:hover, .be-alt:hover { background: color-mix(in srgb, var(--text) 8%, transparent); color: var(--text); }
+.be-esp.ativo, .be-alt.ativo { background: color-mix(in srgb, var(--accent, #FF9F43) 25%, transparent); color: var(--text); }
+.be-perigo { color: #E5484D; }
+.be-dica { font-size: 0.78rem; color: var(--text-dim); padding: 0 4px; }
+body[data-ferramenta-ativa]:not([data-ferramenta-ativa="selecionar"]) #canvas { cursor: crosshair; }
+body[data-ferramenta-ativa="borracha"] #canvas { cursor: cell; }
+#canvas g.desenho { cursor: move; }
+body[data-ferramenta-ativa]:not([data-ferramenta-ativa="selecionar"]) #canvas g.desenho { cursor: inherit; }
+#canvas .desenho-alca { cursor: nwse-resize; }
+#canvas .rota-alca { fill: #FFFFFF; stroke: #3B82F6; stroke-width: 1.5; cursor: grab; }
+#canvas .rota-alca.rota-h { cursor: ns-resize; }
+#canvas .rota-alca.rota-v { cursor: ew-resize; }
+#canvas g.edge.cabo-selecionado path { stroke: #3B82F6 !important; filter: drop-shadow(0 0 3px rgba(59,130,246,.6)); }
+#canvas g.cabo-etiqueta { cursor: move; }
+@media (max-width: 760px) { .caixa-ferramentas { top: auto; bottom: 14px; left: 50%; transform: translateX(-50%); flex-direction: row; } }
+.barra-estilo-desenho { top: auto; bottom: 64px; }

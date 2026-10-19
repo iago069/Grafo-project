@@ -15,6 +15,10 @@
     nomeProjeto: 60,
     equipamentos: 35, // por diagrama; o app mostra o contador "n/35"
     anotacoes: 50,
+    desenhos: 300,          // formas, textos e traços de caneta por diagrama
+    pontosCaneta: 600,
+    pontosRota: 40,         // dobras de um cabo com rota feita à mão
+    textoDesenho: 300,
     anotacaoTexto: 500,
     conexoes: 2000,
     id: 60,
@@ -201,7 +205,35 @@
     cor: { rotulo: "Cor", esquema: cor(COR_CABO_PADRAO), reparar: constante(COR_CABO_PADRAO) },
     grossura: { rotulo: "Espessura", esquema: ESQUEMA_GROSSURA, reparar: constante(2) },
     estilo: { rotulo: "Estilo", esquema: ESQUEMA_ESTILO, reparar: constante("solid") },
-    deslocamento: { rotulo: "Deslocamento", esquema: ESQUEMA_PONTO, opcional: true }
+    deslocamento: { rotulo: "Deslocamento", esquema: ESQUEMA_PONTO, opcional: true },
+    // Etiqueta de VLAN presa ao cabo e números nas pontas (como no draw.io).
+    vlan: { rotulo: "VLAN", esquema: texto(30), opcional: true },
+    redeVlan: { rotulo: "Rede da VLAN", esquema: texto(LIMITES.ip), opcional: true },
+    numSaida: { rotulo: "Número na origem", esquema: texto(10), opcional: true },
+    numChegada: { rotulo: "Número no destino", esquema: texto(10), opcional: true },
+    etiqueta: { rotulo: "Posição da etiqueta", esquema: ESQUEMA_PONTO, opcional: true },
+    // Rota feita à mão: dobras do cabo, nas coordenadas do desenho.
+    rota: { rotulo: "Rota", esquema: z.array(ESQUEMA_PONTO).max(LIMITES.pontosRota, "rota com dobras demais"), opcional: true }
+  };
+
+  // Desenho livre por cima do diagrama: texto, retângulo, elipse, seta, linha e
+  // traço de caneta. x/y e x2/y2: os dois cantos (ou as pontas da seta/linha).
+  var TIPOS_DESENHO = ["texto", "retangulo", "elipse", "seta", "linha", "caneta"];
+  var ESQUEMA_COR_DESENHO = z.string().trim().regex(/^#[0-9a-f]{6}$/i, "cor inválida (use o formato #1A2B3C)");
+  var CAMPOS_DESENHO = {
+    id: { rotulo: "id", esquema: texto(LIMITES.id, true), reparar: null },
+    tipo: { rotulo: "Tipo", esquema: z.enum(TIPOS_DESENHO, { errorMap: function () { return { message: "use " + TIPOS_DESENHO.join(", ") }; } }), reparar: null },
+    x: { rotulo: "x", esquema: z.coerce.number().finite().min(-LIMITES.coordenada).max(LIMITES.coordenada), reparar: constante(0) },
+    y: { rotulo: "y", esquema: z.coerce.number().finite().min(-LIMITES.coordenada).max(LIMITES.coordenada), reparar: constante(0) },
+    x2: { rotulo: "x2", esquema: z.coerce.number().finite().min(-LIMITES.coordenada).max(LIMITES.coordenada), opcional: true },
+    y2: { rotulo: "y2", esquema: z.coerce.number().finite().min(-LIMITES.coordenada).max(LIMITES.coordenada), opcional: true },
+    pontos: { rotulo: "Pontos", esquema: z.array(ESQUEMA_PONTO).max(LIMITES.pontosCaneta, "traço longo demais"), opcional: true },
+    cor: { rotulo: "Cor", esquema: ESQUEMA_COR_DESENHO, reparar: constante("#E5484D") },
+    fundo: { rotulo: "Preenchimento", esquema: z.string().trim().regex(/^(#[0-9a-f]{6})?$/i, "cor inválida"), opcional: true },
+    espessura: { rotulo: "Espessura", esquema: z.coerce.number().finite().min(1).max(16), reparar: constante(2) },
+    tracejado: { rotulo: "Tracejado", esquema: z.boolean(), opcional: true },
+    texto: { rotulo: "Texto", esquema: texto(LIMITES.textoDesenho), opcional: true },
+    tamanho: { rotulo: "Tamanho do texto", esquema: z.coerce.number().finite().min(8).max(72), opcional: true }
   };
 
   // Anotações livres no diagrama (caixas de texto). x/y: canto de cima à esquerda,
@@ -385,6 +417,26 @@
         if (idsAnotacao[a.id]) { falha(onde + " › id", '"' + a.id + '" repetido' + (modo === "reparar" ? " — descartada" : "")); return; }
         idsAnotacao[a.id] = true;
         dados.anotacoes.push(a);
+      });
+    }
+    // Desenhos livres (opcional): formas, textos e caneta.
+    if (entrada.desenhos != null) {
+      var desenhosBrutos = Array.isArray(entrada.desenhos) ? entrada.desenhos : [];
+      if (!Array.isArray(entrada.desenhos)) falha("desenhos", "precisa ser uma lista");
+      if (desenhosBrutos.length > LIMITES.desenhos) {
+        falha("desenhos", "máximo de " + LIMITES.desenhos + " desenhos" + (modo === "reparar" ? " — os excedentes foram descartados" : ""));
+        desenhosBrutos = desenhosBrutos.slice(0, LIMITES.desenhos);
+      }
+      var idsDesenho = {};
+      dados.desenhos = [];
+      desenhosBrutos.forEach(function (bruto, i) {
+        var onde = "Desenho " + (i + 1);
+        if (!ehObjeto(bruto)) { falha(onde, "precisa ser um objeto { id, tipo, x, y }"); return; }
+        var d = validarCampos(bruto, CAMPOS_DESENHO, modo, onde, relatorio);
+        if (!d) { if (modo === "reparar") relatorio.ajustes.push({ onde: onde, mensagem: "desenho descartado" }); return; }
+        if (idsDesenho[d.id]) { falha(onde + " › id", '"' + d.id + '" repetido'); return; }
+        idsDesenho[d.id] = true;
+        dados.desenhos.push(d);
       });
     }
     // Documentos (opcional): procedimentos e referências de arquivos.
