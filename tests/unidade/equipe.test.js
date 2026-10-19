@@ -7,11 +7,11 @@ const OUTRA = { id: "u2", email: "colega@exemplo.com" };
 const nomeEm = dados => dados && dados.equipamentos[0] && dados.equipamentos[0].nome;
 const projetoNoBanco = (banco, nome) => banco.projetos.find(p => p.nome === nome);
 
-// Dona (u1) cria "Rede A" e transforma em projeto de equipe.
+// Dona (u1) cria "Rede A" e põe numa equipe (grupo com um diagrama).
 async function criarEquipe(banco) {
   const dona = await abrirAba(banco, { equipe: true });
   await dona.editarProjeto("Rede A", "A1");
-  await dona.els.equipeTransformar.disparar("click");
+  await dona.equipe.criarGrupo("Rede A", [{ chave: "Rede A", papel: "editar" }]);
   await dona.auth.flush();
   return dona;
 }
@@ -25,17 +25,17 @@ test("transformar em equipe tira o projeto da conta e grava na tabela de equipe"
   assert.equal(nomeEm(p.dados), "A1");
   assert.equal(banco.linha.projects["Rede A"], undefined, "não pode ficar também na lista pessoal");
   assert.ok(dona.equipe.ehEquipe("Rede A"));
-  assert.equal(banco.convites.length, 1, "o link de convite já é criado");
+  assert.equal(banco.convitesGrupo.length, 1, "o link de convite já é criado");
 });
 
 test("quem entra pelo convite edita, e a dona recebe a alteração em tempo real", async () => {
   const banco = novoBanco();
   const dona = await criarEquipe(banco);
-  const token = banco.convites[0].token;
+  const token = banco.convitesGrupo[0].token;
   const colega = await abrirAba(banco, { equipe: true, usuario: OUTRA, busca: "?convite=" + token });
   assert.ok(colega.equipe.ehEquipe("Rede A"), "a colega deveria ter o projeto");
   assert.equal(colega.editor.atual, "Rede A", "o projeto do convite abre direto");
-  assert.ok(colega.avisos.some(a => /entrou no projeto/.test(a)));
+  assert.ok(colega.avisos.some(a => /entrou na equipe/.test(a)));
 
   await colega.editarProjeto("Rede A", "B1");
   assert.equal(nomeEm(projetoNoBanco(banco, "Rede A").dados), "B1");
@@ -48,7 +48,7 @@ test("quem entra pelo convite edita, e a dona recebe a alteração em tempo real
 test("duas pessoas editando ao mesmo tempo: ninguém sobrescreve o outro sem aviso", async () => {
   const banco = novoBanco();
   const dona = await criarEquipe(banco);
-  const colega = await abrirAba(banco, { equipe: true, usuario: OUTRA, busca: "?convite=" + banco.convites[0].token });
+  const colega = await abrirAba(banco, { equipe: true, usuario: OUTRA, busca: "?convite=" + banco.convitesGrupo[0].token });
 
   // A dona mexe e ainda não salvou; a colega salva antes.
   dona.editor.projetos["Rede A"] = { equipamentos: [{ id: "e", nome: "DONA" }], conexoes: [] };
@@ -69,7 +69,7 @@ test("duas pessoas editando ao mesmo tempo: ninguém sobrescreve o outro sem avi
 test("quando a dona exclui, o projeto some para os membros", async () => {
   const banco = novoBanco();
   const dona = await criarEquipe(banco);
-  const colega = await abrirAba(banco, { equipe: true, usuario: OUTRA, busca: "?convite=" + banco.convites[0].token });
+  const colega = await abrirAba(banco, { equipe: true, usuario: OUTRA, busca: "?convite=" + banco.convitesGrupo[0].token });
   assert.equal(await dona.equipe.excluirOuSair("Rede A"), true);
   assert.equal(banco.projetos.length, 0);
   await esperar(60);
@@ -80,7 +80,7 @@ test("quando a dona exclui, o projeto some para os membros", async () => {
 test("membro removido perde o projeto na próxima gravação", async () => {
   const banco = novoBanco();
   await criarEquipe(banco);
-  const colega = await abrirAba(banco, { equipe: true, usuario: OUTRA, busca: "?convite=" + banco.convites[0].token });
+  const colega = await abrirAba(banco, { equipe: true, usuario: OUTRA, busca: "?convite=" + banco.convitesGrupo[0].token });
   banco.membros = banco.membros.filter(m => m.usuario !== OUTRA.id); // a dona removeu
   await colega.editarProjeto("Rede A", "DEPOIS");
   assert.equal(colega.editor.projetos["Rede A"], undefined);
@@ -91,7 +91,7 @@ test("membro removido perde o projeto na próxima gravação", async () => {
 test("sair do projeto: o membro sai e a dona continua com ele", async () => {
   const banco = novoBanco();
   await criarEquipe(banco);
-  const colega = await abrirAba(banco, { equipe: true, usuario: OUTRA, busca: "?convite=" + banco.convites[0].token });
+  const colega = await abrirAba(banco, { equipe: true, usuario: OUTRA, busca: "?convite=" + banco.convitesGrupo[0].token });
   assert.equal(await colega.equipe.excluirOuSair("Rede A"), true);
   assert.equal(banco.projetos.length, 1, "o projeto continua existindo");
   assert.ok(!banco.membros.some(m => m.usuario === OUTRA.id));
@@ -125,4 +125,96 @@ test("sem o SQL de equipe no servidor, tudo continua pessoal e o botão fica esc
   assert.equal(aba.els.btnEquipe.hidden, true);
   await aba.editarProjeto("Rede A", "A1");
   assert.equal(nomeEm(banco.linha.projects["Rede A"]), "A1");
+});
+
+// ---- Equipe com vários diagramas e acesso por diagrama -------------------------
+async function criarGrupoComDois(banco) {
+  const dona = await abrirAba(banco, { equipe: true });
+  await dona.editarProjeto("Core L2", "L2");
+  await dona.editarProjeto("Core L3", "L3");
+  await dona.editarProjeto("Rascunho", "R");
+  await dona.equipe.criarGrupo("PFU", [{ chave: "Core L2", papel: "editar" }, { chave: "Core L3", papel: "ver" }]);
+  await dona.auth.flush();
+  return dona;
+}
+
+test("criar equipe escolhendo os diagramas: só os marcados entram, o resto fica pessoal", async () => {
+  const banco = novoBanco();
+  const dona = await criarGrupoComDois(banco);
+  assert.deepEqual(banco.projetos.map(p => p.nome).sort(), ["Core L2", "Core L3"]);
+  assert.equal(new Set(banco.projetos.map(p => p.grupo)).size, 1, "os dois no mesmo grupo");
+  assert.ok(banco.linha.projects["Rascunho"], "o não marcado continua pessoal");
+  assert.equal(banco.linha.projects["Core L2"], undefined);
+  assert.equal(dona.equipe.papel("Core L2"), "editar");
+  assert.equal(dona.equipe.papel("Core L3"), "editar", "a dona sempre edita");
+});
+
+test("quem entra pelo convite do grupo recebe cada diagrama com o acesso escolhido", async () => {
+  const banco = novoBanco();
+  await criarGrupoComDois(banco);
+  const colega = await abrirAba(banco, { equipe: true, usuario: OUTRA, busca: "?convite=" + banco.convitesGrupo[0].token });
+  assert.ok(colega.equipe.ehEquipe("Core L2") && colega.equipe.ehEquipe("Core L3"));
+  assert.ok(!colega.editor.projetos["Rascunho"]);
+  assert.equal(colega.equipe.papel("Core L2"), "editar");
+  assert.equal(colega.equipe.papel("Core L3"), "ver");
+  assert.ok(colega.avisos.some(a => /2 diagramas liberados/.test(a)));
+
+  await colega.editarProjeto("Core L2", "EDITADO");
+  assert.equal(nomeEm(projetoNoBanco(banco, "Core L2").dados), "EDITADO", "onde edita, grava");
+  await colega.editarProjeto("Core L3", "NAO PODE");
+  assert.equal(nomeEm(projetoNoBanco(banco, "Core L3").dados), "L3", "onde só vê, não grava");
+  assert.ok(!colega.avisoAberto(), "sem aviso de conflito");
+  assert.equal((banco.linhas.u2 && banco.linhas.u2.projects || {})["Core L3"], undefined, "também não vira projeto pessoal");
+});
+
+test("a dona ajusta o acesso pessoa por pessoa: tirar, só ver ou editar", async () => {
+  const banco = novoBanco();
+  const dona = await criarGrupoComDois(banco);
+  await abrirAba(banco, { equipe: true, usuario: OUTRA, busca: "?convite=" + banco.convitesGrupo[0].token });
+
+  const acessos = await dona.equipe.acessosDoGrupo(dona.equipe.grupo("Core L2"));
+  assert.equal(acessos.length, 1);
+  assert.equal(acessos[0].email, OUTRA.email);
+  assert.deepEqual({ ...acessos[0].papeis }, { "Core L2": "editar", "Core L3": "ver" });
+
+  await dona.equipe.definirAcesso("Core L2", OUTRA.id, "nenhum");
+  await dona.equipe.definirAcesso("Core L3", OUTRA.id, "editar");
+  const depois = await abrirAba(banco, { equipe: true, usuario: OUTRA });
+  assert.ok(!depois.equipe.ehEquipe("Core L2"), "sem acesso: o diagrama some");
+  assert.equal(depois.equipe.papel("Core L3"), "editar");
+  await depois.editarProjeto("Core L3", "AGORA PODE");
+  assert.equal(nomeEm(projetoNoBanco(banco, "Core L3").dados), "AGORA PODE");
+});
+
+test("se a dona muda para 'só ver' com a colega aberta, a gravação avisa em vez de dar conflito", async () => {
+  const banco = novoBanco();
+  const dona = await criarGrupoComDois(banco);
+  const colega = await abrirAba(banco, { equipe: true, usuario: OUTRA, busca: "?convite=" + banco.convitesGrupo[0].token });
+  await dona.equipe.definirAcesso("Core L2", OUTRA.id, "ver");
+  await colega.editarProjeto("Core L2", "DEPOIS");
+  assert.equal(nomeEm(projetoNoBanco(banco, "Core L2").dados), "L2");
+  assert.ok(!colega.avisoAberto(), "sem aviso de conflito");
+  assert.ok(colega.avisos.some(a => /só pode visualizar/.test(a)));
+  assert.equal(colega.equipe.papel("Core L2"), "ver");
+  assert.equal(nomeEm(colega.editor.projetos["Core L2"]), "L2", "volta para a versão do servidor");
+});
+
+test("adicionar outro diagrama à equipe: quem já está recebe o acesso padrão", async () => {
+  const banco = novoBanco();
+  const dona = await criarGrupoComDois(banco);
+  await abrirAba(banco, { equipe: true, usuario: OUTRA, busca: "?convite=" + banco.convitesGrupo[0].token });
+  await dona.equipe.adicionarAoGrupo(dona.equipe.grupo("Core L2"), "Rascunho", "ver");
+  await dona.auth.flush();
+  assert.equal(banco.linha.projects["Rascunho"], undefined, "sai da lista pessoal");
+  const colega = await abrirAba(banco, { equipe: true, usuario: OUTRA });
+  assert.equal(colega.equipe.papel("Rascunho"), "ver");
+});
+
+test("convite antigo (um diagrama, sem grupo) continua funcionando", async () => {
+  const banco = novoBanco();
+  await banco.rpc("grafo_criar_projeto_equipe", { p_nome: "Antigo", p_dados: { equipamentos: [{ id: "e", nome: "X" }], conexoes: [] } });
+  const colega = await abrirAba(banco, { equipe: true, usuario: OUTRA, busca: "?convite=" + banco.convites[0].token });
+  assert.ok(colega.equipe.ehEquipe("Antigo"));
+  assert.equal(colega.equipe.papel("Antigo"), "editar");
+  assert.ok(colega.avisos.some(a => /entrou no projeto/.test(a)));
 });

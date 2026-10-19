@@ -20,7 +20,7 @@
 
   function erroTabelaAusente(erro) {
     return !!erro && (erro.code === "42P01" || erro.code === "PGRST205" || erro.code === "PGRST202" ||
-      /grafo_projetos_equipe|grafo_aceitar_convite|grafo_criar_projeto_equipe/i.test(erro.message || ""));
+      /grafo_projetos_equipe|grafo_aceitar_convite|grafo_criar_projeto_equipe|grafo_criar_grupo|grafo_definir_acesso|grafo_adicionar_ao_grupo|grafo_convites_grupo/i.test(erro.message || ""));
   }
 
   // Sempre maior que a versão atual, mesmo com o relógio deste computador atrasado.
@@ -37,9 +37,12 @@
     return chave;
   }
 
-  function registrar(chave, linha) {
-    projetos[chave] = { id: linha.id, dono: linha.dono, versao: linha.atualizado_em, enviado: JSON.stringify(linha.dados) };
+  // papel: "editar" ou "ver" (quem só vê não grava); grupo: equipe com vários diagramas.
+  function registrar(chave, linha, papel) {
+    projetos[chave] = { id: linha.id, dono: linha.dono, versao: linha.atualizado_em, enviado: JSON.stringify(linha.dados),
+      grupo: linha.grupo || null, papel: papel === "ver" ? "ver" : "editar" };
   }
+  function soVe(chave) { return !!projetos[chave] && projetos[chave].papel === "ver"; }
 
   function chavePorId(id) {
     for (var chave in projetos) if (projetos[chave].id === id) return chave;
@@ -81,31 +84,51 @@
     var resultado = { projetos: {}, abrir: null };
     var token = null;
     try { token = localStorage.getItem(CONVITE_PENDENTE); } catch (e) {}
-    var aceito = null;
+    var aceitos = [], deGrupo = false;
     if (token) {
       try { localStorage.removeItem(CONVITE_PENDENTE); } catch (e) {}
-      var convite = /^[0-9a-f-]{36}$/i.test(token) ? await client.rpc("grafo_aceitar_convite", { p_token: token }) : { data: [], error: null };
-      if (convite.error && !erroTabelaAusente(convite.error)) throw convite.error;
-      aceito = convite.data && convite.data[0] || null;
-      if (!aceito) avisosPendentes.push("O convite é inválido ou foi desativado. Peça um link novo a quem convidou.");
+      if (/^[0-9a-f-]{36}$/i.test(token)) {
+        // Convite de grupo (vários diagramas) primeiro; senão, o convite antigo de um diagrama.
+        var grupo = await client.rpc("grafo_aceitar_convite_grupo", { p_token: token });
+        if (grupo.error && !erroTabelaAusente(grupo.error)) throw grupo.error;
+        if (grupo.data && grupo.data.length) { aceitos = grupo.data.map(function (l) { return l.id; }); deGrupo = true; }
+        else {
+          var convite = await client.rpc("grafo_aceitar_convite", { p_token: token });
+          if (convite.error && !erroTabelaAusente(convite.error)) throw convite.error;
+          if (convite.data && convite.data[0]) aceitos = [convite.data[0].id];
+        }
+      }
+      if (!aceitos.length) avisosPendentes.push("O convite é inválido ou foi desativado. Peça um link novo a quem convidou.");
     }
-    var r = await client.from(TABELA).select("id,nome,dados,dono,atualizado_em").order("nome");
+    var r = await client.from(TABELA).select("id,nome,dados,dono,atualizado_em,grupo").order("nome");
+    // Sem o SQL de grupos ainda: a coluna "grupo" não existe.
+    if (r.error && (r.error.code === "42703" || /grupo/i.test(r.error.message || ""))) r = await client.from(TABELA).select("id,nome,dados,dono,atualizado_em").order("nome");
     if (r.error) {
       if (erroTabelaAusente(r.error)) { disponivel = false; return resultado; }
       throw r.error;
     }
     disponivel = true;
+    var papeis = {};
+    var meus = await client.from("grafo_membros").select("projeto,papel").eq("usuario", usuario.id);
+    if (!meus.error) (meus.data || []).forEach(function (m) { papeis[m.projeto] = m.papel; });
+    var entrouEm = [];
     var usadas = Object.assign({}, ocupadas);
     (r.data || []).forEach(function (linha) {
       var chave = chaveLivre(linha.nome, usadas);
       usadas[chave] = true;
-      registrar(chave, linha);
+      registrar(chave, linha, papeis[linha.id]);
       resultado.projetos[chave] = linha.dados;
-      if (aceito && linha.id === aceito.id) {
-        resultado.abrir = chave;
-        avisosPendentes.push(linha.dono === usuario.id ? "Este projeto de equipe é seu." : "Você entrou no projeto de equipe “" + chave + "”.");
+      if (aceitos.indexOf(linha.id) >= 0) {
+        if (!resultado.abrir) resultado.abrir = chave;
+        entrouEm.push(chave);
       }
     });
+    if (entrouEm.length) {
+      var dono = projetos[entrouEm[0]].dono === usuario.id;
+      avisosPendentes.push(dono ? "Esta equipe é sua." : deGrupo
+        ? "Você entrou na equipe: " + entrouEm.length + (entrouEm.length === 1 ? " diagrama liberado." : " diagramas liberados.")
+        : "Você entrou no projeto de equipe “" + entrouEm[0] + "”.");
+    }
     return resultado;
   }
 
@@ -120,7 +143,7 @@
 
   function temAlteracao(todos) {
     return Object.keys(projetos).some(function (chave) {
-      return todos[chave] && JSON.stringify(todos[chave]) !== projetos[chave].enviado;
+      return !soVe(chave) && todos[chave] && JSON.stringify(todos[chave]) !== projetos[chave].enviado;
     });
   }
 
@@ -129,7 +152,7 @@
   async function gravar(todos) {
     for (var chave in projetos) {
       var info = projetos[chave];
-      if (!todos[chave]) continue;
+      if (!todos[chave] || info.papel === "ver") continue;
       var json = JSON.stringify(todos[chave]);
       if (json === info.enviado) continue;
       var versao = proximaVersao(info.versao);
@@ -140,6 +163,14 @@
         var existe = await client.from(TABELA).select("id").eq("id", info.id).maybeSingle();
         if (existe.error) throw existe.error;
         if (!existe.data) { removerLocal(chave, "Você não faz mais parte do projeto “" + chave + "”."); continue; }
+        // O dono pode ter mudado o acesso para "só visualizar".
+        var meu = await client.from("grafo_membros").select("papel").eq("projeto", info.id).eq("usuario", usuario.id).maybeSingle();
+        if (!meu.error && meu.data && meu.data.papel === "ver") {
+          info.papel = "ver";
+          await aplicarRemoto(info.id, true);
+          if (app()) app().avisar("Agora você só pode visualizar “" + chave + "”. A alteração não foi salva.");
+          continue;
+        }
         return "conflito";
       }
       info.versao = r.data[0].atualizado_em;
@@ -207,25 +238,25 @@
     if (app()) { app().removerProjeto(chave); if (aviso) app().avisar(aviso); }
   }
 
-  async function aplicarRemoto(id) {
+  async function aplicarRemoto(id, forcar) {
     var chave = chavePorId(id);
     if (!chave || !app()) return;
     var info = projetos[chave];
     var r = await client.from(TABELA).select("id,dados,atualizado_em,atualizado_por").eq("id", id).maybeSingle();
     if (r.error) return;
     if (!r.data) { removerLocal(chave, "O projeto “" + chave + "” foi excluído pelo dono."); return; }
-    if (r.data.atualizado_em === info.versao) return; // a própria gravação voltando
+    if (r.data.atualizado_em === info.versao && !forcar) return; // a própria gravação voltando
     var local = app().dadosProjeto(chave);
     // Com alteração local ainda não gravada, quem resolve é o aviso de conflito
     // (a próxima gravação vai falhar e perguntar qual versão fica).
-    if (local && JSON.stringify(local) !== info.enviado) return;
+    if (!forcar && info.papel !== "ver" && local && JSON.stringify(local) !== info.enviado) return;
     info.versao = r.data.atualizado_em;
     info.enviado = JSON.stringify(r.data.dados);
     app().substituirProjeto(chave, r.data.dados);
     // O editor pode recalcular posições ao redesenhar: isso vira a nova base,
     // sem regravar (senão duas abas ficariam gravando uma por cima da outra).
     var redesenhado = app().dadosProjeto(chave);
-    if (redesenhado) info.enviado = JSON.stringify(redesenhado);
+    if (redesenhado) info.enviado = info.base = JSON.stringify(redesenhado);
     if (r.data.atualizado_por !== usuario.id && chave === app().projetoAtual()) app().avisar("Atualizado por outra pessoa da equipe.");
   }
 
@@ -245,13 +276,148 @@
       .subscribe();
   }
 
+  // ---- Grupos: vários diagramas e acesso por pessoa ------------------------
+  var PAPEIS = { nenhum: "Sem acesso", ver: "Só visualizar", editar: "Pode editar" };
+
+  function chavesDoGrupo(grupo) {
+    return Object.keys(projetos).filter(function (k) { return grupo && projetos[k].grupo === grupo; }).sort();
+  }
+
+  // Cria a equipe com os diagramas pessoais escolhidos.
+  // itens: [{ chave, papel: "ver"|"editar" }]. Resolve com o id do grupo.
+  async function criarGrupo(nome, itens) {
+    await window.GrafoAuth.flush();
+    var lista = itens.map(function (it) { return { nome: it.chave, dados: app().dadosProjeto(it.chave), papel: it.papel === "ver" ? "ver" : "editar" }; })
+      .filter(function (it) { return it.dados; });
+    if (!lista.length) throw new Error("Escolha ao menos um diagrama.");
+    var r = await client.rpc("grafo_criar_grupo", { p_nome: nome, p_projetos: lista });
+    if (r.error) throw r.error;
+    var grupo = null;
+    (r.data || []).forEach(function (linha) {
+      var item = lista.find(function (it) { return it.nome === linha.nome; });
+      if (!item) return;
+      grupo = linha.grupo;
+      registrar(item.nome, { id: linha.id, dono: usuario.id, atualizado_em: linha.atualizado_em, dados: item.dados, grupo: linha.grupo }, "editar");
+    });
+    // Saem da lista pessoal na próxima gravação (auth.js usa separar()).
+    app().salvar();
+    if (app().atualizarListaProjetos) app().atualizarListaProjetos();
+    return grupo;
+  }
+
+  // Põe mais um diagrama pessoal no grupo (só o dono).
+  async function adicionarAoGrupo(grupo, chave, papel) {
+    await window.GrafoAuth.flush();
+    var dados = app().dadosProjeto(chave);
+    var r = await client.rpc("grafo_adicionar_ao_grupo", { p_grupo: grupo, p_nome: chave, p_dados: dados, p_papel: papel === "ver" ? "ver" : "editar" });
+    if (r.error) throw r.error;
+    var linha = r.data && r.data[0];
+    registrar(chave, { id: linha.id, dono: usuario.id, atualizado_em: linha.atualizado_em, dados: dados, grupo: grupo }, "editar");
+    app().salvar();
+    if (app().atualizarListaProjetos) app().atualizarListaProjetos();
+  }
+
+  // Quem está no grupo e o acesso de cada um a cada diagrama:
+  // [{ usuario, email, papeis: { chave: "ver"|"editar" } }] (sem o dono).
+  async function acessosDoGrupo(grupo) {
+    var chaves = chavesDoGrupo(grupo);
+    var ids = chaves.map(function (k) { return projetos[k].id; });
+    if (!ids.length) return [];
+    var r = await client.from("grafo_membros").select("projeto,usuario,email,papel").in("projeto", ids);
+    if (r.error) throw r.error;
+    var dono = projetos[chaves[0]].dono, pessoas = {}, ordem = [];
+    (r.data || []).forEach(function (m) {
+      if (m.usuario === dono) return;
+      if (!pessoas[m.usuario]) { pessoas[m.usuario] = { usuario: m.usuario, email: m.email || "", papeis: {} }; ordem.push(m.usuario); }
+      if (m.email && !pessoas[m.usuario].email) pessoas[m.usuario].email = m.email;
+      var chave = chavePorId(m.projeto);
+      if (chave) pessoas[m.usuario].papeis[chave] = m.papel === "ver" ? "ver" : "editar";
+    });
+    return ordem.map(function (u) { return pessoas[u]; }).sort(function (a, b) { return a.email.localeCompare(b.email); });
+  }
+
+  async function definirAcesso(chave, pessoa, papel) {
+    var info = projetos[chave];
+    if (!info) throw new Error("Diagrama desconhecido.");
+    var r = await client.rpc("grafo_definir_acesso", { p_projeto: info.id, p_usuario: pessoa, p_papel: papel });
+    if (r.error) throw r.error;
+  }
+
+  // ---- Quem só visualiza: o editor mostra o aviso e desfaz qualquer alteração --
+  var ultimaChaveVista = null, desfazendo = false;
+  function vigiarSomenteLeitura() {
+    if (!app()) return;
+    var chave = app().projetoAtual();
+    var ver = soVe(chave);
+    if (document.body.setAttribute) {
+      if (ver) document.body.setAttribute("data-somente-leitura", ""); else document.body.removeAttribute("data-somente-leitura");
+    }
+    if (!ver || desfazendo) { ultimaChaveVista = chave; return; }
+    var info = projetos[chave];
+    var atual = JSON.stringify(app().dadosProjeto(chave));
+    // Abrindo o diagrama: o que aparece (já redesenhado) vira a base.
+    if (chave !== ultimaChaveVista || !info.base) { info.base = atual; ultimaChaveVista = chave; return; }
+    if (atual === info.base) return;
+    desfazendo = true;
+    try { app().substituirProjeto(chave, JSON.parse(info.base)); info.base = JSON.stringify(app().dadosProjeto(chave)); }
+    finally { desfazendo = false; }
+    app().avisar("Você só pode visualizar este diagrama. Peça ao dono da equipe para liberar a edição.");
+  }
+
   // ---- Janela "Equipe" -----------------------------------------------------
   var el = {};
   var focoAnterior = null;
 
   function $(id) { return document.getElementById(id); }
+  function esc(t) { return String(t == null ? "" : t).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function mensagem(texto, erro) { el.mensagem.textContent = texto || ""; el.mensagem.classList.toggle("erro", !!erro); }
   function urlConvite(token) { return location.origin + "/?convite=" + encodeURIComponent(token); }
+  function opcoesPapel(atual, comNenhum) {
+    return (comNenhum ? ["nenhum", "ver", "editar"] : ["editar", "ver"]).map(function (p) {
+      return '<option value="' + p + '"' + (p === atual ? " selected" : "") + ">" + PAPEIS[p] + "</option>";
+    }).join("");
+  }
+  function pessoaisLivres() {
+    var nomes = app().nomesProjetos ? app().nomesProjetos() : [];
+    return nomes.filter(function (n) { return !ehEquipe(n); });
+  }
+
+  function mostrarEscolha(chaveAtual) {
+    if (!el.escolha) return;
+    var nomes = pessoaisLivres();
+    el.escolha.innerHTML = nomes.map(function (n) {
+      return '<label class="equipe-diag"><input type="checkbox" data-equipe-diag value="' + esc(n) + '"' + (n === chaveAtual ? " checked" : "") + '>' +
+        '<span>' + esc(n) + '</span><select data-equipe-papel="' + esc(n) + '" aria-label="Acesso de quem entrar em ' + esc(n) + '">' + opcoesPapel("editar") + "</select></label>";
+    }).join("") || "<p>Nenhum diagrama pessoal.</p>";
+    if (el.nomeGrupo && !el.nomeGrupo.value) el.nomeGrupo.value = chaveAtual || "";
+  }
+
+  async function mostrarGrupo(info, souDono) {
+    var chaves = chavesDoGrupo(info.grupo);
+    el.grupo.hidden = false;
+    el.membrosBloco.hidden = true;
+    if (!souDono) {
+      el.matriz.innerHTML = '<p>Seus acessos nesta equipe:</p><ul class="equipe-seus">' + chaves.map(function (k) {
+        return "<li><span>" + esc(k) + "</span><em>" + PAPEIS[projetos[k].papel] + "</em></li>";
+      }).join("") + "</ul>";
+      el.adicionar.hidden = true;
+      return;
+    }
+    var pessoas;
+    try { pessoas = await acessosDoGrupo(info.grupo); }
+    catch (e) { mensagem("Não foi possível carregar os acessos.", true); return; }
+    el.matriz.innerHTML = pessoas.length
+      ? '<div class="equipe-tabela-rolagem"><table class="equipe-tabela"><thead><tr><th>Pessoa</th>' + chaves.map(function (k) { return "<th>" + esc(k) + "</th>"; }).join("") + "</tr></thead><tbody>" +
+        pessoas.map(function (p) {
+          return "<tr><td>" + esc(p.email || "Membro") + "</td>" + chaves.map(function (k) {
+            return '<td><select data-acesso-chave="' + esc(k) + '" data-acesso-pessoa="' + esc(p.usuario) + '" aria-label="Acesso de ' + esc(p.email) + " em " + esc(k) + '">' + opcoesPapel(p.papeis[k] || "nenhum", true) + "</select></td>";
+          }).join("") + "</tr>";
+        }).join("") + "</tbody></table></div>"
+      : "<p>Ninguém entrou ainda. Envie o link de convite abaixo: cada diagrama entra com o acesso escolhido para ele, e depois você ajusta aqui pessoa por pessoa.</p>";
+    var livres = pessoaisLivres();
+    el.adicionar.hidden = !livres.length;
+    if (el.adicionarDiag) el.adicionarDiag.innerHTML = livres.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + "</option>"; }).join("");
+  }
 
   async function mostrar() {
     var chave = app().projetoAtual();
@@ -262,10 +428,20 @@
     el.donoAcoes.hidden = true;
     el.membroAcoes.hidden = true;
     el.membros.innerHTML = "";
-    if (!info) return;
+    if (el.grupo) el.grupo.hidden = true;
+    if (el.membrosBloco) el.membrosBloco.hidden = false;
+    if (!info) { mostrarEscolha(chave); return; }
     var souDono = info.dono === usuario.id;
     el.donoAcoes.hidden = !souDono;
     el.membroAcoes.hidden = souDono;
+    if (info.grupo && el.grupo) {
+      await mostrarGrupo(info, souDono);
+      if (souDono) {
+        var cg = await client.from("grafo_convites_grupo").select("token").eq("grupo", info.grupo).maybeSingle();
+        mostrarConvite(cg.data && cg.data.token);
+      }
+      return;
+    }
     var m = await client.from("grafo_membros").select("usuario,email,entrou_em").eq("projeto", info.id).order("entrou_em");
     if (m.error) { mensagem("Não foi possível carregar os membros.", true); return; }
     (m.data || []).forEach(function (membro) {
@@ -314,29 +490,56 @@
   }
 
   async function transformar() {
-    var chave = app().projetoAtual();
     var botao = $("equipeTransformar");
+    var itens = [];
+    el.escolha.querySelectorAll("[data-equipe-diag]").forEach(function (cb) {
+      if (!cb.checked) return;
+      var sel = el.escolha.querySelector('[data-equipe-papel="' + (window.CSS && CSS.escape ? CSS.escape(cb.value) : cb.value) + '"]');
+      itens.push({ chave: cb.value, papel: sel ? sel.value : "editar" });
+    });
+    if (!itens.length) { mensagem("Marque ao menos um diagrama.", true); return; }
     botao.disabled = true;
-    mensagem("Criando o projeto de equipe...");
+    mensagem("Criando a equipe...");
     try {
-      await window.GrafoAuth.flush();
-      var dados = app().dadosProjeto(chave);
-      var r = await client.rpc("grafo_criar_projeto_equipe", { p_nome: chave, p_dados: dados });
-      if (r.error) throw r.error;
-      var linha = r.data && r.data[0];
-      registrar(chave, { id: linha.id, dono: usuario.id, atualizado_em: linha.atualizado_em, dados: dados });
-      // Some da lista pessoal na próxima gravação (auth.js usa separar()).
-      app().salvar();
-      app().atualizarListaProjetos();
+      await criarGrupo((el.nomeGrupo && el.nomeGrupo.value) || itens[0].chave, itens);
+      var atual = app().projetoAtual();
+      if (!ehEquipe(atual) && app().trocarProjeto) app().trocarProjeto(itens[0].chave);
       await mostrar();
-      mensagem("Pronto! Copie o link de convite e envie para quem vai editar com você.");
+      mensagem("Pronto! Copie o link de convite e envie. Depois ajuste aqui quem vê e quem edita cada diagrama.");
     } catch (erro) {
       mensagem(erroTabelaAusente(erro)
-        ? "Os projetos de equipe ainda não estão ativados no servidor. Entre em contato com o responsável pelo Grafo."
-        : "Não foi possível criar o projeto de equipe. " + (erro.message || ""), true);
+        ? "As equipes com vários diagramas ainda não estão ativadas no servidor (falta rodar o SQL 2026-10-19-equipe-grupos.sql)."
+        : "Não foi possível criar a equipe. " + (erro.message || ""), true);
     } finally {
       botao.disabled = false;
     }
+  }
+
+  async function mudarAcesso(select) {
+    select.disabled = true;
+    try {
+      await definirAcesso(select.getAttribute("data-acesso-chave"), select.getAttribute("data-acesso-pessoa"), select.value);
+      mensagem("Acesso atualizado.");
+    } catch (erro) {
+      mensagem("Não foi possível mudar o acesso. " + (erro.message || ""), true);
+    }
+    select.disabled = false;
+    await mostrar();
+  }
+
+  async function adicionarPeloBotao() {
+    var info = projetos[app().projetoAtual()];
+    if (!info || !info.grupo || !el.adicionarDiag.value) return;
+    var botao = $("equipeAdicionarBtn");
+    botao.disabled = true;
+    try {
+      await adicionarAoGrupo(info.grupo, el.adicionarDiag.value, el.adicionarPapel.value);
+      mensagem("Diagrama adicionado à equipe.");
+      await mostrar();
+    } catch (erro) {
+      mensagem("Não foi possível adicionar. " + (erro.message || ""), true);
+    }
+    botao.disabled = false;
   }
 
   async function copiar() {
@@ -349,7 +552,9 @@
     var info = projetos[app().projetoAtual()];
     var token = window.crypto && crypto.randomUUID ? crypto.randomUUID() : null;
     if (!info || !token) return;
-    var r = await client.from("grafo_convites").upsert({ projeto: info.id, token: token }, { onConflict: "projeto" });
+    var r = info.grupo
+      ? await client.from("grafo_convites_grupo").upsert({ grupo: info.grupo, token: token }, { onConflict: "grupo" })
+      : await client.from("grafo_convites").upsert({ projeto: info.id, token: token }, { onConflict: "projeto" });
     if (r.error) { mensagem("Não foi possível gerar o link.", true); return; }
     mostrarConvite(token);
     $("equipeCopiar").focus();
@@ -359,7 +564,9 @@
   async function desativarConvite() {
     var info = projetos[app().projetoAtual()];
     if (!info) return;
-    var r = await client.from("grafo_convites").delete().eq("projeto", info.id);
+    var r = info.grupo
+      ? await client.from("grafo_convites_grupo").delete().eq("grupo", info.grupo)
+      : await client.from("grafo_convites").delete().eq("projeto", info.id);
     if (r.error) { mensagem("Não foi possível desativar o link.", true); return; }
     mostrarConvite(null);
     mensagem("Link desativado. Quem já está na equipe continua; ninguém novo entra por ele.");
@@ -408,7 +615,9 @@
     el = {
       modal: $("equipeModal"), projeto: $("equipeProjeto"), pessoal: $("equipePessoal"), equipe: $("equipeProjetoEquipe"),
       membros: $("equipeMembros"), donoAcoes: $("equipeDono"), membroAcoes: $("equipeMembro"),
-      conviteCom: $("equipeConviteCom"), conviteSem: $("equipeConviteSem"), conviteUrl: $("equipeConviteUrl"), mensagem: $("equipeMensagem")
+      conviteCom: $("equipeConviteCom"), conviteSem: $("equipeConviteSem"), conviteUrl: $("equipeConviteUrl"), mensagem: $("equipeMensagem"),
+      escolha: $("equipeEscolha"), nomeGrupo: $("equipeNomeGrupo"), grupo: $("equipeGrupo"), matriz: $("equipeMatriz"), membrosBloco: $("equipeMembrosBloco"),
+      adicionar: $("equipeAdicionar"), adicionarDiag: $("equipeAdicionarDiag"), adicionarPapel: $("equipeAdicionarPapel")
     };
     var botao = $("btnEquipe");
     if (!el.modal || !botao) return;
@@ -421,6 +630,9 @@
     $("equipeDesativarLink").addEventListener("click", desativarConvite);
     $("equipeCriarLink").addEventListener("click", novoConvite);
     $("equipeSair").addEventListener("click", sair);
+    if ($("equipeAdicionarBtn")) $("equipeAdicionarBtn").addEventListener("click", adicionarPeloBotao);
+    if (el.matriz) el.matriz.addEventListener("change", function (event) { if (event.target && event.target.hasAttribute && event.target.hasAttribute("data-acesso-chave")) mudarAcesso(event.target); });
+    window.addEventListener("grafo:render", vigiarSomenteLeitura);
     el.modal.querySelectorAll("[data-equipe-fechar]").forEach(function (b) { b.addEventListener("click", fechar); });
     el.modal.addEventListener("click", function (event) { if (event.target === el.modal) fechar(); });
     // No documento, não só na janela: um botão que some (ex.: "Criar link") tira o foco dela.
@@ -443,6 +655,13 @@
     ehEquipe: ehEquipe,
     // id (uuid) do projeto de equipe, para o histórico de versões; null se for pessoal.
     idDaEquipe: function (chave) { return ehEquipe(chave) ? projetos[chave].id : null; },
+    // Grupos (equipe com vários diagramas) e acesso por pessoa.
+    criarGrupo: criarGrupo,
+    adicionarAoGrupo: adicionarAoGrupo,
+    acessosDoGrupo: acessosDoGrupo,
+    definirAcesso: definirAcesso,
+    papel: function (chave) { return ehEquipe(chave) ? projetos[chave].papel : null; },
+    grupo: function (chave) { return ehEquipe(chave) ? projetos[chave].grupo : null; },
     excluirOuSair: excluirOuSair,
     iniciarInterface: iniciarInterface,
     conviteNaUrl: function () { return conviteNaUrl; }

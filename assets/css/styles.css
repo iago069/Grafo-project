@@ -2921,3 +2921,21 @@ body[data-vista="inicio"] .inicio:has(.cena) { max-width: none; padding: 0 clamp
 .leitor-cabo.sem-ponta code:nth-of-type(2) { color: #E0A800; }
 .leitor-cabo.so-netbox code:first-of-type { outline: 1px dashed currentColor; }
 .leitor-notas span { font-size: 0.84rem; color: var(--text-dim); }
+
+/* ==== Equipe com vários diagramas e acesso por pessoa (equipe.js) ==== */
+.equipe-escolha { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow: auto; margin: 4px 0 12px; }
+.equipe-diag { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line-soft); cursor: pointer; }
+.equipe-diag span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.equipe-diag select, .equipe-tabela select, .equipe-adicionar select { min-height: 32px; padding: 2px 8px; font-size: 0.85rem; }
+.equipe-tabela-rolagem { overflow-x: auto; margin-bottom: 12px; }
+.equipe-tabela { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.equipe-tabela th, .equipe-tabela td { padding: 6px 8px; border-bottom: 1px solid var(--line-soft); text-align: left; white-space: nowrap; }
+.equipe-tabela th { font-weight: 700; color: var(--text-dim); }
+.equipe-adicionar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.equipe-seus { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.equipe-seus li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line-soft); }
+.equipe-seus em { font-style: normal; color: var(--text-dim); }
+body[data-somente-leitura] .canvas-wrap::before, body[data-somente-leitura] #canvas::before {
+  content: "Só visualização: peça ao dono da equipe para liberar a edição"; position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 5;
+  padding: 6px 14px; border-radius: 99px; font: 600 0.8rem var(--sans); color: #1B1F2A; background: #FFD38A; box-shadow: 0 6px 20px -8px rgba(0,0,0,.5); pointer-events: none; white-space: nowrap;
+}

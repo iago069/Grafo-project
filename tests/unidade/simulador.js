@@ -19,7 +19,7 @@ const copia = v => JSON.parse(JSON.stringify(v));
 function novoBanco() {
   const banco = {
     linhas: {}, semFuncao: false, semEquipe: false, contaExcluida: false,
-    projetos: [], membros: [], convites: [], canais: [], seq: 0
+    projetos: [], membros: [], convites: [], grupos: [], convitesGrupo: [], canais: [], seq: 0
   };
   Object.defineProperty(banco, "linha", {
     get: () => banco.linhas.u1 || null,
@@ -27,6 +27,8 @@ function novoBanco() {
   });
   const ehMembro = (projeto, uid) => banco.membros.some(m => m.projeto === projeto && m.usuario === uid);
   const ehDono = (projeto, uid) => banco.projetos.some(p => p.id === projeto && p.dono === uid);
+  const podeEditar = (projeto, uid) => banco.membros.some(m => m.projeto === projeto && m.usuario === uid && m.papel !== "ver");
+  const ehDonoGrupo = (grupo, uid) => banco.grupos.some(g => g.id === grupo && g.dono === uid);
   const avisarCanais = (tipo, id) => banco.canais.forEach(c => {
     if (tipo === "DELETE" || ehMembro(id, c.uid)) setTimeout(() => c.fn({ eventType: tipo, new: { id }, old: { id } }), 5);
   });
@@ -55,9 +57,11 @@ function novoBanco() {
     if (banco.semEquipe) return faltaTabela(q.tabela);
     if (banco.falhaEquipe) return { data: null, error: { code: "XX000", message: "falha de rede" } };
     const passa = linha => q.filtros.every(([c, v, op]) => (op === "in" ? v.includes(linha[c]) : linha[c] === v));
-    const lista = q.tabela === "grafo_projetos_equipe" ? banco.projetos : q.tabela === "grafo_membros" ? banco.membros : banco.convites;
-    const visivel = q.tabela === "grafo_projetos_equipe" ? l => ehMembro(l.id, uid)
-      : q.tabela === "grafo_membros" ? l => ehMembro(l.projeto, uid) : l => ehDono(l.projeto, uid);
+    const lista = q.tabela === "grafo_projetos_equipe" ? banco.projetos : q.tabela === "grafo_membros" ? banco.membros
+      : q.tabela === "grafo_convites_grupo" ? banco.convitesGrupo : banco.convites;
+    const visivel = q.tabela === "grafo_projetos_equipe" ? l => (q.op === "update" ? podeEditar(l.id, uid) : ehMembro(l.id, uid))
+      : q.tabela === "grafo_membros" ? l => ehMembro(l.projeto, uid)
+      : q.tabela === "grafo_convites_grupo" ? l => ehDonoGrupo(l.grupo, uid) : l => ehDono(l.projeto, uid);
     const alvo = lista.filter(l => visivel(l) && passa(l));
     if (q.op === "update") {
       alvo.forEach(l => { Object.assign(l, q.campos); if (q.tabela === "grafo_projetos_equipe") { l.atualizado_por = uid; avisarCanais("UPDATE", l.id); } });
@@ -66,7 +70,7 @@ function novoBanco() {
     if (q.op === "delete") {
       const pode = l => q.tabela === "grafo_projetos_equipe" ? l.dono === uid
         : q.tabela === "grafo_membros" ? (l.usuario === uid && !ehDono(l.projeto, uid)) || (ehDono(l.projeto, uid) && l.usuario !== uid)
-        : ehDono(l.projeto, uid);
+        : q.tabela === "grafo_convites_grupo" ? ehDonoGrupo(l.grupo, uid) : ehDono(l.projeto, uid);
       const sai = alvo.filter(pode);
       sai.forEach(l => lista.splice(lista.indexOf(l), 1));
       if (q.tabela === "grafo_projetos_equipe") sai.forEach(l => {
@@ -74,6 +78,11 @@ function novoBanco() {
         banco.convites = banco.convites.filter(c => c.projeto !== l.id);
         avisarCanais("DELETE", l.id);
       });
+      return { data: null, error: null };
+    }
+    if (q.op === "upsert" && q.tabela === "grafo_convites_grupo") {
+      if (!ehDonoGrupo(q.campos.grupo, uid)) return { data: null, error: { code: "42501", message: "permission denied" } };
+      banco.convitesGrupo = banco.convitesGrupo.filter(c => c.grupo !== q.campos.grupo).concat([{ ...q.campos }]);
       return { data: null, error: null };
     }
     if (q.op === "upsert") {
@@ -124,6 +133,46 @@ function novoBanco() {
       if (!ehMembro(c.projeto, uid)) banco.membros.push({ projeto: c.projeto, usuario: uid, email: conta.email, entrou_em: new Date().toISOString() });
       const p = banco.projetos.find(x => x.id === c.projeto);
       return { data: [copia({ id: p.id, nome: p.nome, dados: p.dados, dono: p.dono, atualizado_em: p.atualizado_em })], error: null };
+    }
+    if (banco.semGrupos) return { data: null, error: { code: "PGRST202", message: "Could not find the function public." + nome } };
+    if (nome === "grafo_criar_grupo") {
+      const grupo = "g" + (++banco.seq), em = new Date().toISOString();
+      banco.grupos.push({ id: grupo, dono: uid, nome: args.p_nome });
+      banco.convitesGrupo.push({ grupo, token: "11111111-1111-4111-8111-1111111111" + String(banco.seq).padStart(2, "0") });
+      const saida = args.p_projetos.map(it => {
+        const id = "p" + (++banco.seq);
+        banco.projetos.push({ id, dono: uid, nome: it.nome, dados: copia(it.dados), atualizado_em: em, atualizado_por: uid, grupo, papel_padrao: it.papel === "ver" ? "ver" : "editar" });
+        banco.membros.push({ projeto: id, usuario: uid, email: conta.email, papel: "editar", entrou_em: em });
+        return { grupo, nome: it.nome, id, atualizado_em: em };
+      });
+      return { data: saida, error: null };
+    }
+    if (nome === "grafo_aceitar_convite_grupo") {
+      const c = banco.convitesGrupo.find(x => x.token === args.p_token);
+      if (!c) return { data: [], error: null };
+      const doGrupo = banco.projetos.filter(p => p.grupo === c.grupo);
+      doGrupo.forEach(p => { if (!ehMembro(p.id, uid)) banco.membros.push({ projeto: p.id, usuario: uid, email: conta.email, papel: p.papel_padrao, entrou_em: new Date().toISOString() }); });
+      return { data: doGrupo.map(p => ({ id: p.id, nome: p.nome, dono: p.dono })), error: null };
+    }
+    if (nome === "grafo_definir_acesso") {
+      const p = banco.projetos.find(x => x.id === args.p_projeto && x.dono === uid);
+      if (!p || !p.grupo) return { data: null, error: { code: "P0001", message: "Só o dono do grupo muda os acessos." } };
+      if (args.p_usuario === uid) return { data: null, error: { code: "P0001", message: "O dono sempre edita." } };
+      banco.membros = banco.membros.filter(m => !(m.projeto === p.id && m.usuario === args.p_usuario));
+      if (args.p_papel !== "nenhum") {
+        const outro = banco.membros.find(m => m.usuario === args.p_usuario && banco.projetos.some(x => x.id === m.projeto && x.grupo === p.grupo));
+        banco.membros.push({ projeto: p.id, usuario: args.p_usuario, email: outro ? outro.email : null, papel: args.p_papel, entrou_em: new Date().toISOString() });
+      }
+      return { data: null, error: null };
+    }
+    if (nome === "grafo_adicionar_ao_grupo") {
+      if (!ehDonoGrupo(args.p_grupo, uid)) return { data: null, error: { code: "P0001", message: "Só o dono mexe no grupo." } };
+      const id = "p" + (++banco.seq), em = new Date().toISOString();
+      banco.projetos.push({ id, dono: uid, nome: args.p_nome, dados: copia(args.p_dados), atualizado_em: em, atualizado_por: uid, grupo: args.p_grupo, papel_padrao: args.p_papel });
+      const pessoas = new Map();
+      banco.membros.filter(m => banco.projetos.some(x => x.id === m.projeto && x.grupo === args.p_grupo)).forEach(m => pessoas.set(m.usuario, m.email));
+      pessoas.forEach((email, u) => banco.membros.push({ projeto: id, usuario: u, email, papel: u === uid ? "editar" : args.p_papel, entrou_em: em }));
+      return { data: [{ id, atualizado_em: em }], error: null };
     }
     return { data: null, error: { code: "PGRST202", message: "Could not find the function public." + nome } };
   }
@@ -224,7 +273,8 @@ async function abrirAba(banco, opcoes) {
       },
       avisar: texto => avisos.push(texto),
       salvar: () => window.GrafoAuth.scheduleSave(editor.projetos, editor.atual),
-      atualizarListaProjetos() {}
+      atualizarListaProjetos() {},
+      nomesProjetos: () => Object.keys(editor.projetos)
     }
   };
   const URLComBlob = class extends URL {};

@@ -388,18 +388,34 @@
         </div>
         <div id="equipePessoal">
           <p><strong id="equipeProjeto"></strong> é um projeto pessoal: só você vê e edita.</p>
-          <p>Transforme em projeto de equipe para convidar outras pessoas. Cada uma edita com a própria conta, e as alterações aparecem para todos em segundos.</p>
+          <p>Crie uma equipe e marque quais diagramas entram nela. Para cada um, escolha se quem entrar pode editar ou só visualizar. Depois dá para ajustar pessoa por pessoa.</p>
+          <label class="modal-field">
+            <span>Nome da equipe</span>
+            <input id="equipeNomeGrupo" type="text" maxlength="60" autocomplete="off">
+          </label>
+          <div class="equipe-escolha" id="equipeEscolha"></div>
           <div class="modal-actions conta-acoes">
-            <button type="button" class="primary" id="equipeTransformar">Transformar em projeto de equipe</button>
+            <button type="button" class="primary" id="equipeTransformar">Criar equipe com os diagramas marcados</button>
           </div>
         </div>
         <div id="equipeProjetoEquipe" hidden>
-          <h4 class="conta-secao">Membros</h4>
-          <ul class="equipe-membros" id="equipeMembros"></ul>
+          <div id="equipeGrupo" hidden>
+            <h4 class="conta-secao">Diagramas e acessos</h4>
+            <div class="equipe-matriz" id="equipeMatriz"></div>
+            <div class="equipe-adicionar" id="equipeAdicionar" hidden>
+              <select id="equipeAdicionarDiag" aria-label="Diagrama pessoal para pôr na equipe"></select>
+              <select id="equipeAdicionarPapel" aria-label="Acesso de quem já está na equipe"><option value="editar">Pode editar</option><option value="ver">Só visualizar</option></select>
+              <button type="button" class="ghost" id="equipeAdicionarBtn">Adicionar diagrama</button>
+            </div>
+          </div>
+          <div id="equipeMembrosBloco">
+            <h4 class="conta-secao">Membros</h4>
+            <ul class="equipe-membros" id="equipeMembros"></ul>
+          </div>
           <div id="equipeDono" hidden>
             <h4 class="conta-secao">Convidar</h4>
             <div id="equipeConviteCom">
-              <p>Quem abrir este link e entrar (ou criar a conta) passa a editar o projeto.</p>
+              <p>Quem abrir este link e entrar (ou criar a conta) entra na equipe, com o acesso escolhido para cada diagrama.</p>
               <label class="modal-field">
                 <span>Link de convite</span>
                 <input id="equipeConviteUrl" type="text" readonly>
