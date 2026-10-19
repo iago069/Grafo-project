@@ -278,6 +278,7 @@
 
   // ---- Grupos: vários diagramas e acesso por pessoa ------------------------
   var PAPEIS = { nenhum: "Sem acesso", ver: "Só visualizar", editar: "Pode editar" };
+  var ROTULO_CURTO = { nenhum: "Sem acesso", ver: "Ver", editar: "Editar" };
 
   function chavesDoGrupo(grupo) {
     return Object.keys(projetos).filter(function (k) { return grupo && projetos[k].grupo === grupo; }).sort();
@@ -445,14 +446,21 @@
     var pessoas;
     try { pessoas = await acessosDoGrupo(info.grupo); }
     catch (e) { mensagem("Não foi possível carregar os acessos.", true); return; }
+    // Um cartão por pessoa; em cada diagrama, três botões: sem acesso, ver, editar.
     el.matriz.innerHTML = pessoas.length
-      ? '<div class="equipe-tabela-rolagem"><table class="equipe-tabela"><thead><tr><th>Pessoa</th>' + chaves.map(function (k) { return "<th>" + esc(k) + "</th>"; }).join("") + "</tr></thead><tbody>" +
-        pessoas.map(function (p) {
-          return "<tr><td>" + esc(p.email || "Membro") + "</td>" + chaves.map(function (k) {
-            return '<td><select data-acesso-chave="' + esc(k) + '" data-acesso-pessoa="' + esc(p.usuario) + '" aria-label="Acesso de ' + esc(p.email) + " em " + esc(k) + '">' + opcoesPapel(p.papeis[k] || "nenhum", true) + "</select></td>";
-          }).join("") + "</tr>";
-        }).join("") + "</tbody></table></div>"
-      : "<p>Ninguém entrou ainda. Envie o link de convite abaixo: cada diagrama entra com o acesso escolhido para ele, e depois você ajusta aqui pessoa por pessoa.</p>";
+      ? pessoas.map(function (pessoa) {
+          var nome = pessoa.email || "Membro";
+          return '<section class="equipe-pessoa"><header><span class="equipe-avatar" aria-hidden="true">' + esc(nome.charAt(0).toUpperCase()) + "</span><strong>" + esc(nome) + "</strong></header>" +
+            chaves.map(function (k) {
+              var atual = pessoa.papeis[k] || "nenhum";
+              return '<div class="equipe-linha"><span class="equipe-diag-nome" title="' + esc(k) + '">' + esc(k) + '</span>' +
+                '<div class="equipe-seg" role="group" aria-label="Acesso de ' + esc(nome) + " em " + esc(k) + '">' +
+                ["nenhum", "ver", "editar"].map(function (papel) {
+                  return '<button type="button" class="' + (papel === atual ? "ativo " : "") + "seg-" + papel + '" aria-pressed="' + (papel === atual) + '" data-acesso-chave="' + esc(k) + '" data-acesso-pessoa="' + esc(pessoa.usuario) + '" data-acesso-papel="' + papel + '">' + ROTULO_CURTO[papel] + "</button>";
+                }).join("") + "</div></div>";
+            }).join("") + "</section>";
+        }).join("")
+      : '<p class="equipe-vazio">Ninguém entrou ainda. Envie o link de convite abaixo: cada diagrama entra com o acesso escolhido para ele, e depois você ajusta aqui pessoa por pessoa.</p>';
     var livres = pessoaisLivres();
     el.adicionar.hidden = !livres.length;
     if (el.adicionarDiag) el.adicionarDiag.innerHTML = livres.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + "</option>"; }).join("");
@@ -573,16 +581,18 @@
     botao.disabled = false;
   }
 
-  async function mudarAcesso(select) {
-    select.disabled = true;
+  async function mudarAcesso(botao) {
+    if (botao.classList.contains("ativo")) return;
+    var grupoBotoes = botao.parentNode;
+    grupoBotoes.querySelectorAll("button").forEach(function (b) { b.disabled = true; });
     try {
-      await definirAcesso(select.getAttribute("data-acesso-chave"), select.getAttribute("data-acesso-pessoa"), select.value);
+      await definirAcesso(botao.getAttribute("data-acesso-chave"), botao.getAttribute("data-acesso-pessoa"), botao.getAttribute("data-acesso-papel"));
+      grupoBotoes.querySelectorAll("button").forEach(function (b) { var sim = b === botao; b.classList.toggle("ativo", sim); b.setAttribute("aria-pressed", String(sim)); });
       mensagem("Acesso atualizado.");
     } catch (erro) {
       mensagem("Não foi possível mudar o acesso. " + (erro.message || ""), true);
     }
-    select.disabled = false;
-    await mostrar();
+    grupoBotoes.querySelectorAll("button").forEach(function (b) { b.disabled = false; });
   }
 
   async function adicionarPeloBotao() {
@@ -691,7 +701,10 @@
     $("equipeSair").addEventListener("click", sair);
     if ($("equipeAgruparBtn")) $("equipeAgruparBtn").addEventListener("click", agruparPeloBotao);
     if ($("equipeAdicionarBtn")) $("equipeAdicionarBtn").addEventListener("click", adicionarPeloBotao);
-    if (el.matriz) el.matriz.addEventListener("change", function (event) { if (event.target && event.target.hasAttribute && event.target.hasAttribute("data-acesso-chave")) mudarAcesso(event.target); });
+    if (el.matriz) el.matriz.addEventListener("click", function (event) {
+      var botao = event.target && event.target.closest && event.target.closest("[data-acesso-papel]");
+      if (botao) mudarAcesso(botao);
+    });
     window.addEventListener("grafo:render", vigiarSomenteLeitura);
     el.modal.querySelectorAll("[data-equipe-fechar]").forEach(function (b) { b.addEventListener("click", fechar); });
     el.modal.addEventListener("click", function (event) { if (event.target === el.modal) fechar(); });

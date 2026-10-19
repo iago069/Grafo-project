@@ -2939,3 +2939,32 @@ body[data-somente-leitura] .canvas-wrap::before, body[data-somente-leitura] #can
   content: "Só visualização: peça ao dono da equipe para liberar a edição"; position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 5;
   padding: 6px 14px; border-radius: 99px; font: 600 0.8rem var(--sans); color: #1B1F2A; background: #FFD38A; box-shadow: 0 6px 20px -8px rgba(0,0,0,.5); pointer-events: none; white-space: nowrap;
 }
+
+/* Equipe: janela mais larga, um cartão por pessoa e botões de acesso. */
+#equipeModal .modal-box { width: min(620px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto; }
+.equipe-matriz { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
+.equipe-pessoa { border: 1px solid var(--line-soft); border-radius: 14px; overflow: hidden; background: color-mix(in srgb, var(--text) 3%, transparent); }
+.equipe-pessoa header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line-soft); }
+.equipe-pessoa header strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.equipe-avatar { display: grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 50%; font: 700 0.8rem var(--sans); color: #1B1F2A; background: linear-gradient(135deg, #FFD38A, #FF9F43); }
+.equipe-linha { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 14px; }
+.equipe-linha + .equipe-linha { border-top: 1px solid color-mix(in srgb, var(--line-soft) 60%, transparent); }
+.equipe-diag-nome { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.88rem; }
+.equipe-seg { display: inline-flex; flex: none; padding: 3px; gap: 2px; border-radius: 99px; background: color-mix(in srgb, var(--text) 8%, transparent); }
+.equipe-seg button { min-height: 28px; padding: 0 12px; border: 0; border-radius: 99px; background: transparent; color: var(--text-dim); font: 600 0.78rem var(--sans); cursor: pointer; box-shadow: none; transition: background 0.15s ease, color 0.15s ease; }
+.equipe-seg button:hover:not(.ativo) { color: var(--text); background: color-mix(in srgb, var(--text) 8%, transparent); }
+.equipe-seg button.ativo.seg-nenhum { background: color-mix(in srgb, var(--text) 18%, transparent); color: var(--text); }
+.equipe-seg button.ativo.seg-ver { background: #7DB4FF; color: #0E1A2B; }
+.equipe-seg button.ativo.seg-editar { background: #4BE08C; color: #0B2016; }
+.equipe-seg button:disabled { opacity: 0.6; cursor: progress; }
+.equipe-vazio { margin: 0 0 14px; color: var(--text-dim); }
+.equipe-adicionar { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 12px 14px; border-radius: 14px; border: 1px dashed var(--line-soft); }
+.equipe-adicionar-titulo { grid-column: 1 / -1; font-size: 0.8rem; font-weight: 700; color: var(--text-dim); }
+.equipe-adicionar select { width: 100%; }
+@media (max-width: 520px) {
+  .equipe-linha { flex-direction: column; align-items: stretch; }
+  .equipe-seg { justify-content: space-between; }
+  .equipe-adicionar { grid-template-columns: 1fr; }
+}
+.equipe-pessoa header { justify-content: flex-start; padding: 10px 14px; min-height: 0; }
+.equipe-pessoa header strong { margin-right: auto; font-size: 0.92rem; }
