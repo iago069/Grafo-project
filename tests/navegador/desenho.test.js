@@ -151,3 +151,29 @@ test("arrastar uma forma vai até o fim, sem travar no meio", async () => {
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("biblioteca de equipamentos: clicar adiciona, arrastar solta onde quiser", async () => {
+  const pagina = await abrirPagina(navegador, site);
+  await esperarDiagrama(pagina);
+  const antes = (await dados(pagina)).equipamentos.length;
+  await pagina.click("#btnBibliotecaEquip");
+  await pagina.waitForSelector("#bibliotecaEquip:not([hidden]) .be-item");
+  await pagina.fill(".be-busca", "olt");
+  assert.equal(await pagina.locator(".be-item").first().getAttribute("data-tipo"), "OLT", "o que começa com o termo vem primeiro");
+  await pagina.locator(".be-item[data-tipo=\"OLT\"]").click();
+  await pagina.waitForFunction(n => window.GrafoApp.dadosProjeto(window.GrafoApp.projetoAtual()).equipamentos.length === n + 1, antes);
+  let d = await dados(pagina);
+  const nova = d.equipamentos[d.equipamentos.length - 1];
+  assert.equal(nova.tipo, "OLT");
+  assert.match(nova.nome, /^OLT \d+$/);
+  assert.match(nova.icone, /OLT/);
+  // Arrastar para o canvas.
+  await pagina.fill(".be-busca", "switch");
+  await pagina.locator(".be-item[data-tipo=\"Switch\"]").dragTo(pagina.locator("#canvas"), { targetPosition: { x: 650, y: 150 } });
+  await pagina.waitForFunction(n => window.GrafoApp.dadosProjeto(window.GrafoApp.projetoAtual()).equipamentos.length === n + 2, antes);
+  d = await dados(pagina);
+  assert.equal(d.equipamentos[d.equipamentos.length - 1].tipo, "Switch");
+  await pagina.waitForFunction(() => document.getElementById("canvas").textContent.includes("Switch 1"));
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

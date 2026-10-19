@@ -739,6 +739,138 @@
     selecionarCabo(caboSelecionado);
   }
 
+  // ---- Biblioteca de equipamentos (como as formas do draw.io) -------------------
+  // Clique num item: entra no centro da tela. Arrastar: entra onde soltar.
+  var bibliotecaEquip = null, entradasSeguidas = 0;
+
+  function nomeLivre(tipo) {
+    var usados = {};
+    estado.equipamentos.forEach(function (eq) { usados[String(eq.nome || "").toLowerCase()] = true; });
+    for (var n = 1; ; n++) { var nome = (tipo || "Equipamento") + " " + n; if (!usados[nome.toLowerCase()]) return nome.slice(0, 60); }
+  }
+
+  function adicionarEquipamentoEm(tipo, icone, ponto) {
+    var limite = limiteAtingido("equipamento");
+    if (limite) { avisar(limite); return null; }
+    var v = Esquema.validarEquipamento({ id: novoId(), nome: nomeLivre(tipo), tipo: tipo, icone: icone || iconePorTipo(tipo), imagem: "", corFonte: "#16323D", status: "ativo" });
+    if (!v.ok) { avisar(textoDosErros(v.erros)); return null; }
+    var eq = v.dados;
+    if (ponto) eq.posicao = { x: Math.round(ponto.x), y: Math.round(ponto.y) };
+    estado.equipamentos.push(eq);
+    renderTudo();
+    if (typeof renderSidebarPanels === "function") renderSidebarPanels();
+    avisar(eq.nome + " adicionado. Duplo clique nele para editar o nome, IP e portas.");
+    return eq;
+  }
+
+  function pontoParaNovo() {
+    var c = centroVisivelNoDesenho();
+    var passo = (entradasSeguidas++ % 6) * 40;
+    return { x: c.x + passo, y: c.y + passo };
+  }
+
+  function tiposParaBiblioteca() {
+    var lista = (typeof catalogoTiposEquipamentos !== "undefined" ? catalogoTiposEquipamentos : []).filter(function (t) { return t && t.nome; });
+    var vistos = {};
+    return lista.filter(function (t) { var k = t.nome.toLowerCase(); if (vistos[k]) return false; vistos[k] = true; return true; });
+  }
+
+  function criarBibliotecaDeEquipamentos() {
+    if (!caixaFerramentas || document.getElementById("bibliotecaEquip")) return;
+    var botao = document.createElement("button");
+    botao.type = "button";
+    botao.className = "ferramenta-desenho ferramenta-equip";
+    botao.id = "btnBibliotecaEquip";
+    botao.title = "Equipamentos: clique para adicionar, ou arraste para o diagrama";
+    botao.setAttribute("aria-label", botao.title);
+    botao.setAttribute("aria-expanded", "false");
+    botao.innerHTML = svgIcone('<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M7 20h10M12 16v4M9 10h6M12 7v6"/>');
+    caixaFerramentas.insertBefore(botao, caixaFerramentas.firstChild);
+    var sep = document.createElement("span");
+    sep.className = "ferramentas-sep";
+    caixaFerramentas.insertBefore(sep, botao.nextSibling);
+
+    bibliotecaEquip = document.createElement("div");
+    bibliotecaEquip.id = "bibliotecaEquip";
+    bibliotecaEquip.className = "biblioteca-equip";
+    bibliotecaEquip.hidden = true;
+    bibliotecaEquip.setAttribute("role", "dialog");
+    bibliotecaEquip.setAttribute("aria-label", "Equipamentos");
+    bibliotecaEquip.innerHTML = '<div class="be-topo"><strong>Equipamentos</strong><span>clique ou arraste</span></div>' +
+      '<input type="search" class="be-busca" placeholder="Buscar (OLT, switch...)" aria-label="Buscar equipamento">' +
+      '<div class="be-grade"></div>';
+    elCanvas.parentNode.appendChild(bibliotecaEquip);
+    bibliotecaEquip.addEventListener("pointerdown", function (event) { event.stopPropagation(); });
+    var busca = bibliotecaEquip.querySelector(".be-busca"), grade = bibliotecaEquip.querySelector(".be-grade");
+
+    function montar() {
+      var termo = busca.value.trim().toLowerCase();
+      var tipos = tiposParaBiblioteca().filter(function (t) { return !termo || t.nome.toLowerCase().indexOf(termo) >= 0; });
+      // O que começa com o termo vem primeiro ("olt" acha OLT antes de Volt).
+      if (termo) tipos.sort(function (x, y) { return x.nome.toLowerCase().indexOf(termo) - y.nome.toLowerCase().indexOf(termo) || x.nome.localeCompare(y.nome); });
+      grade.innerHTML = tipos.map(function (t) {
+        var icone = t.icone || iconePorTipo(t.nome);
+        return '<button type="button" class="be-item" draggable="true" data-tipo="' + escaparHtml(t.nome) + '" data-icone="' + escaparHtml(icone || "") + '" title="' + escaparHtml(t.nome) + '">' +
+          '<span class="be-icone">' + (icone ? '<img src="' + escaparHtml(icone) + '" alt="" draggable="false">' : "") + '</span><span class="be-nome">' + escaparHtml(t.nome) + "</span></button>";
+      }).join("") || '<p class="be-vazio">Nada encontrado.</p>';
+    }
+    function abrir(sim) {
+      bibliotecaEquip.hidden = !sim;
+      botao.setAttribute("aria-pressed", String(sim));
+      botao.setAttribute("aria-expanded", String(sim));
+      if (sim) {
+        // Alinha com o topo da caixa de ferramentas e cabe dentro do quadro.
+        var pai = bibliotecaEquip.parentNode.getBoundingClientRect(), caixa = caixaFerramentas.getBoundingClientRect(), quadro = elCanvas.getBoundingClientRect();
+        if (window.innerWidth > 760) {
+          var topo = Math.max(quadro.top + 8, caixa.top) - pai.top;
+          bibliotecaEquip.style.top = Math.round(topo) + "px";
+          bibliotecaEquip.style.maxHeight = Math.max(220, Math.round(quadro.bottom - pai.top - topo - 8)) + "px";
+          bibliotecaEquip.style.left = Math.round(caixa.right - pai.left + 10) + "px";
+        }
+        busca.value = ""; montar(); busca.focus();
+      }
+    }
+    botao.addEventListener("click", function (event) { event.stopPropagation(); abrir(bibliotecaEquip.hidden); });
+    busca.addEventListener("input", montar);
+    busca.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") abrir(false);
+      if (event.key === "Enter") { var primeiro = grade.querySelector(".be-item"); if (primeiro) primeiro.click(); }
+    });
+    grade.addEventListener("click", function (event) {
+      var item = event.target.closest(".be-item");
+      if (!item) return;
+      if (!elCanvas.querySelector("svg g.graph") && estado.equipamentos.length) return;
+      adicionarEquipamentoEm(item.getAttribute("data-tipo"), item.getAttribute("data-icone"), estado.equipamentos.length ? pontoParaNovo() : null);
+    });
+    grade.addEventListener("dragstart", function (event) {
+      var item = event.target.closest(".be-item");
+      if (!item) return;
+      event.dataTransfer.setData("application/x-grafo-equip", JSON.stringify({ tipo: item.getAttribute("data-tipo"), icone: item.getAttribute("data-icone") }));
+      event.dataTransfer.setData("text/plain", item.getAttribute("data-tipo"));
+      event.dataTransfer.effectAllowed = "copy";
+    });
+    elCanvas.addEventListener("dragover", function (event) {
+      if (Array.prototype.indexOf.call(event.dataTransfer.types || [], "application/x-grafo-equip") < 0) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "copy";
+      elCanvas.classList.add("recebendo-equip");
+    });
+    elCanvas.addEventListener("dragleave", function () { elCanvas.classList.remove("recebendo-equip"); });
+    elCanvas.addEventListener("drop", function (event) {
+      var bruto = event.dataTransfer.getData("application/x-grafo-equip");
+      elCanvas.classList.remove("recebendo-equip");
+      if (!bruto) return;
+      event.preventDefault();
+      var dado = JSON.parse(bruto);
+      adicionarEquipamentoEm(dado.tipo, dado.icone, pontoNoDesenho(event));
+    });
+    document.addEventListener("keydown", function (event) { if (event.key === "Escape" && !bibliotecaEquip.hidden) abrir(false); });
+    document.addEventListener("pointerdown", function (event) {
+      if (!bibliotecaEquip.hidden && !bibliotecaEquip.contains(event.target) && event.target !== botao && !botao.contains(event.target)) abrir(false);
+    });
+  }
+
   // Monta a interface quando o editor carrega.
   criarCaixaDeFerramentas();
+  criarBibliotecaDeEquipamentos();
   document.body.setAttribute("data-ferramenta-ativa", ferramentaAtual);

@@ -3006,3 +3006,27 @@ body[data-ferramenta-ativa]:not([data-ferramenta-ativa="selecionar"]) #canvas g.
 body.arrastando-desenho, body.arrastando-desenho * { user-select: none !important; -webkit-user-select: none !important; }
 #canvas g.desenho, #canvas .rota-alca, #canvas .desenho-alca, #canvas g.cabo-etiqueta { touch-action: none; }
 #canvas .rota-alca, #canvas .desenho-alca { transition: none; }
+
+/* ==== Biblioteca de equipamentos (clicar ou arrastar para o diagrama) ==== */
+.ferramentas-sep { display: block; height: 1px; margin: 2px 6px; background: var(--line-soft); }
+.ferramenta-equip[aria-pressed="true"] { color: var(--accent-ink, #1B1F2A); background: var(--accent, #FF9F43); }
+.biblioteca-equip { position: absolute; left: 66px; top: 50%; transform: translateY(-50%); z-index: 7; width: 264px; max-height: min(520px, 80%); display: flex; flex-direction: column; gap: 8px;
+  padding: 12px; border-radius: 16px; background: color-mix(in srgb, var(--bg-panel-2) 96%, transparent); border: 1px solid var(--line-soft);
+  box-shadow: 0 24px 50px -18px rgba(0,0,0,.55); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); animation: paletaEntrar 0.18s var(--ease-mola, ease) both; }
+.biblioteca-equip[hidden] { display: none; }
+.be-topo { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.be-topo strong { font-size: 0.92rem; }
+.be-topo span { font-size: 0.74rem; color: var(--text-dim); }
+.be-busca { min-height: 34px !important; font-size: 0.85rem; }
+.be-grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; overflow: auto; padding: 2px; }
+.be-item { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; padding: 8px 4px; border-radius: 12px; border: 1px solid transparent;
+  background: color-mix(in srgb, var(--text) 4%, transparent); color: var(--text); cursor: grab; box-shadow: none; transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease; }
+.be-item:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent, #FF9F43) 60%, transparent); background: color-mix(in srgb, var(--accent, #FF9F43) 10%, transparent); }
+.be-item:active { cursor: grabbing; }
+.be-icone { display: grid; place-items: center; width: 44px; height: 36px; }
+.be-icone img { max-width: 44px; max-height: 36px; object-fit: contain; pointer-events: none; }
+.be-nome { width: 100%; font-size: 0.7rem; font-weight: 600; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.be-vazio { grid-column: 1 / -1; margin: 6px 0; font-size: 0.82rem; color: var(--text-dim); text-align: center; }
+#canvas.recebendo-equip { outline: 2px dashed var(--accent, #FF9F43); outline-offset: -6px; }
+@media (max-width: 760px) { .biblioteca-equip { left: 50%; top: auto; bottom: 70px; transform: translateX(-50%); } }
+@media (min-width: 761px) { .biblioteca-equip { transform: none; } }
