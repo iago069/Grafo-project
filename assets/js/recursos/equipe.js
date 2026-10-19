@@ -20,7 +20,7 @@
 
   function erroTabelaAusente(erro) {
     return !!erro && (erro.code === "42P01" || erro.code === "PGRST205" || erro.code === "PGRST202" ||
-      /grafo_projetos_equipe|grafo_aceitar_convite|grafo_criar_projeto_equipe|grafo_criar_grupo|grafo_definir_acesso|grafo_adicionar_ao_grupo|grafo_convites_grupo/i.test(erro.message || ""));
+      /grafo_projetos_equipe|grafo_aceitar_convite|grafo_criar_projeto_equipe|grafo_criar_grupo|grafo_definir_acesso|grafo_adicionar_ao_grupo|grafo_convites_grupo|grafo_agrupar/i.test(erro.message || ""));
   }
 
   // Sempre maior que a versão atual, mesmo com o relógio deste computador atrasado.
@@ -305,6 +305,31 @@
     return grupo;
   }
 
+  // Junta projetos de equipe antigos (sem grupo, seus) e diagramas pessoais numa equipe.
+  // itens: [{ chave, papel }]. Resolve com o id do grupo.
+  async function agrupar(nome, itens) {
+    await window.GrafoAuth.flush();
+    var existentes = [], novos = [];
+    itens.forEach(function (it) {
+      var papel = it.papel === "ver" ? "ver" : "editar";
+      if (ehEquipe(it.chave)) existentes.push({ id: projetos[it.chave].id, papel: papel });
+      else { var dados = app().dadosProjeto(it.chave); if (dados) novos.push({ nome: it.chave, dados: dados, papel: papel }); }
+    });
+    if (!existentes.length && !novos.length) throw new Error("Escolha ao menos um diagrama.");
+    var r = await client.rpc("grafo_agrupar", { p_nome: nome, p_existentes: existentes, p_novos: novos });
+    if (r.error) throw r.error;
+    var grupo = null;
+    (r.data || []).forEach(function (linha) {
+      grupo = linha.grupo;
+      if (!linha.novo) { var k = chavePorId(linha.id); if (k) projetos[k].grupo = linha.grupo; return; }
+      var item = novos.find(function (it) { return it.nome === linha.nome; });
+      if (item) registrar(item.nome, { id: linha.id, dono: usuario.id, atualizado_em: linha.atualizado_em, dados: item.dados, grupo: linha.grupo }, "editar");
+    });
+    app().salvar();
+    if (app().atualizarListaProjetos) app().atualizarListaProjetos();
+    return grupo;
+  }
+
   // Põe mais um diagrama pessoal no grupo (só o dono).
   async function adicionarAoGrupo(grupo, chave, papel) {
     await window.GrafoAuth.flush();
@@ -382,14 +407,28 @@
     return nomes.filter(function (n) { return !ehEquipe(n); });
   }
 
-  function mostrarEscolha(chaveAtual) {
-    if (!el.escolha) return;
+  // Lista de diagramas com caixinha e acesso. comAntigos: também as suas equipes antigas.
+  function listaEscolha(alvo, chaveAtual, comAntigos) {
     var nomes = pessoaisLivres();
-    el.escolha.innerHTML = nomes.map(function (n) {
+    if (comAntigos) nomes = Object.keys(projetos).filter(function (k) { return projetos[k].dono === usuario.id && !projetos[k].grupo; }).sort().concat(nomes);
+    alvo.innerHTML = nomes.map(function (n) {
       return '<label class="equipe-diag"><input type="checkbox" data-equipe-diag value="' + esc(n) + '"' + (n === chaveAtual ? " checked" : "") + '>' +
         '<span>' + esc(n) + '</span><select data-equipe-papel="' + esc(n) + '" aria-label="Acesso de quem entrar em ' + esc(n) + '">' + opcoesPapel("editar") + "</select></label>";
     }).join("") || "<p>Nenhum diagrama pessoal.</p>";
+  }
+  function mostrarEscolha(chaveAtual) {
+    if (!el.escolha) return;
+    listaEscolha(el.escolha, chaveAtual, false);
     if (el.nomeGrupo && !el.nomeGrupo.value) el.nomeGrupo.value = chaveAtual || "";
+  }
+  function itensMarcados(alvo) {
+    var itens = [];
+    alvo.querySelectorAll("[data-equipe-diag]").forEach(function (cb) {
+      if (!cb.checked) return;
+      var sel = alvo.querySelector('[data-equipe-papel="' + (window.CSS && CSS.escape ? CSS.escape(cb.value) : cb.value) + '"]');
+      itens.push({ chave: cb.value, papel: sel ? sel.value : "editar" });
+    });
+    return itens;
   }
 
   async function mostrarGrupo(info, souDono) {
@@ -429,6 +468,7 @@
     el.membroAcoes.hidden = true;
     el.membros.innerHTML = "";
     if (el.grupo) el.grupo.hidden = true;
+    if (el.agrupar) el.agrupar.hidden = true;
     if (el.membrosBloco) el.membrosBloco.hidden = false;
     if (!info) { mostrarEscolha(chave); return; }
     var souDono = info.dono === usuario.id;
@@ -441,6 +481,11 @@
         mostrarConvite(cg.data && cg.data.token);
       }
       return;
+    }
+    if (souDono && el.agrupar) {
+      el.agrupar.hidden = false;
+      listaEscolha(el.agruparLista, chave, true);
+      if (!el.agruparNome.value) el.agruparNome.value = chave;
     }
     var m = await client.from("grafo_membros").select("usuario,email,entrou_em").eq("projeto", info.id).order("entrou_em");
     if (m.error) { mensagem("Não foi possível carregar os membros.", true); return; }
@@ -491,12 +536,7 @@
 
   async function transformar() {
     var botao = $("equipeTransformar");
-    var itens = [];
-    el.escolha.querySelectorAll("[data-equipe-diag]").forEach(function (cb) {
-      if (!cb.checked) return;
-      var sel = el.escolha.querySelector('[data-equipe-papel="' + (window.CSS && CSS.escape ? CSS.escape(cb.value) : cb.value) + '"]');
-      itens.push({ chave: cb.value, papel: sel ? sel.value : "editar" });
-    });
+    var itens = itensMarcados(el.escolha);
     if (!itens.length) { mensagem("Marque ao menos um diagrama.", true); return; }
     botao.disabled = true;
     mensagem("Criando a equipe...");
@@ -513,6 +553,24 @@
     } finally {
       botao.disabled = false;
     }
+  }
+
+  async function agruparPeloBotao() {
+    var itens = itensMarcados(el.agruparLista);
+    if (!itens.length) { mensagem("Marque ao menos um diagrama.", true); return; }
+    var botao = $("equipeAgruparBtn");
+    botao.disabled = true;
+    mensagem("Juntando os diagramas...");
+    try {
+      await agrupar(el.agruparNome.value || itens[0].chave, itens);
+      await mostrar();
+      mensagem("Pronto! Agora é uma equipe com " + itens.length + (itens.length === 1 ? " diagrama" : " diagramas") + ". Ajuste quem vê e quem edita na tabela.");
+    } catch (erro) {
+      mensagem(erroTabelaAusente(erro)
+        ? "Falta rodar o SQL 2026-10-19-equipe-agrupar.sql no Supabase."
+        : "Não foi possível juntar. " + (erro.message || ""), true);
+    }
+    botao.disabled = false;
   }
 
   async function mudarAcesso(select) {
@@ -617,7 +675,8 @@
       membros: $("equipeMembros"), donoAcoes: $("equipeDono"), membroAcoes: $("equipeMembro"),
       conviteCom: $("equipeConviteCom"), conviteSem: $("equipeConviteSem"), conviteUrl: $("equipeConviteUrl"), mensagem: $("equipeMensagem"),
       escolha: $("equipeEscolha"), nomeGrupo: $("equipeNomeGrupo"), grupo: $("equipeGrupo"), matriz: $("equipeMatriz"), membrosBloco: $("equipeMembrosBloco"),
-      adicionar: $("equipeAdicionar"), adicionarDiag: $("equipeAdicionarDiag"), adicionarPapel: $("equipeAdicionarPapel")
+      adicionar: $("equipeAdicionar"), adicionarDiag: $("equipeAdicionarDiag"), adicionarPapel: $("equipeAdicionarPapel"),
+      agrupar: $("equipeAgrupar"), agruparLista: $("equipeAgruparLista"), agruparNome: $("equipeAgruparNome")
     };
     var botao = $("btnEquipe");
     if (!el.modal || !botao) return;
@@ -630,6 +689,7 @@
     $("equipeDesativarLink").addEventListener("click", desativarConvite);
     $("equipeCriarLink").addEventListener("click", novoConvite);
     $("equipeSair").addEventListener("click", sair);
+    if ($("equipeAgruparBtn")) $("equipeAgruparBtn").addEventListener("click", agruparPeloBotao);
     if ($("equipeAdicionarBtn")) $("equipeAdicionarBtn").addEventListener("click", adicionarPeloBotao);
     if (el.matriz) el.matriz.addEventListener("change", function (event) { if (event.target && event.target.hasAttribute && event.target.hasAttribute("data-acesso-chave")) mudarAcesso(event.target); });
     window.addEventListener("grafo:render", vigiarSomenteLeitura);
@@ -658,6 +718,7 @@
     // Grupos (equipe com vários diagramas) e acesso por pessoa.
     criarGrupo: criarGrupo,
     adicionarAoGrupo: adicionarAoGrupo,
+    agrupar: agrupar,
     acessosDoGrupo: acessosDoGrupo,
     definirAcesso: definirAcesso,
     papel: function (chave) { return ehEquipe(chave) ? projetos[chave].papel : null; },

@@ -165,6 +165,28 @@ function novoBanco() {
       }
       return { data: null, error: null };
     }
+    if (nome === "grafo_agrupar") {
+      const grupo = "g" + (++banco.seq), em = new Date().toISOString();
+      banco.grupos.push({ id: grupo, dono: uid, nome: args.p_nome });
+      banco.convitesGrupo.push({ grupo, token: "22222222-2222-4222-8222-2222222222" + String(banco.seq).padStart(2, "0") });
+      const saida = [];
+      for (const it of args.p_existentes) {
+        const p = banco.projetos.find(x => x.id === it.id && x.dono === uid && !x.grupo);
+        if (!p) return { data: null, error: { code: "P0001", message: "Projeto de equipe inválido." } };
+        p.grupo = grupo; p.papel_padrao = it.papel;
+        saida.push({ grupo, nome: p.nome, id: p.id, atualizado_em: p.atualizado_em, novo: false });
+      }
+      for (const it of args.p_novos) {
+        const id = "p" + (++banco.seq);
+        const pessoas = new Map();
+        banco.membros.filter(m => banco.projetos.some(x => x.id === m.projeto && x.grupo === grupo)).forEach(m => pessoas.set(m.usuario, m.email));
+        pessoas.set(uid, conta.email);
+        banco.projetos.push({ id, dono: uid, nome: it.nome, dados: copia(it.dados), atualizado_em: em, atualizado_por: uid, grupo, papel_padrao: it.papel });
+        pessoas.forEach((email, u) => banco.membros.push({ projeto: id, usuario: u, email, papel: u === uid ? "editar" : it.papel, entrou_em: em }));
+        saida.push({ grupo, nome: it.nome, id, atualizado_em: em, novo: true });
+      }
+      return { data: saida, error: null };
+    }
     if (nome === "grafo_adicionar_ao_grupo") {
       if (!ehDonoGrupo(args.p_grupo, uid)) return { data: null, error: { code: "P0001", message: "Só o dono mexe no grupo." } };
       const id = "p" + (++banco.seq), em = new Date().toISOString();

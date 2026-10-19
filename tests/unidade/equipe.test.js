@@ -218,3 +218,19 @@ test("convite antigo (um diagrama, sem grupo) continua funcionando", async () =>
   assert.equal(colega.equipe.papel("Antigo"), "editar");
   assert.ok(colega.avisos.some(a => /entrou no projeto/.test(a)));
 });
+
+test("equipe antiga (um diagrama) vira equipe com vários diagramas; quem já estava continua editando", async () => {
+  const banco = novoBanco();
+  const dona = await abrirAba(banco, { equipe: true });
+  await dona.editarProjeto("EVPN", "E");
+  await banco.rpc("grafo_criar_projeto_equipe", { p_nome: "Antigo", p_dados: { equipamentos: [{ id: "e", nome: "X" }], conexoes: [] } });
+  await abrirAba(banco, { equipe: true, usuario: OUTRA, busca: "?convite=" + banco.convites[0].token });
+  const dona2 = await abrirAba(banco, { equipe: true });
+  await dona2.equipe.agrupar("PFU", [{ chave: "Antigo", papel: "editar" }, { chave: "EVPN", papel: "ver" }]);
+  await dona2.auth.flush();
+  assert.equal(new Set(banco.projetos.map(p => p.grupo)).size, 1);
+  assert.equal(banco.linha.projects["EVPN"], undefined, "o pessoal entrou na equipe");
+  const colega = await abrirAba(banco, { equipe: true, usuario: OUTRA });
+  assert.equal(colega.equipe.papel("Antigo"), "editar");
+  assert.equal(colega.equipe.papel("EVPN"), "ver", "o diagrama novo chega para quem já estava");
+});
