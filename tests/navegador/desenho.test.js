@@ -133,3 +133,21 @@ test("Organizar: nota longe vem para perto do diagrama e rota à mão volta a se
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("arrastar uma forma vai até o fim, sem travar no meio", async () => {
+  const projetos = { "Formas": { equipamentos: [{ id: "a", nome: "SW-A", tipo: "Switch" }], conexoes: [],
+    desenhos: [{ id: "r1", tipo: "retangulo", x: 0, y: 200, x2: 120, y2: 260, cor: "#E5484D", espessura: 2 }] } };
+  const pagina = await abrirPagina(navegador, site, { projetos, viewport: { width: 1400, height: 1400 } });
+  await esperarDiagrama(pagina);
+  const forma = await pagina.locator('#canvas g.desenho[data-desenho="r1"] rect').first().boundingBox();
+  const zoom = await pagina.evaluate(() => { const g = document.querySelector("#canvas svg g.graph"); return g.getScreenCTM().a; });
+  await pagina.mouse.move(forma.x + 2, forma.y + forma.height / 2);
+  await pagina.mouse.down();
+  for (let i = 1; i <= 10; i++) await pagina.mouse.move(forma.x + 2 + i * 15, forma.y + forma.height / 2, { steps: 2 });
+  await pagina.mouse.up();
+  await pagina.waitForFunction(() => window.GrafoApp.dadosProjeto(window.GrafoApp.projetoAtual()).desenhos[0].x > 0);
+  const d = await dados(pagina);
+  assert.ok(Math.abs(d.desenhos[0].x - 150 / zoom) <= 10, "andou o arraste inteiro (" + d.desenhos[0].x + ")");
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

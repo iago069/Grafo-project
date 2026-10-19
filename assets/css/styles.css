@@ -3001,3 +3001,8 @@ body[data-ferramenta-ativa]:not([data-ferramenta-ativa="selecionar"]) #canvas g.
 #canvas g.cabo-etiqueta { cursor: move; }
 @media (max-width: 760px) { .caixa-ferramentas { top: auto; bottom: 14px; left: 50%; transform: translateX(-50%); flex-direction: row; } }
 .barra-estilo-desenho { top: auto; bottom: 64px; }
+
+/* Arrastando desenho, alça ou rota: sem seleção de texto e sem pan. */
+body.arrastando-desenho, body.arrastando-desenho * { user-select: none !important; -webkit-user-select: none !important; }
+#canvas g.desenho, #canvas .rota-alca, #canvas .desenho-alca, #canvas g.cabo-etiqueta { touch-action: none; }
+#canvas .rota-alca, #canvas .desenho-alca { transition: none; }

@@ -4280,9 +4280,29 @@
     return e;
   }
 
-  // Salva uma mudança feita pelas ferramentas (vira um passo do desfazer).
-  function confirmarMudanca() {
-    renderTudo();
+  // Salva uma mudança feita pelas ferramentas (vira um passo do desfazer) sem
+  // redesenhar o diagrama inteiro: só desenhos, cabos e o que depende deles.
+  function confirmarMudanca(cabos) {
+    if (!elCanvas.querySelector("svg g.graph")) { renderTudo(); return; }
+    if (cabos) { rotearCabosOrtogonalmente(); desenharAlcasDaRota(); }
+    desenharDesenhos();
+    ajustarViewBoxAoConteudo(true);
+    salvarLocal();
+    atualizarJsonAvancado();
+    window.dispatchEvent(new CustomEvent("grafo:render"));
+  }
+
+  // Troca só um desenho na tela (durante o arraste), mantendo a ordem.
+  function redesenharUm(d) {
+    var svg = elCanvas.querySelector("svg");
+    var antigo = svg && svg.querySelector('g.desenho[data-desenho="' + d.id + '"]');
+    var grupo = antigo ? antigo.parentNode : svg && svg.querySelector("g.camada-desenhos");
+    if (!grupo) { desenharDesenhos(); return; }
+    var marcador = antigo ? antigo.nextSibling : null;
+    if (antigo) antigo.remove();
+    desenharUm(grupo, d);
+    var novo = grupo.lastChild;
+    if (marcador && novo !== marcador) grupo.insertBefore(novo, marcador);
   }
 
   // ---- Desenhos (formas, texto, caneta) -----------------------------------------
@@ -4335,6 +4355,9 @@
     // Área de toque larga para traços finos.
     if (d.tipo === "linha" || d.tipo === "seta") el("line", { x1: d.x, y1: d.y, x2: d.x2, y2: d.y2, stroke: "transparent", "stroke-width": 14, "class": "desenho-toque" }, g);
     if (d.tipo === "caneta") el("path", { d: caminhoDaCaneta(d.pontos), stroke: "transparent", "stroke-width": 14, fill: "none", "class": "desenho-toque" }, g);
+    // Forma sem preenchimento: pega pela borda larga (o miolo continua clicável por baixo).
+    if (d.tipo === "retangulo") el("rect", { x: c.x, y: c.y, width: c.x2 - c.x, height: c.y2 - c.y, rx: 4, fill: d.fundo ? "transparent" : "none", stroke: "transparent", "stroke-width": 14, "class": "desenho-toque" }, g);
+    if (d.tipo === "elipse") el("ellipse", { cx: (c.x + c.x2) / 2, cy: (c.y + c.y2) / 2, rx: Math.max(1, (c.x2 - c.x) / 2), ry: Math.max(1, (c.y2 - c.y) / 2), fill: d.fundo ? "transparent" : "none", stroke: "transparent", "stroke-width": 14, "class": "desenho-toque" }, g);
     if (d.id === desenhoSelecionado) desenharAlcasDoDesenho(g, d);
     ligarDesenho(g, d);
   }
@@ -4376,24 +4399,29 @@
     try { var b = t.getBBox(); return { tipo: "x", x: b.x, y: b.y, x2: b.x + b.width, y2: b.y + b.height }; } catch (e) { return { tipo: "x", x: d.x, y: d.y, x2: d.x + 60, y2: d.y + 20 }; }
   }
 
+  // Ouvintes na janela (não no elemento): o desenho pode ser recriado durante o
+  // arraste sem soltar do mouse. Um quadro por vez (requestAnimationFrame).
   function arrastar(event, mover, soltar) {
-    var alvo = event.currentTarget || event.target;
-    try { alvo.setPointerCapture(event.pointerId); } catch (e) {}
-    var quadro = 0, ultimo = null;
+    var id = event.pointerId, quadro = 0, ultimo = null;
+    document.body.classList.add("arrastando-desenho");
     function aoMover(e) {
+      if (e.pointerId !== id) return;
+      e.preventDefault();
       ultimo = e;
       if (!quadro) quadro = requestAnimationFrame(function () { quadro = 0; if (ultimo) mover(ultimo); });
     }
     function aoSoltar(e) {
+      if (e.pointerId !== id) return;
       if (quadro) { cancelAnimationFrame(quadro); quadro = 0; if (ultimo) mover(ultimo); }
-      alvo.removeEventListener("pointermove", aoMover);
-      alvo.removeEventListener("pointerup", aoSoltar);
-      alvo.removeEventListener("pointercancel", aoSoltar);
+      window.removeEventListener("pointermove", aoMover);
+      window.removeEventListener("pointerup", aoSoltar);
+      window.removeEventListener("pointercancel", aoSoltar);
+      document.body.classList.remove("arrastando-desenho");
       soltar(e);
     }
-    alvo.addEventListener("pointermove", aoMover);
-    alvo.addEventListener("pointerup", aoSoltar);
-    alvo.addEventListener("pointercancel", aoSoltar);
+    window.addEventListener("pointermove", aoMover, { passive: false });
+    window.addEventListener("pointerup", aoSoltar);
+    window.addEventListener("pointercancel", aoSoltar);
   }
 
   function iniciarArrasteDeAlca(event, d, alca) {
@@ -4412,7 +4440,7 @@
         if (alca.indexOf("w") >= 0) c.x = p.x; else c.x2 = p.x;
         d.x = c.x; d.y = c.y; d.x2 = c.x2; d.y2 = c.y2;
       }
-      desenharDesenhos();
+      redesenharUm(d);
     }, function () {
       var c = caixaDoDesenho(d);
       if (d.tipo !== "linha" && d.tipo !== "seta") { d.x = c.x; d.y = c.y; d.x2 = c.x2; d.y2 = c.y2; }
@@ -4435,7 +4463,7 @@
       var inicio = pontoNoDesenho(event);
       if (!inicio) return;
       var original = JSON.stringify(d), moveu = false;
-      selecionarDesenho(d.id, true);
+      selecionarDesenho(d.id);
       arrastar(event, function (e) {
         var p = pontoNoDesenho(e);
         if (!p) return;
@@ -4444,7 +4472,7 @@
         var dx = naGrade(p.x - inicio.x), dy = naGrade(p.y - inicio.y);
         if (Math.abs(dx) + Math.abs(dy) > 0) moveu = true;
         moverDesenho(d, dx, dy);
-        desenharDesenhos();
+        redesenharUm(d);
       }, function () { if (moveu) confirmarMudanca(); });
     });
     g.addEventListener("dblclick", function (event) {
@@ -4453,14 +4481,15 @@
     });
   }
 
-  function selecionarDesenho(id, semRedesenhar) {
+  function selecionarDesenho(id) {
+    if (desenhoSelecionado === id) return;
+    var anterior = listaDesenhos().find(function (d) { return d.id === desenhoSelecionado; });
     desenhoSelecionado = id;
-    if (id) selecionarCabo(null);
-    if (!semRedesenhar) desenharDesenhos();
-    else {
-      var svg = elCanvas.querySelector("svg");
-      if (svg) desenharDesenhos();
-    }
+    if (id && caboSelecionado != null) selecionarCabo(null);
+    if (anterior) redesenharUm(anterior);
+    var atual = listaDesenhos().find(function (d) { return d.id === id; });
+    if (atual) redesenharUm(atual);
+    atualizarBarraDeEstilo();
   }
 
   function apagarDesenho(id) {
@@ -4500,12 +4529,13 @@
     if (ferramentaAtual === "caneta") {
       var traco = Object.assign(base, { tipo: "caneta", x: inicio.x, y: inicio.y, pontos: [inicio] });
       estado.desenhos = listaDesenhos().concat([traco]);
+      desenharDesenhos();
       arrastar(event, function (e) {
         var p = pontoNoDesenho(e);
         var u = traco.pontos[traco.pontos.length - 1];
         if (!p || Math.hypot(p.x - u.x, p.y - u.y) < 3 || traco.pontos.length >= (LIMITES.pontosCaneta || 600)) return;
         traco.pontos.push(p);
-        desenharDesenhos();
+        redesenharUm(traco);
       }, function () {
         if (traco.pontos.length < 2) traco.pontos.push({ x: inicio.x + 0.5, y: inicio.y + 0.5 });
         confirmarMudanca();
@@ -4516,6 +4546,7 @@
     var forma = Object.assign(base, { tipo: ferramentaAtual, x: p0.x, y: p0.y, x2: p0.x, y2: p0.y });
     if ((ferramentaAtual === "retangulo" || ferramentaAtual === "elipse") && estiloDesenho.preencher) forma.fundo = estiloDesenho.cor;
     estado.desenhos = listaDesenhos().concat([forma]);
+    desenharDesenhos();
     arrastar(event, function (e) {
       var p = pontoNoDesenho(e);
       if (!p) return;
@@ -4528,7 +4559,7 @@
           else { var m = Math.max(Math.abs(dx), Math.abs(dy)); forma.x2 = forma.x + Math.sign(dx) * m; forma.y2 = forma.y + Math.sign(dy) * m; }
         } else { var l = Math.max(Math.abs(dx), Math.abs(dy)); forma.x2 = forma.x + Math.sign(dx || 1) * l; forma.y2 = forma.y + Math.sign(dy || 1) * l; }
       }
-      desenharDesenhos();
+      redesenharUm(forma);
     }, function () {
       // Clique sem arrastar: tamanho padrão.
       if (Math.abs(forma.x2 - forma.x) < 4 && Math.abs(forma.y2 - forma.y) < 4) {
@@ -4707,7 +4738,7 @@
     } else if (b.getAttribute("data-be-acao") === "excluir" && d) apagarDesenho(d.id);
     else if (b.getAttribute("data-be-acao") === "rota-auto" && caboSelecionado != null) {
       var c = estado.conexoes[caboSelecionado];
-      if (c) { delete c.rota; confirmarMudanca(); avisar("O cabo voltou para a rota automática."); }
+      if (c) { delete c.rota; confirmarMudanca(true); avisar("O cabo voltou para a rota automática."); }
     }
     atualizarBarraDeEstilo();
   }
@@ -4772,7 +4803,7 @@
         conexao.etiqueta = { x: arred(base.x + p.x - inicio.x), y: arred(base.y + p.y - inicio.y) };
         moveu = true;
         desenharExtrasDoCabo(aresta, pts, conexao);
-      }, function () { if (moveu) confirmarMudanca(); });
+      }, function () { if (moveu) confirmarMudanca(true); });
     });
     g.addEventListener("dblclick", function (event) { event.stopPropagation(); abrirEditorCabo(conexao); });
   }
@@ -4904,20 +4935,28 @@
     if (k + 1 === P.length - 1) { var m2 = toco(P[k + 1], P[k]); P.splice(k + 1, 0, { x: m2.x, y: m2.y }, { x: m2.x, y: m2.y }); }
     if (k === 0) { var m1 = toco(P[0], P[1]); P.splice(1, 0, { x: m1.x, y: m1.y }, { x: m1.x, y: m1.y }); k += 2; }
     var moveu = false;
+    var svg = elCanvas.querySelector("svg");
+    var aresta = svg && svg.querySelector('g.edge[id="edge_' + indice + '"]');
+    var caminho = aresta && aresta.querySelector("path");
+    var alcaArrastada = event.currentTarget;
+    // Só a alça arrastada fica visível; o cabo é redesenhado sozinho (sem rotear os outros).
+    if (svg) svg.querySelectorAll(".rota-alca").forEach(function (a) { if (a !== alcaArrastada) a.style.display = "none"; });
     arrastar(event, function (e) {
       var p = pontoNoDesenho(e);
       if (!p) return;
       if (horizontal) { P[k].y = naGrade(p.y); P[k + 1].y = naGrade(p.y); }
       else { P[k].x = naGrade(p.x); P[k + 1].x = naGrade(p.x); }
       moveu = true;
-      conexao.rota = P.map(function (q) { return { x: q.x, y: q.y }; });
-      rotearCabosOrtogonalmente();
-      desenharAlcasDaRota();
+      var pts = limparPontos(P.map(function (q) { return { x: q.x, y: q.y }; }));
+      if (caminho) caminho.setAttribute("d", caminhoOrtogonalArredondado(pts));
+      if (aresta) desenharExtrasDoCabo(aresta, pts, conexao);
+      alcaArrastada.setAttribute("x", arred((P[k].x + P[k + 1].x) / 2 - 6));
+      alcaArrastada.setAttribute("y", arred((P[k].y + P[k + 1].y) / 2 - 6));
     }, function () {
-      if (!moveu) return;
-      var limpa = rotaManualDoCabo(P[0], P[P.length - 1], conexao.rota) || P;
-      conexao.rota = limpa.slice(0, LIMITES.pontosRota || 40).map(function (q) { return { x: q.x, y: q.y }; });
-      confirmarMudanca();
+      if (!moveu) { desenharAlcasDaRota(); return; }
+      var limpa = limparPontos(P.map(function (q) { return { x: q.x, y: q.y }; }));
+      conexao.rota = limpa.slice(0, LIMITES.pontosRota || 40);
+      confirmarMudanca(true);
     });
   }
 
