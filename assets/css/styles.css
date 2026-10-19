@@ -3030,3 +3030,21 @@ body.arrastando-desenho, body.arrastando-desenho * { user-select: none !importan
 #canvas.recebendo-equip { outline: 2px dashed var(--accent, #FF9F43); outline-offset: -6px; }
 @media (max-width: 760px) { .biblioteca-equip { left: 50%; top: auto; bottom: 70px; transform: translateX(-50%); } }
 @media (min-width: 761px) { .biblioteca-equip { transform: none; } }
+
+/* ==== Ligar com o mouse e link entre diagramas ==== */
+#canvas .ligar-bolinha { cursor: crosshair; }
+#canvas .ligar-bolinha circle { fill: #FFFFFF; stroke: #3B82F6; stroke-width: 1.6; transition: r 0.12s ease; }
+#canvas .ligar-bolinha path { stroke: #3B82F6; stroke-width: 1.6; stroke-linecap: round; pointer-events: none; }
+#canvas .ligar-bolinha:hover circle { r: 9; fill: #3B82F6; }
+#canvas .ligar-bolinha:hover path { stroke: #FFFFFF; }
+#canvas .ligar-linha { fill: none; stroke: #3B82F6; stroke-width: 2; stroke-dasharray: 6 4; pointer-events: none; }
+#canvas g.node.ligar-alvo polygon, #canvas g.node.ligar-alvo rect { stroke: #3B82F6 !important; stroke-width: 2.5px; }
+#canvas g.node.ligar-alvo { filter: drop-shadow(0 0 6px rgba(59,130,246,.7)); }
+#canvas .selo-diagrama { cursor: pointer; }
+#canvas .selo-diagrama rect { fill: #3B82F6; }
+#canvas .selo-diagrama text { fill: #FFFFFF; font: 700 12px Helvetica, Arial, sans-serif; pointer-events: none; }
+#canvas .selo-diagrama:hover rect { fill: #2563EB; }
+.voltar-diagrama { position: absolute; top: 14px; left: 66px; z-index: 6; min-height: 34px; padding: 0 14px; border-radius: 99px; border: 0; cursor: pointer;
+  font: 700 0.85rem var(--sans); color: #FFFFFF; background: #3B82F6; box-shadow: 0 10px 24px -10px rgba(37,99,235,.8); }
+.voltar-diagrama[hidden] { display: none; }
+.voltar-diagrama:hover { background: #2563EB; }

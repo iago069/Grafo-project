@@ -310,6 +310,11 @@
     campoEditor("editEquipCor").value = corValida(eq.corFonte, "#16323D");
     campoEditor("editEquipCorIconeOriginal").checked = !eq.corIcone;
     campoEditor("editEquipCorIcone").value = eq.corIcone || "#2E9E5B";
+    // Outro diagrama que abre pelo selo ↗ do equipamento.
+    var outros = Object.keys(projetos).filter(function (n) { return n !== projetoAtual; }).sort();
+    if (eq.diagrama && outros.indexOf(eq.diagrama) < 0) outros.unshift(eq.diagrama);
+    campoEditor("editEquipDiagrama").innerHTML = '<option value="">— nenhum —</option>' + outros.map(function (n) { return '<option value="' + escaparHtml(n) + '">' + escaparHtml(n) + "</option>"; }).join("");
+    campoEditor("editEquipDiagrama").value = eq.diagrama || "";
     mostrarEditor("Editar equipamento", editor.formEquip);
   }
 
@@ -358,9 +363,11 @@
       grupo: campoEditor("editEquipGrupo").value, status: campoEditor("editEquipStatus").value,
       rede: campoEditor("editEquipRede").value,
       corFonte: campoEditor("editEquipCor").value,
-      corIcone: campoEditor("editEquipCorIconeOriginal").checked ? "" : campoEditor("editEquipCorIcone").value
+      corIcone: campoEditor("editEquipCorIconeOriginal").checked ? "" : campoEditor("editEquipCorIcone").value,
+      diagrama: campoEditor("editEquipDiagrama").value
     }));
     if (!validacao.ok) { campoEditor("editEquipMensagem").textContent = textoDosErros(validacao.erros); return; }
+    if (!validacao.dados.diagrama) { delete validacao.dados.diagrama; delete eq.diagrama; }
     Object.assign(eq, validacao.dados);
     fecharEditor();
     renderTudo();

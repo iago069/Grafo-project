@@ -191,6 +191,8 @@
     corFonte: { rotulo: "Cor da fonte", esquema: cor(COR_FONTE_PADRAO), reparar: constante(COR_FONTE_PADRAO) },
     // Tom do ícone (ex.: switch verde). "" ou ausente: cores originais da imagem.
     corIcone: { rotulo: "Cor do ícone", esquema: z.string().trim().regex(/^(#[0-9a-f]{6})?$/i, "cor inválida (use o formato #1A2B3C)"), opcional: true },
+    // Nome de outro diagrama que abre ao clicar no selo do equipamento.
+    diagrama: { rotulo: "Diagrama ligado", esquema: texto(LIMITES.nomeProjeto), opcional: true },
     posicao: { rotulo: "Posição", esquema: ESQUEMA_PONTO, opcional: true },
     deslocamento: { rotulo: "Deslocamento", esquema: ESQUEMA_PONTO, opcional: true }
   };

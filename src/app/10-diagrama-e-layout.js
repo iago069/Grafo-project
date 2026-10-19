@@ -1284,12 +1284,14 @@
       ativarArrasteDosEquipamentos();
       ativarEdicaoDosCabos();
       ativarSelecaoDosCabos();
+      ativarLigacaoPeloMouse();
       ativarFocoAoPassar();
       if (revelarAgora) revelarDiagrama();
       aplicarBusca();
       aplicarCaminho();
       aplicarImagensNoSvg(estado);
       girarNomesDasPortasEmPe(elCanvas.querySelector("svg"));
+      desenharLinksDeDiagrama();
       atualizarLegenda(estado);
       btnCopiar.disabled = false;
       btnBaixar.disabled = false;

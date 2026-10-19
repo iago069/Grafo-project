@@ -177,3 +177,42 @@ test("biblioteca de equipamentos: clicar adiciona, arrastar solta onde quiser", 
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("ligar com o mouse: arrastar a bolinha de um equipamento até outro cria o cabo e abre o editor", async () => {
+  const pagina = await abrirPagina(navegador, site);
+  await esperarDiagrama(pagina);
+  const antes = (await dados(pagina)).conexoes.length;
+  const nos = pagina.locator("#canvas g.node");
+  const origem = await nos.nth(0).boundingBox();
+  await pagina.mouse.move(origem.x + origem.width / 2, origem.y + origem.height / 2);
+  await pagina.waitForSelector("#canvas .ligar-bolinha");
+  const bolinha = await pagina.locator("#canvas .ligar-bolinha").nth(1).boundingBox();
+  const destino = await nos.nth(3).boundingBox();
+  await pagina.mouse.move(bolinha.x + bolinha.width / 2, bolinha.y + bolinha.height / 2);
+  await pagina.mouse.down();
+  await pagina.mouse.move(destino.x + destino.width / 2, destino.y + destino.height / 2, { steps: 8 });
+  await pagina.mouse.up();
+  await pagina.waitForSelector("#editorCaboForm:not(.hidden)");
+  const d = await dados(pagina);
+  assert.equal(d.conexoes.length, antes + 1);
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});
+
+test("link entre diagramas: selo ↗ abre o outro diagrama e 'Voltar' retorna", async () => {
+  const projetos = {
+    "EVPN": { equipamentos: [{ id: "a", nome: "core-l2-pf", tipo: "Switch", diagrama: "L2" }, { id: "b", nome: "MX204", tipo: "Roteador" }], conexoes: [{ de: "a", para: "b" }] },
+    "L2": { equipamentos: [{ id: "x", nome: "Netflix", tipo: "Servidor" }], conexoes: [] }
+  };
+  const pagina = await abrirPagina(navegador, site, { projetos });
+  await esperarDiagrama(pagina);
+  await pagina.waitForSelector("#canvas .selo-diagrama");
+  await pagina.locator("#canvas .selo-diagrama").dispatchEvent("click");
+  await pagina.waitForFunction(() => window.GrafoApp.projetoAtual() === "L2");
+  await pagina.waitForSelector("#voltarDiagrama:not([hidden])");
+  assert.match(await pagina.textContent("#voltarDiagrama"), /Voltar para EVPN/);
+  await pagina.click("#voltarDiagrama");
+  await pagina.waitForFunction(() => window.GrafoApp.projetoAtual() === "EVPN");
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

@@ -2607,6 +2607,11 @@
     campoEditor("editEquipCor").value = corValida(eq.corFonte, "#16323D");
     campoEditor("editEquipCorIconeOriginal").checked = !eq.corIcone;
     campoEditor("editEquipCorIcone").value = eq.corIcone || "#2E9E5B";
+    // Outro diagrama que abre pelo selo ↗ do equipamento.
+    var outros = Object.keys(projetos).filter(function (n) { return n !== projetoAtual; }).sort();
+    if (eq.diagrama && outros.indexOf(eq.diagrama) < 0) outros.unshift(eq.diagrama);
+    campoEditor("editEquipDiagrama").innerHTML = '<option value="">— nenhum —</option>' + outros.map(function (n) { return '<option value="' + escaparHtml(n) + '">' + escaparHtml(n) + "</option>"; }).join("");
+    campoEditor("editEquipDiagrama").value = eq.diagrama || "";
     mostrarEditor("Editar equipamento", editor.formEquip);
   }
 
@@ -2655,9 +2660,11 @@
       grupo: campoEditor("editEquipGrupo").value, status: campoEditor("editEquipStatus").value,
       rede: campoEditor("editEquipRede").value,
       corFonte: campoEditor("editEquipCor").value,
-      corIcone: campoEditor("editEquipCorIconeOriginal").checked ? "" : campoEditor("editEquipCorIcone").value
+      corIcone: campoEditor("editEquipCorIconeOriginal").checked ? "" : campoEditor("editEquipCorIcone").value,
+      diagrama: campoEditor("editEquipDiagrama").value
     }));
     if (!validacao.ok) { campoEditor("editEquipMensagem").textContent = textoDosErros(validacao.erros); return; }
+    if (!validacao.dados.diagrama) { delete validacao.dados.diagrama; delete eq.diagrama; }
     Object.assign(eq, validacao.dados);
     fecharEditor();
     renderTudo();
@@ -5109,6 +5116,168 @@
     });
   }
 
+  // ---- Ligar dois equipamentos com o mouse (como no draw.io) ---------------------
+  // Passar o mouse num equipamento mostra 4 bolinhas; arrastar de uma até outro
+  // equipamento cria o cabo e abre o editor para preencher as portas.
+  var ligacao = { no: null, timer: 0 };
+
+  function caixaNoDesenho(elemento) {
+    var svg = elCanvas.querySelector("svg"), grafo = svg && svg.querySelector("g.graph");
+    var m = grafo && grafo.getScreenCTM();
+    if (!m) return null;
+    var inv = m.inverse(), r = elemento.getBoundingClientRect(), pts = [[r.left, r.top], [r.right, r.bottom]].map(function (c) {
+      var q = svg.createSVGPoint(); q.x = c[0]; q.y = c[1]; return q.matrixTransform(inv);
+    });
+    return { x: pts[0].x, y: pts[0].y, x2: pts[1].x, y2: pts[1].y };
+  }
+
+  function esconderBolinhas() {
+    var g = elCanvas.querySelector("g.ligar-alcas");
+    if (g) g.remove();
+    ligacao.no = null;
+  }
+
+  function mostrarBolinhas(no) {
+    if (ferramentaAtual !== "selecionar" || arrastandoEquipamento || document.body.classList.contains("arrastando-desenho")) return;
+    if (ligacao.no === no) return;
+    esconderBolinhas();
+    var svg = elCanvas.querySelector("svg"), grafo = svg && svg.querySelector("g.graph");
+    var c = caixaNoDesenho(no);
+    if (!grafo || !c) return;
+    ligacao.no = no;
+    var g = el("g", { "class": "ligar-alcas" }, grafo);
+    var cx = (c.x + c.x2) / 2, cy = (c.y + c.y2) / 2, folga = 12;
+    [[cx, c.y - folga], [c.x2 + folga, cy], [cx, c.y2 + folga], [c.x - folga, cy]].forEach(function (p) {
+      var b = el("g", { "class": "ligar-bolinha", transform: "translate(" + arred(p[0]) + "," + arred(p[1]) + ")" }, g);
+      el("circle", { r: 7 }, b);
+      el("path", { d: "M-3.5 0H3.5M0 -3.5V3.5" }, b);
+      b.addEventListener("pointerdown", function (event) { iniciarLigacao(event, no, { x: p[0], y: p[1] }); });
+    });
+    g.addEventListener("pointerenter", function () { clearTimeout(ligacao.timer); });
+    g.addEventListener("pointerleave", function () { agendarEsconder(); });
+  }
+
+  function agendarEsconder() {
+    clearTimeout(ligacao.timer);
+    ligacao.timer = setTimeout(esconderBolinhas, 350);
+  }
+
+  function iniciarLigacao(event, noOrigem, inicio) {
+    if (event.button !== 0) return;
+    event.stopPropagation();
+    event.preventDefault();
+    clearTimeout(ligacao.timer);
+    var origem = idEquipamentoDoNode(noOrigem);
+    var svg = elCanvas.querySelector("svg"), grafo = svg.querySelector("g.graph");
+    var linha = el("path", { "class": "ligar-linha", d: "" }, grafo);
+    var alvo = null;
+    function marcarAlvo(no) {
+      if (alvo === no) return;
+      if (alvo) alvo.classList.remove("ligar-alvo");
+      alvo = no;
+      if (alvo) alvo.classList.add("ligar-alvo");
+    }
+    arrastar(event, function (e) {
+      var p = pontoNoDesenho(e);
+      if (!p) return;
+      var meioX = arred((inicio.x + p.x) / 2);
+      linha.setAttribute("d", "M" + arred(inicio.x) + "," + arred(inicio.y) + " H" + meioX + " V" + p.y + " H" + p.x);
+      var sob = document.elementFromPoint(e.clientX, e.clientY);
+      var no = sob && sob.closest && sob.closest("#canvas g.node");
+      marcarAlvo(no && no !== noOrigem ? no : null);
+    }, function () {
+      linha.remove();
+      var destino = alvo && idEquipamentoDoNode(alvo);
+      marcarAlvo(null);
+      esconderBolinhas();
+      if (!destino || destino === origem) return;
+      var limite = limiteAtingido("cabo");
+      if (limite) { avisar(limite); return; }
+      var v = Esquema.validarConexao({ de: origem, para: destino, tipo: "", saida: "", chegada: "", potencia: "1G", cor: "#5A7284", grossura: 2, estilo: "solid" },
+        estado.equipamentos.map(function (eq) { return eq.id; }));
+      if (!v.ok) { avisar(textoDosErros(v.erros)); return; }
+      estado.conexoes.push(v.dados);
+      renderTudo();
+      // Já abre o editor do cabo novo para preencher portas, tipo e VLAN.
+      abrirEditorCabo(v.dados);
+    });
+  }
+
+  function ativarLigacaoPeloMouse() {
+    var svg = elCanvas.querySelector("svg");
+    if (!svg) return;
+    ligacao.no = null;
+    svg.querySelectorAll("g.node").forEach(function (no) {
+      if (!idEquipamentoDoNode(no)) return;
+      no.addEventListener("pointerenter", function () { clearTimeout(ligacao.timer); mostrarBolinhas(no); });
+      no.addEventListener("pointerleave", agendarEsconder);
+      no.addEventListener("pointerdown", function () { esconderBolinhas(); });
+    });
+  }
+
+  // ---- Link entre diagramas ---------------------------------------------------------
+  // Equipamento com "Abre o diagrama" ganha um selo ↗; clicar abre o outro
+  // diagrama, e aparece "← Voltar para ..." para voltar.
+  var voltarPara = null;
+
+  function abrirDiagramaLigado(nome) {
+    if (!projetos[nome]) { avisar("O diagrama “" + nome + "” não existe mais."); return; }
+    voltarPara = projetoAtual;
+    var sel = document.getElementById("projetoSelect");
+    sel.value = nome;
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+    mostrarVoltar();
+  }
+
+  function mostrarVoltar() {
+    var chip = document.getElementById("voltarDiagrama");
+    if (!chip) {
+      chip = document.createElement("button");
+      chip.type = "button";
+      chip.id = "voltarDiagrama";
+      chip.className = "voltar-diagrama";
+      elCanvas.parentNode.appendChild(chip);
+      chip.addEventListener("pointerdown", function (event) { event.stopPropagation(); });
+      chip.addEventListener("click", function () {
+        var destino = voltarPara;
+        chip.hidden = true;
+        voltarPara = null;
+        if (destino && projetos[destino]) {
+          var sel = document.getElementById("projetoSelect");
+          sel.value = destino;
+          sel.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      });
+    }
+    chip.textContent = "← Voltar para " + voltarPara;
+    chip.hidden = !voltarPara;
+  }
+
+  function desenharLinksDeDiagrama() {
+    var svg = elCanvas.querySelector("svg");
+    if (!svg) return;
+    var chip = document.getElementById("voltarDiagrama");
+    if (chip && voltarPara && (voltarPara === projetoAtual || !projetos[voltarPara])) { chip.hidden = true; voltarPara = null; }
+    svg.querySelectorAll("g.selo-diagrama").forEach(function (g) { g.remove(); });
+    estado.equipamentos.forEach(function (eq) {
+      if (!eq.diagrama) return;
+      var no = obterNodePorId(svg, eq.id);
+      if (!no) return;
+      var b;
+      try { b = no.getBBox(); } catch (e) { return; }
+      var g = el("g", { "class": "selo-diagrama", tabindex: "0", role: "link", "aria-label": "Abrir o diagrama " + eq.diagrama }, no);
+      var x = b.x + b.width - 4, y = b.y + 4;
+      var titulo = el("title", {}, g); titulo.textContent = "Abrir o diagrama “" + eq.diagrama + "”";
+      el("rect", { x: arred(x - 22), y: arred(y - 2), width: 24, height: 18, rx: 5 }, g);
+      var t = el("text", { x: arred(x - 10), y: arred(y + 11.5), "text-anchor": "middle" }, g);
+      t.textContent = "↗";
+      g.addEventListener("pointerdown", function (event) { event.stopPropagation(); });
+      g.addEventListener("click", function (event) { event.stopPropagation(); abrirDiagramaLigado(eq.diagrama); });
+      g.addEventListener("dblclick", function (event) { event.stopPropagation(); });
+      g.addEventListener("keydown", function (event) { if (event.key === "Enter") { event.preventDefault(); event.stopPropagation(); abrirDiagramaLigado(eq.diagrama); } });
+    });
+  }
+
   // Monta a interface quando o editor carrega.
   criarCaixaDeFerramentas();
   criarBibliotecaDeEquipamentos();
@@ -6399,12 +6568,14 @@
       ativarArrasteDosEquipamentos();
       ativarEdicaoDosCabos();
       ativarSelecaoDosCabos();
+      ativarLigacaoPeloMouse();
       ativarFocoAoPassar();
       if (revelarAgora) revelarDiagrama();
       aplicarBusca();
       aplicarCaminho();
       aplicarImagensNoSvg(estado);
       girarNomesDasPortasEmPe(elCanvas.querySelector("svg"));
+      desenharLinksDeDiagrama();
       atualizarLegenda(estado);
       btnCopiar.disabled = false;
       btnBaixar.disabled = false;
