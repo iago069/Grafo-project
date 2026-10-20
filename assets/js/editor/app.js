@@ -1605,6 +1605,27 @@
 
   // Barra flutuante sobre o diagrama quando há 2 ou mais selecionados.
   var elBarraSelecao = document.getElementById("barraSelecao");
+  // Agrupar: os selecionados ganham o mesmo grupo (caixa com nome: POP, rack, sala).
+  async function agruparSelecao() {
+    var ids = idsSelecionados();
+    if (ids.length < 2) return;
+    var atuais = estado.equipamentos.filter(function (eq) { return selecao[eq.id] && eq.grupo; }).map(function (eq) { return eq.grupo; });
+    var nome = await abrirModal({ title: "Agrupar " + ids.length + " equipamentos", message: "Nome do grupo (POP, rack, sala…):", kind: "prompt", defaultValue: atuais[0] || "", confirmText: "Agrupar" });
+    if (nome == null) return;
+    nome = String(nome).trim().slice(0, LIMITES.grupo);
+    if (!nome) { avisar("Dê um nome ao grupo."); return; }
+    estado.equipamentos.forEach(function (eq) { if (selecao[eq.id]) eq.grupo = nome; });
+    renderTudo();
+    avisar("Grupo “" + nome + "” criado com " + ids.length + " equipamentos.");
+  }
+  function desagruparSelecao() {
+    var mudou = false;
+    estado.equipamentos.forEach(function (eq) { if (selecao[eq.id] && eq.grupo) { eq.grupo = ""; mudou = true; } });
+    if (!mudou) { avisar("Os selecionados não estão em grupo."); return; }
+    renderTudo();
+    avisar("Grupo desfeito.");
+  }
+
   function atualizarBarraSelecao() {
     if (!elBarraSelecao) return;
     var n = idsSelecionados().length;
@@ -1686,6 +1707,8 @@
     var usados = {};
     estado.equipamentos.forEach(function (eq) { usados[String(eq.nome || "").toLowerCase()] = true; });
     var base = String(nome || "Equipamento").replace(/ \(cópia(?: \d+)?\)$/, "");
+    // Colando em outro diagrama, sem nome repetido: fica com o nome original.
+    if (!usados[String(nome || "").toLowerCase()]) return String(nome || base).slice(0, LIMITES.nome);
     var candidato = (base + " (cópia)").slice(0, LIMITES.nome);
     for (var n = 2; usados[candidato.toLowerCase()]; n++) candidato = (base.slice(0, LIMITES.nome - 12) + " (cópia " + n + ")");
     return candidato;
@@ -1772,6 +1795,8 @@
       else if (qual === "copiar") { var n = copiarSelecao().equipamentos.length; avisar(plural(n, "equipamento copiado", "equipamentos copiados") + ". Ctrl+V cola."); }
       else if (qual === "excluir") excluirSelecao();
       else if (qual === "limpar") limparSelecao();
+      else if (qual === "agrupar") agruparSelecao();
+      else if (qual === "desagrupar") desagruparSelecao();
     });
     // Não deixa o clique na barra virar pan no canvas.
     elBarraSelecao.addEventListener("pointerdown", function (event) { event.stopPropagation(); });
@@ -2518,6 +2543,8 @@
 
   function fecharModal(valor) {
     esconderModal(modalRef.backdrop);
+    // O foco não pode ficar no campo escondido: os atalhos do teclado parariam.
+    if (modalRef.backdrop.contains(document.activeElement)) document.activeElement.blur();
     if (modalRef.resolver) {
       var resposta = valor;
       // Pergunta com texto: Cancelar (ou Esc) responde null, não o que foi digitado.
@@ -4293,6 +4320,7 @@
     if (!elCanvas.querySelector("svg g.graph")) { renderTudo(); return; }
     if (cabos) { rotearCabosOrtogonalmente(); desenharAlcasDaRota(); }
     desenharDesenhos();
+    aplicarCamadas();
     ajustarViewBoxAoConteudo(true);
     salvarLocal();
     atualizarJsonAvancado();
@@ -5061,6 +5089,7 @@
       }).join("") || '<p class="be-vazio">Nada encontrado.</p>';
     }
     function abrir(sim) {
+      if (!sim && bibliotecaEquip.contains(document.activeElement)) document.activeElement.blur();
       bibliotecaEquip.hidden = !sim;
       botao.setAttribute("aria-pressed", String(sim));
       botao.setAttribute("aria-expanded", String(sim));
@@ -5278,9 +5307,90 @@
     });
   }
 
+  // ---- Camadas: mostrar ou esconder partes do desenho ----------------------------
+  // Vale na tela e na exportação (o estilo vai junto no SVG copiado). Fica guardado
+  // neste navegador, por diagrama.
+  var CAMADAS = [
+    ["vlan", "Etiquetas de VLAN", "g.cabo-etiqueta"],
+    ["numeros", "Números nas pontas", "text.cabo-num"],
+    ["rotulos", "Nome dos cabos", "g.edge > text:not(.cabo-extra), g.edge > g > text:not(.cabo-extra)"],
+    ["desenhos", "Desenhos e formas", "g.camada-desenhos"],
+    ["notas", "Notas", "g.anotacao"],
+    ["grupos", "Caixas dos grupos", "g.cluster"]
+  ];
+  function chaveCamadas() { return "grafo-camadas:" + projetoAtual; }
+  function camadasOcultas() {
+    try { return JSON.parse(localStorage.getItem(chaveCamadas()) || "{}") || {}; } catch (e) { return {}; }
+  }
+  function aplicarCamadas() {
+    var svg = elCanvas.querySelector("svg");
+    if (!svg) return;
+    var ocultas = camadasOcultas();
+    CAMADAS.forEach(function (c) {
+      svg.querySelectorAll(c[2]).forEach(function (e) {
+        if (ocultas[c[0]]) e.style.display = "none"; else if (e.style.display === "none") e.style.display = "";
+      });
+    });
+    var botao = document.getElementById("btnCamadas");
+    if (botao) botao.classList.toggle("com-ocultas", Object.keys(ocultas).some(function (k) { return ocultas[k]; }));
+  }
+  function criarMenuDeCamadas() {
+    if (!caixaFerramentas || document.getElementById("btnCamadas")) return;
+    var sep = document.createElement("span"); sep.className = "ferramentas-sep";
+    var botao = document.createElement("button");
+    botao.type = "button"; botao.id = "btnCamadas"; botao.className = "ferramenta-desenho";
+    botao.title = "Camadas: mostrar ou esconder VLANs, números, desenhos, notas…";
+    botao.setAttribute("aria-label", botao.title);
+    botao.setAttribute("aria-expanded", "false");
+    botao.innerHTML = svgIcone('<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>');
+    caixaFerramentas.appendChild(sep);
+    caixaFerramentas.appendChild(botao);
+    var ajudaBtn = document.createElement("button");
+    ajudaBtn.type = "button"; ajudaBtn.id = "btnComoFazer"; ajudaBtn.className = "ferramenta-desenho";
+    ajudaBtn.title = "Como fazer: passo a passo das ferramentas";
+    ajudaBtn.setAttribute("aria-label", ajudaBtn.title);
+    ajudaBtn.innerHTML = svgIcone('<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5V14"/><path d="M12 17.5h.01"/>');
+    caixaFerramentas.appendChild(ajudaBtn);
+    ajudaBtn.addEventListener("click", function () { if (window.GrafoAjuda) window.GrafoAjuda.abrir(); });
+    var menu = document.createElement("div");
+    menu.id = "menuCamadas"; menu.className = "menu-camadas"; menu.hidden = true;
+    elCanvas.parentNode.appendChild(menu);
+    menu.addEventListener("pointerdown", function (event) { event.stopPropagation(); });
+    function montar() {
+      var ocultas = camadasOcultas();
+      menu.innerHTML = '<strong>Mostrar no diagrama</strong>' + CAMADAS.map(function (c) {
+        return '<label><input type="checkbox" data-camada="' + c[0] + '"' + (ocultas[c[0]] ? "" : " checked") + "> " + c[1] + "</label>";
+      }).join("") + '<p>Vale também para o PDF, PNG e SVG.</p>';
+    }
+    function abrir(sim) {
+      if (!sim && menu.contains(document.activeElement)) document.activeElement.blur();
+      menu.hidden = !sim;
+      botao.setAttribute("aria-expanded", String(sim));
+      botao.setAttribute("aria-pressed", String(sim));
+      if (sim) {
+        montar();
+        var pai = menu.parentNode.getBoundingClientRect(), b = botao.getBoundingClientRect();
+        menu.style.left = Math.round(b.right - pai.left + 10) + "px";
+        menu.style.top = Math.round(b.top - pai.top - 10) + "px";
+      }
+    }
+    botao.addEventListener("click", function (event) { event.stopPropagation(); abrir(menu.hidden); });
+    menu.addEventListener("change", function (event) {
+      var k = event.target.getAttribute("data-camada");
+      if (!k) return;
+      var ocultas = camadasOcultas();
+      if (event.target.checked) delete ocultas[k]; else ocultas[k] = true;
+      try { localStorage.setItem(chaveCamadas(), JSON.stringify(ocultas)); } catch (e) {}
+      aplicarCamadas();
+    });
+    document.addEventListener("pointerdown", function (event) { if (!menu.hidden && !menu.contains(event.target) && !botao.contains(event.target)) abrir(false); });
+    document.addEventListener("keydown", function (event) { if (event.key === "Escape" && !menu.hidden) abrir(false); });
+  }
+
   // Monta a interface quando o editor carrega.
   criarCaixaDeFerramentas();
   criarBibliotecaDeEquipamentos();
+  criarMenuDeCamadas();
   document.body.setAttribute("data-ferramenta-ativa", ferramentaAtual);
   // ==== 10-diagrama-e-layout.js: geração do DOT, imagens no SVG, organizar/grade e renderização (parte de assets/js/editor/app.js; npm run montar) ====
   // Linhas de texto do cabeçalho do equipamento (acima do ícone), conforme o
@@ -6576,6 +6686,7 @@
       aplicarImagensNoSvg(estado);
       girarNomesDasPortasEmPe(elCanvas.querySelector("svg"));
       desenharLinksDeDiagrama();
+      aplicarCamadas();
       atualizarLegenda(estado);
       btnCopiar.disabled = false;
       btnBaixar.disabled = false;

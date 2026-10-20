@@ -284,7 +284,36 @@
     return r;
   }
 
-  window.GrafoLeitor = { ler: ler, mesclar: mesclar };
+  // Compara o que foi lido com o diagrama aberto, pelas portas do equipamento
+  // central (mesmo nome). Retorna { achou, iguais, diferentes, faltam, sobram }.
+  function comparar(leitura, atual) {
+    var res = { achou: false, iguais: [], diferentes: [], faltam: [], sobram: [] };
+    var nomeDe = {}, centro = null;
+    (atual.equipamentos || []).forEach(function (e) { nomeDe[e.id] = e.nome; if (limpar(e.nome).toLowerCase() === limpar(leitura.centro).toLowerCase()) centro = e; });
+    if (!centro) return res;
+    res.achou = true;
+    var doCentro = {};
+    (atual.conexoes || []).forEach(function (c) {
+      if (c.de === centro.id && limpar(c.saida)) doCentro[limpar(c.saida).toLowerCase()] = { destino: nomeDe[c.para], porta: limpar(c.chegada) };
+      else if (c.para === centro.id && limpar(c.chegada)) doCentro[limpar(c.chegada).toLowerCase()] = { destino: nomeDe[c.de], porta: limpar(c.saida) };
+    });
+    var vistos = {};
+    leitura.cabos.forEach(function (c) {
+      var k = limpar(c.saida).toLowerCase();
+      vistos[k] = true;
+      var noDiagrama = doCentro[k];
+      var lido = { porta: c.saida, destino: c._vizinho, portaDestino: c.chegada };
+      if (!noDiagrama) { res.faltam.push(lido); return; }
+      var mesmoDestino = limpar(noDiagrama.destino).toLowerCase() === limpar(c._vizinho).toLowerCase();
+      var mesmaPorta = c.chegada === "?" || !noDiagrama.porta || noDiagrama.porta === "?" || noDiagrama.porta.toLowerCase() === c.chegada.toLowerCase();
+      if (mesmaPorta && (mesmoDestino || !c._confirmado)) res.iguais.push(lido);
+      else res.diferentes.push(Object.assign(lido, { noDiagrama: noDiagrama }));
+    });
+    Object.keys(doCentro).forEach(function (k) { if (!vistos[k]) res.sobram.push({ porta: k, destino: doCentro[k].destino, portaDestino: doCentro[k].porta }); });
+    return res;
+  }
+
+  window.GrafoLeitor = { ler: ler, mesclar: mesclar, comparar: comparar };
 
   // ---- Interface ----------------------------------------------------------------
   if (typeof document === "undefined" || !document.getElementById("navJsonCsv")) return;
@@ -318,9 +347,11 @@
       '</div>' +
       '<div class="leitor-passo" data-passo="revisar" hidden>' +
         '<p class="leitor-resumo" data-leitor-resumo></p>' +
+        '<div class="leitor-comparacao" data-leitor-comparacao hidden></div>' +
         '<div class="leitor-lista" data-leitor-lista></div>' +
         '<div class="leitor-acoes">' +
           '<button type="button" class="ghost" data-leitor-voltar>Voltar</button>' +
+          '<button type="button" class="ghost" data-leitor-comparar title="Mostra o que está diferente entre o texto e o diagrama aberto">Comparar com o diagrama aberto</button>' +
           '<button type="button" class="ghost" data-leitor-mesclar>Mesclar no diagrama aberto</button>' +
           '<button type="button" class="primary" data-leitor-novo>Criar diagrama novo</button>' +
         '</div>' +
@@ -434,7 +465,21 @@
     }).join("") + (leitura.notas.length ? '<div class="leitor-grupo leitor-notas"><strong>Notas</strong>' + leitura.notas.map(function (n) { return '<span>' + esc(n) + '</span>'; }).join("") + '</div>' : "");
     passoColar.hidden = true; passoRevisar.hidden = false;
   });
-  fundo.querySelector("[data-leitor-voltar]").addEventListener("click", function () { passoColar.hidden = false; passoRevisar.hidden = true; });
+  fundo.querySelector("[data-leitor-voltar]").addEventListener("click", function () { passoColar.hidden = false; passoRevisar.hidden = true; fundo.querySelector("[data-leitor-comparacao]").hidden = true; });
+
+  fundo.querySelector("[data-leitor-comparar]").addEventListener("click", function () {
+    var caixa = fundo.querySelector("[data-leitor-comparacao]");
+    var res = comparar(leitura, app.dadosProjeto(app.projetoAtual()) || {});
+    caixa.hidden = false;
+    if (!res.achou) { caixa.innerHTML = '<p>O diagrama aberto não tem um equipamento chamado <strong>' + esc(leitura.centro) + '</strong>. Use o mesmo nome para comparar.</p>'; return; }
+    function linha(x, extra) { return '<li><code>' + esc(x.porta) + '</code> → ' + esc(x.destino || "?") + (x.portaDestino ? ' <code>' + esc(x.portaDestino) + '</code>' : "") + (extra || "") + "</li>"; }
+    function bloco(classe, titulo, lista, fn) { return lista.length ? '<div class="cmp ' + classe + '"><strong>' + titulo + " (" + lista.length + ")</strong><ul>" + lista.map(fn).join("") + "</ul></div>" : ""; }
+    caixa.innerHTML = '<p class="cmp-resumo">' + res.iguais.length + " iguais · " + res.diferentes.length + " diferentes · " + res.faltam.length + " faltam no diagrama · " + res.sobram.length + " só no diagrama</p>" +
+      bloco("cmp-dif", "Diferentes", res.diferentes, function (x) { return linha(x, ' <em>no diagrama: ' + esc(x.noDiagrama.destino || "?") + (x.noDiagrama.porta ? " " + esc(x.noDiagrama.porta) : "") + "</em>"); }) +
+      bloco("cmp-falta", "Faltam no diagrama", res.faltam, function (x) { return linha(x); }) +
+      bloco("cmp-sobra", "Só no diagrama (não aparecem no texto)", res.sobram, function (x) { return linha(x); }) +
+      (res.diferentes.length + res.faltam.length + res.sobram.length ? '<p class="cmp-dica">“Mesclar no diagrama aberto” acrescenta o que falta; o que está diferente você corrige no editor do cabo.</p>' : '<p class="cmp-ok">Tudo confere com o diagrama.</p>');
+  });
 
   function projetoEscolhido() {
     var sel = {};

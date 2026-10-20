@@ -718,6 +718,27 @@
 
   // Barra flutuante sobre o diagrama quando há 2 ou mais selecionados.
   var elBarraSelecao = document.getElementById("barraSelecao");
+  // Agrupar: os selecionados ganham o mesmo grupo (caixa com nome: POP, rack, sala).
+  async function agruparSelecao() {
+    var ids = idsSelecionados();
+    if (ids.length < 2) return;
+    var atuais = estado.equipamentos.filter(function (eq) { return selecao[eq.id] && eq.grupo; }).map(function (eq) { return eq.grupo; });
+    var nome = await abrirModal({ title: "Agrupar " + ids.length + " equipamentos", message: "Nome do grupo (POP, rack, sala…):", kind: "prompt", defaultValue: atuais[0] || "", confirmText: "Agrupar" });
+    if (nome == null) return;
+    nome = String(nome).trim().slice(0, LIMITES.grupo);
+    if (!nome) { avisar("Dê um nome ao grupo."); return; }
+    estado.equipamentos.forEach(function (eq) { if (selecao[eq.id]) eq.grupo = nome; });
+    renderTudo();
+    avisar("Grupo “" + nome + "” criado com " + ids.length + " equipamentos.");
+  }
+  function desagruparSelecao() {
+    var mudou = false;
+    estado.equipamentos.forEach(function (eq) { if (selecao[eq.id] && eq.grupo) { eq.grupo = ""; mudou = true; } });
+    if (!mudou) { avisar("Os selecionados não estão em grupo."); return; }
+    renderTudo();
+    avisar("Grupo desfeito.");
+  }
+
   function atualizarBarraSelecao() {
     if (!elBarraSelecao) return;
     var n = idsSelecionados().length;
@@ -799,6 +820,8 @@
     var usados = {};
     estado.equipamentos.forEach(function (eq) { usados[String(eq.nome || "").toLowerCase()] = true; });
     var base = String(nome || "Equipamento").replace(/ \(cópia(?: \d+)?\)$/, "");
+    // Colando em outro diagrama, sem nome repetido: fica com o nome original.
+    if (!usados[String(nome || "").toLowerCase()]) return String(nome || base).slice(0, LIMITES.nome);
     var candidato = (base + " (cópia)").slice(0, LIMITES.nome);
     for (var n = 2; usados[candidato.toLowerCase()]; n++) candidato = (base.slice(0, LIMITES.nome - 12) + " (cópia " + n + ")");
     return candidato;
@@ -885,6 +908,8 @@
       else if (qual === "copiar") { var n = copiarSelecao().equipamentos.length; avisar(plural(n, "equipamento copiado", "equipamentos copiados") + ". Ctrl+V cola."); }
       else if (qual === "excluir") excluirSelecao();
       else if (qual === "limpar") limparSelecao();
+      else if (qual === "agrupar") agruparSelecao();
+      else if (qual === "desagrupar") desagruparSelecao();
     });
     // Não deixa o clique na barra virar pan no canvas.
     elBarraSelecao.addEventListener("pointerdown", function (event) { event.stopPropagation(); });

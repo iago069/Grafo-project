@@ -254,6 +254,61 @@
   });
   ACOES.push({ titulo: "Atalhos do teclado", grupo: "Ajuda", icone: "lista", fazer: function () { folha.hidden = false; }, termos: "teclado ajuda atalho", atalho: "?" });
 
+  // ---- "Como fazer": passo a passo das tarefas do dia a dia ----------------------
+  var COMO_FAZER = [
+    ["Montar o diagrama", [
+      ["Adicionar equipamento", "Na caixa de ferramentas do quadro, clique no primeiro botão (monitor com +). Clique num item para pôr no centro, ou arraste para onde quiser."],
+      ["Ligar dois equipamentos", "Passe o mouse num equipamento: aparecem 4 bolinhas. Arraste de uma bolinha até o outro equipamento. O editor do cabo abre para você preencher as portas."],
+      ["Editar equipamento ou cabo", "Duplo clique nele. No cabo dá para pôr VLAN, rede e os números das pontas."],
+      ["Mudar o caminho de um cabo", "Clique no cabo e arraste os quadradinhos dos trechos. “Rota automática” na barra de baixo desfaz."],
+      ["Agrupar (POP, rack, sala)", "Selecione os equipamentos (Shift + arrastar no fundo, ou Ctrl+A) e clique em Agrupar na barra que aparece."],
+      ["Copiar para outro diagrama", "Selecione, Ctrl+C, abra o outro diagrama e Ctrl+V. Os cabos entre os copiados vão junto."]
+    ]],
+    ["Desenhar por cima", [
+      ["Texto, formas e setas", "Caixa de ferramentas: T (texto), R (retângulo), E (elipse), A (seta), L (linha). Arraste no quadro. Shift deixa reto."],
+      ["Caneta e borracha", "P risca à mão livre; B apaga clicando ou arrastando por cima."],
+      ["Cor e espessura", "Com a ferramenta ou a forma selecionada, use a barra que aparece embaixo do quadro."],
+      ["Esconder partes (camadas)", "Botão de camadas na caixa de ferramentas: VLANs, números, nomes dos cabos, desenhos, notas e grupos. Vale também no PDF."]
+    ]],
+    ["Trazer dados prontos", [
+      ["Do Grafana, NetBox ou Juniper", "Importar e exportar → Gerar a partir de texto. Cole a tabela de interfaces (ou show lldp neighbors) e revise antes de aplicar."],
+      ["De um print ou foto", "No mesmo lugar, escolha ou cole (Ctrl+V) a imagem. Ela é lida com IA e cai na mesma revisão."],
+      ["Conferir um diagrama pronto", "Cole a tabela atual, clique em Ler e depois em “Comparar com o diagrama aberto”: mostra o que está diferente, o que falta e o que sobra."]
+    ]],
+    ["Organizar e compartilhar", [
+      ["Ligar diagramas", "No editor do equipamento, escolha “Abre o diagrama”. Aparece o selo ↗: clique para abrir o outro diagrama e use “← Voltar”."],
+      ["Equipe", "Botão Equipe: marque quais diagramas entram e quem pode ver ou editar cada um. Envie o link de convite."],
+      ["Exportar", "Exportar → PDF para imprimir, PNG ou SVG. Ctrl+S baixa o projeto em .json."]
+    ]]
+  ];
+  var ajuda = document.createElement("div");
+  ajuda.className = "paleta-fundo folha-atalhos folha-ajuda"; ajuda.hidden = true;
+  ajuda.innerHTML = '<div class="paleta folha" role="dialog" aria-modal="true" aria-label="Como fazer"><div class="folha-topo"><strong>Como fazer</strong><kbd>Esc</kbd></div>' +
+    '<input type="search" class="ajuda-busca" placeholder="Buscar (ex.: VLAN, cabo, equipe)" aria-label="Buscar na ajuda"><div class="ajuda-lista">' +
+    COMO_FAZER.map(function (g) {
+      return '<section><h4>' + esc(g[0]) + '</h4>' + g[1].map(function (i) {
+        return '<details class="ajuda-item"><summary>' + esc(i[0]) + '</summary><p>' + esc(i[1]) + '</p></details>';
+      }).join("") + '</section>';
+    }).join("") + '</div></div>';
+  document.body.appendChild(ajuda);
+  var buscaAjuda = ajuda.querySelector(".ajuda-busca");
+  function abrirAjuda() { ajuda.hidden = false; buscaAjuda.value = ""; filtrarAjuda(); buscaAjuda.focus(); }
+  function fecharAjuda() { if (ajuda.contains(document.activeElement)) document.activeElement.blur(); ajuda.hidden = true; }
+  function filtrarAjuda() {
+    var t = buscaAjuda.value.trim().toLowerCase();
+    ajuda.querySelectorAll(".ajuda-item").forEach(function (d) {
+      var ok = !t || d.textContent.toLowerCase().indexOf(t) >= 0;
+      d.hidden = !ok;
+      d.open = !!t && ok;
+    });
+    ajuda.querySelectorAll(".ajuda-lista section").forEach(function (sec) { sec.hidden = !sec.querySelector(".ajuda-item:not([hidden])"); });
+  }
+  buscaAjuda.addEventListener("input", filtrarAjuda);
+  ajuda.addEventListener("mousedown", function (ev) { if (ev.target === ajuda) fecharAjuda(); });
+  document.addEventListener("keydown", function (ev) { if (!ajuda.hidden && ev.key === "Escape") { ev.preventDefault(); fecharAjuda(); } });
+  ACOES.push({ titulo: "Como fazer (ajuda)", grupo: "Ajuda", icone: "lista", fazer: abrirAjuda, termos: "ajuda como fazer tutorial passo a passo" });
+  window.GrafoAjuda = { abrir: abrirAjuda };
+
   // ---- galeria de projetos ----------------------------------------------------
   var galeria = document.createElement("div");
   galeria.className = "paleta-fundo galeria-fundo"; galeria.hidden = true;

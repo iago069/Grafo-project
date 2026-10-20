@@ -1292,6 +1292,7 @@
       aplicarImagensNoSvg(estado);
       girarNomesDasPortasEmPe(elCanvas.querySelector("svg"));
       desenharLinksDeDiagrama();
+      aplicarCamadas();
       atualizarLegenda(estado);
       btnCopiar.disabled = false;
       btnBaixar.disabled = false;

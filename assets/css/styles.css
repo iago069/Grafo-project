@@ -3056,3 +3056,43 @@ body.arrastando-desenho, body.arrastando-desenho * { user-select: none !importan
 .leitor-foto:hover, .leitor-foto.recebendo, .leitor-foto:focus-visible { border-color: var(--accent, #FF9F43); background: color-mix(in srgb, var(--accent, #FF9F43) 8%, transparent); }
 .leitor-foto img { max-height: 120px; max-width: 70%; border-radius: 8px; border: 1px solid var(--line-soft); }
 .leitor-foto.com-imagem { justify-content: space-between; border-style: solid; }
+
+/* ==== Camadas ==== */
+.menu-camadas { position: absolute; z-index: 7; display: flex; flex-direction: column; gap: 6px; min-width: 220px; padding: 12px 14px; border-radius: 14px;
+  background: color-mix(in srgb, var(--bg-panel-2) 96%, transparent); border: 1px solid var(--line-soft); box-shadow: 0 20px 40px -18px rgba(0,0,0,.55); }
+.menu-camadas[hidden] { display: none; }
+.menu-camadas strong { font-size: 0.86rem; margin-bottom: 2px; }
+.menu-camadas label { display: flex; align-items: center; gap: 8px; font-size: 0.86rem; cursor: pointer; }
+.menu-camadas p { margin: 4px 0 0; font-size: 0.74rem; color: var(--text-dim); }
+#btnCamadas.com-ocultas { color: var(--accent, #FF9F43); }
+/* ==== Comparação com NetBox/Grafana ==== */
+.leitor-comparacao { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px; border: 1px solid var(--line-soft); background: color-mix(in srgb, var(--text) 3%, transparent); }
+.leitor-comparacao[hidden] { display: none; }
+.leitor-comparacao p { margin: 0; font-size: 0.85rem; }
+.cmp-resumo { font-weight: 700; }
+.cmp strong { font-size: 0.84rem; }
+.cmp ul { margin: 4px 0 0; padding-left: 18px; font-size: 0.82rem; }
+.cmp code { font: 0.78rem var(--mono); }
+.cmp em { font-style: normal; color: var(--text-dim); }
+.cmp-dif strong { color: #E5484D; } .cmp-falta strong { color: #F59E0B; } .cmp-sobra strong { color: #3B82F6; }
+.cmp-ok { color: #22C55E; font-weight: 700; } .cmp-dica { color: var(--text-dim); }
+
+/* ==== Como fazer ==== */
+.folha-ajuda .folha { width: min(720px, 100%); max-height: 80vh; }
+.ajuda-busca { margin: 12px 20px 0; min-height: 36px !important; }
+.ajuda-lista { overflow: auto; padding: 8px 20px 20px; display: flex; flex-direction: column; gap: 14px; }
+.ajuda-lista section[hidden], .ajuda-item[hidden] { display: none; }
+.ajuda-lista h4 { margin: 8px 0 6px; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); }
+.ajuda-item { border: 1px solid var(--line-soft); border-radius: 10px; padding: 0 12px; margin-bottom: 6px; background: color-mix(in srgb, var(--text) 3%, transparent); }
+.ajuda-item summary { cursor: pointer; padding: 10px 0; font-weight: 600; font-size: 0.9rem; }
+.ajuda-item p { margin: 0 0 12px; font-size: 0.86rem; line-height: 1.5; color: var(--text-dim); }
+@media (max-width: 760px) {
+  .caixa-ferramentas { max-width: calc(100% - 24px); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; overscroll-behavior: contain; }
+  .caixa-ferramentas::-webkit-scrollbar { display: none; }
+  .ferramenta-desenho { flex: none; }
+  .ferramentas-sep { flex: none; width: 1px; height: 24px; margin: 6px 2px; }
+}
+@media (max-width: 760px) {
+  .caixa-ferramentas { flex-wrap: wrap; justify-content: center; overflow: visible; width: max-content; max-width: calc(100% - 24px); }
+  .ferramentas-sep { display: none; }
+}

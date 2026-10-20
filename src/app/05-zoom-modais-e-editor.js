@@ -221,6 +221,8 @@
 
   function fecharModal(valor) {
     esconderModal(modalRef.backdrop);
+    // O foco não pode ficar no campo escondido: os atalhos do teclado parariam.
+    if (modalRef.backdrop.contains(document.activeElement)) document.activeElement.blur();
     if (modalRef.resolver) {
       var resposta = valor;
       // Pergunta com texto: Cancelar (ou Esc) responde null, não o que foi digitado.

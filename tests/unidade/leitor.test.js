@@ -110,3 +110,21 @@ test("Mesclar mantém posições e ids, não duplica cabo e reaproveita equipame
   assert.ok(m.conexoes.some(c => c.saida === "xe-0/0/15" && c.de === "x" && c.para === "y"));
   assert.ok(m.conexoes.some(c => c.saida === "et-0/0/48"));
 });
+
+test("Comparar com o diagrama: iguais, diferentes, faltam e só no diagrama", () => {
+  const leitura = L.ler(GRAFANA, "core-l2-pf");
+  const atual = {
+    equipamentos: [{ id: "c", nome: "core-l2-pf" }, { id: "m", nome: "LINK_MARAU_CORE_MRU-AE13" }, { id: "x", nome: "Outro" }],
+    conexoes: [
+      { de: "c", para: "m", saida: "xe-0/0/14", chegada: "?" },
+      { de: "c", para: "x", saida: "xe-0/0/17", chegada: "p1" },
+      { de: "c", para: "x", saida: "xe-0/0/99", chegada: "p2" }
+    ]
+  };
+  const r = simples(L.comparar(leitura, atual));
+  assert.ok(r.achou);
+  assert.deepEqual(r.iguais.map(x => x.porta), ["xe-0/0/14", "xe-0/0/17"], "destino só pela descrição não conta como diferente");
+  assert.ok(r.faltam.some(x => x.porta === "xe-0/0/15"));
+  assert.deepEqual(r.sobram.map(x => x.porta), ["xe-0/0/99"]);
+  assert.equal(L.comparar(leitura, { equipamentos: [{ id: "z", nome: "outro" }], conexoes: [] }).achou, false);
+});

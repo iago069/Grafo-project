@@ -216,3 +216,58 @@ test("link entre diagramas: selo ↗ abre o outro diagrama e 'Voltar' retorna", 
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("camadas escondem VLANs e notas na tela; agrupar e colar em outro diagrama mantém o nome", async () => {
+  const projetos = {
+    "A": { equipamentos: [{ id: "a", nome: "SW-A", tipo: "Switch" }, { id: "b", nome: "SW-B", tipo: "Switch" }],
+      conexoes: [{ de: "a", para: "b", saida: "p1", chegada: "p2", vlan: "2047", redeVlan: "172.20.8.168/30" }],
+      anotacoes: [{ id: "n1", texto: "nota", x: 0, y: 200, cor: "#FFF3B0" }] },
+    "B": { equipamentos: [{ id: "z", nome: "SW-Z", tipo: "Switch" }], conexoes: [] }
+  };
+  const pagina = await abrirPagina(navegador, site, { projetos });
+  await esperarDiagrama(pagina);
+  await pagina.waitForSelector("#canvas g.cabo-etiqueta");
+  await pagina.click("#btnCamadas");
+  await pagina.locator('#menuCamadas [data-camada="vlan"]').uncheck();
+  await pagina.locator('#menuCamadas [data-camada="notas"]').uncheck();
+  assert.equal(await pagina.locator("#canvas g.cabo-etiqueta").isVisible(), false);
+  assert.equal(await pagina.locator("#canvas g.anotacao").isVisible(), false);
+  await pagina.keyboard.press("Escape");
+  // Selecionar os dois (Ctrl+A) e agrupar.
+  await pagina.locator("#canvas g.node").first().click();
+  await pagina.keyboard.press("Control+a");
+  await pagina.waitForSelector("#barraSelecao:not([hidden])");
+  await pagina.click('[data-selecao="agrupar"]');
+  await pagina.fill("#modalInput", "POP Centro");
+  await pagina.click("[data-modal-confirm]");
+  await pagina.waitForFunction(() => window.GrafoApp.dadosProjeto("A").equipamentos.every(e => e.grupo === "POP Centro"));
+  // Copiar e colar no diagrama B: nomes ficam iguais (espera o redesenho depois de agrupar).
+  await pagina.waitForTimeout(600);
+  await pagina.keyboard.press("Control+a");
+  await pagina.keyboard.press("Control+c");
+  await pagina.waitForFunction(() => (JSON.parse(localStorage.getItem("grafo-copia") || "{}").equipamentos || []).length === 2);
+  await pagina.evaluate(() => window.GrafoApp.trocarProjeto("B"));
+  await pagina.waitForFunction(() => window.GrafoApp.projetoAtual() === "B");
+  await pagina.waitForSelector("#canvas g.node");
+  await pagina.keyboard.press("Control+v");
+  await pagina.waitForFunction(() => window.GrafoApp.dadosProjeto("B").equipamentos.length === 3);
+  const nomes = (await pagina.evaluate(() => window.GrafoApp.dadosProjeto("B"))).equipamentos.map(e => e.nome).sort();
+  assert.deepEqual(nomes, ["SW-A", "SW-B", "SW-Z"]);
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});
+
+test("Como fazer: abre pela caixa de ferramentas e a busca filtra", async () => {
+  const pagina = await abrirPagina(navegador, site);
+  await esperarDiagrama(pagina);
+  await pagina.waitForFunction(() => window.GrafoAjuda);
+  await pagina.click("#btnComoFazer");
+  await pagina.waitForSelector(".folha-ajuda:not([hidden])");
+  await pagina.fill(".ajuda-busca", "vlan");
+  const visiveis = await pagina.locator(".ajuda-item:not([hidden])").count();
+  assert.ok(visiveis >= 1 && visiveis < 6, "filtra pelo termo (" + visiveis + ")");
+  await pagina.keyboard.press("Escape");
+  await pagina.waitForSelector(".folha-ajuda", { state: "hidden" });
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});
