@@ -122,7 +122,7 @@
 
   function juntar(regs) {
     var porPorta = {}, ordem = [];
-    var peso = { grafana: 3, junos: 3, netbox: 1, lldp: 1 };
+    var peso = { grafana: 3, junos: 3, ia: 2, netbox: 1, lldp: 1 };
     regs.forEach(function (r) {
       var chave = r.porta.toLowerCase();
       var atual = porPorta[chave];
@@ -157,13 +157,23 @@
     return id;
   }
 
-  // Lê o texto e devolve { projeto, cabos (para a revisão), notas, formatos }.
-  function ler(texto, nomeCentro) {
+  // Portas lidas de uma imagem pela IA (api/ler-imagem.js), no formato do leitor.
+  function registrosDaImagem(lista) {
+    return (lista || []).map(function (x) {
+      return { porta: limpar(x.porta), velocidade: limpar(x.velocidade).toUpperCase(), desc: limpar(x.descricao), lag: limpar(x.lag).toLowerCase(),
+        vizinho: limpar(x.vizinho), portaVizinho: limpar(x.portaVizinho), status: x.status === "offline" ? "offline" : "online", fonte: "ia" };
+    }).filter(function (x) { return x.porta && !/\.\d+$/.test(x.porta); })
+      .map(function (x) { ["vizinho", "portaVizinho", "lag", "velocidade"].forEach(function (k) { if (!x[k]) delete x[k]; }); return x; });
+  }
+
+  // Lê o texto (e, se houver, as portas lidas da imagem) e devolve
+  // { projeto, cabos (para a revisão), notas, formatos }.
+  function ler(texto, nomeCentro, portasDaImagem) {
     var linhas = String(texto || "").replace(/\r/g, "").split("\n");
-    var lidos = { grafana: lerGrafana(linhas), netbox: lerNetbox(linhas), junos: lerDescricoes(linhas), lldp: lerLldp(linhas) };
+    var lidos = { grafana: lerGrafana(linhas), netbox: lerNetbox(linhas), junos: lerDescricoes(linhas), lldp: lerLldp(linhas), ia: registrosDaImagem(portasDaImagem) };
     var formatos = Object.keys(lidos).filter(function (k) { return lidos[k].length; });
-    var portas = juntar([].concat(lidos.grafana, lidos.junos, lidos.netbox, lidos.lldp));
-    var temPrincipal = lidos.grafana.length + lidos.junos.length > 0;
+    var portas = juntar([].concat(lidos.grafana, lidos.junos, lidos.ia, lidos.netbox, lidos.lldp));
+    var temPrincipal = lidos.grafana.length + lidos.junos.length + lidos.ia.length > 0;
 
     // LAGs: membro tem descrição "aeN"; a descrição da LAG diz o destino.
     var lags = {};
@@ -189,7 +199,7 @@
       var lag = p.lag ? lags[p.lag.toLowerCase()] : null;
       var descDestino = (lag && lag.desc) || p.desc || "";
       var nomeViz = p.vizinho || (lag && lag.vizinho) || descDestino;
-      var soNetbox = temPrincipal && p.fontes.indexOf("grafana") < 0 && p.fontes.indexOf("junos") < 0;
+      var soNetbox = temPrincipal && p.fontes.indexOf("grafana") < 0 && p.fontes.indexOf("junos") < 0 && p.fontes.indexOf("ia") < 0;
       if (!nomeViz) {
         if (lag) (semDestinoPorLag[lag.porta] = semDestinoPorLag[lag.porta] || []).push(p.porta);
         else notas.push(p.porta + ": " + (p.status === "offline" ? "offline" : "online") + ", sem descrição e sem vizinho");
@@ -298,6 +308,10 @@
     '<div class="leitor-corpo">' +
       '<div class="leitor-passo" data-passo="colar">' +
         '<label>Nome do equipamento destas portas<input type="text" data-leitor-nome maxlength="60" placeholder="ex.: core-l2-pf"></label>' +
+        '<div class="leitor-foto" data-leitor-foto tabindex="0" role="button" aria-label="Escolher foto ou print">' +
+          '<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-leitor-arquivo hidden>' +
+          '<img data-leitor-previa alt="" hidden><span data-leitor-foto-texto><strong>Foto ou print (opcional)</strong> Clique para escolher, arraste aqui ou cole com Ctrl+V. É lido com IA.</span>' +
+          '<button type="button" class="ghost small" data-leitor-tirar hidden>Tirar imagem</button></div>' +
         '<label>Texto colado<textarea data-leitor-texto spellcheck="false" placeholder="Cole aqui a tabela de interfaces do Grafana, a do NetBox, ou a saída de show interfaces descriptions / show lldp neighbors. Pode colar mais de uma: o Grafana manda e o NetBox completa."></textarea></label>' +
         '<p class="leitor-ajuda">Porta com descrição "aeN" entra na LAG aeN. Porta que só aparece no NetBox entra tracejada. Nada é aplicado antes da revisão.</p>' +
         '<div class="leitor-acoes"><button type="button" class="primary" data-leitor-ler>Ler texto</button></div>' +
@@ -324,12 +338,87 @@
   fundo.addEventListener("click", function (ev) { if (ev.target === fundo) fechar(); });
   document.addEventListener("keydown", function (ev) { if (ev.key === "Escape" && !fundo.hidden) fechar(); });
 
-  var NOMES_FORMATO = { grafana: "Grafana", netbox: "NetBox", junos: "show interfaces descriptions", lldp: "show lldp neighbors" };
+  var NOMES_FORMATO = { grafana: "Grafana", netbox: "NetBox", junos: "show interfaces descriptions", lldp: "show lldp neighbors", ia: "imagem (lida com IA)" };
 
-  fundo.querySelector("[data-leitor-ler]").addEventListener("click", function () {
+  // ---- Imagem (lida no servidor com IA) ----
+  var imagem = null; // { tipo, base64, url }
+  var elFoto = fundo.querySelector("[data-leitor-foto]"), elArquivo = fundo.querySelector("[data-leitor-arquivo]");
+  var elPrevia = fundo.querySelector("[data-leitor-previa]"), elTirar = fundo.querySelector("[data-leitor-tirar]"), elFotoTexto = fundo.querySelector("[data-leitor-foto-texto]");
+
+  // Reduz para no máximo 1800 px e JPEG: cabe no envio e lê bem.
+  function prepararImagem(arquivo) {
+    return new Promise(function (resolve, reject) {
+      if (!arquivo || !/^image\//.test(arquivo.type)) { reject(new Error("Escolha uma imagem.")); return; }
+      var url = URL.createObjectURL(arquivo), img = new Image();
+      img.onload = function () {
+        var escala = Math.min(1, 1800 / Math.max(img.naturalWidth, img.naturalHeight));
+        var c = document.createElement("canvas");
+        c.width = Math.round(img.naturalWidth * escala); c.height = Math.round(img.naturalHeight * escala);
+        var ctx = c.getContext("2d");
+        ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        var dataUrl = c.toDataURL("image/jpeg", 0.88);
+        URL.revokeObjectURL(url);
+        resolve({ tipo: "image/jpeg", base64: dataUrl.split(",")[1], url: dataUrl });
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("Não deu para abrir a imagem.")); };
+      img.src = url;
+    });
+  }
+  function usarArquivo(arquivo) {
+    prepararImagem(arquivo).then(function (pronta) {
+      imagem = pronta;
+      elPrevia.src = pronta.url; elPrevia.hidden = false; elTirar.hidden = false; elFotoTexto.hidden = true;
+      elFoto.classList.add("com-imagem");
+    }).catch(function (e) { app.avisar(e.message); });
+  }
+  function tirarImagem() {
+    imagem = null; elPrevia.hidden = true; elPrevia.removeAttribute("src"); elTirar.hidden = true; elFotoTexto.hidden = false; elArquivo.value = "";
+    elFoto.classList.remove("com-imagem");
+  }
+  elFoto.addEventListener("click", function (ev) { if (ev.target !== elTirar) elArquivo.click(); });
+  elFoto.addEventListener("keydown", function (ev) { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); elArquivo.click(); } });
+  elTirar.addEventListener("click", function (ev) { ev.stopPropagation(); tirarImagem(); });
+  elArquivo.addEventListener("change", function () { if (elArquivo.files[0]) usarArquivo(elArquivo.files[0]); });
+  elFoto.addEventListener("dragover", function (ev) { ev.preventDefault(); elFoto.classList.add("recebendo"); });
+  elFoto.addEventListener("dragleave", function () { elFoto.classList.remove("recebendo"); });
+  elFoto.addEventListener("drop", function (ev) { ev.preventDefault(); elFoto.classList.remove("recebendo"); if (ev.dataTransfer.files[0]) usarArquivo(ev.dataTransfer.files[0]); });
+  fundo.addEventListener("paste", function (ev) {
+    var itens = (ev.clipboardData && ev.clipboardData.items) || [];
+    for (var i = 0; i < itens.length; i++) if (itens[i].type && itens[i].type.indexOf("image/") === 0) { ev.preventDefault(); usarArquivo(itens[i].getAsFile()); return; }
+  });
+
+  async function lerImagemComIa() {
+    var auth = window.GrafoAuth;
+    if (!auth || !auth.logado || !auth.logado()) { if (auth && auth.pedirLogin) auth.pedirLogin("ler imagens com IA"); throw new Error("Entre na sua conta para ler imagens."); }
+    var sessao = await auth.client().auth.getSession();
+    var token = sessao && sessao.data && sessao.data.session && sessao.data.session.access_token;
+    var r = await fetch("/api/ler-imagem", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + (token || "") },
+      body: JSON.stringify({ imagem: imagem.base64, tipo: imagem.tipo, nome: elNome.value, texto: elTexto.value })
+    });
+    var dados = {};
+    try { dados = await r.json(); } catch (e) {}
+    if (!r.ok) throw new Error(dados.error || "Não foi possível ler a imagem.");
+    return dados;
+  }
+
+  var botaoLer = fundo.querySelector("[data-leitor-ler]");
+  botaoLer.addEventListener("click", async function () {
     if (!limpar(elNome.value)) { app.avisar("Diga o nome do equipamento destas portas."); elNome.focus(); return; }
-    leitura = ler(elTexto.value, elNome.value);
-    if (!leitura.cabos.length) { app.avisar("Não reconheci nenhuma porta com destino nesse texto."); return; }
+    var daImagem = null;
+    if (imagem) {
+      botaoLer.disabled = true;
+      var textoBotao = botaoLer.textContent;
+      botaoLer.textContent = "Lendo a imagem com IA...";
+      try { daImagem = await lerImagemComIa(); }
+      catch (e) { app.avisar(e.message); return; }
+      finally { botaoLer.disabled = false; botaoLer.textContent = textoBotao; }
+    }
+    leitura = ler(elTexto.value, elNome.value, daImagem && daImagem.portas);
+    if (daImagem && daImagem.notas) daImagem.notas.forEach(function (n) { if (limpar(n)) leitura.notas.push("IA: " + limpar(n)); });
+    if (!leitura.cabos.length) { app.avisar(imagem ? "Não achei nenhuma porta com destino na imagem." : "Não reconheci nenhuma porta com destino nesse texto."); return; }
     var porViz = {};
     leitura.cabos.forEach(function (c, i) { (porViz[c._vizinho] = porViz[c._vizinho] || []).push(i); });
     var confirmadas = leitura.cabos.filter(function (c) { return c._confirmado; }).length;

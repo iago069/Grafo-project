@@ -3048,3 +3048,11 @@ body.arrastando-desenho, body.arrastando-desenho * { user-select: none !importan
   font: 700 0.85rem var(--sans); color: #FFFFFF; background: #3B82F6; box-shadow: 0 10px 24px -10px rgba(37,99,235,.8); }
 .voltar-diagrama[hidden] { display: none; }
 .voltar-diagrama:hover { background: #2563EB; }
+
+/* Leitor: foto ou print lido com IA */
+.leitor-foto { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 10px 14px; border-radius: 12px; border: 1.5px dashed var(--line-soft); cursor: pointer;
+  color: var(--text-dim); font-size: 0.84rem; transition: border-color 0.15s ease, background 0.15s ease; }
+.leitor-foto strong { display: block; color: var(--text); font-size: 0.88rem; }
+.leitor-foto:hover, .leitor-foto.recebendo, .leitor-foto:focus-visible { border-color: var(--accent, #FF9F43); background: color-mix(in srgb, var(--accent, #FF9F43) 8%, transparent); }
+.leitor-foto img { max-height: 120px; max-width: 70%; border-radius: 8px; border: 1px solid var(--line-soft); }
+.leitor-foto.com-imagem { justify-content: space-between; border-style: solid; }

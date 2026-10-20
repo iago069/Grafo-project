@@ -60,3 +60,35 @@ test("mesclar no diagrama aberto mantém o que já existe", async () => {
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("foto ou print: envia para a IA (simulada) e monta os cabos com o resultado", async () => {
+  const pagina = await abrirPagina(navegador, site);
+  let enviado = null;
+  await pagina.route("**/api/ler-imagem", async rota => {
+    enviado = JSON.parse(rota.request().postData());
+    await rota.fulfill({ contentType: "application/json", body: JSON.stringify({
+      portas: [
+        { porta: "et-0/0/30", velocidade: "100G", descricao: "", lag: "ae14", vizinho: "core-l2-pf", portaVizinho: "et-0/0/48", status: "online" },
+        { porta: "ae14", velocidade: "100G", descricao: "CORE-L2-100g", lag: "", vizinho: "", portaVizinho: "", status: "online" },
+        { porta: "et-0/0/11", velocidade: "100G", descricao: "LINK_MHNET_100G_TRANSITO", lag: "", vizinho: "", portaVizinho: "", status: "online" }
+      ], notas: ["linha de baixo cortada"] }) });
+  });
+  await esperarDiagrama(pagina);
+  await pagina.waitForFunction(() => window.GrafoLeitor);
+  await pagina.click("#btnGerarTexto");
+  await pagina.fill("[data-leitor-nome]", "evpn");
+  // PNG 1x1 como "print".
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+  await pagina.setInputFiles("[data-leitor-arquivo]", { name: "print.png", mimeType: "image/png", buffer: png });
+  await pagina.waitForSelector("[data-leitor-previa]:not([hidden])");
+  await pagina.click("[data-leitor-ler]");
+  await pagina.waitForSelector('[data-passo="revisar"]:not([hidden])');
+  assert.equal(enviado.tipo, "image/jpeg");
+  assert.equal(enviado.nome, "evpn");
+  assert.match(await pagina.textContent("[data-leitor-resumo]"), /imagem \(lida com IA\)/);
+  assert.equal(await pagina.locator("[data-leitor-cabo]").count(), 2);
+  assert.match(await pagina.textContent("[data-leitor-lista]"), /core-l2-pf[\s\S]*et-0\/0\/48/);
+  assert.match(await pagina.textContent("[data-leitor-lista]"), /IA: linha de baixo cortada/);
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});
