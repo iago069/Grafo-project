@@ -3409,7 +3409,16 @@
 
   var temaSelect = document.getElementById("temaSelect");
 
+  // Símbolo próprio de um tema no lugar da logo do Grafo (tema Fernando).
+  var LOGO_PADRAO = "./assets/images/app/grafo-160.png";
+  var LOGO_DO_TEMA = { "theme-fernando": "./assets/images/app/simbolo-fernando.png" };
+  function trocarLogo(chave) {
+    var src = LOGO_DO_TEMA[chave] || LOGO_PADRAO;
+    document.querySelectorAll("img.brand-mark").forEach(function (img) { if (img.getAttribute("src") !== src) img.setAttribute("src", src); });
+  }
+
   function removerTemaCustomizado() {
+    trocarLogo(null);
     [
       "--bg", "--bg-panel", "--bg-panel-2", "--line", "--line-soft", "--text", "--text-dim", "--accent", "--accent-ink",
       "--teal", "--paper", "--paper-line", "--ink", "--danger", "--field-bg", "--field-text", "--field-border",
@@ -3429,6 +3438,7 @@
       document.documentElement.style.setProperty("--" + cssKey, preset[key]);
     });
     document.documentElement.setAttribute("data-theme", "custom");
+    trocarLogo(chave);
   }
 
   function aplicarTemaSelecionado(valor) {

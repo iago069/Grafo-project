@@ -589,6 +589,8 @@
   }
 
   function logSaveError(error) {
+    // Queda de rede não é erro: a alteração fica guardada neste aparelho e sobe depois.
+    if (isNetworkError(error) || navigator.onLine === false) { console.warn("Sem internet: a alteração sobe quando a conexão voltar."); return; }
     if (!conflict) console.error("Falha ao salvar projeto:", error);
   }
 
