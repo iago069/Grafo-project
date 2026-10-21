@@ -13,7 +13,7 @@
   var LIMITES = {
     projetos: 100,
     nomeProjeto: 60,
-    equipamentos: 35, // por diagrama; o app mostra o contador "n/35"
+    equipamentos: 100, // por diagrama (o Graphviz no navegador falha acima de ~110); contador "n/100"
     anotacoes: 50,
     desenhos: 300,          // formas, textos e traços de caneta por diagrama
     pontosCaneta: 600,

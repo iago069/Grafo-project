@@ -5515,9 +5515,9 @@
       if (contagemPortas[c.para] != null) contagemPortas[c.para]++;
     });
     var maiorQtdPortas = Math.max.apply(null, [1].concat(Object.keys(contagemPortas).map(function (id) { return contagemPortas[id]; })));
-    var ranksepAuto = Math.max(1.15, Math.min(4.5, 0.95 + maiorQtdPortas * 0.16));
+    var ranksepAuto = Math.max(1.15, Math.min(4.5, 0.95 + maiorQtdPortas * 0.16), (larguraDoMaiorRotulo() + 80) / 72);
     // A grade parte do layout "LR" do Graphviz e depois reposiciona (posicionarEmGrade).
-    var linhas = ["digraph G {", '  rankdir=' + (direcao === "TB" ? "TB" : "LR") + ';', '  splines=ortho;', '  concentrate=false;', '  overlap=false;', '  nodesep=0.45;', '  ranksep=' + ranksepAuto.toFixed(2) + ';', '  pad=0;', '  margin=0;', '  bgcolor="transparent";',
+    var linhas = ["digraph G {", '  rankdir=' + (direcao === "TB" ? "TB" : "LR") + ';', '  splines=ortho;', '  concentrate=false;', '  overlap=false;', '  nodesep=0.7;', '  ranksep=' + ranksepAuto.toFixed(2) + ';', '  pad=0;', '  margin=0;', '  bgcolor="transparent";',
       '  node [shape=box, style="filled", fontname="Helvetica", fontsize=10, margin="0.02,0.02", color="#547184", penwidth=1.1];',
       '  edge [fontname="Helvetica", fontsize=8, color="#263746", fontcolor="#344D61", penwidth=1.5, arrowhead=none, labeldistance=1.25, labelangle=0, labelfontname="Helvetica", labelfontsize=8];'];
     // Cada ponta de cabo vira uma porta no lado do equipamento voltado para o
@@ -6213,9 +6213,20 @@
   }
 
   // Projeto "grande": algum equipamento com muitas ligações (um núcleo).
-  var LIGACOES_PARA_ESTRELA = 8;
+  var LIGACOES_PARA_ESTRELA = 5;
   // Espaço entre o centro e a primeira camada: cresce com os cabos que passam ali.
   function vaoDaEstrela(grau) { return 110 + Math.min(grau || 0, 24) * 5; }
+  // Largura do maior nome de cabo ligado ao equipamento (texto "tipo · capacidade").
+  function larguraDoMaiorRotulo(id) {
+    var maior = 0;
+    estado.conexoes.forEach(function (c) {
+      if (id && c.de !== id && c.para !== id) return;
+      var texto = [c.tipo, c.potencia].filter(Boolean).join(" · ");
+      if (/^LAGs+aed+/i.test(c.tipo || "")) texto += " · 2×";
+      maior = Math.max(maior, texto.length);
+    });
+    return Math.min(420, maior * 5.6);
+  }
   // Distância horizontal a partir da qual o vizinho é de uma coluna (porta na
   // lateral do centro). Menor que a da coluna mais perto (meia largura do centro,
   // no mínimo 96, mais o vão) e maior que a metade da linha de baixo.
@@ -6286,7 +6297,10 @@
     function camadasDoLado(centro, ids, rankdir, vao) {
       var dentro = {};
       ids.forEach(function (id) { dentro[id] = true; });
-      var linhas = ["digraph G {", "  rankdir=" + rankdir + "; nodesep=0.4; ranksep=" + (vao / 72).toFixed(2) + "; splines=false; pad=0;",
+      // Vizinhos ligados entre si ficam lado a lado com portas viradas um para o
+      // outro: precisam de mais espaço para os nomes das portas e dos cabos.
+      var entreVizinhos = estado.conexoes.some(function (c) { return dentro[c.de] && dentro[c.para] && distancia[c.de] === distancia[c.para]; });
+      var linhas = ["digraph G {", "  rankdir=" + rankdir + "; nodesep=" + (entreVizinhos ? "1.6" : "0.85") + "; ranksep=" + (vao / 72).toFixed(2) + "; splines=false; pad=0;",
         '  node [shape=box, fixedsize=true, label=""];', "  " + aspas(centro) + " [width=0.1, height=0.1];"];
       ids.forEach(function (id) {
         linhas.push("  " + aspas(id) + " [width=" + (tam[id].w / 72).toFixed(3) + ", height=" + (tam[id].h / 72).toFixed(3) + "];");
@@ -6394,7 +6408,8 @@
         return lados[lado].sort(function (a, b) { return a.i - b.i; }).reduce(function (t, item) { return t.concat(item.ramo); }, []);
       }
 
-      var vao = vaoDaEstrela(vizinhos[centro].length);
+      // O vão entre o centro e as colunas precisa caber o maior nome de cabo.
+      var vao = Math.max(vaoDaEstrela(vizinhos[centro].length), larguraDoMaiorRotulo(centro) + 90);
       var limite = limiteLateralDaEstrela(vizinhos[centro].length);
       var metadeW = tam[centro].w / 2, metadeH = tam[centro].h / 2;
       var pos = {};
