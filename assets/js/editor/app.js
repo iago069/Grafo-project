@@ -1102,10 +1102,10 @@
     });
   }
 
-  // Rótulo do cabo no meio do trecho mais longo (acima, se horizontal; ao lado, se
-  // vertical). Com "ocupados" (caixas dos rótulos já postos), se ficar em cima de
-  // outro, tenta outros pontos do trecho e os outros trechos; a caixa escolhida
-  // entra em "ocupados".
+  // Rótulo do cabo: procura um lugar livre ao longo dos trechos (do mais longo
+  // para o mais curto), dos dois lados da linha, sem cair em cima de equipamento,
+  // porta ou outro rótulo ("ocupados" já começa com as caixas dos equipamentos).
+  // A caixa escolhida entra em "ocupados". Sem lugar livre: meio do trecho mais longo.
   function posicionarRotuloDaAresta(aresta, pontos, ocupados) {
     var texto = aresta.querySelector("text");
     if (!texto) return;
@@ -1117,22 +1117,22 @@
     if (!trechos.length) return;
     trechos.sort(function (p, q) { return q.comp - p.comp; });
     texto.removeAttribute("transform");
-    function colocar(trecho, t) {
+    function colocar(trecho, t, lado) {
       var horizontal = Math.abs(trecho.a.y - trecho.b.y) < 0.5;
       if (horizontal) {
         texto.setAttribute("x", (trecho.a.x + (trecho.b.x - trecho.a.x) * t).toFixed(2));
-        texto.setAttribute("y", (trecho.a.y - 5).toFixed(2));
+        texto.setAttribute("y", (trecho.a.y + (lado > 0 ? 12 : -5)).toFixed(2));
         texto.setAttribute("text-anchor", "middle");
       } else {
-        texto.setAttribute("x", (trecho.a.x + 5).toFixed(2));
+        texto.setAttribute("x", (trecho.a.x + (lado > 0 ? -5 : 5)).toFixed(2));
         texto.setAttribute("y", (trecho.a.y + (trecho.b.y - trecho.a.y) * t + 3).toFixed(2));
-        texto.setAttribute("text-anchor", "start");
+        texto.setAttribute("text-anchor", lado > 0 ? "end" : "start");
       }
     }
-    colocar(trechos[0], 0.5);
+    colocar(trechos[0], 0.5, -1);
     if (!ocupados || !texto.textContent.trim()) return;
     function caixa() {
-      try { var b = texto.getBBox(); return { x1: b.x - 2, y1: b.y - 1, x2: b.x + b.width + 2, y2: b.y + b.height + 1 }; } catch (e) { return null; }
+      try { var b = texto.getBBox(); return { x1: b.x - 3, y1: b.y - 2, x2: b.x + b.width + 3, y2: b.y + b.height + 2 }; } catch (e) { return null; }
     }
     function livre(c) {
       return c && !ocupados.some(function (o) { return c.x1 < o.x2 && c.x2 > o.x1 && c.y1 < o.y2 && c.y2 > o.y1; });
@@ -1140,17 +1140,19 @@
     var primeira = caixa();
     if (!primeira) return;
     if (livre(primeira)) { ocupados.push(primeira); return; }
-    var fracoes = [0.3, 0.7, 0.15, 0.85, 0.5];
-    for (var k = 0; k < Math.min(trechos.length, 3); k++) {
-      if (trechos[k].comp < 40) continue;
+    var fracoes = [0.5, 0.35, 0.65, 0.2, 0.8, 0.1, 0.9];
+    for (var k = 0; k < trechos.length; k++) {
+      if (trechos[k].comp < 24) continue;
       for (var f = 0; f < fracoes.length; f++) {
-        colocar(trechos[k], fracoes[f]);
-        var c = caixa();
-        if (livre(c)) { ocupados.push(c); return; }
+        for (var lado = -1; lado <= 1; lado += 2) {
+          colocar(trechos[k], fracoes[f], lado);
+          var c = caixa();
+          if (livre(c)) { ocupados.push(c); return; }
+        }
       }
     }
     // Nenhum lugar livre: fica no meio do trecho mais longo.
-    colocar(trechos[0], 0.5);
+    colocar(trechos[0], 0.5, -1);
     ocupados.push(primeira);
   }
 
@@ -1171,7 +1173,11 @@
     // Cabos curtos primeiro ficam com a trilha ideal; os longos desviam deles.
     function comprimento(r) { return Math.abs(r.s.x - r.e.x) + Math.abs(r.s.y - r.e.y); }
     rotas.sort(function (a, b) { return comprimento(a) - comprimento(b); });
-    var existentes = [], rotulos = [];
+    var existentes = [];
+    // Rótulos não caem em cima de equipamentos nem das caixinhas de porta.
+    var rotulos = obstaculos.filter(function (o) { return o.equipamento; }).map(function (o) {
+      return { x1: o.x1 + FOLGA_OBSTACULO - 2, y1: o.y1 + FOLGA_OBSTACULO - 2, x2: o.x2 - FOLGA_OBSTACULO + 2, y2: o.y2 - FOLGA_OBSTACULO + 2 };
+    });
     rotasDesenhadas = {};
     rotas.forEach(function (rota) {
       // Rota feita à mão (10-desenho-e-ferramentas.js) passa pelas dobras escolhidas.
@@ -6395,7 +6401,7 @@
       // Vizinhos ligados entre si ficam lado a lado com portas viradas um para o
       // outro: precisam de mais espaço para os nomes das portas e dos cabos.
       var entreVizinhos = estado.conexoes.some(function (c) { return dentro[c.de] && dentro[c.para] && distancia[c.de] === distancia[c.para]; });
-      var linhas = ["digraph G {", "  rankdir=" + rankdir + "; nodesep=" + (entreVizinhos ? "1.6" : "0.85") + "; ranksep=" + (vao / 72).toFixed(2) + "; splines=false; pad=0;",
+      var linhas = ["digraph G {", "  rankdir=" + rankdir + "; nodesep=" + (entreVizinhos ? "2.4" : "0.95") + "; ranksep=" + (vao / 72).toFixed(2) + "; splines=false; pad=0;",
         '  node [shape=box, fixedsize=true, label=""];', "  " + aspas(centro) + " [width=0.1, height=0.1];"];
       ids.forEach(function (id) {
         linhas.push("  " + aspas(id) + " [width=" + (tam[id].w / 72).toFixed(3) + ", height=" + (tam[id].h / 72).toFixed(3) + "];");

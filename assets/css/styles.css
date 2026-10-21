@@ -3138,3 +3138,6 @@ body:not([data-modo-diagrama="ftth"]) .so-modo-ftth { display: none; }
 @media (max-width: 560px) { .modelos-prontos { grid-template-columns: 1fr; } }
 .modelo-opcao, .modelo-opcao strong, .modelo-opcao small { font-family: var(--sans); letter-spacing: normal; text-transform: none; }
 .modelos-prontos legend { font-family: var(--sans); }
+
+/* Nome do cabo legível por cima das linhas: contorno da cor do papel. */
+#canvas g.edge > text { paint-order: stroke fill; stroke: var(--paper, #fff); stroke-width: 4px; stroke-linejoin: round; }

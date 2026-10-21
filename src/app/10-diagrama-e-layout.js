@@ -876,7 +876,7 @@
       // Vizinhos ligados entre si ficam lado a lado com portas viradas um para o
       // outro: precisam de mais espaço para os nomes das portas e dos cabos.
       var entreVizinhos = estado.conexoes.some(function (c) { return dentro[c.de] && dentro[c.para] && distancia[c.de] === distancia[c.para]; });
-      var linhas = ["digraph G {", "  rankdir=" + rankdir + "; nodesep=" + (entreVizinhos ? "1.6" : "0.85") + "; ranksep=" + (vao / 72).toFixed(2) + "; splines=false; pad=0;",
+      var linhas = ["digraph G {", "  rankdir=" + rankdir + "; nodesep=" + (entreVizinhos ? "2.4" : "0.95") + "; ranksep=" + (vao / 72).toFixed(2) + "; splines=false; pad=0;",
         '  node [shape=box, fixedsize=true, label=""];', "  " + aspas(centro) + " [width=0.1, height=0.1];"];
       ids.forEach(function (id) {
         linhas.push("  " + aspas(id) + " [width=" + (tam[id].w / 72).toFixed(3) + ", height=" + (tam[id].h / 72).toFixed(3) + "];");
