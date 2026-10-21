@@ -5066,14 +5066,14 @@
 
     bibliotecaEquip = document.createElement("div");
     bibliotecaEquip.id = "bibliotecaEquip";
-    bibliotecaEquip.className = "biblioteca-equip";
+    bibliotecaEquip.className = "biblioteca-equip painel-flutuante";
     bibliotecaEquip.hidden = true;
     bibliotecaEquip.setAttribute("role", "dialog");
     bibliotecaEquip.setAttribute("aria-label", "Equipamentos");
     bibliotecaEquip.innerHTML = '<div class="be-topo"><strong>Equipamentos</strong><span>clique ou arraste</span></div>' +
       '<input type="search" class="be-busca" placeholder="Buscar (OLT, switch...)" aria-label="Buscar equipamento">' +
       '<div class="be-grade"></div>';
-    elCanvas.parentNode.appendChild(bibliotecaEquip);
+    document.body.appendChild(bibliotecaEquip);
     bibliotecaEquip.addEventListener("pointerdown", function (event) { event.stopPropagation(); });
     var busca = bibliotecaEquip.querySelector(".be-busca"), grade = bibliotecaEquip.querySelector(".be-grade");
 
@@ -5094,15 +5094,9 @@
       botao.setAttribute("aria-pressed", String(sim));
       botao.setAttribute("aria-expanded", String(sim));
       if (sim) {
-        // Alinha com o topo da caixa de ferramentas e cabe dentro do quadro.
-        var pai = bibliotecaEquip.parentNode.getBoundingClientRect(), caixa = caixaFerramentas.getBoundingClientRect(), quadro = elCanvas.getBoundingClientRect();
-        if (window.innerWidth > 760) {
-          var topo = Math.max(quadro.top + 8, caixa.top) - pai.top;
-          bibliotecaEquip.style.top = Math.round(topo) + "px";
-          bibliotecaEquip.style.maxHeight = Math.max(220, Math.round(quadro.bottom - pai.top - topo - 8)) + "px";
-          bibliotecaEquip.style.left = Math.round(caixa.right - pai.left + 10) + "px";
-        }
-        busca.value = ""; montar(); busca.focus();
+        busca.value = ""; montar();
+        if (window.innerWidth > 760) posicionarAoLado(bibliotecaEquip, caixaFerramentas, elCanvas.getBoundingClientRect());
+        busca.focus();
       }
     }
     botao.addEventListener("click", function (event) { event.stopPropagation(); abrir(bibliotecaEquip.hidden); });
@@ -5280,6 +5274,7 @@
     }
     chip.textContent = "← Voltar para " + voltarPara;
     chip.hidden = !voltarPara;
+    posicionarFerramentas();
   }
 
   function desenharLinksDeDiagrama() {
@@ -5353,8 +5348,8 @@
     caixaFerramentas.appendChild(ajudaBtn);
     ajudaBtn.addEventListener("click", function () { if (window.GrafoAjuda) window.GrafoAjuda.abrir(); });
     var menu = document.createElement("div");
-    menu.id = "menuCamadas"; menu.className = "menu-camadas"; menu.hidden = true;
-    elCanvas.parentNode.appendChild(menu);
+    menu.id = "menuCamadas"; menu.className = "menu-camadas painel-flutuante"; menu.hidden = true;
+    document.body.appendChild(menu);
     menu.addEventListener("pointerdown", function (event) { event.stopPropagation(); });
     function montar() {
       var ocultas = camadasOcultas();
@@ -5367,12 +5362,7 @@
       menu.hidden = !sim;
       botao.setAttribute("aria-expanded", String(sim));
       botao.setAttribute("aria-pressed", String(sim));
-      if (sim) {
-        montar();
-        var pai = menu.parentNode.getBoundingClientRect(), b = botao.getBoundingClientRect();
-        menu.style.left = Math.round(b.right - pai.left + 10) + "px";
-        menu.style.top = Math.round(b.top - pai.top - 10) + "px";
-      }
+      if (sim) { montar(); posicionarAoLado(menu, botao); }
     }
     botao.addEventListener("click", function (event) { event.stopPropagation(); abrir(menu.hidden); });
     menu.addEventListener("change", function (event) {
@@ -5387,10 +5377,54 @@
     document.addEventListener("keydown", function (event) { if (event.key === "Escape" && !menu.hidden) abrir(false); });
   }
 
+  // Coloca um painel flutuante ao lado do botão, sempre inteiro dentro da tela.
+  // limite: retângulo (do quadro) em que o painel deve caber, se houver.
+  function posicionarAoLado(painel, botao, limite) {
+    var b = botao.getBoundingClientRect();
+    painel.style.position = "fixed";
+    painel.style.transform = "none";
+    var alturaMax = limite ? Math.min(560, limite.height - 16) : window.innerHeight - 24;
+    painel.style.maxHeight = Math.max(220, alturaMax) + "px";
+    if (limite) b = { top: Math.max(b.top, limite.top + 8), left: b.left, right: b.right };
+    var w = painel.offsetWidth, h = painel.offsetHeight;
+    var esquerda = b.right + 10;
+    if (esquerda + w > window.innerWidth - 12) esquerda = Math.max(12, b.left - w - 10);
+    var topo = Math.min(b.top, window.innerHeight - h - 12);
+    painel.style.left = Math.round(esquerda) + "px";
+    painel.style.top = Math.round(Math.max(12, topo)) + "px";
+  }
+
+  // A caixa de ferramentas, a barra de estilo e o "Voltar" ficam presos ao quadro
+  // (não por cima da barra de cima nem do seletor de modo).
+  function posicionarFerramentas() {
+    if (!caixaFerramentas) return;
+    var quadro = elCanvas.getBoundingClientRect(), pai = elCanvas.parentNode.getBoundingClientRect();
+    if (!quadro.width || window.innerWidth <= 760) {
+      caixaFerramentas.style.top = caixaFerramentas.style.left = caixaFerramentas.style.maxHeight = "";
+      if (barraEstilo) barraEstilo.style.top = barraEstilo.style.left = barraEstilo.style.bottom = "";
+      return;
+    }
+    var topo = quadro.top - pai.top + 12, esquerda = quadro.left - pai.left + 12;
+    caixaFerramentas.style.top = Math.round(topo) + "px";
+    caixaFerramentas.style.left = Math.round(esquerda) + "px";
+    caixaFerramentas.style.maxHeight = Math.round(quadro.height - 24) + "px";
+    if (barraEstilo) {
+      barraEstilo.style.left = Math.round(quadro.left - pai.left + quadro.width / 2) + "px";
+      barraEstilo.style.top = "auto";
+      barraEstilo.style.bottom = Math.round(pai.bottom - quadro.bottom + 12) + "px";
+    }
+    var voltar = document.getElementById("voltarDiagrama");
+    if (voltar) { voltar.style.top = Math.round(topo) + "px"; voltar.style.left = Math.round(esquerda + caixaFerramentas.offsetWidth + 10) + "px"; }
+  }
+
   // Monta a interface quando o editor carrega.
   criarCaixaDeFerramentas();
   criarBibliotecaDeEquipamentos();
   criarMenuDeCamadas();
+  posicionarFerramentas();
+  window.addEventListener("resize", posicionarFerramentas);
+  if (window.ResizeObserver) new ResizeObserver(posicionarFerramentas).observe(elCanvas);
+  window.addEventListener("grafo:render", posicionarFerramentas);
   document.body.setAttribute("data-ferramenta-ativa", ferramentaAtual);
   // ==== 10-diagrama-e-layout.js: geração do DOT, imagens no SVG, organizar/grade e renderização (parte de assets/js/editor/app.js; npm run montar) ====
   // Linhas de texto do cabeçalho do equipamento (acima do ícone), conforme o
