@@ -70,6 +70,8 @@
     ["DIO", "DIO.png", "DIO (Distribuidor Interno Óptico)"],
     ["AP WiFi", "AP-WIFI.png", "AP WiFi"],
     ["OLT", "OLT.png", "OLT"],
+    ["Splitter", "DEMUX.png", "Splitter óptico (1:2 a 1:64)"],
+    ["CTO", "CX.png", "CTO (caixa de atendimento)"],
     ["ONU", "ONU.svg", "ONU / ONT"],
     ["POE", "POE.png", "POE"],
     ["UniFi", "UNIFI.png", "UniFi"],

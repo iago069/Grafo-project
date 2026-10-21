@@ -4,6 +4,47 @@
   //   Topologia: nome, modelo, tipo, IP.
   //   Redes: nome, IP (em destaque), VLAN / rede, tipo.
   //   Monitoramento: nome, tipo, IP.
+  // ---- FTTH: sinal estimado em cada ponto da rede óptica ----------------------
+  // Parte de cada OLT (potência de saída, padrão +5 dBm) e desce pelos cabos:
+  // 0,35 dB/km de fibra, 0,5 dB por ligação (conectores/fusões) e a perda do
+  // splitter na saída dele (1:2 3,7 · 1:4 7,3 · 1:8 10,5 · 1:16 13,7 · 1:32 17,1 · 1:64 20,5 dB).
+  var PERDA_SPLITTER = { 2: 3.7, 4: 7.3, 8: 10.5, 16: 13.7, 32: 17.1, 64: 20.5 };
+  var sinaisFtth = {};
+  function razaoDoSplitter(eq) {
+    var texto = [eq.tipo, eq.nome, eq.modelo].join(" ");
+    if (!/split|divisor|cto|caixa/i.test(texto)) return 0;
+    var m = /1\s*[:x\/]\s*(\d+)/i.exec(texto);
+    return m && PERDA_SPLITTER[Number(m[1])] ? Number(m[1]) : 0;
+  }
+  function calcularSinaisFtth(dados) {
+    var porId = {}, vizinhos = {}, sinal = {}, fila = [];
+    dados.equipamentos.forEach(function (eq) { porId[eq.id] = eq; vizinhos[eq.id] = []; });
+    dados.conexoes.forEach(function (c) {
+      if (!vizinhos[c.de] || !vizinhos[c.para]) return;
+      vizinhos[c.de].push({ id: c.para, km: Number(c.distanciaKm) || 0 });
+      vizinhos[c.para].push({ id: c.de, km: Number(c.distanciaKm) || 0 });
+    });
+    dados.equipamentos.forEach(function (eq) {
+      if (!/\bolt\b/i.test([eq.tipo, eq.nome].join(" "))) return;
+      sinal[eq.id] = eq.potenciaDbm != null ? Number(eq.potenciaDbm) : 5;
+      fila.push(eq.id);
+    });
+    var olts = {};
+    fila.forEach(function (id) { olts[id] = true; });
+    while (fila.length) {
+      var u = fila.shift(), saida = sinal[u] - (olts[u] ? 0 : (PERDA_SPLITTER[razaoDoSplitter(porId[u])] || 0));
+      vizinhos[u].forEach(function (v) {
+        if (sinal[v.id] != null) return;
+        sinal[v.id] = saida - v.km * 0.35 - 0.5;
+        fila.push(v.id);
+      });
+    }
+    var resultado = {};
+    Object.keys(sinal).forEach(function (id) { if (!olts[id]) resultado[id] = Math.sign(sinal[id]) * Math.round(Math.abs(sinal[id]) * 10) / 10; });
+    return resultado;
+  }
+  function corDoSinal(dbm) { return dbm >= -25 ? "#1E8E4E" : dbm >= -27 ? "#B7791F" : "#C53030"; }
+
   function linhasDoCabecalho(eq, modo) {
     function fonte(tamanho, cor, texto, opcoes) {
       opcoes = opcoes || {};
@@ -25,6 +66,12 @@
     if (modo === "monitoramento") {
       return [nome, tipo].concat(ip ? [fonte(8, "#1F5F8B", ip, { mono: true })] : []);
     }
+    if (modo === "ftth") {
+      var dbm = sinaisFtth[eq.id];
+      var linhaSinal = dbm != null ? [fonte(10, corDoSinal(dbm), (razaoDoSplitter(eq) ? "entrada " : "") + String(dbm).replace(".", ",") + " dBm", { negrito: true, mono: true })]
+        : eq.potenciaDbm != null ? [fonte(9, "#1F5F8B", "saída +" + String(eq.potenciaDbm).replace(".", ",") + " dBm", { mono: true })] : [];
+      return [nome, tipo].concat(linhaSinal);
+    }
     return [nome]
       .concat(modelo ? [fonte(9, "#14212B", modelo)] : [])
       .concat([tipo])
@@ -36,6 +83,7 @@
 
   function gerarDot(dados, direcao) {
     var modo = modoAtual();
+    sinaisFtth = modo === "ftth" ? calcularSinaisFtth(dados) : {};
     var contagemPortas = {};
     dados.equipamentos.forEach(function (eq) { contagemPortas[eq.id] = 0; });
     dados.conexoes.forEach(function (c) {
@@ -257,7 +305,7 @@
       var portas = ', tailport="out_' + indice + '", headport="in_' + indice + '"';
       if (direcao === "TB") portas = portaDirecao;
       if (direcao !== "TB") portas = portaDirecao;
-      var capacidade = c.potencia ? " · " + c.potencia : "";
+      var capacidade = (c.potencia ? " · " + c.potencia : "") + (modo === "ftth" && c.distanciaKm != null ? " · " + String(c.distanciaKm).replace(".", ",") + " km" : "");
       var rotuloTexto = c.tipo ? c.tipo + capacidade : capacidade.replace(/^ · /, "");
       var rotulo = ' [id="edge_' + indice + '", label="' + escapar(rotuloTexto) + '", color="' + corConexao + '", fontcolor="#34495A", penwidth=' + Math.max(1, grossura) + estilo + portas + ']';
       linhas.push('  "' + escapar(c.de) + '" -> "' + escapar(c.para) + '"' + rotulo + ';');

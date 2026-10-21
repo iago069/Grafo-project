@@ -181,7 +181,7 @@ test("quadro de símbolos: todos os tipos na lista, com ícone, e o tipo certo p
     "Switch POE", "Conversor de mídia", "Controle de acesso", "Aligera", "Dream Machine", "Nuvem VPLS"]) assert.ok(tipos.includes(t), t + " na lista de tipos");
   // Outros nomes do mesmo equipamento não repetem na lista (VOLT = Volt POP Protect).
   for (const t of ["VOLT", "UPS", "HVAC", "RPS", "AR", "MikroTik", "Camera IP"]) assert.ok(!tipos.includes(t), t + " não deve repetir na lista");
-  assert.equal(tipos.length, 29);
+  assert.equal(tipos.length, 31); // com Splitter e CTO (FTTH)
   // Todas as imagens existem.
   const quebradas = await pagina.evaluate(async () => {
     const urls = [...new Set(window.apiEquipamentos.listar().map(t => t.icone).filter(Boolean))];

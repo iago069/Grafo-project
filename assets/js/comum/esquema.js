@@ -125,12 +125,12 @@
 
   // Modo do projeto: o que o diagrama destaca. Sem modo = topologia.
   // "racks": o projeto abre no Bayface de Racks (disposição física), não no diagrama.
-  var MODOS = ["topologia", "redes", "monitoramento", "racks"];
+  var MODOS = ["topologia", "redes", "monitoramento", "racks", "ftth"];
   var ESQUEMA_MODO = enumTolerante(MODOS,
     { rede: "redes", "diagrama de redes": "redes", "diagrama de rede": "redes", "topologia de rede": "topologia",
       monitorar: "monitoramento", "diagrama de monitoramento": "monitoramento",
-      rack: "racks", bayface: "racks", "bayface de racks": "racks" },
-    "topologia", 'use "topologia", "redes", "monitoramento" ou "racks"');
+      rack: "racks", bayface: "racks", "bayface de racks": "racks", gpon: "ftth", "rede ftth": "ftth", optico: "ftth" },
+    "topologia", 'use "topologia", "redes", "monitoramento", "racks" ou "ftth"');
 
   var ESQUEMA_ESTILO = enumTolerante(["solid", "dashed", "dotted"],
     { continuo: "solid", solido: "solid", tracejado: "dashed", pontilhado: "dotted" },
@@ -191,6 +191,8 @@
     corFonte: { rotulo: "Cor da fonte", esquema: cor(COR_FONTE_PADRAO), reparar: constante(COR_FONTE_PADRAO) },
     // Tom do ícone (ex.: switch verde). "" ou ausente: cores originais da imagem.
     corIcone: { rotulo: "Cor do ícone", esquema: z.string().trim().regex(/^(#[0-9a-f]{6})?$/i, "cor inválida (use o formato #1A2B3C)"), opcional: true },
+    // FTTH: potência de saída da OLT/porta PON, em dBm.
+    potenciaDbm: { rotulo: "Potência de saída (dBm)", esquema: z.coerce.number().finite().min(-20).max(20), opcional: true },
     // Nome de outro diagrama que abre ao clicar no selo do equipamento.
     diagrama: { rotulo: "Diagrama ligado", esquema: texto(LIMITES.nomeProjeto), opcional: true },
     posicao: { rotulo: "Posição", esquema: ESQUEMA_PONTO, opcional: true },
@@ -214,6 +216,8 @@
     numSaida: { rotulo: "Número na origem", esquema: texto(10), opcional: true },
     numChegada: { rotulo: "Número no destino", esquema: texto(10), opcional: true },
     etiqueta: { rotulo: "Posição da etiqueta", esquema: ESQUEMA_PONTO, opcional: true },
+    // FTTH: comprimento da fibra, em km (perda de 0,35 dB/km).
+    distanciaKm: { rotulo: "Distância (km)", esquema: z.coerce.number().finite().min(0).max(200), opcional: true },
     // Rota feita à mão: dobras do cabo, nas coordenadas do desenho.
     rota: { rotulo: "Rota", esquema: z.array(ESQUEMA_PONTO).max(LIMITES.pontosRota, "rota com dobras demais"), opcional: true }
   };

@@ -70,6 +70,8 @@
     ["DIO", "DIO.png", "DIO (Distribuidor Interno Óptico)"],
     ["AP WiFi", "AP-WIFI.png", "AP WiFi"],
     ["OLT", "OLT.png", "OLT"],
+    ["Splitter", "DEMUX.png", "Splitter óptico (1:2 a 1:64)"],
+    ["CTO", "CX.png", "CTO (caixa de atendimento)"],
     ["ONU", "ONU.svg", "ONU / ONT"],
     ["POE", "POE.png", "POE"],
     ["UniFi", "UNIFI.png", "UniFi"],
@@ -2681,6 +2683,7 @@
     if (eq.diagrama && outros.indexOf(eq.diagrama) < 0) outros.unshift(eq.diagrama);
     campoEditor("editEquipDiagrama").innerHTML = '<option value="">— nenhum —</option>' + outros.map(function (n) { return '<option value="' + escaparHtml(n) + '">' + escaparHtml(n) + "</option>"; }).join("");
     campoEditor("editEquipDiagrama").value = eq.diagrama || "";
+    campoEditor("editEquipPotenciaDbm").value = eq.potenciaDbm != null ? eq.potenciaDbm : "";
     mostrarEditor("Editar equipamento", editor.formEquip);
   }
 
@@ -2702,6 +2705,7 @@
     campoEditor("editCaboGrossura").value = Number(c.grossura) || 2;
     selecionarOpcao(campoEditor("editCaboEstilo"), c.estilo || "solid");
     campoEditor("editCaboVlan").value = c.vlan || "";
+    campoEditor("editCaboDistancia").value = c.distanciaKm != null ? c.distanciaKm : "";
     campoEditor("editCaboRedeVlan").value = c.redeVlan || "";
     campoEditor("editCaboNumSaida").value = c.numSaida || "";
     campoEditor("editCaboNumChegada").value = c.numChegada || "";
@@ -2730,10 +2734,12 @@
       rede: campoEditor("editEquipRede").value,
       corFonte: campoEditor("editEquipCor").value,
       corIcone: campoEditor("editEquipCorIconeOriginal").checked ? "" : campoEditor("editEquipCorIcone").value,
-      diagrama: campoEditor("editEquipDiagrama").value
+      diagrama: campoEditor("editEquipDiagrama").value,
+      potenciaDbm: campoEditor("editEquipPotenciaDbm").value === "" ? null : campoEditor("editEquipPotenciaDbm").value
     }));
     if (!validacao.ok) { campoEditor("editEquipMensagem").textContent = textoDosErros(validacao.erros); return; }
     if (!validacao.dados.diagrama) { delete validacao.dados.diagrama; delete eq.diagrama; }
+    if (validacao.dados.potenciaDbm == null) { delete validacao.dados.potenciaDbm; delete eq.potenciaDbm; }
     Object.assign(eq, validacao.dados);
     fecharEditor();
     renderTudo();
@@ -2750,13 +2756,15 @@
       tipo: campoEditor("editCaboTipo").value, potencia: campoEditor("editCaboPotencia").value, cor: campoEditor("editCaboCor").value,
       grossura: campoEditor("editCaboGrossura").value, estilo: campoEditor("editCaboEstilo").value,
       vlan: campoEditor("editCaboVlan").value, redeVlan: campoEditor("editCaboRedeVlan").value,
-      numSaida: campoEditor("editCaboNumSaida").value, numChegada: campoEditor("editCaboNumChegada").value
+      numSaida: campoEditor("editCaboNumSaida").value, numChegada: campoEditor("editCaboNumChegada").value,
+      distanciaKm: campoEditor("editCaboDistancia").value === "" ? null : campoEditor("editCaboDistancia").value
     }), estado.equipamentos.map(function (eq) { return eq.id; }));
     if (!validacao.ok) { campoEditor("editCaboMensagem").textContent = textoDosErros(validacao.erros); return; }
     // Trocou as pontas: o arraste manual do cabo antigo não vale mais.
     if (de !== c.de || para !== c.para) { delete c.deslocamento; delete validacao.dados.deslocamento; delete c.rota; delete validacao.dados.rota; }
     // Campo da etiqueta apagado: não guarda texto vazio.
     ["vlan", "redeVlan", "numSaida", "numChegada"].forEach(function (k) { if (!validacao.dados[k]) { delete validacao.dados[k]; delete c[k]; } });
+    if (validacao.dados.distanciaKm == null) { delete validacao.dados.distanciaKm; delete c.distanciaKm; }
     Object.assign(c, validacao.dados);
     fecharEditor();
     renderTudo();
@@ -2999,7 +3007,37 @@
     redes: { titulo: "Diagrama de redes", exportacao: "Diagrama de redes" },
     monitoramento: { titulo: "Monitoramento", exportacao: "Diagrama de monitoramento" },
     // Disposição física dos racks (recursos/racks.js); o diagrama lógico fica guardado.
-    racks: { titulo: "Bayface de Racks", exportacao: "Bayface de racks" }
+    racks: { titulo: "Bayface de Racks", exportacao: "Bayface de racks" },
+    // Rede óptica: sinal estimado em cada splitter, CTO e ONU (perdas de splitter, fibra e conectores).
+    ftth: { titulo: "FTTH (rede óptica)", exportacao: "Rede FTTH" }
+  };
+
+  // Modelos prontos para começar um projeto (o Organizar arruma na primeira abertura).
+  function eqModelo(id, nome, tipo, extra) { return Object.assign({ id: id, nome: nome, tipo: tipo, icone: iconePorTipo(tipo), status: "ativo" }, extra || {}); }
+  function caboModelo(de, para, saida, chegada, tipo, potencia, extra) { return Object.assign({ de: de, para: para, saida: saida, chegada: chegada, tipo: tipo, potencia: potencia }, extra || {}); }
+  var MODELOS_PRONTOS = {
+    pop: { modo: "topologia", dados: function () { return {
+      equipamentos: [eqModelo("rb", "RB-BORDA", "RB / CCR", { ip: "10.0.0.1" }), eqModelo("sw", "SW-CORE", "Switch", { ip: "10.0.0.2" }),
+        eqModelo("olt", "OLT-01", "OLT", { ip: "10.0.0.10" }), eqModelo("dio", "DIO-48F", "DIO"), eqModelo("nb", "NOBREAK", "Nobreak"), eqModelo("ret", "RETIFICADOR", "Retificador")],
+      conexoes: [caboModelo("rb", "sw", "sfp1", "sfp-sfpplus1", "Fibra", "10G"), caboModelo("sw", "olt", "sfp-sfpplus2", "uplink1", "Fibra", "10G"),
+        caboModelo("olt", "dio", "pon1", "f1", "Fibra", "GPON"), caboModelo("ret", "olt", "48V", "PWR", "Energia", ""), caboModelo("nb", "sw", "saída 1", "PWR", "Energia", "")] }; } },
+    datacenter: { modo: "topologia", dados: function () { return {
+      equipamentos: [eqModelo("evpn", "CORE-EVPN", "Switch", { modelo: "Juniper QFX5120" }), eqModelo("l2", "CORE-L2", "Switch", { modelo: "Juniper" }),
+        eqModelo("l3", "CORE-L3", "Switch", { modelo: "Juniper" }), eqModelo("bng", "BNG", "RB / CCR", { modelo: "Juniper MX204" }),
+        eqModelo("cgnat", "CGNAT", "Servidor"), eqModelo("cdn", "CACHE CDN", "Servidor"), eqModelo("ix", "TRÂNSITO / IX", "Nuvem VPLS")],
+      conexoes: [caboModelo("evpn", "l2", "et-0/0/30", "et-0/0/48", "LAG ae14 (CORE-L2)", "100G"), caboModelo("evpn", "l3", "et-0/0/6", "et-0/0/48", "CORE-L3", "100G"),
+        caboModelo("evpn", "bng", "et-0/0/4", "et-0/0/0", "WAN BNG", "100G"), caboModelo("evpn", "cgnat", "et-0/0/14", "port 1", "LAG ae10 (CGNAT)", "40G"),
+        caboModelo("evpn", "cgnat", "et-0/0/15", "port 2", "LAG ae10 (CGNAT)", "40G"), caboModelo("l2", "cdn", "xe-0/0/33", "eth0", "Cache CDN", "10G"),
+        caboModelo("evpn", "ix", "et-0/0/11", "", "Trânsito IP", "100G")] }; } },
+    ftth: { modo: "ftth", dados: function () {
+      var eqs = [eqModelo("olt", "OLT-01", "OLT", { potenciaDbm: 5 }), eqModelo("sp1", "SPLITTER 1:8", "Splitter")], cabos = [caboModelo("olt", "sp1", "PON 1/1", "IN", "Fibra", "GPON", { distanciaKm: 2 })];
+      ["A", "B", "C"].forEach(function (l, i) {
+        eqs.push(eqModelo("cto" + l, "CTO-" + l + " 1:8", "CTO"));
+        cabos.push(caboModelo("sp1", "cto" + l, "S" + (i + 1), "IN", "Fibra", "", { distanciaKm: 1 + i * 0.8 }));
+        eqs.push(eqModelo("onu" + l, "CLIENTE " + l, "ONU"));
+        cabos.push(caboModelo("cto" + l, "onu" + l, "P1", "PON", "Drop", "", { distanciaKm: 0.2 }));
+      });
+      return { equipamentos: eqs, conexoes: cabos }; } }
   };
   var elModoDiagrama = document.getElementById("modoDiagrama");
   var modoNaTela = null, modoJaMostrado = false;
@@ -3053,6 +3091,12 @@
     mensagem: document.getElementById("novoProjetoMensagem")
   };
   function fecharNovoProjeto() { esconderModal(novoProjeto.backdrop); }
+  // Escolher um modelo já marca o tipo de diagrama dele.
+  novoProjeto.form.addEventListener("change", function (event) {
+    if (event.target.name !== "modeloProjeto" || !MODELOS_PRONTOS[event.target.value]) return;
+    var radio = novoProjeto.form.querySelector('input[name="modoProjeto"][value="' + MODELOS_PRONTOS[event.target.value].modo + '"]');
+    if (radio) radio.checked = true;
+  });
   document.getElementById("btnNovoProjeto").addEventListener("click", function () {
     novoProjeto.form.reset();
     novoProjeto.mensagem.textContent = "";
@@ -3072,9 +3116,12 @@
     var nome = validacaoNome.dados;
     var escolhido = novoProjeto.form.querySelector('input[name="modoProjeto"]:checked');
     var modo = escolhido && MODOS_DIAGRAMA[escolhido.value] ? escolhido.value : "topologia";
+    var modeloEscolhido = novoProjeto.form.querySelector('input[name="modeloProjeto"]:checked');
+    var modelo = modeloEscolhido && MODELOS_PRONTOS[modeloEscolhido.value];
     fecharNovoProjeto();
     salvarLocal();
-    projetos[nome] = { equipamentos: [], conexoes: [], modo: modo };
+    projetos[nome] = modelo ? Object.assign(Esquema.validarProjeto(modelo.dados(), "reparar").dados, { modo: modelo.modo }) : { equipamentos: [], conexoes: [], modo: modo };
+    if (modelo) modo = modelo.modo;
     projetoAtual = nome;
     estado = clonarDados(projetos[nome]);
     historicoDesfazer = [];
@@ -3082,9 +3129,9 @@
     ultimoEstadoHistorico = JSON.stringify(estado);
     salvarLocal();
     renderProjetos();
-    renderTudo();
-    limparDiagrama();
-    avisar("Projeto \"" + nome + "\" criado (" + MODOS_DIAGRAMA[modo].titulo + ").");
+    if (modelo) { ajustarNaProximaRenderizacao = true; renderTudo(); }
+    else { renderTudo(); limparDiagrama(); }
+    avisar("Projeto \"" + nome + "\" criado (" + MODOS_DIAGRAMA[modo].titulo + (modelo ? ", a partir de um modelo" : "") + ").");
   });
 
   // Tira um projeto da lista (excluído, ou a pessoa saiu da equipe) e abre outro.
@@ -5476,6 +5523,47 @@
   //   Topologia: nome, modelo, tipo, IP.
   //   Redes: nome, IP (em destaque), VLAN / rede, tipo.
   //   Monitoramento: nome, tipo, IP.
+  // ---- FTTH: sinal estimado em cada ponto da rede óptica ----------------------
+  // Parte de cada OLT (potência de saída, padrão +5 dBm) e desce pelos cabos:
+  // 0,35 dB/km de fibra, 0,5 dB por ligação (conectores/fusões) e a perda do
+  // splitter na saída dele (1:2 3,7 · 1:4 7,3 · 1:8 10,5 · 1:16 13,7 · 1:32 17,1 · 1:64 20,5 dB).
+  var PERDA_SPLITTER = { 2: 3.7, 4: 7.3, 8: 10.5, 16: 13.7, 32: 17.1, 64: 20.5 };
+  var sinaisFtth = {};
+  function razaoDoSplitter(eq) {
+    var texto = [eq.tipo, eq.nome, eq.modelo].join(" ");
+    if (!/split|divisor|cto|caixa/i.test(texto)) return 0;
+    var m = /1\s*[:x\/]\s*(\d+)/i.exec(texto);
+    return m && PERDA_SPLITTER[Number(m[1])] ? Number(m[1]) : 0;
+  }
+  function calcularSinaisFtth(dados) {
+    var porId = {}, vizinhos = {}, sinal = {}, fila = [];
+    dados.equipamentos.forEach(function (eq) { porId[eq.id] = eq; vizinhos[eq.id] = []; });
+    dados.conexoes.forEach(function (c) {
+      if (!vizinhos[c.de] || !vizinhos[c.para]) return;
+      vizinhos[c.de].push({ id: c.para, km: Number(c.distanciaKm) || 0 });
+      vizinhos[c.para].push({ id: c.de, km: Number(c.distanciaKm) || 0 });
+    });
+    dados.equipamentos.forEach(function (eq) {
+      if (!/\bolt\b/i.test([eq.tipo, eq.nome].join(" "))) return;
+      sinal[eq.id] = eq.potenciaDbm != null ? Number(eq.potenciaDbm) : 5;
+      fila.push(eq.id);
+    });
+    var olts = {};
+    fila.forEach(function (id) { olts[id] = true; });
+    while (fila.length) {
+      var u = fila.shift(), saida = sinal[u] - (olts[u] ? 0 : (PERDA_SPLITTER[razaoDoSplitter(porId[u])] || 0));
+      vizinhos[u].forEach(function (v) {
+        if (sinal[v.id] != null) return;
+        sinal[v.id] = saida - v.km * 0.35 - 0.5;
+        fila.push(v.id);
+      });
+    }
+    var resultado = {};
+    Object.keys(sinal).forEach(function (id) { if (!olts[id]) resultado[id] = Math.sign(sinal[id]) * Math.round(Math.abs(sinal[id]) * 10) / 10; });
+    return resultado;
+  }
+  function corDoSinal(dbm) { return dbm >= -25 ? "#1E8E4E" : dbm >= -27 ? "#B7791F" : "#C53030"; }
+
   function linhasDoCabecalho(eq, modo) {
     function fonte(tamanho, cor, texto, opcoes) {
       opcoes = opcoes || {};
@@ -5497,6 +5585,12 @@
     if (modo === "monitoramento") {
       return [nome, tipo].concat(ip ? [fonte(8, "#1F5F8B", ip, { mono: true })] : []);
     }
+    if (modo === "ftth") {
+      var dbm = sinaisFtth[eq.id];
+      var linhaSinal = dbm != null ? [fonte(10, corDoSinal(dbm), (razaoDoSplitter(eq) ? "entrada " : "") + String(dbm).replace(".", ",") + " dBm", { negrito: true, mono: true })]
+        : eq.potenciaDbm != null ? [fonte(9, "#1F5F8B", "saída +" + String(eq.potenciaDbm).replace(".", ",") + " dBm", { mono: true })] : [];
+      return [nome, tipo].concat(linhaSinal);
+    }
     return [nome]
       .concat(modelo ? [fonte(9, "#14212B", modelo)] : [])
       .concat([tipo])
@@ -5508,6 +5602,7 @@
 
   function gerarDot(dados, direcao) {
     var modo = modoAtual();
+    sinaisFtth = modo === "ftth" ? calcularSinaisFtth(dados) : {};
     var contagemPortas = {};
     dados.equipamentos.forEach(function (eq) { contagemPortas[eq.id] = 0; });
     dados.conexoes.forEach(function (c) {
@@ -5729,7 +5824,7 @@
       var portas = ', tailport="out_' + indice + '", headport="in_' + indice + '"';
       if (direcao === "TB") portas = portaDirecao;
       if (direcao !== "TB") portas = portaDirecao;
-      var capacidade = c.potencia ? " · " + c.potencia : "";
+      var capacidade = (c.potencia ? " · " + c.potencia : "") + (modo === "ftth" && c.distanciaKm != null ? " · " + String(c.distanciaKm).replace(".", ",") + " km" : "");
       var rotuloTexto = c.tipo ? c.tipo + capacidade : capacidade.replace(/^ · /, "");
       var rotulo = ' [id="edge_' + indice + '", label="' + escapar(rotuloTexto) + '", color="' + corConexao + '", fontcolor="#34495A", penwidth=' + Math.max(1, grossura) + estilo + portas + ']';
       linhas.push('  "' + escapar(c.de) + '" -> "' + escapar(c.para) + '"' + rotulo + ';');

@@ -317,6 +317,7 @@
     if (eq.diagrama && outros.indexOf(eq.diagrama) < 0) outros.unshift(eq.diagrama);
     campoEditor("editEquipDiagrama").innerHTML = '<option value="">— nenhum —</option>' + outros.map(function (n) { return '<option value="' + escaparHtml(n) + '">' + escaparHtml(n) + "</option>"; }).join("");
     campoEditor("editEquipDiagrama").value = eq.diagrama || "";
+    campoEditor("editEquipPotenciaDbm").value = eq.potenciaDbm != null ? eq.potenciaDbm : "";
     mostrarEditor("Editar equipamento", editor.formEquip);
   }
 
@@ -338,6 +339,7 @@
     campoEditor("editCaboGrossura").value = Number(c.grossura) || 2;
     selecionarOpcao(campoEditor("editCaboEstilo"), c.estilo || "solid");
     campoEditor("editCaboVlan").value = c.vlan || "";
+    campoEditor("editCaboDistancia").value = c.distanciaKm != null ? c.distanciaKm : "";
     campoEditor("editCaboRedeVlan").value = c.redeVlan || "";
     campoEditor("editCaboNumSaida").value = c.numSaida || "";
     campoEditor("editCaboNumChegada").value = c.numChegada || "";
@@ -366,10 +368,12 @@
       rede: campoEditor("editEquipRede").value,
       corFonte: campoEditor("editEquipCor").value,
       corIcone: campoEditor("editEquipCorIconeOriginal").checked ? "" : campoEditor("editEquipCorIcone").value,
-      diagrama: campoEditor("editEquipDiagrama").value
+      diagrama: campoEditor("editEquipDiagrama").value,
+      potenciaDbm: campoEditor("editEquipPotenciaDbm").value === "" ? null : campoEditor("editEquipPotenciaDbm").value
     }));
     if (!validacao.ok) { campoEditor("editEquipMensagem").textContent = textoDosErros(validacao.erros); return; }
     if (!validacao.dados.diagrama) { delete validacao.dados.diagrama; delete eq.diagrama; }
+    if (validacao.dados.potenciaDbm == null) { delete validacao.dados.potenciaDbm; delete eq.potenciaDbm; }
     Object.assign(eq, validacao.dados);
     fecharEditor();
     renderTudo();
@@ -386,13 +390,15 @@
       tipo: campoEditor("editCaboTipo").value, potencia: campoEditor("editCaboPotencia").value, cor: campoEditor("editCaboCor").value,
       grossura: campoEditor("editCaboGrossura").value, estilo: campoEditor("editCaboEstilo").value,
       vlan: campoEditor("editCaboVlan").value, redeVlan: campoEditor("editCaboRedeVlan").value,
-      numSaida: campoEditor("editCaboNumSaida").value, numChegada: campoEditor("editCaboNumChegada").value
+      numSaida: campoEditor("editCaboNumSaida").value, numChegada: campoEditor("editCaboNumChegada").value,
+      distanciaKm: campoEditor("editCaboDistancia").value === "" ? null : campoEditor("editCaboDistancia").value
     }), estado.equipamentos.map(function (eq) { return eq.id; }));
     if (!validacao.ok) { campoEditor("editCaboMensagem").textContent = textoDosErros(validacao.erros); return; }
     // Trocou as pontas: o arraste manual do cabo antigo não vale mais.
     if (de !== c.de || para !== c.para) { delete c.deslocamento; delete validacao.dados.deslocamento; delete c.rota; delete validacao.dados.rota; }
     // Campo da etiqueta apagado: não guarda texto vazio.
     ["vlan", "redeVlan", "numSaida", "numChegada"].forEach(function (k) { if (!validacao.dados[k]) { delete validacao.dados[k]; delete c[k]; } });
+    if (validacao.dados.distanciaKm == null) { delete validacao.dados.distanciaKm; delete c.distanciaKm; }
     Object.assign(c, validacao.dados);
     fecharEditor();
     renderTudo();

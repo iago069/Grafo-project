@@ -208,6 +208,16 @@
             <label class="modo-opcao"><input type="radio" name="modoProjeto" value="racks">
               <span class="modo-icone" data-modo="racks" aria-hidden="true"></span>
               <strong>Bayface de Racks</strong><small>Disposição física: racks, U ocupadas e livres.</small></label>
+            <label class="modo-opcao"><input type="radio" name="modoProjeto" value="ftth">
+              <span class="modo-icone" data-modo="ftth" aria-hidden="true"></span>
+              <strong>FTTH</strong><small>Splitters, CTOs e o sinal óptico em cada ponto.</small></label>
+          </fieldset>
+          <fieldset class="modelos-prontos">
+            <legend>Começar com</legend>
+            <label class="modelo-opcao"><input type="radio" name="modeloProjeto" value="" checked><strong>Em branco</strong><small>Diagrama vazio</small></label>
+            <label class="modelo-opcao"><input type="radio" name="modeloProjeto" value="pop"><strong>POP com OLT</strong><small>Borda, switch, OLT, DIO e energia</small></label>
+            <label class="modelo-opcao"><input type="radio" name="modeloProjeto" value="datacenter"><strong>Core de datacenter</strong><small>EVPN, L2, L3, BNG, CGNAT e CDN</small></label>
+            <label class="modelo-opcao"><input type="radio" name="modeloProjeto" value="ftth"><strong>Rede FTTH</strong><small>OLT, splitter, CTOs e clientes com sinal</small></label>
           </fieldset>
           <p class="nav-dica">Dá para trocar depois, na barra do diagrama.</p>
           <div class="nav-panel-message" id="novoProjetoMensagem" aria-live="polite"></div>
@@ -245,6 +255,7 @@
             <label>Cor da fonte<input id="editEquipCor" type="color"></label>
             <label>Cor do ícone<span class="cor-icone-campo"><input id="editEquipCorIcone" type="color" value="#2E9E5B" title="Tom aplicado ao ícone"><label class="opcao-check"><input id="editEquipCorIconeOriginal" type="checkbox"> Original</label></span></label>
           </div>
+          <label class="full so-modo-ftth">Potência de saída (dBm)<input id="editEquipPotenciaDbm" type="number" step="0.1" min="-20" max="20" placeholder="OLT: ex. 5"></label>
           <label class="full">Abre o diagrama<select id="editEquipDiagrama"><option value="">— nenhum —</option></select></label>
           <div class="nav-panel-message" id="editEquipMensagem" aria-live="polite"></div>
           <div class="nav-form-actions">
@@ -271,6 +282,7 @@
             <label>Espessura<input id="editCaboGrossura" type="number" min="1" max="10"></label>
           </div>
           <label>Estilo<select id="editCaboEstilo"><option value="solid">Contínuo</option><option value="dashed">Tracejado</option><option value="dotted">Pontilhado</option></select></label>
+          <label class="so-modo-ftth">Distância da fibra (km)<input id="editCaboDistancia" type="number" step="0.01" min="0" max="200" placeholder="Ex.: 1,5"></label>
           <div class="nav-form-grid">
             <label>VLAN<input id="editCaboVlan" maxlength="30" placeholder="Ex.: 2047" autocomplete="off"></label>
             <label>Rede da VLAN<input id="editCaboRedeVlan" maxlength="45" placeholder="Ex.: 172.20.8.168/30" autocomplete="off"></label>
@@ -871,6 +883,7 @@
                 <option value="redes" data-desc="IPs, VLANs e redes em destaque">Diagrama de redes</option>
                 <option value="monitoramento" data-desc="Status ativo, manutenção e offline">Monitoramento</option>
                 <option value="racks" data-desc="Racks, U, fotos e datacenter">Bayface de Racks</option>
+                <option value="ftth" data-desc="Splitters, CTOs e sinal óptico estimado">FTTH (rede óptica)</option>
               </select>
               <span class="contador-equip" id="contadorEquip" role="status" aria-live="polite" title="Equipamentos no diagrama (máximo 100)">0/100</span>
             </div>

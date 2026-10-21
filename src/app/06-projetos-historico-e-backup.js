@@ -207,7 +207,37 @@
     redes: { titulo: "Diagrama de redes", exportacao: "Diagrama de redes" },
     monitoramento: { titulo: "Monitoramento", exportacao: "Diagrama de monitoramento" },
     // Disposição física dos racks (recursos/racks.js); o diagrama lógico fica guardado.
-    racks: { titulo: "Bayface de Racks", exportacao: "Bayface de racks" }
+    racks: { titulo: "Bayface de Racks", exportacao: "Bayface de racks" },
+    // Rede óptica: sinal estimado em cada splitter, CTO e ONU (perdas de splitter, fibra e conectores).
+    ftth: { titulo: "FTTH (rede óptica)", exportacao: "Rede FTTH" }
+  };
+
+  // Modelos prontos para começar um projeto (o Organizar arruma na primeira abertura).
+  function eqModelo(id, nome, tipo, extra) { return Object.assign({ id: id, nome: nome, tipo: tipo, icone: iconePorTipo(tipo), status: "ativo" }, extra || {}); }
+  function caboModelo(de, para, saida, chegada, tipo, potencia, extra) { return Object.assign({ de: de, para: para, saida: saida, chegada: chegada, tipo: tipo, potencia: potencia }, extra || {}); }
+  var MODELOS_PRONTOS = {
+    pop: { modo: "topologia", dados: function () { return {
+      equipamentos: [eqModelo("rb", "RB-BORDA", "RB / CCR", { ip: "10.0.0.1" }), eqModelo("sw", "SW-CORE", "Switch", { ip: "10.0.0.2" }),
+        eqModelo("olt", "OLT-01", "OLT", { ip: "10.0.0.10" }), eqModelo("dio", "DIO-48F", "DIO"), eqModelo("nb", "NOBREAK", "Nobreak"), eqModelo("ret", "RETIFICADOR", "Retificador")],
+      conexoes: [caboModelo("rb", "sw", "sfp1", "sfp-sfpplus1", "Fibra", "10G"), caboModelo("sw", "olt", "sfp-sfpplus2", "uplink1", "Fibra", "10G"),
+        caboModelo("olt", "dio", "pon1", "f1", "Fibra", "GPON"), caboModelo("ret", "olt", "48V", "PWR", "Energia", ""), caboModelo("nb", "sw", "saída 1", "PWR", "Energia", "")] }; } },
+    datacenter: { modo: "topologia", dados: function () { return {
+      equipamentos: [eqModelo("evpn", "CORE-EVPN", "Switch", { modelo: "Juniper QFX5120" }), eqModelo("l2", "CORE-L2", "Switch", { modelo: "Juniper" }),
+        eqModelo("l3", "CORE-L3", "Switch", { modelo: "Juniper" }), eqModelo("bng", "BNG", "RB / CCR", { modelo: "Juniper MX204" }),
+        eqModelo("cgnat", "CGNAT", "Servidor"), eqModelo("cdn", "CACHE CDN", "Servidor"), eqModelo("ix", "TRÂNSITO / IX", "Nuvem VPLS")],
+      conexoes: [caboModelo("evpn", "l2", "et-0/0/30", "et-0/0/48", "LAG ae14 (CORE-L2)", "100G"), caboModelo("evpn", "l3", "et-0/0/6", "et-0/0/48", "CORE-L3", "100G"),
+        caboModelo("evpn", "bng", "et-0/0/4", "et-0/0/0", "WAN BNG", "100G"), caboModelo("evpn", "cgnat", "et-0/0/14", "port 1", "LAG ae10 (CGNAT)", "40G"),
+        caboModelo("evpn", "cgnat", "et-0/0/15", "port 2", "LAG ae10 (CGNAT)", "40G"), caboModelo("l2", "cdn", "xe-0/0/33", "eth0", "Cache CDN", "10G"),
+        caboModelo("evpn", "ix", "et-0/0/11", "", "Trânsito IP", "100G")] }; } },
+    ftth: { modo: "ftth", dados: function () {
+      var eqs = [eqModelo("olt", "OLT-01", "OLT", { potenciaDbm: 5 }), eqModelo("sp1", "SPLITTER 1:8", "Splitter")], cabos = [caboModelo("olt", "sp1", "PON 1/1", "IN", "Fibra", "GPON", { distanciaKm: 2 })];
+      ["A", "B", "C"].forEach(function (l, i) {
+        eqs.push(eqModelo("cto" + l, "CTO-" + l + " 1:8", "CTO"));
+        cabos.push(caboModelo("sp1", "cto" + l, "S" + (i + 1), "IN", "Fibra", "", { distanciaKm: 1 + i * 0.8 }));
+        eqs.push(eqModelo("onu" + l, "CLIENTE " + l, "ONU"));
+        cabos.push(caboModelo("cto" + l, "onu" + l, "P1", "PON", "Drop", "", { distanciaKm: 0.2 }));
+      });
+      return { equipamentos: eqs, conexoes: cabos }; } }
   };
   var elModoDiagrama = document.getElementById("modoDiagrama");
   var modoNaTela = null, modoJaMostrado = false;
@@ -261,6 +291,12 @@
     mensagem: document.getElementById("novoProjetoMensagem")
   };
   function fecharNovoProjeto() { esconderModal(novoProjeto.backdrop); }
+  // Escolher um modelo já marca o tipo de diagrama dele.
+  novoProjeto.form.addEventListener("change", function (event) {
+    if (event.target.name !== "modeloProjeto" || !MODELOS_PRONTOS[event.target.value]) return;
+    var radio = novoProjeto.form.querySelector('input[name="modoProjeto"][value="' + MODELOS_PRONTOS[event.target.value].modo + '"]');
+    if (radio) radio.checked = true;
+  });
   document.getElementById("btnNovoProjeto").addEventListener("click", function () {
     novoProjeto.form.reset();
     novoProjeto.mensagem.textContent = "";
@@ -280,9 +316,12 @@
     var nome = validacaoNome.dados;
     var escolhido = novoProjeto.form.querySelector('input[name="modoProjeto"]:checked');
     var modo = escolhido && MODOS_DIAGRAMA[escolhido.value] ? escolhido.value : "topologia";
+    var modeloEscolhido = novoProjeto.form.querySelector('input[name="modeloProjeto"]:checked');
+    var modelo = modeloEscolhido && MODELOS_PRONTOS[modeloEscolhido.value];
     fecharNovoProjeto();
     salvarLocal();
-    projetos[nome] = { equipamentos: [], conexoes: [], modo: modo };
+    projetos[nome] = modelo ? Object.assign(Esquema.validarProjeto(modelo.dados(), "reparar").dados, { modo: modelo.modo }) : { equipamentos: [], conexoes: [], modo: modo };
+    if (modelo) modo = modelo.modo;
     projetoAtual = nome;
     estado = clonarDados(projetos[nome]);
     historicoDesfazer = [];
@@ -290,9 +329,9 @@
     ultimoEstadoHistorico = JSON.stringify(estado);
     salvarLocal();
     renderProjetos();
-    renderTudo();
-    limparDiagrama();
-    avisar("Projeto \"" + nome + "\" criado (" + MODOS_DIAGRAMA[modo].titulo + ").");
+    if (modelo) { ajustarNaProximaRenderizacao = true; renderTudo(); }
+    else { renderTudo(); limparDiagrama(); }
+    avisar("Projeto \"" + nome + "\" criado (" + MODOS_DIAGRAMA[modo].titulo + (modelo ? ", a partir de um modelo" : "") + ").");
   });
 
   // Tira um projeto da lista (excluído, ou a pessoa saiu da equipe) e abre outro.

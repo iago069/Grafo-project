@@ -117,3 +117,21 @@ test("seletor de tipo do tamanho do texto também sem field-sizing (Firefox/Safa
   assert.ok(Math.abs(medido.topologia - nativo.topologia) <= 6, "Topologia: " + medido.topologia + " x " + nativo.topologia);
   assert.ok(Math.abs(medido.redes - nativo.redes) <= 6, "Redes: " + medido.redes + " x " + nativo.redes);
 });
+
+test("Novo projeto com modelo FTTH: sinal óptico calculado em cada CTO e cliente", async () => {
+  const pagina = await abrirPagina(navegador, site);
+  await esperarDiagrama(pagina);
+  await pagina.click("#btnNovoProjeto");
+  await pagina.fill("#novoProjetoNome", "Bairro Norte");
+  await pagina.locator('.modelo-opcao:has(input[value="ftth"])').click();
+  await pagina.click('#novoProjetoForm button[type="submit"]');
+  await pagina.waitForFunction(() => window.GrafoApp.projetoAtual() === "Bairro Norte");
+  await pagina.waitForFunction(() => /dBm/.test(document.getElementById("canvas").textContent), null, { timeout: 20000 });
+  const texto = await pagina.textContent("#canvas");
+  // OLT +5 → 2 km (0,7) + conector 0,5 = 3,8 no splitter; saída 1:8 (-10,5) → CTO-A a 1 km: 3,8-10,5-0,35-0,5 = -7,6
+  assert.match(texto, /entrada 3,8 dBm/);
+  assert.match(texto, /-7,6 dBm/);
+  assert.equal(await pagina.getAttribute("body", "data-modo-diagrama"), "ftth");
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});
