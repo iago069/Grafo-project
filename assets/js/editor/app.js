@@ -1178,8 +1178,50 @@
       existentes.push.apply(existentes, segmentosDaRota(pts));
       rota.path.setAttribute("d", caminhoOrtogonalArredondado(pts));
       posicionarRotuloDaAresta(rota.aresta, pts, rotulos);
+      rota.pts = pts;
       rotasDesenhadas[estado.conexoes.indexOf(rota.conexao)] = pts;
       desenharExtrasDoCabo(rota.aresta, pts, rota.conexao);
+    });
+    juntarCabosDeLag(rotas);
+  }
+
+  // Membros da mesma LAG (mesmos equipamentos, tipo "LAG aeN…") seguem o mesmo
+  // caminho no meio: viram um tronco só, que se abre perto de cada porta. O rótulo
+  // fica só no primeiro, com a contagem (ex.: "LAG ae7 (Netflix) · 2×10G").
+  function juntarCabosDeLag(rotas) {
+    var grupos = {};
+    rotas.forEach(function (rota) {
+      var m = /^LAG\s+(ae\d+)/i.exec(rota.conexao.tipo || "");
+      if (!m || !rota.pts) return;
+      var par = [rota.conexao.de, rota.conexao.para].sort().join("|");
+      (grupos[par + "|" + m[1].toLowerCase()] = grupos[par + "|" + m[1].toLowerCase()] || []).push(rota);
+    });
+    Object.keys(grupos).forEach(function (k) {
+      var g = grupos[k];
+      if (g.length < 2) return;
+      g.sort(function (a, b) { return compararPortas(a.conexao.saida || "", b.conexao.saida || ""); });
+      var lider = g[0], L = lider.pts;
+      g.slice(1).forEach(function (rota) {
+        var t0 = rota.aresta.querySelector("text:not(.cabo-extra)");
+        if (t0) t0.style.display = "none";
+        if (L.length < 3) return; // cabo reto: as linhas já correm lado a lado
+        var mesmoSentido = rota.conexao.de === lider.conexao.de;
+        var s = mesmoSentido ? rota.s : rota.e, e = mesmoSentido ? rota.e : rota.s;
+        var F = [s, { x: L[1].x, y: s.y }].concat(L.slice(1, -1), [{ x: L[L.length - 2].x, y: e.y }, e]);
+        if (!mesmoSentido) F.reverse();
+        F = limparPontos(F);
+        rota.path.setAttribute("d", caminhoOrtogonalArredondado(F));
+        rotasDesenhadas[estado.conexoes.indexOf(rota.conexao)] = F;
+        var t = rota.aresta.querySelector("text:not(.cabo-extra)");
+        if (t) t.style.display = "none";
+        rota.aresta.querySelectorAll(".cabo-etiqueta").forEach(function (e) { e.remove(); });
+      });
+      var texto = lider.aresta.querySelector("text:not(.cabo-extra)");
+      if (texto) texto.textContent = (lider.conexao.tipo || "LAG") + " · " + g.length + "×" + (lider.conexao.potencia || "");
+      lider.aresta.classList.add("lag-tronco");
+      // Tronco mais grosso que um cabo comum (proporcional à espessura escolhida).
+      var largura = parseFloat(lider.path.getAttribute("stroke-width")) || 2;
+      lider.path.style.strokeWidth = (largura * 1.6).toFixed(1) + "px";
     });
   }
 
@@ -5323,7 +5365,9 @@
     var ocultas = camadasOcultas();
     CAMADAS.forEach(function (c) {
       svg.querySelectorAll(c[2]).forEach(function (e) {
-        if (ocultas[c[0]]) e.style.display = "none"; else if (e.style.display === "none") e.style.display = "";
+        // Só mostra de volta o que a própria camada escondeu (a LAG esconde rótulos repetidos).
+        if (ocultas[c[0]]) { if (e.style.display !== "none") { e.style.display = "none"; e.setAttribute("data-camada-oculta", ""); } }
+        else if (e.hasAttribute("data-camada-oculta")) { e.style.display = ""; e.removeAttribute("data-camada-oculta"); }
       });
     });
     var botao = document.getElementById("btnCamadas");
@@ -6200,6 +6244,18 @@
   // embaixo, e o que vem depois de cada vizinho segue para fora, em camadas.
   // Cada parte desligada do resto é arrumada assim, e as partes vão para
   // prateleiras na proporção da folha. Grava eq.posicao; false se não há o que medir.
+  // Ordem natural de portas: xe-0/0/2 < xe-0/0/14 < et-0/0/1 (tipo, depois números).
+  function compararPortas(a, b) {
+    var pa = String(a).toLowerCase().match(/\d+|\D+/g) || [], pb = String(b).toLowerCase().match(/\d+|\D+/g) || [];
+    for (var i = 0; i < Math.min(pa.length, pb.length); i++) {
+      if (pa[i] === pb[i]) continue;
+      var na = /^\d/.test(pa[i]), nb = /^\d/.test(pb[i]);
+      if (na && nb) return Number(pa[i]) - Number(pb[i]);
+      return pa[i] < pb[i] ? -1 : 1;
+    }
+    return pa.length - pb.length;
+  }
+
   function posicionarEmEstrela() {
     var svg = elCanvas.querySelector("svg");
     if (!svg || !vizInstancia) return false;
@@ -6292,7 +6348,21 @@
       // Ramos: o que continua ligado entre si sem passar pelo centro fica junto
       // (ex.: conversores que chegam no mesmo DIO).
       var ramoDe = {}, ramos = [];
-      vizinhos[centro].slice().sort(porOrdem).forEach(function (raiz) {
+      // Vizinhos na ordem das portas do centro (xe-0/0/14 antes de xe-0/0/33):
+      // as colunas seguem a mesma ordem das portas e os cabos não se cruzam.
+      var portaNoCentro = {};
+      estado.conexoes.forEach(function (c) {
+        var outro = c.de === centro ? c.para : c.para === centro ? c.de : null;
+        if (!outro) return;
+        var porta = c.de === centro ? c.saida : c.chegada;
+        if (porta && (portaNoCentro[outro] == null || compararPortas(porta, portaNoCentro[outro]) < 0)) portaNoCentro[outro] = porta;
+      });
+      function porPorta(a, b) {
+        var pa = portaNoCentro[a], pb = portaNoCentro[b];
+        if (pa && pb) return compararPortas(pa, pb) || porOrdem(a, b);
+        return pa ? -1 : pb ? 1 : porOrdem(a, b);
+      }
+      vizinhos[centro].slice().sort(porPorta).forEach(function (raiz) {
         if (ramoDe[raiz] != null) return;
         var ramo = [], pilha = [raiz];
         ramoDe[raiz] = ramos.length;

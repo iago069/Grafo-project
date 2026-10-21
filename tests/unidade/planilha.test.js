@@ -56,7 +56,7 @@ test("o inventário tem as 4 abas com os dados do projeto", () => {
   assert.deepEqual(eq[0], ["SW-CORE", "Switch", "CRS326", "MikroTik", "10.0.0.2", "VLAN 10", "POP", "Ativo", 2, 4, 3]); // 4 portas, sfp em uso
   assert.equal(eq[1][5], "", "sem VLAN: célula vazia");
   assert.equal(eq[1][7], "Manutenção");
-  assert.deepEqual(abas[2].linhas[1], ["SW-CORE", "ether9", "=SOMA(1;2)", "eth0", "Cobre", "1G", "Tracejado"]);
+  assert.deepEqual(abas[2].linhas[1], [2, "SW-CORE", "ether9", "=SOMA(1;2)", "eth0", "", "1G", "Cobre", "", "", "Tracejado"]);
   const portasSw = abas[3].linhas.filter(l => l[0] === "SW-CORE");
   assert.deepEqual(portasSw.map(l => l[1] + ":" + l[2]), ["ether1:Livre", "ether2:Livre", "ether3:Livre", "sfp-sfpplus1:Em uso", "ether9:Em uso (fora do modelo)"]);
   assert.deepEqual(portasSw[3].slice(3), ["OLT <1> & cia", "xe1", "Fibra · 10G"]);
@@ -99,4 +99,12 @@ test("nomes de aba inválidos ou repetidos são corrigidos", () => {
   assert.match(wb, /name="Rede  POP Centro \(2\)"/);
   assert.match(wb, new RegExp('name="' + "x".repeat(31) + '"'));
   assert.ok(!arquivos["xl/worksheets/sheet3.xml"].texto.includes("\u0007"), "caractere de controle removido");
+});
+
+test("aba Cabos como tabela de rede: LAG e descrição separadas, porta sem dado vira n/d", () => {
+  const abas = P.montarInventario("Core", { equipamentos: [{ id: "a", nome: "core-l2-pf" }, { id: "b", nome: "NETFLIX" }],
+    conexoes: [{ de: "a", para: "b", saida: "xe-0/0/33", chegada: "?", tipo: "LAG ae7 (Netflix1-PFU)", potencia: "10G", vlan: "100" }] }, { data: "hoje" });
+  const cabos = JSON.parse(JSON.stringify(abas.find(a => a.nome === "Cabos")));
+  assert.deepEqual(cabos.colunas.slice(0, 8), ["Nº", "Origem", "Porta origem", "Destino", "Porta destino", "LAG", "Velocidade", "Descrição"]);
+  assert.deepEqual(cabos.linhas[0].slice(0, 9), [1, "core-l2-pf", "xe-0/0/33", "NETFLIX", "n/d", "ae7", "10G", "Netflix1-PFU", "100"]);
 });

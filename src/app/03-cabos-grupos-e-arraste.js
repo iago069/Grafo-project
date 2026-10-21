@@ -291,8 +291,50 @@
       existentes.push.apply(existentes, segmentosDaRota(pts));
       rota.path.setAttribute("d", caminhoOrtogonalArredondado(pts));
       posicionarRotuloDaAresta(rota.aresta, pts, rotulos);
+      rota.pts = pts;
       rotasDesenhadas[estado.conexoes.indexOf(rota.conexao)] = pts;
       desenharExtrasDoCabo(rota.aresta, pts, rota.conexao);
+    });
+    juntarCabosDeLag(rotas);
+  }
+
+  // Membros da mesma LAG (mesmos equipamentos, tipo "LAG aeN…") seguem o mesmo
+  // caminho no meio: viram um tronco só, que se abre perto de cada porta. O rótulo
+  // fica só no primeiro, com a contagem (ex.: "LAG ae7 (Netflix) · 2×10G").
+  function juntarCabosDeLag(rotas) {
+    var grupos = {};
+    rotas.forEach(function (rota) {
+      var m = /^LAG\s+(ae\d+)/i.exec(rota.conexao.tipo || "");
+      if (!m || !rota.pts) return;
+      var par = [rota.conexao.de, rota.conexao.para].sort().join("|");
+      (grupos[par + "|" + m[1].toLowerCase()] = grupos[par + "|" + m[1].toLowerCase()] || []).push(rota);
+    });
+    Object.keys(grupos).forEach(function (k) {
+      var g = grupos[k];
+      if (g.length < 2) return;
+      g.sort(function (a, b) { return compararPortas(a.conexao.saida || "", b.conexao.saida || ""); });
+      var lider = g[0], L = lider.pts;
+      g.slice(1).forEach(function (rota) {
+        var t0 = rota.aresta.querySelector("text:not(.cabo-extra)");
+        if (t0) t0.style.display = "none";
+        if (L.length < 3) return; // cabo reto: as linhas já correm lado a lado
+        var mesmoSentido = rota.conexao.de === lider.conexao.de;
+        var s = mesmoSentido ? rota.s : rota.e, e = mesmoSentido ? rota.e : rota.s;
+        var F = [s, { x: L[1].x, y: s.y }].concat(L.slice(1, -1), [{ x: L[L.length - 2].x, y: e.y }, e]);
+        if (!mesmoSentido) F.reverse();
+        F = limparPontos(F);
+        rota.path.setAttribute("d", caminhoOrtogonalArredondado(F));
+        rotasDesenhadas[estado.conexoes.indexOf(rota.conexao)] = F;
+        var t = rota.aresta.querySelector("text:not(.cabo-extra)");
+        if (t) t.style.display = "none";
+        rota.aresta.querySelectorAll(".cabo-etiqueta").forEach(function (e) { e.remove(); });
+      });
+      var texto = lider.aresta.querySelector("text:not(.cabo-extra)");
+      if (texto) texto.textContent = (lider.conexao.tipo || "LAG") + " · " + g.length + "×" + (lider.conexao.potencia || "");
+      lider.aresta.classList.add("lag-tronco");
+      // Tronco mais grosso que um cabo comum (proporcional à espessura escolhida).
+      var largura = parseFloat(lider.path.getAttribute("stroke-width")) || 2;
+      lider.path.style.strokeWidth = (largura * 1.6).toFixed(1) + "px";
     });
   }
 

@@ -207,9 +207,13 @@
       });
     });
 
-    var linhasCabos = conexoes.map(function (c) {
-      return [nome(c.de), c.saida || "", nome(c.para), c.chegada || "", c.tipo || "", c.potencia || "",
-        { solid: "Contínuo", dashed: "Tracejado", dotted: "Pontilhado" }[c.estilo] || "Contínuo"];
+    // Como uma tabela de rede: LAG e descrição separadas do "tipo" ("LAG ae7 (Netflix1-PFU)").
+    var linhasCabos = conexoes.map(function (c, i) {
+      var tipo = String(c.tipo || ""), m = /^LAG\s+(ae\d+)\s*(?:\((.*)\))?\s*$/i.exec(tipo);
+      var lag = m ? m[1] : "", descricao = m ? (m[2] || "") : tipo;
+      var porta = function (v) { return v && v !== "?" ? v : "n/d"; };
+      return [i + 1, nome(c.de), porta(c.saida), nome(c.para), porta(c.chegada), lag, c.potencia || "", descricao,
+        c.vlan || "", c.redeVlan || "", { solid: "Contínuo", dashed: "Tracejado", dotted: "Pontilhado" }[c.estilo] || "Contínuo"];
     });
 
     function contar(campo, rotulos) {
@@ -225,7 +229,7 @@
     return [
       { nome: "Resumo", colunas: ["Item", "Valor"], linhas: resumo },
       { nome: "Equipamentos", colunas: ["Nome", "Tipo", "Modelo", "Fabricante", "IP", "VLAN / rede", "Grupo", "Status", "Cabos", "Portas do modelo", "Portas livres"], linhas: linhasEq },
-      { nome: "Cabos", colunas: ["Origem", "Porta de origem", "Destino", "Porta de destino", "Tipo de enlace", "Capacidade", "Estilo"], linhas: linhasCabos },
+      { nome: "Cabos", colunas: ["Nº", "Origem", "Porta origem", "Destino", "Porta destino", "LAG", "Velocidade", "Descrição", "VLAN", "Rede da VLAN", "Linha"], linhas: linhasCabos },
       { nome: "Portas", colunas: ["Equipamento", "Porta", "Situação", "Ligada a", "Porta do outro lado", "Cabo"], linhas: linhasPortas }
     ];
   }

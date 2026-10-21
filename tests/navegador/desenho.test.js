@@ -271,3 +271,18 @@ test("Como fazer: abre pela caixa de ferramentas e a busca filtra", async () => 
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("LAG desenhada como um cabo só: um rótulo com a contagem e o mesmo caminho no meio", async () => {
+  const projetos = { "LAG": { equipamentos: [{ id: "a", nome: "core", tipo: "Switch" }, { id: "b", nome: "NETFLIX", tipo: "Servidor" }],
+    conexoes: [
+      { de: "a", para: "b", saida: "xe-0/0/34", chegada: "?", tipo: "LAG ae7 (Netflix1-PFU)", potencia: "10G" },
+      { de: "a", para: "b", saida: "xe-0/0/33", chegada: "?", tipo: "LAG ae7 (Netflix1-PFU)", potencia: "10G" }
+    ] } };
+  const pagina = await abrirPagina(navegador, site, { projetos });
+  await esperarDiagrama(pagina);
+  await pagina.waitForSelector("#canvas g.edge.lag-tronco");
+  const rotulos = await pagina.evaluate(() => [...document.querySelectorAll("#canvas g.edge > text")].filter(t => t.style.display !== "none").map(t => t.textContent));
+  assert.deepEqual(rotulos, ["LAG ae7 (Netflix1-PFU) · 2×10G"]);
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

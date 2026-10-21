@@ -1050,7 +1050,9 @@
     var ocultas = camadasOcultas();
     CAMADAS.forEach(function (c) {
       svg.querySelectorAll(c[2]).forEach(function (e) {
-        if (ocultas[c[0]]) e.style.display = "none"; else if (e.style.display === "none") e.style.display = "";
+        // Só mostra de volta o que a própria camada escondeu (a LAG esconde rótulos repetidos).
+        if (ocultas[c[0]]) { if (e.style.display !== "none") { e.style.display = "none"; e.setAttribute("data-camada-oculta", ""); } }
+        else if (e.hasAttribute("data-camada-oculta")) { e.style.display = ""; e.removeAttribute("data-camada-oculta"); }
       });
     });
     var botao = document.getElementById("btnCamadas");

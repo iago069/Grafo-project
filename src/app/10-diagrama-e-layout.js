@@ -772,6 +772,18 @@
   // embaixo, e o que vem depois de cada vizinho segue para fora, em camadas.
   // Cada parte desligada do resto é arrumada assim, e as partes vão para
   // prateleiras na proporção da folha. Grava eq.posicao; false se não há o que medir.
+  // Ordem natural de portas: xe-0/0/2 < xe-0/0/14 < et-0/0/1 (tipo, depois números).
+  function compararPortas(a, b) {
+    var pa = String(a).toLowerCase().match(/\d+|\D+/g) || [], pb = String(b).toLowerCase().match(/\d+|\D+/g) || [];
+    for (var i = 0; i < Math.min(pa.length, pb.length); i++) {
+      if (pa[i] === pb[i]) continue;
+      var na = /^\d/.test(pa[i]), nb = /^\d/.test(pb[i]);
+      if (na && nb) return Number(pa[i]) - Number(pb[i]);
+      return pa[i] < pb[i] ? -1 : 1;
+    }
+    return pa.length - pb.length;
+  }
+
   function posicionarEmEstrela() {
     var svg = elCanvas.querySelector("svg");
     if (!svg || !vizInstancia) return false;
@@ -864,7 +876,21 @@
       // Ramos: o que continua ligado entre si sem passar pelo centro fica junto
       // (ex.: conversores que chegam no mesmo DIO).
       var ramoDe = {}, ramos = [];
-      vizinhos[centro].slice().sort(porOrdem).forEach(function (raiz) {
+      // Vizinhos na ordem das portas do centro (xe-0/0/14 antes de xe-0/0/33):
+      // as colunas seguem a mesma ordem das portas e os cabos não se cruzam.
+      var portaNoCentro = {};
+      estado.conexoes.forEach(function (c) {
+        var outro = c.de === centro ? c.para : c.para === centro ? c.de : null;
+        if (!outro) return;
+        var porta = c.de === centro ? c.saida : c.chegada;
+        if (porta && (portaNoCentro[outro] == null || compararPortas(porta, portaNoCentro[outro]) < 0)) portaNoCentro[outro] = porta;
+      });
+      function porPorta(a, b) {
+        var pa = portaNoCentro[a], pb = portaNoCentro[b];
+        if (pa && pb) return compararPortas(pa, pb) || porOrdem(a, b);
+        return pa ? -1 : pb ? 1 : porOrdem(a, b);
+      }
+      vizinhos[centro].slice().sort(porPorta).forEach(function (raiz) {
         if (ramoDe[raiz] != null) return;
         var ramo = [], pilha = [raiz];
         ramoDe[raiz] = ramos.length;

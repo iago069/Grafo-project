@@ -3120,3 +3120,5 @@ body.arrastando-desenho, body.arrastando-desenho * { user-select: none !importan
 .barra-estilo-desenho { transform: translateX(-50%); }
 .voltar-diagrama { transition: left 0.15s ease; }
 .painel-flutuante { background: color-mix(in srgb, var(--bg-panel-2) 99%, transparent) !important; }
+
+/* LAG desenhada como um cabo só: tronco um pouco mais grosso. */
