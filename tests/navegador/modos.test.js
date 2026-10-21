@@ -141,6 +141,7 @@ test("tema Fernando troca a logo pelo símbolo do tema; outro tema volta a logo 
   await esperarDiagrama(pagina);
   const trocar = valor => pagina.evaluate(v => { const sel = document.getElementById("temaSelect"); sel.value = v; sel.dispatchEvent(new Event("change", { bubbles: true })); return document.querySelector("img.brand-mark").getAttribute("src"); }, valor);
   assert.match(await trocar("theme-fernando"), /simbolo-fernando\.png$/);
+  assert.match(await trocar("theme-bolsonaro"), /bandeira-brasil\.svg$/);
   assert.match(await trocar("theme-nord"), /grafo-160\.png$/);
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
