@@ -3141,3 +3141,11 @@ body:not([data-modo-diagrama="ftth"]) .so-modo-ftth { display: none; }
 
 /* Nome do cabo legível por cima das linhas: contorno da cor do papel. */
 #canvas g.edge > text { paint-order: stroke fill; stroke: var(--paper, #fff); stroke-width: 4px; stroke-linejoin: round; }
+
+/* Aviso de nomes de cabo escondidos por falta de espaço. */
+.aviso-sem-espaco { position: absolute; z-index: 6; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; max-width: calc(100% - 140px);
+  padding: 6px 6px 6px 14px; border-radius: 99px; font-size: 0.8rem; color: var(--text); background: color-mix(in srgb, var(--bg-panel-2) 97%, transparent);
+  border: 1px solid var(--line-soft); box-shadow: 0 10px 24px -14px rgba(0,0,0,.5); animation: paletaEntrar 0.2s var(--ease-mola, ease) both; }
+.aviso-sem-espaco[hidden] { display: none; }
+.aviso-sem-espaco span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aviso-sem-espaco button { flex: none; min-height: 28px; border-radius: 99px; }

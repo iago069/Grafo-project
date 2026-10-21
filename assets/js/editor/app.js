@@ -1117,6 +1117,7 @@
     if (!trechos.length) return;
     trechos.sort(function (p, q) { return q.comp - p.comp; });
     texto.removeAttribute("transform");
+    if (texto.hasAttribute("data-sem-espaco")) { texto.removeAttribute("data-sem-espaco"); texto.style.display = ""; }
     function colocar(trecho, t, lado) {
       var horizontal = Math.abs(trecho.a.y - trecho.b.y) < 0.5;
       if (horizontal) {
@@ -1134,26 +1135,41 @@
     function caixa() {
       try { var b = texto.getBBox(); return { x1: b.x - 3, y1: b.y - 2, x2: b.x + b.width + 3, y2: b.y + b.height + 2 }; } catch (e) { return null; }
     }
-    function livre(c) {
-      return c && !ocupados.some(function (o) { return c.x1 < o.x2 && c.x2 > o.x1 && c.y1 < o.y2 && c.y2 > o.y1; });
+    // Quanto a caixa encosta no que já está ocupado. Em cima de equipamento ou
+    // porta pesa muito mais que em cima de outro rótulo.
+    function sobreposicao(c) {
+      if (!c) return Infinity;
+      return ocupados.reduce(function (soma, o) {
+        var w = Math.min(c.x2, o.x2) - Math.max(c.x1, o.x1), h = Math.min(c.y2, o.y2) - Math.max(c.y1, o.y1);
+        return w > 0 && h > 0 ? soma + w * h * (o.equipamento ? 20 : 1) : soma;
+      }, 0);
     }
+    function livre(c) { return sobreposicao(c) === 0; }
     var primeira = caixa();
     if (!primeira) return;
     if (livre(primeira)) { ocupados.push(primeira); return; }
     var fracoes = [0.5, 0.35, 0.65, 0.2, 0.8, 0.1, 0.9];
+    var melhor = { custo: sobreposicao(primeira), k: 0, f: 0.5, lado: -1, caixa: primeira };
     for (var k = 0; k < trechos.length; k++) {
       if (trechos[k].comp < 24) continue;
       for (var f = 0; f < fracoes.length; f++) {
         for (var lado = -1; lado <= 1; lado += 2) {
           colocar(trechos[k], fracoes[f], lado);
-          var c = caixa();
-          if (livre(c)) { ocupados.push(c); return; }
+          var c = caixa(), custo = sobreposicao(c);
+          if (custo === 0) { ocupados.push(c); return; }
+          if (custo < melhor.custo) melhor = { custo: custo, k: k, f: fracoes[f], lado: lado, caixa: c };
         }
       }
     }
-    // Nenhum lugar livre: fica no meio do trecho mais longo.
-    colocar(trechos[0], 0.5, -1);
-    ocupados.push(primeira);
+    // Nenhum lugar livre: o nome fica escondido (aparece ao passar o mouse no
+    // cabo) em vez de cair em cima de portas e de outros nomes.
+    texto.style.display = "none";
+    texto.setAttribute("data-sem-espaco", "");
+    var dica = aresta.querySelector("title.dica-cabo") || document.createElementNS(NS_SVG, "title");
+    dica.setAttribute("class", "dica-cabo");
+    dica.textContent = texto.textContent;
+    aresta.insertBefore(dica, aresta.firstChild);
+    return false;
   }
 
   function rotearCabosOrtogonalmente() {
@@ -1176,7 +1192,7 @@
     var existentes = [];
     // Rótulos não caem em cima de equipamentos nem das caixinhas de porta.
     var rotulos = obstaculos.filter(function (o) { return o.equipamento; }).map(function (o) {
-      return { x1: o.x1 + FOLGA_OBSTACULO - 2, y1: o.y1 + FOLGA_OBSTACULO - 2, x2: o.x2 - FOLGA_OBSTACULO + 2, y2: o.y2 - FOLGA_OBSTACULO + 2 };
+      return { equipamento: true, x1: o.x1 + FOLGA_OBSTACULO - 2, y1: o.y1 + FOLGA_OBSTACULO - 2, x2: o.x2 - FOLGA_OBSTACULO + 2, y2: o.y2 - FOLGA_OBSTACULO + 2 };
     });
     rotasDesenhadas = {};
     rotas.forEach(function (rota) {
@@ -1191,11 +1207,35 @@
       desenharExtrasDoCabo(rota.aresta, pts, rota.conexao);
     });
     juntarCabosDeLag(rotas);
+    avisarNomesSemEspaco(svg);
   }
 
   // Membros da mesma LAG (mesmos equipamentos, tipo "LAG aeN…") seguem o mesmo
   // caminho no meio: viram um tronco só, que se abre perto de cada porta. O rótulo
   // fica só no primeiro, com a contagem (ex.: "LAG ae7 (Netflix) · 2×10G").
+  // Aviso no quadro quando há nomes de cabo escondidos por falta de espaço.
+  function avisarNomesSemEspaco(svg) {
+    var n = svg.querySelectorAll("g.edge > text[data-sem-espaco]").length;
+    var aviso = document.getElementById("avisoSemEspaco");
+    if (!n) { if (aviso) aviso.hidden = true; return; }
+    if (!aviso) {
+      aviso = document.createElement("div");
+      aviso.id = "avisoSemEspaco";
+      aviso.className = "aviso-sem-espaco";
+      aviso.innerHTML = '<span></span><button type="button" class="small primary">Organizar</button><button type="button" class="ghost small" aria-label="Fechar aviso">×</button>';
+      elCanvas.parentNode.appendChild(aviso);
+      aviso.addEventListener("pointerdown", function (event) { event.stopPropagation(); });
+      aviso.querySelector(".primary").addEventListener("click", function () { aviso.hidden = true; organizarDiagramaAutomaticamente(); });
+      aviso.querySelector(".ghost").addEventListener("click", function () { aviso.hidden = true; aviso.dispensado = true; });
+    }
+    if (aviso.dispensado) return;
+    aviso.querySelector("span").textContent = n + (n === 1 ? " nome de cabo não coube e ficou escondido (passe o mouse no cabo)." : " nomes de cabo não couberam e ficaram escondidos (passe o mouse no cabo).");
+    aviso.hidden = false;
+    var quadro = elCanvas.getBoundingClientRect(), pai = elCanvas.parentNode.getBoundingClientRect();
+    aviso.style.left = Math.round(quadro.left - pai.left + quadro.width / 2) + "px";
+    aviso.style.top = Math.round(quadro.bottom - pai.top - 54) + "px";
+  }
+
   function juntarCabosDeLag(rotas) {
     var grupos = {};
     rotas.forEach(function (rota) {
