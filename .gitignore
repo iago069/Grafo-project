@@ -10,3 +10,6 @@ Thumbs.db
 .vercel
 .env*
 !agente/.env.exemplo
+
+# Guias internos (só do administrador; ficam fora do repositório público)
+docs/*.pdf
