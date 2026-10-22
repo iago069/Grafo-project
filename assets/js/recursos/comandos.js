@@ -1,4 +1,4 @@
-/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Todos os direitos reservados. */
+/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Licença AGPL-3.0. */
 // Paleta de comandos (Ctrl+K / Cmd+K): busca equipamentos, projetos e ações num
 // lugar só. As ações apenas acionam os botões que já existem na página.
 (function () {

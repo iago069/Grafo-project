@@ -1,4 +1,4 @@
-/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Todos os direitos reservados. Proibido copiar, modificar ou distribuir sem autorização. */
+/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Licença AGPL-3.0 (veja LICENSE). */
 // Service worker: guarda o site neste aparelho para o Grafo abrir sem internet.
 // - Arquivos do próprio site: busca na rede primeiro (atualizações chegam na
 //   hora) e usa a cópia guardada só quando a rede falha.

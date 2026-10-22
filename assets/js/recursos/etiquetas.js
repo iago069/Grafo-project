@@ -1,4 +1,4 @@
-/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Todos os direitos reservados. Proibido copiar, modificar ou distribuir sem autorização. */
+/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Licença AGPL-3.0 (veja LICENSE). */
 // Etiquetas para imprimir (botão "Etiquetas com QR code"): PDF em folha A4 de
 // etiquetas adesivas. Equipamento: QR code + nome, tipo/modelo, IP e grupo.
 // Cabo: duas etiquetas, uma para cada ponta, com a porta daquela ponta primeiro.

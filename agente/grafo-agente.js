@@ -1,4 +1,4 @@
-/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Todos os direitos reservados. Proibido copiar, modificar ou distribuir sem autorização. */
+/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Licença AGPL-3.0 (veja LICENSE). */
 // Agente do Grafo: roda num computador DENTRO da rede (onde o NetBox e os
 // equipamentos são alcançáveis) e o editor conversa com ele pelo navegador.
 //   GET  /saude                 -> { ok, netbox }

@@ -1,4 +1,4 @@
-/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Todos os direitos reservados. */
+/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Licença AGPL-3.0. */
 // Tela de Início e Biblioteca (documentação no estilo BookStack), separadas dos
 // diagramas. Estrutura: estantes → livros → capítulos → páginas.
 // - Dados: { estantes:[{id,nome,descricao,cor}], livros:[{id,estanteId,nome,descricao,projeto,cor}],

@@ -1,4 +1,4 @@
-/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Todos os direitos reservados. Proibido copiar, modificar ou distribuir sem autorização. */
+/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Licença AGPL-3.0 (veja LICENSE). */
 // Painel "NetBox e status online": conversa com o agente (agente/grafo-agente.js),
 // que roda dentro da rede. Escolhe um POP (site do NetBox) e gera o diagrama a
 // partir do cabeamento documentado; e dá ping nos IPs do projeto aberto.

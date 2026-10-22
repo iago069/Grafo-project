@@ -1,4 +1,4 @@
-/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Todos os direitos reservados. */
+/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Licença AGPL-3.0. */
 // Permissões da conta, decididas pelo banco (Supabase):
 // - Temas exclusivos (opções com data-tema-exclusivo, ex.: Fernando): só para quem
 //   tem o tema em grafo_temas_liberados (grafo_meus_temas).

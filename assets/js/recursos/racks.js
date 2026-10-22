@@ -1,4 +1,4 @@
-/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Todos os direitos reservados. Proibido copiar, modificar ou distribuir sem autorização. */
+/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Licença AGPL-3.0 (veja LICENSE). */
 // Bayface de Racks: disposição FÍSICA dos equipamentos nos racks (U ocupadas e
 // livres, frente e traseira, portas e cabos físicos). Não é topologia lógica:
 // IP, VLAN e rotas continuam no diagrama.

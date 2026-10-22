@@ -1,4 +1,4 @@
-/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Todos os direitos reservados. Proibido copiar, modificar ou distribuir sem autorização. */
+/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Licença AGPL-3.0 (veja LICENSE). */
 // Carregado no <head>, antes de a página aparecer: quem já tem sessão salva vai
 // direto para o editor, sem ver a página inicial piscar (auth.js tira a classe
 // se a sessão não valer). Fica em arquivo, e não no HTML, por causa do CSP.

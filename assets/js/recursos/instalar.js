@@ -1,4 +1,4 @@
-/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Todos os direitos reservados. Proibido copiar, modificar ou distribuir sem autorização. */
+/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Licença AGPL-3.0 (veja LICENSE). */
 // Botões "Instalar app" ([data-instalar], na página inicial e ao lado de "Conta").
 // - Chrome, Edge e Android: o navegador avisa que dá para instalar
 //   (beforeinstallprompt); o botão abre a janela de instalação dele.

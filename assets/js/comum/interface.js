@@ -1,4 +1,4 @@
-/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Todos os direitos reservados. Proibido copiar, modificar ou distribuir sem autorização. */
+/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Licença AGPL-3.0 (veja LICENSE). */
 // Detalhes da interface que não mexem nos dados:
 // - menu da conta (botão com a inicial do e-mail: Minha conta, Instalar app, Sair);
 // - menus suspensos (Exportar, Organizar, Tema) e legendas dos botões só com ícone;

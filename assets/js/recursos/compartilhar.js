@@ -1,4 +1,4 @@
-/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Todos os direitos reservados. Proibido copiar, modificar ou distribuir sem autorização. */
+/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Licença AGPL-3.0 (veja LICENSE). */
 // Links só para visualizar. Cada link (tabela grafo_compartilhamentos) guarda
 // uma cópia do desenho em SVG; quem abre /ver?t=<token> vê só essa cópia
 // (ver.html), sem login. Enquanto o link existe, este módulo reenvia o desenho

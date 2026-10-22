@@ -1,4 +1,4 @@
-/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Todos os direitos reservados. Proibido copiar, modificar ou distribuir sem autorização. */
+/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Licença AGPL-3.0 (veja LICENSE). */
 // Registro de erros: o que quebrar no navegador de quem está logado vai para a
 // tabela grafo_erros do Supabase (função grafo_registrar_erro), para quem mantém
 // o Grafo saber que algo deu errado. Carregado no <head>, antes dos outros

@@ -1,4 +1,4 @@
-/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Todos os direitos reservados. Proibido copiar, modificar ou distribuir sem autorização. */
+/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Licença AGPL-3.0 (veja LICENSE). */
 // NetBox falso para testar a integração sem um NetBox de verdade.
 // Responde as mesmas rotas que o agente usa (sites, devices, cables), com
 // filtro por site, paginação (limit/offset/next) e token.

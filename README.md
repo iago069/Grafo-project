@@ -455,6 +455,8 @@ Projetos salvos com os caminhos antigos dos ícones (`assets/images/OLT.jpeg`, `
 
 ## Licença e direitos autorais
 
-Copyright © 2026 Iago Ariel Gularte Barbosa. **Todos os direitos reservados.**
+Copyright © 2026 Iago Ariel Gularte Barbosa.
 
-O Grafo é software proprietário, protegido pela Lei nº 9.609/1998 (Lei do Software) e pela Lei nº 9.610/1998 (Direitos Autorais). **Não é código aberto**: é proibido copiar, modificar, distribuir, hospedar ou criar obras derivadas sem autorização prévia e por escrito do autor. Veja os termos completos em [LICENSE](LICENSE).
+O Grafo é **código aberto**, sob a licença [GNU AGPL-3.0](LICENSE). Você pode usar, estudar, modificar e distribuir o código. Se você modificar o Grafo e colocá-lo no ar para outras pessoas usarem (como site ou serviço), precisa disponibilizar o código-fonte da sua versão sob a mesma licença.
+
+Contribuições são bem-vindas: abra uma issue ou um pull request em [github.com/iago069/Grafo-project](https://github.com/iago069/Grafo-project).

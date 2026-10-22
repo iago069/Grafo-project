@@ -1,4 +1,4 @@
-/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Todos os direitos reservados. Proibido copiar, modificar ou distribuir sem autorização. */
+/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Licença AGPL-3.0 (veja LICENSE). */
 // Projetos de equipe (tabelas grafo_projetos_equipe, grafo_membros e
 // grafo_convites). No editor eles ficam no mesmo mapa de projetos que os
 // pessoais; este módulo sabe quais chaves são de equipe, grava cada uma na

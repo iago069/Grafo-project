@@ -1,4 +1,4 @@
-/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Todos os direitos reservados. Proibido copiar, modificar ou distribuir sem autorização. */
+/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Licença AGPL-3.0 (veja LICENSE). */
 // Cartão "Primeiros passos": três tarefas (equipamento, cabo, exportar) que se
 // marcam sozinhas conforme a pessoa usa o editor. Só aparece para quem ainda
 // não tem equipamento em nenhum projeto; concluído ou fechado, não volta.

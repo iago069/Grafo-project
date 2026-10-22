@@ -1,4 +1,4 @@
-/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Todos os direitos reservados. Proibido copiar, modificar ou distribuir sem autorização. */
+/*! Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Licença AGPL-3.0 (veja LICENSE). */
 // Histórico de versões dos projetos (tabela grafo_versoes; SQL em
 // supabase/migracoes/2026-09-29-historico.sql). O banco guarda as versões
 // sozinho a cada alteração (no máximo uma a cada 10 minutos por projeto); aqui
