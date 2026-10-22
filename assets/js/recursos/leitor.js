@@ -1,6 +1,7 @@
 // Gerar diagrama a partir de texto colado: tabela de interfaces do Grafana,
 // tabela de interfaces do NetBox e saídas do Junos ("show interfaces
-// descriptions" e "show lldp neighbors"). Sem IA: só reconhece esses formatos.
+// descriptions" e "show lldp neighbors") e a lista de portas em blocos
+// (porta / descrição / UP-DOWN, como no Datacom). Sem IA: só reconhece esses formatos.
 //
 // Regras (as mesmas usadas à mão):
 // - porta com descrição "aeN" faz parte da LAG aeN; a descrição da LAG diz o destino;
@@ -27,6 +28,11 @@
     if (p.indexOf("et-") === 0) return "100G";
     if (p.indexOf("xe-") === 0) return "10G";
     if (p.indexOf("ge-") === 0) return "1G";
+    if (/^hundred-gigabit/.test(p)) return "100G";
+    if (/^forty-gigabit/.test(p)) return "40G";
+    if (/^twenty-five-gigabit/.test(p)) return "25G";
+    if (/^ten-gigabit|^tengig|^xgig|^te\d|^xe\d/.test(p)) return "10G";
+    if (/^gigabit|^gi\d|^ge\d/.test(p)) return "1G";
     return "";
   }
 
@@ -118,11 +124,45 @@
     return regs;
   }
 
+  // Lista em blocos (Datacom e parecidos), uma informação por linha:
+  //   ten-gigabit-ethernet-1/1/2 / OLT34_XE0/0 / UP
+  // A descrição diz o vizinho e a porta dele: "ENLACE_POP-SXH03_DISTR-51_XE2" →
+  // POP-SXH03_DISTR-51, porta XE2; "UPLINK_CORE_TPR_06_XE_0_0_34" → CORE_TPR_06, xe-0/0/34.
+  // "Sem alias", ou porta DOWN, vira nota (não inventa equipamento de enlace parado).
+  var RE_PORTA_BLOCO = /^((?:hundred|forty|twenty-five|ten)-)?gigabit-ethernet[-\s]?\d+(?:\/\d+)+$|^(?:tengigabitethernet|gigabitethernet|xgigabitethernet|ethernet|eth|gi|te|xe|ge)[-\s]?\d+(?:\/\d+)+$/i;
+  function vizinhoDaDescricao(desc) {
+    var d = limpar(desc).replace(/^(?:enlace|uplink|downlink|link|router)[_\s-]+/i, "");
+    var m = /^(.+?)[_\s-]+((?:xe|ge|et|te|eth|gi|tge|hge|sfp|pon)(?:[-_]?\d+)(?:[\/_]\d+)*)$/i.exec(d);
+    if (!m) return { vizinho: d };
+    var porta = m[2];
+    var partes = /^([a-z]+)[-_]?(\d+(?:[\/_]\d+)*)$/i.exec(porta);
+    if (partes && partes[2].indexOf("_") >= 0) porta = partes[1].toLowerCase() + "-" + partes[2].replace(/_/g, "/");
+    return { vizinho: m[1], portaVizinho: porta };
+  }
+  function lerBlocos(linhas) {
+    var regs = [];
+    var l = linhas.map(limpar).filter(Boolean);
+    for (var i = 0; i < l.length; i++) {
+      if (!RE_PORTA_BLOCO.test(l[i])) continue;
+      var desc = "", status = "";
+      var j = i + 1;
+      if (l[j] && !/^(up|down)$/i.test(l[j]) && !RE_PORTA_BLOCO.test(l[j])) { desc = l[j]; j++; }
+      if (l[j] && /^(up|down)$/i.test(l[j])) status = l[j].toLowerCase() === "down" ? "offline" : "online";
+      var reg = { porta: l[i], velocidade: "", lag: "", desc: "", fonte: "blocos", status: status || "online" };
+      if (desc && !/^sem\s+(alias|descri)/i.test(desc)) {
+        if (reg.status === "offline") reg.notaDesc = desc;
+        else { var v = vizinhoDaDescricao(desc); reg.desc = desc; reg.vizinho = v.vizinho; if (v.portaVizinho) reg.portaVizinho = v.portaVizinho; }
+      }
+      regs.push(reg);
+    }
+    return regs;
+  }
+
   // ---- Juntar e montar o projeto ----------------------------------------------
 
   function juntar(regs) {
     var porPorta = {}, ordem = [];
-    var peso = { grafana: 3, junos: 3, ia: 2, netbox: 1, lldp: 1 };
+    var peso = { grafana: 3, junos: 3, blocos: 3, ia: 2, netbox: 1, lldp: 1 };
     regs.forEach(function (r) {
       var chave = r.porta.toLowerCase();
       var atual = porPorta[chave];
@@ -170,10 +210,10 @@
   // { projeto, cabos (para a revisão), notas, formatos }.
   function ler(texto, nomeCentro, portasDaImagem) {
     var linhas = String(texto || "").replace(/\r/g, "").split("\n");
-    var lidos = { grafana: lerGrafana(linhas), netbox: lerNetbox(linhas), junos: lerDescricoes(linhas), lldp: lerLldp(linhas), ia: registrosDaImagem(portasDaImagem) };
+    var lidos = { grafana: lerGrafana(linhas), netbox: lerNetbox(linhas), junos: lerDescricoes(linhas), lldp: lerLldp(linhas), blocos: lerBlocos(linhas), ia: registrosDaImagem(portasDaImagem) };
     var formatos = Object.keys(lidos).filter(function (k) { return lidos[k].length; });
-    var portas = juntar([].concat(lidos.grafana, lidos.junos, lidos.ia, lidos.netbox, lidos.lldp));
-    var temPrincipal = lidos.grafana.length + lidos.junos.length + lidos.ia.length > 0;
+    var portas = juntar([].concat(lidos.grafana, lidos.junos, lidos.blocos, lidos.ia, lidos.netbox, lidos.lldp));
+    var temPrincipal = lidos.grafana.length + lidos.junos.length + lidos.blocos.length + lidos.ia.length > 0;
 
     // LAGs: membro tem descrição "aeN"; a descrição da LAG diz o destino.
     var lags = {};
@@ -199,7 +239,8 @@
       var lag = p.lag ? lags[p.lag.toLowerCase()] : null;
       var descDestino = (lag && lag.desc) || p.desc || "";
       var nomeViz = p.vizinho || (lag && lag.vizinho) || descDestino;
-      var soNetbox = temPrincipal && p.fontes.indexOf("grafana") < 0 && p.fontes.indexOf("junos") < 0 && p.fontes.indexOf("ia") < 0;
+      var soNetbox = temPrincipal && p.fontes.indexOf("grafana") < 0 && p.fontes.indexOf("junos") < 0 && p.fontes.indexOf("blocos") < 0 && p.fontes.indexOf("ia") < 0;
+      if (p.notaDesc && !p.vizinho) { notas.push(p.porta + ": " + p.notaDesc + " (DOWN)"); return; }
       if (!nomeViz) {
         if (lag) (semDestinoPorLag[lag.porta] = semDestinoPorLag[lag.porta] || []).push(p.porta);
         else notas.push(p.porta + ": " + (p.status === "offline" ? "offline" : "online") + ", sem descrição e sem vizinho");
@@ -369,7 +410,7 @@
   fundo.addEventListener("click", function (ev) { if (ev.target === fundo) fechar(); });
   document.addEventListener("keydown", function (ev) { if (ev.key === "Escape" && !fundo.hidden) fechar(); });
 
-  var NOMES_FORMATO = { grafana: "Grafana", netbox: "NetBox", junos: "show interfaces descriptions", lldp: "show lldp neighbors", ia: "imagem (lida com IA)" };
+  var NOMES_FORMATO = { grafana: "Grafana", netbox: "NetBox", junos: "show interfaces descriptions", blocos: "lista de portas (porta / descrição / status)", lldp: "show lldp neighbors", ia: "imagem (lida com IA)" };
 
   // ---- Imagem (lida no servidor com IA) ----
   var imagem = null; // { tipo, base64, url }

@@ -128,3 +128,28 @@ test("Comparar com o diagrama: iguais, diferentes, faltam e só no diagrama", ()
   assert.deepEqual(r.sobram.map(x => x.porta), ["xe-0/0/99"]);
   assert.equal(L.comparar(leitura, { equipamentos: [{ id: "z", nome: "outro" }], conexoes: [] }).achou, false);
 });
+
+test("lista em blocos (Datacom): porta / descrição / UP-DOWN vira cabos com vizinho e porta do outro lado", () => {
+  const texto = [
+    "ten-gigabit-ethernet-1/1/1", "ENLACE_POP-SXH03_DISTR-51_XE2", "", "UP", "",
+    "ten-gigabit-ethernet-1/1/2", "OLT34_XE0/0", "", "UP", "",
+    "ten-gigabit-ethernet-1/1/10", "ROUTER_CORE_TPR_06_XE_0_0_36", "", "UP", "",
+    "ten-gigabit-ethernet-1/1/11", "OLT142-XE0/0", "", "UP", "",
+    "ten-gigabit-ethernet-1/1/12", "UPLINK_CORE_TPR_06_XE_0_0_34", "", "UP", "",
+    "ten-gigabit-ethernet-1/1/16", "Sem alias", "", "DOWN", "",
+    "ten-gigabit-ethernet-1/1/22", "ANTIGO-LINK-CBORGES", "", "DOWN"
+  ].join("\n");
+  const r = L.ler(texto, "DISTR-TPR");
+  assert.ok(r.formatos.includes("blocos"));
+  const cabos = simples(r.cabos).map(c => [c.saida, c._vizinho, c.chegada, c.potencia]);
+  assert.deepEqual(cabos, [
+    ["ten-gigabit-ethernet-1/1/1", "POP-SXH03_DISTR-51", "XE2", "10G"],
+    ["ten-gigabit-ethernet-1/1/2", "OLT34", "XE0/0", "10G"],
+    ["ten-gigabit-ethernet-1/1/10", "CORE_TPR_06", "xe-0/0/36", "10G"],
+    ["ten-gigabit-ethernet-1/1/11", "OLT142", "XE0/0", "10G"],
+    ["ten-gigabit-ethernet-1/1/12", "CORE_TPR_06", "xe-0/0/34", "10G"]
+  ]);
+  assert.equal(r.notas.length, 2);
+  assert.ok(r.notas.some(n => /ANTIGO-LINK-CBORGES \(DOWN\)/.test(n)));
+  assert.ok(E.validarProjeto(simples(r.projeto()), "estrito").ok);
+});
