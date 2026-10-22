@@ -10,8 +10,8 @@ test.after(async () => { await navegador?.close(); await site?.fechar(); });
 
 test("usar sem login: editor abre, exporta, guarda no navegador e pede login para compartilhar", async () => {
   const pagina = await abrirPagina(navegador, site, { sessao: false });
-  await pagina.waitForSelector(".landing-heroi", { state: "visible" });
-  await pagina.click(".landing-sem-login");
+  await pagina.waitForSelector("#authCard", { state: "visible" });
+  await pagina.click(".auth-sem-login-botao");
   await pagina.waitForFunction(() => window.GrafoApp && document.getElementById("sidebarUsuarioNome").textContent === "Sem login", null, { timeout: 45000 });
   assert.equal(await pagina.isVisible("#btnEntrarConvidado"), true, "botão Entrar no topo");
 
@@ -33,12 +33,12 @@ test("usar sem login: editor abre, exporta, guarda no navegador e pede login par
   // Recarregar: volta direto ao editor sem login, com o projeto guardado no navegador.
   await pagina.reload();
   await pagina.waitForSelector("#canvas svg g.node", { timeout: 45000 });
-  assert.equal(await pagina.isVisible(".landing-heroi"), false, "não mostra a página inicial");
+  assert.equal(await pagina.isVisible("#authCard"), false, "não mostra a página inicial");
   assert.equal(await pagina.textContent("#sidebarUsuarioNome"), "Sem login");
 
   // "Entrar" leva ao formulário de login.
   await pagina.click("#btnEntrarConvidado");
-  await pagina.waitForSelector(".landing-heroi", { state: "visible" });
+  await pagina.waitForSelector("#authCard", { state: "visible" });
   await pagina.waitForFunction(() => /Entre/.test(document.getElementById("authTitle").textContent));
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();

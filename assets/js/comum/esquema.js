@@ -184,6 +184,9 @@
     ip: { rotulo: "IP", esquema: ESQUEMA_IP, reparar: constante("") },
     // VLAN / sub-rede (texto livre), destacada no modo "Diagrama de redes".
     rede: { rotulo: "VLAN / rede", esquema: texto(LIMITES.rede), opcional: true },
+    // Ficha do equipamento (nome / Host / gateway / mask).
+    gateway: { rotulo: "Gateway", esquema: ESQUEMA_IP, opcional: true },
+    mascara: { rotulo: "Máscara", esquema: z.string().trim().regex(/^((\d{1,3}\.){3}\d{1,3}|\/?\d{1,2})?$/, "máscara inválida (ex.: 255.255.255.0 ou /24)"), opcional: true },
     grupo: { rotulo: "Grupo", esquema: texto(LIMITES.grupo), reparar: truncar(LIMITES.grupo) },
     status: { rotulo: "Status", esquema: ESQUEMA_STATUS, reparar: constante("ativo") },
     icone: { rotulo: "Ícone", esquema: ESQUEMA_ICONE, reparar: constante("") },

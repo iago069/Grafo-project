@@ -13,7 +13,7 @@ test("sem login: mostra a página inicial, sem o editor e sem baixar o Graphviz"
   const pagina = await abrirPagina(navegador, site, { sessao: false, caminho: "/__vazio" });
   pagina.on("request", r => baixados.push(r.url()));
   await pagina.goto(site.url + "/");
-  await pagina.waitForSelector(".landing-heroi", { state: "visible" });
+  await pagina.waitForSelector("#authCard", { state: "visible" });
   assert.equal(await pagina.isVisible(".app-shell"), false);
   await pagina.waitForTimeout(800);
   assert.deepEqual(baixados.filter(u => /viz-global|\/app\.js/.test(u)), []);
@@ -21,15 +21,15 @@ test("sem login: mostra a página inicial, sem o editor e sem baixar o Graphviz"
   await pagina.context().close();
 });
 
-test("botões da página inicial levam ao cadastro e ao login", async () => {
+test("tela de login alterna entre entrar e criar conta", async () => {
   const pagina = await abrirPagina(navegador, site, { sessao: false });
-  await pagina.waitForSelector(".landing-heroi", { state: "visible" });
-  await pagina.click(".landing-ctas [data-ir-para=signup]");
+  await pagina.waitForSelector("#authCard", { state: "visible" });
+  await pagina.click("#authToggle");
   await pagina.waitForFunction(() => /Crie sua conta/.test(document.getElementById("authTitle").textContent));
   // Cadastro: Nome (com o cursor), E-mail, Senha e Repetir senha.
   await pagina.waitForFunction(() => document.activeElement.id === "authNome", null, { timeout: 3000 });
   assert.deepEqual(await pagina.$$eval("#authForm input", l => l.filter(i => i.offsetParent).map(i => i.id)), ["authNome", "authEmail", "authPassword", "authRepetir"]);
-  await pagina.click(".landing-topo [data-ir-para=login]");
+  await pagina.click("#authBack");
   await pagina.waitForFunction(() => /Entre/.test(document.getElementById("authTitle").textContent));
   // Login: só E-mail e Senha.
   assert.deepEqual(await pagina.$$eval("#authForm input", l => l.filter(i => i.offsetParent).map(i => i.id)), ["authEmail", "authPassword"]);
@@ -52,7 +52,7 @@ test("sem servidor de login: avisa em vez de travar", async () => {
 
 test("celular: página inicial sem rolagem para os lados", async () => {
   const pagina = await abrirPagina(navegador, site, { sessao: false, celular: true });
-  await pagina.waitForSelector(".landing-heroi", { state: "visible" });
+  await pagina.waitForSelector("#authCard", { state: "visible" });
   assert.ok(await pagina.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await pagina.context().close();
 });
@@ -77,4 +77,18 @@ test("com sessão salva: vai direto ao editor, sem a página inicial piscar", as
   assert.equal(await pagina.evaluate(() => window.__landingApareceu), false);
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
+});
+
+test("foto da tela de login", async () => {
+  const pagina = await abrirPagina(navegador, site, { sessao: false });
+  await pagina.waitForSelector("#authCard", { state: "visible" });
+  await pagina.waitForTimeout(1500);
+  if (process.env.FOTO_LOGIN) await pagina.screenshot({ path: process.env.FOTO_LOGIN });
+  const cel = await abrirPagina(navegador, site, { sessao: false, celular: true });
+  await cel.waitForSelector("#authCard", { state: "visible" });
+  await cel.waitForTimeout(1500);
+  if (process.env.FOTO_LOGIN) await cel.screenshot({ path: process.env.FOTO_LOGIN.replace(".png", "-cel.png") });
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+  await cel.context().close();
 });

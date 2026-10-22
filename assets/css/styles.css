@@ -3167,3 +3167,74 @@ body:not([data-modo-diagrama="ftth"]) .so-modo-ftth { display: none; }
 .sidebar-github:hover, .sidebar-github:focus-visible { background: rgba(127,127,127,.12); border-color: var(--accent); transform: translateY(-1px); }
 .sidebar.collapsed .sidebar-github { justify-content: center; margin: 8px 10px 14px; padding: 10px 0; }
 .sidebar.collapsed .sidebar-github span { display: none; }
+
+/* Ficha do equipamento: nome / Host / gateway / mask. */
+.ficha-card { max-width: 420px; }
+.ficha-texto { width: 100%; min-height: 108px; resize: vertical; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: .95rem; line-height: 1.6; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--field-border, var(--line)); background: var(--field-bg, transparent); color: var(--field-text, var(--text)); margin: 10px 0 14px; }
+
+/* ==== Lista de cabos no mesmo modelo da lista de equipamentos ==== */
+#listaConex .conex-card {
+  display: block; flex-wrap: nowrap; margin-bottom: 4px; padding: 6px 8px 6px 6px; border-radius: 12px; border: 1px solid transparent;
+  background: transparent; box-shadow: none; transform: none; contain-intrinsic-size: auto 56px;
+}
+#listaConex .conex-card:nth-child(odd) { background: color-mix(in srgb, var(--text) 2.5%, transparent); }
+#listaConex .conex-card:hover { background: color-mix(in srgb, var(--text) 5%, transparent); border-color: var(--line-soft); transform: none; box-shadow: none; }
+#listaConex .conex-card.aberto, #listaConex .conex-card:focus-within { background: color-mix(in srgb, var(--teal) 6%, transparent); border-color: color-mix(in srgb, var(--teal) 35%, transparent); }
+#listaConex .equip-row1 { grid-template-columns: 36px minmax(0, 1fr) auto auto; gap: 10px; margin: 0; }
+.conex-marca { position: relative; background: color-mix(in srgb, var(--cor-tipo) 18%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cor-tipo) 45%, transparent); }
+.conex-marca::before { content: ""; position: absolute; left: 8px; right: 8px; top: 50%; height: 4px; margin-top: -2px; border-radius: 2px; background: var(--cor-tipo); }
+.conex-marca::after { content: ""; position: absolute; right: 6px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--cor-tipo); }
+.conex-titulo { display: block; font: 700 0.9rem var(--sans); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 24px; }
+#listaConex .equip-row1 button.ghost.small { width: 30px; min-width: 30px; height: 30px; min-height: 30px; padding: 0 !important; border-color: transparent; background: transparent; opacity: 0.55; transition: opacity 0.15s ease, background-color 0.15s ease; }
+#listaConex .conex-card:hover .equip-row1 button.ghost.small, #listaConex .conex-card.aberto .equip-row1 button.ghost.small, #listaConex .equip-row1 button.ghost.small:focus-visible { opacity: 1; }
+#listaConex .equip-row1 button.ghost.small:hover { background: color-mix(in srgb, var(--text) 9%, transparent); }
+#listaConex .equip-advanced { padding: 10px 4px 4px 46px; }
+#listaConex .equip-row2 { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+#listaConex .equip-row2 > input, #listaConex .equip-row2 > select { flex: 1 1 calc(50% - 8px); min-width: 0; }
+#listaConex .conex-pontas { flex-wrap: nowrap; align-items: center; }
+#listaConex .conex-pontas select { flex: 1 1 0; }
+#listaConex .conex-arrow { color: var(--text-dim); flex: none; }
+
+/* ==== Tela de login: simples, centralizada, sobre a rede animada (2026-10-22) ==== */
+.login-tela { position: relative; overflow: hidden; isolation: isolate;
+  background:
+    radial-gradient(900px 520px at 85% -10%, rgba(224, 147, 47, 0.22) 0%, transparent 60%),
+    radial-gradient(1000px 640px at 0% 110%, rgba(95, 212, 196, 0.18) 0%, transparent 60%),
+    linear-gradient(160deg, #0b1d2b 0%, #0f2536 55%, #10283a 100%); }
+.login-tela .landing-rede { opacity: 0.55; }
+.login-centro { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; padding: 32px 16px; }
+.login-tela .auth-card {
+  width: min(100%, 400px); padding: 34px 32px 26px; border-radius: 24px;
+  background: rgba(255, 255, 255, 0.97); color: #0f2536;
+  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  animation: modalEntrar 0.7s var(--ease-mola) 0.1s both;
+}
+.login-marca { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; }
+.login-marca .auth-logo { width: 44px; height: 44px; margin: 0; padding: 7px; border-radius: 13px; background: #0f2536; box-shadow: 0 8px 20px rgba(15, 37, 54, 0.25); }
+.login-marca strong { display: block; font-size: 1.3rem; letter-spacing: -0.03em; line-height: 1.1; }
+.login-marca span { display: block; font-size: 0.78rem; color: #6a7d8b; }
+.login-tela .auth-card h2 { font-size: 1.55rem; letter-spacing: -0.03em; margin: 0 0 4px; }
+.login-tela .auth-card #authIntro { margin: 0 0 18px; font-size: 0.92rem; }
+.login-tela .auth-card label { margin: 14px 0 6px; font-size: 0.8rem; font-weight: 600; color: #3c5262; }
+.login-tela .auth-card input { padding: 12px 14px !important; border-radius: 12px !important; border: 1px solid #d3dde4 !important; background: #f6f9fb !important; transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s; }
+.login-tela .auth-card input:focus { outline: none; border-color: #1f9d8d !important; background: #fff !important; box-shadow: 0 0 0 4px rgba(31, 157, 141, 0.16); }
+.login-tela .auth-submit { width: 100%; margin-top: 22px; padding: 13px 16px; border-radius: 12px; font-size: 0.98rem; font-weight: 700; border: 0;
+  background: linear-gradient(135deg, #f0a443 0%, #e0932f 55%, #d27f1c 100%); color: #1b2733; box-shadow: 0 10px 24px rgba(224, 147, 47, 0.35); transition: transform 0.15s, box-shadow 0.15s, filter 0.15s; }
+.login-tela .auth-submit:hover { transform: translateY(-1px); filter: brightness(1.05); box-shadow: 0 14px 30px rgba(224, 147, 47, 0.42); }
+.login-tela .auth-submit:active { transform: translateY(0); }
+.login-tela .auth-message:empty { display: none; }
+.login-tela .auth-links { display: flex; justify-content: space-between; gap: 10px; margin-top: 14px; }
+.login-tela .auth-links button { background: none; border: 0; padding: 4px 0; text-decoration: none; font: 600 0.84rem var(--sans); color: #1f7f73; cursor: pointer; }
+.login-tela .auth-links button:hover { text-decoration: underline; }
+.login-ou { display: flex; align-items: center; gap: 12px; margin: 18px 0 12px; color: #93a3ae; font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.1em; }
+.login-ou::before, .login-ou::after { content: ""; flex: 1; height: 1px; background: #e1e8ed; }
+.login-tela .auth-sem-login { display: flex; flex-direction: column; align-items: stretch; gap: 8px; margin: 0; padding: 0; border: 0; background: none; text-align: center; }
+.login-tela .auth-sem-login-botao { width: 100%; padding: 11px 16px; border-radius: 12px; border: 1px solid #d3dde4; background: #fff; color: #0f2536; font: 600 0.9rem var(--sans); cursor: pointer; transition: border-color 0.15s, background-color 0.15s; }
+.login-tela .auth-sem-login-botao:hover { border-color: #1f9d8d; background: #f3fbfa; }
+.login-tela .auth-sem-login span { font-size: 0.74rem; color: #7f909c; line-height: 1.45; }
+.login-rodape { display: flex; align-items: center; gap: 14px; color: rgba(232, 241, 247, 0.62); font-size: 0.8rem; animation: surgir 0.8s var(--ease-out) 0.5s both; }
+.login-github { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; border-radius: 10px; color: #e8f1f7; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.1); transition: background-color 0.15s, transform 0.15s; }
+.login-github:hover { background: rgba(255, 255, 255, 0.14); transform: translateY(-1px); }
+.login-instalar { background: none; border: 0; color: #e8f1f7; font: 600 0.8rem var(--sans); cursor: pointer; padding: 6px 8px; border-radius: 8px; }
+.login-instalar:hover { background: rgba(255, 255, 255, 0.08); }
+@media (max-width: 480px) { .login-tela .auth-card { padding: 28px 22px 22px; border-radius: 20px; } }

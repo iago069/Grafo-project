@@ -21,17 +21,17 @@ function avisarQuePodeInstalar(pagina) {
 
 test("sem aviso do navegador (e fora do iPhone), o botão não aparece", async () => {
   const pagina = await abrirPagina(navegador, site, { sessao: false });
-  await pagina.waitForSelector(".landing-heroi", { state: "visible" });
+  await pagina.waitForSelector("#authCard", { state: "visible" });
   assert.equal(await visiveis(pagina), 0);
   await pagina.context().close();
 });
 
 test("com o aviso do navegador: botão na página inicial abre a instalação", async () => {
   const pagina = await abrirPagina(navegador, site, { sessao: false });
-  await pagina.waitForSelector(".landing-heroi", { state: "visible" });
+  await pagina.waitForSelector("#authCard", { state: "visible" });
   await avisarQuePodeInstalar(pagina);
   assert.equal(await visiveis(pagina), 1);
-  await pagina.click(".landing-topo [data-instalar]");
+  await pagina.click(".login-rodape [data-instalar]");
   assert.equal(await pagina.evaluate(() => window.__pediuInstalacao), true);
   await pagina.waitForFunction(() => [...document.querySelectorAll("[data-instalar]")].every(b => b.hidden));
   await pagina.context().close();
@@ -59,10 +59,10 @@ test("iPhone: botão mostra como instalar pelo Safari, sem rolagem para os lados
     body: "window.supabase={createClient:function(){return{auth:{onAuthStateChange:function(){},getSession:function(){return Promise.resolve({data:{session:null},error:null})}}}}};" }));
   const pagina = await contexto.newPage();
   await pagina.goto(site.url + "/");
-  await pagina.waitForSelector(".landing-heroi", { state: "visible" });
+  await pagina.waitForSelector("#authCard", { state: "visible" });
   assert.equal(await visiveis(pagina), 1);
   assert.ok(await pagina.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "a página passou da largura da tela");
-  await pagina.click(".landing-topo [data-instalar]");
+  await pagina.click(".login-rodape [data-instalar]");
   await pagina.waitForSelector("#instalarModal:not(.hidden)");
   assert.match(await pagina.textContent("#instalarModal"), /Adicionar à Tela de Início/);
   await pagina.keyboard.press("Escape");

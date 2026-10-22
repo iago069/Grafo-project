@@ -822,9 +822,9 @@
     });
   });
 
-  toggle.addEventListener("click", function () { setMode("signup"); });
+  toggle.addEventListener("click", function () { setMode("signup"); nameInput.focus(); });
   recover.addEventListener("click", function () { setMode("recover"); });
-  back.addEventListener("click", function () { setMode("login"); });
+  back.addEventListener("click", function () { setMode("login"); emailInput.focus(); });
   form.addEventListener("submit", async function (event) {
     event.preventDefault();
     if (!client) return;

@@ -304,6 +304,8 @@
     campoEditor("editEquipMensagem").textContent = "";
     campoEditor("editEquipGrupo").value = eq.grupo || "";
     campoEditor("editEquipRede").value = eq.rede || "";
+    campoEditor("editEquipGateway").value = eq.gateway || "";
+    campoEditor("editEquipMascara").value = eq.mascara || "";
     selecionarOpcao(campoEditor("editEquipStatus"), eq.status || "ativo");
     campoEditor("editEquipIcone").innerHTML = '<option value="">— sem ícone —</option>' + CATALOGO_ICONES.map(function (icone) {
       return '<option value="' + escaparHtml(icone.valor) + '">' + escaparHtml(icone.nome) + '</option>';
@@ -320,6 +322,56 @@
     campoEditor("editEquipPotenciaDbm").value = eq.potenciaDbm != null ? eq.potenciaDbm : "";
     mostrarEditor("Editar equipamento", editor.formEquip);
   }
+
+  // ---- Ficha do equipamento ---------------------------------------------------
+  // Texto pronto para colar (configuração, chamado, planilha):
+  //   nome / Host / gateway / mask. A máscara sai do /24 do IP quando não foi
+  //   preenchida; "/24" vira 255.255.255.0.
+  function mascaraDoPrefixo(prefixo) {
+    var n = Number(prefixo);
+    if (!(n >= 0 && n <= 32)) return "";
+    var partes = [];
+    for (var i = 0; i < 4; i++) { var bits = Math.max(0, Math.min(8, n - i * 8)); partes.push(256 - Math.pow(2, 8 - bits)); }
+    return partes.join(".");
+  }
+  function fichaDoEquipamento(eq) {
+    var ip = String(eq.ip || "").trim(), barra = ip.indexOf("/");
+    var host = barra >= 0 ? ip.slice(0, barra) : ip;
+    var mascara = String(eq.mascara || "").trim();
+    if (/^\/?\d{1,2}$/.test(mascara)) mascara = mascaraDoPrefixo(mascara.replace("/", ""));
+    if (!mascara && barra >= 0 && host.indexOf(":") < 0) mascara = mascaraDoPrefixo(ip.slice(barra + 1));
+    return "nome: " + (eq.nome || eq.id || "") + "\nHost: " + host + "\ngateway: " + String(eq.gateway || "").replace(/\/.*$/, "") + "\nmask: " + mascara;
+  }
+  var fichaModal = document.getElementById("fichaModal");
+  function abrirFicha(eq) {
+    var campo = document.getElementById("fichaTexto");
+    campo.value = fichaDoEquipamento(eq);
+    document.getElementById("fichaTitulo").textContent = "Ficha: " + (eq.nome || eq.id);
+    mostrarModalBackdrop(fichaModal);
+    campo.focus();
+    campo.select();
+  }
+  function fecharFicha() {
+    esconderModal(fichaModal);
+    if (fichaModal.contains(document.activeElement)) document.activeElement.blur();
+  }
+  fichaModal.querySelectorAll("[data-ficha-fechar]").forEach(function (b) { b.addEventListener("click", fecharFicha); });
+  fichaModal.addEventListener("click", function (e) { if (e.target === fichaModal) fecharFicha(); });
+  fichaModal.addEventListener("keydown", function (e) { if (e.key === "Escape") { e.stopPropagation(); fecharFicha(); } });
+  fichaModal.querySelector("[data-ficha-copiar]").addEventListener("click", function () {
+    var campo = document.getElementById("fichaTexto");
+    function copiado() { avisar("Ficha copiada."); fecharFicha(); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(campo.value).then(copiado, function () { campo.select(); document.execCommand("copy"); copiado(); });
+    } else { campo.select(); document.execCommand("copy"); copiado(); }
+  });
+  campoEditor("editEquipFicha").addEventListener("click", function () {
+    var eq = editor.equipamento;
+    if (!eq) return;
+    // Mostra o que está nos campos agora, mesmo antes de salvar.
+    abrirFicha(Object.assign({}, eq, { nome: campoEditor("editEquipNome").value, ip: campoEditor("editEquipIp").value,
+      gateway: campoEditor("editEquipGateway").value, mascara: campoEditor("editEquipMascara").value }));
+  });
 
   function abrirEditorCabo(c) {
     editor.conexao = c;
@@ -368,6 +420,7 @@
       modelo: campoEditor("editEquipModelo").value, ip: campoEditor("editEquipIp").value,
       grupo: campoEditor("editEquipGrupo").value, status: campoEditor("editEquipStatus").value,
       rede: campoEditor("editEquipRede").value,
+      gateway: campoEditor("editEquipGateway").value, mascara: campoEditor("editEquipMascara").value,
       corFonte: campoEditor("editEquipCor").value,
       corIcone: campoEditor("editEquipCorIconeOriginal").checked ? "" : campoEditor("editEquipCorIcone").value,
       diagrama: campoEditor("editEquipDiagrama").value,
@@ -376,6 +429,7 @@
     if (!validacao.ok) { campoEditor("editEquipMensagem").textContent = textoDosErros(validacao.erros); return; }
     if (!validacao.dados.diagrama) { delete validacao.dados.diagrama; delete eq.diagrama; }
     if (validacao.dados.potenciaDbm == null) { delete validacao.dados.potenciaDbm; delete eq.potenciaDbm; }
+    ["gateway", "mascara"].forEach(function (k) { if (!validacao.dados[k]) { delete validacao.dados[k]; delete eq[k]; } });
     Object.assign(eq, validacao.dados);
     fecharEditor();
     renderTudo();

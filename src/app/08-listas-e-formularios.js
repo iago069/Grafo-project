@@ -130,17 +130,39 @@
           return '<option value="' + escaparHtml(o.id) + '"' + (o.id === selecionado ? " selected" : "") + '>' + escaparHtml(o.nome) + '</option>';
         }).join("");
       }
+      // Mesmo modelo da lista de equipamentos: linha enxuta (cor do cabo, origem → destino,
+      // portas e capacidade embaixo) e os campos ficam em "Detalhes".
+      var nomeDe = (opcoesEquip.find(function (o) { return o.id === c.de; }) || {}).nome || c.de;
+      var nomePara = (opcoesEquip.find(function (o) { return o.id === c.para; }) || {}).nome || c.para;
+      var portas = (c.saida || c.chegada) ? (c.saida || "?") + " → " + (c.chegada || "?") : "";
+      var titulo = nomeDe + " → " + nomePara;
       return (
-        '<div class="conex-row" data-idx="' + j + '">' +
-          '<select data-field="de" aria-label="Origem">' + opcoes(c.de) + '</select>' +
-          '<span class="conex-arrow">→</span>' +
-          '<select data-field="para" aria-label="Destino">' + opcoes(c.para) + '</select>' +
-          '<input type="text" data-field="tipo" data-limite="tipoCabo" value="' + escaparHtml(c.tipo) + '" placeholder="Tipo de enlace" aria-label="Tipo de enlace">' +
-          '<input type="text" data-field="saida" data-limite="porta" value="' + escaparHtml(c.saida || "") + '" placeholder="Porta origem" aria-label="Porta origem">' +
-          '<input type="text" data-field="chegada" data-limite="porta" value="' + escaparHtml(c.chegada || "") + '" placeholder="Porta destino" aria-label="Porta destino">' +
-          '<input type="text" data-field="potencia" data-limite="capacidade" value="' + escaparHtml(c.potencia || "") + '" list="capacidades-sugeridas" placeholder="Capacidade" title="Capacidade do cabo" aria-label="Capacidade do cabo" autocomplete="off">' +
-          '<label class="color-picker">Linha <input type="color" data-field="cor" value="' + corValida(c.cor, "#5A7284") + '"></label>' +
-          '<button type="button" class="ghost small" data-action="remover-conex" title="Remover" aria-label="Remover conexão">×</button>' +
+        '<div class="equip-card conex-row conex-card" data-idx="' + j + '">' +
+          '<div class="equip-row1">' +
+            '<span class="equip-marca conex-marca" style="--cor-tipo:' + corValida(corDoCaboNoDesenho(c, null, j), "#5A7284") + '" aria-hidden="true"></span>' +
+            '<div class="equip-titulo">' +
+              '<strong class="conex-titulo" title="' + escaparHtml(titulo) + '">' + escaparHtml(titulo) + '</strong>' +
+              '<span class="equip-sub">' + escaparHtml([portas, c.potencia, c.tipo].filter(Boolean).join(" · ") || "Sem portas") + '</span>' +
+            '</div>' +
+            '<button type="button" class="ghost small equip-advanced-toggle" data-action="toggle-avancado" aria-expanded="false" title="Detalhes" aria-label="Detalhes"></button>' +
+            '<button type="button" class="ghost small" data-action="remover-conex" title="Remover" aria-label="Remover conexão">×</button>' +
+          '</div>' +
+          '<div class="equip-advanced" data-advanced-panel>' +
+            '<div class="equip-row2 conex-pontas">' +
+              '<select data-field="de" aria-label="Origem">' + opcoes(c.de) + '</select>' +
+              '<span class="conex-arrow">→</span>' +
+              '<select data-field="para" aria-label="Destino">' + opcoes(c.para) + '</select>' +
+            '</div>' +
+            '<div class="equip-row2">' +
+              '<input type="text" data-field="saida" data-limite="porta" value="' + escaparHtml(c.saida || "") + '" placeholder="Porta origem" aria-label="Porta origem">' +
+              '<input type="text" data-field="chegada" data-limite="porta" value="' + escaparHtml(c.chegada || "") + '" placeholder="Porta destino" aria-label="Porta destino">' +
+              '<input type="text" data-field="potencia" data-limite="capacidade" value="' + escaparHtml(c.potencia || "") + '" list="capacidades-sugeridas" placeholder="Capacidade" title="Capacidade do cabo" aria-label="Capacidade do cabo" autocomplete="off">' +
+              '<input type="text" data-field="tipo" data-limite="tipoCabo" value="' + escaparHtml(c.tipo) + '" placeholder="Tipo de enlace" aria-label="Tipo de enlace">' +
+            '</div>' +
+            '<div class="equip-row3">' +
+              '<label class="color-picker">Cor da linha <input type="color" data-field="cor" value="' + corValida(c.cor, "#5A7284") + '"></label>' +
+            '</div>' +
+          '</div>' +
         '</div>'
       );
     }).join("");
@@ -433,9 +455,11 @@
     var validacao = Esquema.validarEquipamento({ id: novoId(), nome: document.getElementById("navEquipNome").value, modelo: document.getElementById("navEquipModelo").value,
       ip: document.getElementById("navEquipIp").value, tipo: tipo, icone: iconeInformado || iconePorTipo(tipo), imagem: "", corFonte: "#16323D",
       grupo: document.getElementById("navEquipGrupo").value, status: document.getElementById("navEquipStatus").value,
-      rede: document.getElementById("navEquipRede").value });
+      rede: document.getElementById("navEquipRede").value,
+      gateway: document.getElementById("navEquipGateway").value, mascara: document.getElementById("navEquipMascara").value });
     if (!validacao.ok) { mensagem.textContent = textoDosErros(validacao.erros); return; }
     var novoEquipamento = validacao.dados;
+    ["gateway", "mascara"].forEach(function (k) { if (!novoEquipamento[k]) delete novoEquipamento[k]; });
     function concluir(imagem) {
       var comImagem = Esquema.validarEquipamento(Object.assign({}, novoEquipamento, { imagem: imagem || "" }));
       if (!comImagem.ok) { mensagem.textContent = textoDosErros(comImagem.erros); return; }
@@ -447,6 +471,7 @@
       event.target.reset();
       fecharPaineisLaterais();
       esconderErro();
+      abrirFicha(novoEquipamento); // ficha pronta para copiar (nome / Host / gateway / mask)
     }
     if (!arquivo) { concluir(""); return; }
     lerImagemReduzida(arquivo, concluir);
@@ -571,6 +596,14 @@
   });
 
   elListaConex.addEventListener("click", function (e) {
+    if (e.target.getAttribute("data-action") === "toggle-avancado") {
+      var card = e.target.closest(".conex-card");
+      var aberto = card.querySelector("[data-advanced-panel]").classList.toggle("open");
+      card.classList.toggle("aberto", aberto);
+      e.target.setAttribute("aria-expanded", aberto ? "true" : "false");
+      e.target.title = aberto ? "Ocultar detalhes" : "Detalhes";
+      return;
+    }
     if (e.target.getAttribute("data-action") === "remover-conex") {
       var row = e.target.closest(".conex-row");
       var idx = parseInt(row.getAttribute("data-idx"), 10);

@@ -23,6 +23,7 @@ test("adicionar equipamento pela barra lateral aparece no diagrama", async () =>
   await pagina.fill("#navEquipNome", "Switch Teste");
   await pagina.fill("#navEquipIp", "10.9.9.9");
   await pagina.click('#navEquipForm button[type="submit"]');
+  await pagina.locator("#fichaModal:not(.hidden) .modal-actions [data-ficha-fechar]").click({ timeout: 3000 }).catch(() => {}); // ficha do equipamento
   await pagina.waitForFunction(() => document.querySelectorAll("#canvas svg g.node").length === 7, null, { timeout: 20000 });
   assert.match(await pagina.textContent("#canvas svg"), /Switch Teste/);
   assert.deepEqual(pagina.erros, []);
@@ -197,6 +198,7 @@ test("quadro de símbolos: todos os tipos na lista, com ícone, e o tipo certo p
     await pagina.fill("#navEquipNome", nome);
     await pagina.fill("#navEquipTipo", tipo);
     await pagina.click('#navEquipForm button[type="submit"]');
+    await pagina.locator("#fichaModal:not(.hidden) .modal-actions [data-ficha-fechar]").click({ timeout: 3000 }).catch(() => {}); // ficha do equipamento
     await pagina.waitForFunction(n => document.getElementById("canvas").textContent.includes(n), nome, { timeout: 20000 });
   }
   const icone = await pagina.evaluate(() => {

@@ -33,6 +33,7 @@ async function adicionarEquipamento(pagina, nome) {
   await pagina.click('[data-nav-panel="navAddEquip"]');
   await pagina.fill("#navEquipNome", nome);
   await pagina.click('#navEquipForm button[type="submit"]');
+  await pagina.locator("#fichaModal:not(.hidden) .modal-actions [data-ficha-fechar]").click({ timeout: 3000 }).catch(() => {}); // ficha do equipamento
   await pagina.waitForFunction(n => document.querySelectorAll("#canvas svg g.node").length === n, antes + 1, { timeout: 20000 });
 }
 
@@ -79,7 +80,7 @@ test("login vencido sem internet: abre com a sessão guardada", async () => {
   await pagina.reload();
   await esperarDiagrama(pagina);
   assert.match(await pagina.textContent("#cloudStatus"), /Sem internet/);
-  assert.equal(await pagina.isVisible(".landing-heroi"), false);
+  assert.equal(await pagina.isVisible("#authCard"), false);
   await pagina.context().close();
 });
 

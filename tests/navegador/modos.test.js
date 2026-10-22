@@ -56,6 +56,7 @@ test("Diagrama de redes: campo VLAN / rede aparece e vai para o desenho; em Topo
   await pagina.fill("#navEquipIp", "10.20.0.2");
   await pagina.fill("#navEquipRede", "VLAN 20 · 10.20.0.0/24");
   await pagina.click('#navEquipForm button[type="submit"]');
+  await pagina.locator("#fichaModal:not(.hidden) .modal-actions [data-ficha-fechar]").click({ timeout: 3000 }).catch(() => {}); // ficha do equipamento
   await pagina.waitForFunction(() => document.getElementById("canvas").textContent.includes("VLAN 20"), null, { timeout: 20000 });
   const salvo = await projetoSalvo(pagina);
   assert.equal(salvo.modo, "redes");
@@ -160,6 +161,32 @@ test("renomear projeto depois de salvar: troca o nome na lista e mantém o conte
   assert.ok(opcoes.includes("POP Renomeado"));
   assert.ok(!opcoes.includes(antes));
   assert.equal((await projetoSalvo(pagina)).equipamentos.length, qtd);
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});
+
+test("ao adicionar equipamento mostra a ficha nome / Host / gateway / mask; lista de cabos no modelo enxuto", async () => {
+  const pagina = await abrirPagina(navegador, site);
+  await esperarDiagrama(pagina);
+  await pagina.click('[data-nav-panel="navAddEquip"]');
+  await pagina.fill("#navEquipNome", "OLT-99");
+  await pagina.fill("#navEquipIp", "10.20.30.40/24");
+  await pagina.fill("#navEquipGateway", "10.20.30.1");
+  await pagina.click('#navEquipForm button[type="submit"]');
+  await pagina.waitForSelector("#fichaModal:not(.hidden)");
+  assert.equal(await pagina.inputValue("#fichaTexto"), "nome: OLT-99\nHost: 10.20.30.40\ngateway: 10.20.30.1\nmask: 255.255.255.0");
+  await pagina.screenshot({ path: process.env.FOTO_FICHA || require("os").tmpdir() + "/ficha.png" });
+  await pagina.click(".modal-actions [data-ficha-fechar]");
+  await pagina.waitForSelector("#fichaModal.hidden", { state: "attached" });
+  // Cabos: linha com origem → destino; campos em "Detalhes".
+  await pagina.click("#btnModoAvancado");
+  const card = pagina.locator("#listaConex .conex-card").first();
+  await card.waitFor();
+  assert.match(await card.locator(".conex-titulo").textContent(), /→/);
+  assert.equal(await card.locator('[data-field="saida"]').isVisible(), false);
+  await card.locator('[data-action="toggle-avancado"]').click();
+  assert.equal(await card.locator('[data-field="saida"]').isVisible(), true);
+  await pagina.screenshot({ path: process.env.FOTO_CABOS || require("os").tmpdir() + "/cabos.png" });
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
