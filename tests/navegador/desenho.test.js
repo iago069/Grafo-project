@@ -234,7 +234,6 @@ test("camadas escondem VLANs e notas na tela; agrupar e colar em outro diagrama 
   assert.equal(await pagina.locator("#canvas g.anotacao").isVisible(), false);
   await pagina.keyboard.press("Escape");
   // Selecionar os dois (Ctrl+A) e agrupar.
-  await pagina.locator("#canvas g.node").first().click();
   await pagina.keyboard.press("Control+a");
   await pagina.waitForSelector("#barraSelecao:not([hidden])");
   await pagina.click('[data-selecao="agrupar"]');
@@ -282,7 +281,31 @@ test("LAG desenhada como um cabo só: um rótulo com a contagem e o mesmo caminh
   await esperarDiagrama(pagina);
   await pagina.waitForSelector("#canvas g.edge.lag-tronco");
   const rotulos = await pagina.evaluate(() => [...document.querySelectorAll("#canvas g.edge > text")].filter(t => t.style.display !== "none").map(t => t.textContent));
-  assert.deepEqual(rotulos, ["LAG ae7 (Netflix1-PFU) · 2×10G"]);
+  assert.deepEqual(rotulos, ["ae7 · 20G"]);
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});
+
+test("cores por tipo de ligação: Netflix vermelho, entre cores verde, legenda no desenho e selo curto", async () => {
+  const projetos = { "Core": { equipamentos: [{ id: "c", nome: "core-l2-pf", tipo: "Switch" }, { id: "n", nome: "NETFLIX", tipo: "Servidor" }, { id: "e", nome: "core-pfu-evpn-02", tipo: "Switch" }],
+    conexoes: [
+      { de: "c", para: "n", saida: "xe-0/0/33", chegada: "?", tipo: "LAG ae7 (Netflix1-PFU)", potencia: "10G" },
+      { de: "c", para: "n", saida: "xe-0/0/34", chegada: "?", tipo: "LAG ae7 (Netflix1-PFU)", potencia: "10G" },
+      { de: "c", para: "e", saida: "et-0/0/48", chegada: "et-0/0/30", tipo: "CORE-EVPN", potencia: "100G" }
+    ] } };
+  const pagina = await abrirPagina(navegador, site, { projetos });
+  await esperarDiagrama(pagina);
+  await pagina.waitForSelector("#canvas g.legenda-cabos");
+  const cores = await pagina.evaluate(() => [...document.querySelectorAll("#canvas g.edge > path")].map(p => p.getAttribute("stroke").toUpperCase()));
+  assert.ok(cores.includes("#D32F2F"), "Netflix em vermelho");
+  assert.ok(cores.includes("#1B7F2A"), "entre cores em verde");
+  assert.match(await pagina.textContent("#canvas g.legenda-cabos"), /Netflix/);
+  const selos = await pagina.evaluate(() => [...document.querySelectorAll("#canvas g.edge > text")].filter(t => t.style.display !== "none").map(t => t.textContent));
+  assert.ok(selos.includes("ae7 · 20G") && selos.includes("100G"), JSON.stringify(selos));
+  // Desligar "Cores por tipo de ligação" volta a cor padrão.
+  await pagina.click("#btnCamadas");
+  await pagina.locator('#menuCamadas [data-camada="cores"]').uncheck();
+  await pagina.waitForFunction(() => [...document.querySelectorAll("#canvas g.edge > path")].every(p => p.getAttribute("stroke").toUpperCase() === "#5A7284"));
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });

@@ -244,7 +244,7 @@
     colocar(trechos[0], 0.5, -1);
     if (!ocupados || !texto.textContent.trim()) return;
     function caixa() {
-      try { var b = texto.getBBox(); return { x1: b.x - 3, y1: b.y - 2, x2: b.x + b.width + 3, y2: b.y + b.height + 2 }; } catch (e) { return null; }
+      try { var b = texto.getBBox(); return { x1: b.x - 18, y1: b.y - 4, x2: b.x + b.width + 8, y2: b.y + b.height + 4 }; } catch (e) { return null; }
     }
     // Quanto a caixa encosta no que já está ocupado. Em cima de equipamento ou
     // porta pesa muito mais que em cima de outro rótulo.
@@ -297,6 +297,7 @@
       rotas.push({ aresta: aresta, path: path, s: s, e: e, conexao: conexao });
     });
     var obstaculos = coletarObstaculos(svg);
+    tamanhoDasLags = contarLags();
     // Cabos curtos primeiro ficam com a trilha ideal; os longos desviam deles.
     function comprimento(r) { return Math.abs(r.s.x - r.e.x) + Math.abs(r.s.y - r.e.y); }
     rotas.sort(function (a, b) { return comprimento(a) - comprimento(b); });
@@ -312,12 +313,14 @@
         || tracarRota(rota.s, rota.e, existentes, obstaculosDoCabo(obstaculos, rota.conexao, rota.s, rota.e));
       existentes.push.apply(existentes, segmentosDaRota(pts));
       rota.path.setAttribute("d", caminhoOrtogonalArredondado(pts));
+      prepararRotuloCurto(rota.aresta, rota.conexao);
       posicionarRotuloDaAresta(rota.aresta, pts, rotulos);
       rota.pts = pts;
       rotasDesenhadas[estado.conexoes.indexOf(rota.conexao)] = pts;
       desenharExtrasDoCabo(rota.aresta, pts, rota.conexao);
     });
     juntarCabosDeLag(rotas);
+    rotas.forEach(function (rota) { desenharSeloDoRotulo(rota.aresta); });
     avisarNomesSemEspaco(svg);
   }
 
@@ -375,8 +378,6 @@
         if (t) t.style.display = "none";
         rota.aresta.querySelectorAll(".cabo-etiqueta").forEach(function (e) { e.remove(); });
       });
-      var texto = lider.aresta.querySelector("text:not(.cabo-extra)");
-      if (texto) texto.textContent = (lider.conexao.tipo || "LAG") + " · " + g.length + "×" + (lider.conexao.potencia || "");
       lider.aresta.classList.add("lag-tronco");
       // Tronco mais grosso que um cabo comum (proporcional à espessura escolhida).
       var largura = parseFloat(lider.path.getAttribute("stroke-width")) || 2;

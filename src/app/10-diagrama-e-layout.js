@@ -84,6 +84,7 @@
   function gerarDot(dados, direcao) {
     var modo = modoAtual();
     sinaisFtth = modo === "ftth" ? calcularSinaisFtth(dados) : {};
+    categoriasUsadas = {};
     var contagemPortas = {};
     dados.equipamentos.forEach(function (eq) { contagemPortas[eq.id] = 0; });
     dados.conexoes.forEach(function (c) {
@@ -292,7 +293,7 @@
       linhas.push("  }");
     });
     dados.conexoes.forEach(function (c, indice) {
-      var corConexao = corValida(c.cor, "#5A7284");
+      var corConexao = corValida(corDoCaboNoDesenho(c, equipamentoPorId), "#5A7284");
       var grossura = Math.min(10, Number(c.grossura) || 2);
       var estiloCabo = c.estilo;
       // Monitoramento: cabo que chega a um equipamento offline fica vermelho e tracejado.
@@ -1355,6 +1356,7 @@
       rotearCabosOrtogonalmente();
       desenharDesenhos(); // formas, textos e caneta (10-desenho-e-ferramentas.js)
       desenharAnotacoes(); // antes do viewBox: as anotações também contam na área do desenho
+      desenharLegendaCabos();
       ajustarViewBoxAoConteudo(false);
       var revelarAgora = ajustarNaProximaRenderizacao;
       if (ajustarNaProximaRenderizacao) {

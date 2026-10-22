@@ -3149,3 +3149,7 @@ body:not([data-modo-diagrama="ftth"]) .so-modo-ftth { display: none; }
 .aviso-sem-espaco[hidden] { display: none; }
 .aviso-sem-espaco span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .aviso-sem-espaco button { flex: none; min-height: 28px; border-radius: 99px; }
+
+/* Selo do cabo: o contorno do texto não é necessário (o selo já tem fundo). */
+#canvas g.edge > text { stroke: none; }
+#canvas g.selo-cabo { pointer-events: none; }

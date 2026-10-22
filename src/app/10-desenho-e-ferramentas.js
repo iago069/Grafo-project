@@ -1038,7 +1038,9 @@
     ["rotulos", "Nome dos cabos", "g.edge > text:not(.cabo-extra), g.edge > g > text:not(.cabo-extra)"],
     ["desenhos", "Desenhos e formas", "g.camada-desenhos"],
     ["notas", "Notas", "g.anotacao"],
-    ["grupos", "Caixas dos grupos", "g.cluster"]
+    ["grupos", "Caixas dos grupos", "g.cluster"],
+    ["legenda", "Legenda das cores", "g.legenda-cabos"],
+    ["cores", "Cores por tipo de ligação", null]
   ];
   function chaveCamadas() { return "grafo-camadas:" + projetoAtual; }
   function camadasOcultas() {
@@ -1049,6 +1051,7 @@
     if (!svg) return;
     var ocultas = camadasOcultas();
     CAMADAS.forEach(function (c) {
+      if (!c[2]) return;
       svg.querySelectorAll(c[2]).forEach(function (e) {
         // Só mostra de volta o que a própria camada escondeu (a LAG esconde rótulos repetidos).
         if (ocultas[c[0]]) { if (e.style.display !== "none") { e.style.display = "none"; e.setAttribute("data-camada-oculta", ""); } }
@@ -1100,6 +1103,7 @@
       var ocultas = camadasOcultas();
       if (event.target.checked) delete ocultas[k]; else ocultas[k] = true;
       try { localStorage.setItem(chaveCamadas(), JSON.stringify(ocultas)); } catch (e) {}
+      if (k === "cores") { gerar(); return; } // muda a cor dos cabos: redesenha
       aplicarCamadas();
     });
     document.addEventListener("pointerdown", function (event) { if (!menu.hidden && !menu.contains(event.target) && !botao.contains(event.target)) abrir(false); });
@@ -1144,6 +1148,126 @@
     }
     var voltar = document.getElementById("voltarDiagrama");
     if (voltar) { voltar.style.top = Math.round(topo) + "px"; voltar.style.left = Math.round(esquerda + caixaFerramentas.offsetWidth + 10) + "px"; }
+  }
+
+  // ---- Estilo de diagrama de operadora (como o PDF de interligação do core) -------
+  // Cor pela categoria da ligação (só em cabo com a cor padrão), rótulo curto num
+  // selo ("ae7 · 20G", descrição completa ao passar o mouse) e legenda no desenho.
+  var COR_CABO_PADRAO_APP = "#5A7284";
+  var CATEGORIAS_CABO = {
+    core: { cor: "#1B7F2A", nome: "Entre cores e roteadores" },
+    netflix: { cor: "#D32F2F", nome: "Netflix" },
+    facebook: { cor: "#1E6FD9", nome: "Facebook / Meta" },
+    google: { cor: "#E8A317", nome: "Google" },
+    transito: { cor: "#7CB342", nome: "Trânsito e transporte" },
+    datacom: { cor: "#8E24AA", nome: "Switches Datacom / distribuição" },
+    outros: { cor: "#8D5524", nome: "Demais equipamentos" }
+  };
+  var categoriasUsadas = {};
+  function textoDoEquipamento(eq) { return eq ? [eq.nome, eq.tipo, eq.modelo].join(" ").toLowerCase() : ""; }
+  function categoriaDoCabo(c, porId) {
+    var a = textoDoEquipamento(porId[c.de]), b = textoDoEquipamento(porId[c.para]), ambos = a + " | " + b, tipo = String(c.tipo || "").toLowerCase();
+    if (/netflix|\boca\b/.test(ambos + tipo)) return "netflix";
+    if (/facebook|\bmeta\b|\bfna\b/.test(ambos + tipo)) return "facebook";
+    if (/google|\bggc\b/.test(ambos + tipo)) return "google";
+    // Entre dois equipamentos de núcleo vale a cor de core, mesmo que a descrição fale em operadora.
+    var nucleo = /\bcore\b|core[-_ ]|router|roteador|\bbng\b|\bbras\b|mx204|qfx|cgnat/;
+    if (nucleo.test(a) && nucleo.test(b)) return "core";
+    if (/tr[âa]nsito|transporte|equinix|eletronet|\bix\b|operadora|mhnet|adylnet/.test(ambos + tipo)) return "transito";
+    if (/datacom|distr|dm4\d{3}|dwdm/.test(ambos)) return "datacom";
+    return "outros";
+  }
+  function corAutomaticaLigada() { return !camadasOcultas().cores; }
+  // Cor que o cabo vai ter no desenho (gerarDot chama).
+  function corDoCaboNoDesenho(c, porId) {
+    var cor = String(c.cor || COR_CABO_PADRAO_APP).toUpperCase();
+    if (!corAutomaticaLigada() || cor !== COR_CABO_PADRAO_APP) return c.cor || COR_CABO_PADRAO_APP;
+    var cat = categoriaDoCabo(c, porId);
+    categoriasUsadas[cat] = true;
+    return CATEGORIAS_CABO[cat].cor;
+  }
+
+  // "10G" × 2 = "20G"; "40G" × 2 = "80G".
+  function somaVelocidade(potencia, vezes) {
+    var m = /^(\d+(?:[.,]\d+)?)\s*([MGT])$/i.exec(String(potencia || "").trim());
+    if (!m || vezes < 2) return potencia || "";
+    var n = parseFloat(m[1].replace(",", ".")) * vezes;
+    return String(Math.round(n * 10) / 10).replace(".", ",") + m[2].toUpperCase();
+  }
+  // Tamanho de cada LAG (mesmos equipamentos e mesmo aeN), para o rótulo somar.
+  function contarLags() {
+    var n = {};
+    estado.conexoes.forEach(function (c) {
+      var m = /^LAG\s+(ae\d+)/i.exec(c.tipo || "");
+      if (!m) return;
+      var k = [c.de, c.para].sort().join("|") + "|" + m[1].toLowerCase();
+      n[k] = (n[k] || 0) + 1;
+    });
+    return n;
+  }
+  var tamanhoDasLags = {};
+  function rotuloCurto(c) {
+    var m = /^LAG\s+(ae\d+)/i.exec(c.tipo || "");
+    if (m) {
+      var k = [c.de, c.para].sort().join("|") + "|" + m[1].toLowerCase();
+      return m[1] + " · " + somaVelocidade(c.potencia, tamanhoDasLags[k] || 1);
+    }
+    return c.potencia || (c.tipo ? String(c.tipo).slice(0, 18) : "");
+  }
+  // Troca o texto do Graphviz pelo rótulo curto; o texto completo vira dica.
+  function prepararRotuloCurto(aresta, c) {
+    var texto = aresta.querySelector("text");
+    if (!texto) return;
+    var completo = [c.tipo, c.potencia].filter(Boolean).join(" · ");
+    texto.textContent = rotuloCurto(c) || completo;
+    var dica = aresta.querySelector("title.dica-completa") || document.createElementNS(NS_SVG, "title");
+    dica.setAttribute("class", "dica-completa");
+    dica.textContent = completo + (c.saida || c.chegada ? "\n" + (c.saida || "?") + " → " + (c.chegada || "?") : "");
+    aresta.insertBefore(dica, aresta.firstChild);
+  }
+  // Selo arredondado atrás do rótulo, com a borda na cor do cabo e o ponto de status.
+  function desenharSeloDoRotulo(aresta) {
+    aresta.querySelectorAll(".selo-cabo").forEach(function (e) { e.remove(); });
+    var texto = aresta.querySelector("text");
+    if (!texto || texto.style.display === "none" || !texto.textContent.trim()) return;
+    var b;
+    try { b = texto.getBBox(); } catch (e) { return; }
+    if (!b.width) return;
+    var caminho = aresta.querySelector("path");
+    var cor = (caminho && caminho.getAttribute("stroke")) || COR_CABO_PADRAO_APP;
+    var g = el("g", { "class": "selo-cabo" });
+    el("rect", { x: arred(b.x - 16), y: arred(b.y - 3), width: arred(b.width + 22), height: arred(b.height + 6), rx: arred((b.height + 6) / 2), fill: "#FFFFFF", stroke: cor, "stroke-width": 1.2 }, g);
+    el("circle", { cx: arred(b.x - 8), cy: arred(b.y + b.height / 2), r: 2.6, fill: "#22A447" }, g);
+    aresta.insertBefore(g, texto);
+    texto.setAttribute("fill", "#14212B");
+    texto.setAttribute("font-weight", "700");
+  }
+
+  // Legenda das cores no desenho (sai no PNG/SVG/PDF), acima à esquerda.
+  function desenharLegendaCabos() {
+    var svg = elCanvas.querySelector("svg"), grafo = svg && svg.querySelector("g.graph");
+    if (!grafo) return;
+    var antiga = grafo.querySelector("g.legenda-cabos");
+    if (antiga) antiga.remove();
+    var cats = Object.keys(CATEGORIAS_CABO).filter(function (k) { return categoriasUsadas[k]; });
+    if (cats.length < 2 || !corAutomaticaLigada()) return;
+    var maxX = -Infinity, minY = Infinity;
+    grafo.querySelectorAll("g.node").forEach(function (n) {
+      try { var bb = n.getBBox(), t = translateDoElemento(n); maxX = Math.max(maxX, bb.x + t.x + bb.width); minY = Math.min(minY, bb.y + t.y); } catch (e) {}
+    });
+    if (!isFinite(maxX)) return;
+    var linha = 16, largura = 210, altura = 26 + cats.length * linha;
+    var x = maxX + 60, y = minY; // à direita dos equipamentos, alinhada pelo topo (a caixa de ferramentas fica à esquerda)
+    var g = el("g", { "class": "legenda-cabos" }, grafo);
+    el("rect", { x: x, y: y, width: largura, height: altura, rx: 8, fill: "#FFFFFF", stroke: "#C9D3DB", "stroke-width": 1 }, g);
+    var titulo = el("text", { x: x + 12, y: y + 17, "font-family": "Helvetica, Arial, sans-serif", "font-size": 10, "font-weight": 700, fill: "#14212B" }, g);
+    titulo.textContent = "LEGENDA";
+    cats.forEach(function (k, i) {
+      var yy = y + 32 + i * linha;
+      el("line", { x1: x + 12, y1: yy - 3, x2: x + 34, y2: yy - 3, stroke: CATEGORIAS_CABO[k].cor, "stroke-width": 3, "stroke-linecap": "round" }, g);
+      var t = el("text", { x: x + 42, y: yy, "font-family": "Helvetica, Arial, sans-serif", "font-size": 9.5, fill: "#14212B" }, g);
+      t.textContent = CATEGORIAS_CABO[k].nome;
+    });
   }
 
   // Monta a interface quando o editor carrega.
