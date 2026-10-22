@@ -3160,3 +3160,10 @@ body:not([data-modo-diagrama="ftth"]) .so-modo-ftth { display: none; }
 .link-github { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 10px; color: inherit; opacity: .82; transition: opacity .15s, background-color .15s, transform .15s; text-decoration: none; }
 .link-github:hover, .link-github:focus-visible { opacity: 1; background: rgba(127,127,127,.14); transform: translateY(-1px); }
 .theme-toolbar .link-github { color: var(--text); padding: 0; }
+
+/* Link do GitHub no pé da barra lateral. */
+.sidebar-github { display: flex; align-items: center; gap: 10px; margin: 8px 14px 14px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); color: var(--text); text-decoration: none; font-weight: 600; font-size: .92rem; transition: background-color .15s, border-color .15s, transform .15s; }
+.sidebar-github svg { width: 20px; height: 20px; flex-shrink: 0; }
+.sidebar-github:hover, .sidebar-github:focus-visible { background: rgba(127,127,127,.12); border-color: var(--accent); transform: translateY(-1px); }
+.sidebar.collapsed .sidebar-github { justify-content: center; margin: 8px 10px 14px; padding: 10px 0; }
+.sidebar.collapsed .sidebar-github span { display: none; }

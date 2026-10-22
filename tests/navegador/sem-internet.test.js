@@ -14,7 +14,7 @@ async function esperarGuardado(pagina) {
   const limite = Date.now() + 45000;
   for (;;) {
     const guardado = await pagina.evaluate(async () => {
-      const cache = await caches.open("grafo-offline-v2");
+      const cache = await caches.open("grafo-offline-v3");
       const chaves = (await cache.keys()).map(r => r.url);
       return ["/assets/js/editor/app.js", "viz-global.js", "jspdf.umd.min.js", "svg2pdf.umd.min.js", "/api/auth-config", "supabase.js"]
         .every(parte => chaves.some(url => url.includes(parte)));
