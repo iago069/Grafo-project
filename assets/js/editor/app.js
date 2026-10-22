@@ -1444,6 +1444,50 @@
     return moveu;
   }
 
+  // Dois equipamentos nunca um em cima do outro: quem encosta é empurrado para
+  // o lado de menor distância (o recém-arrastado fica parado). Retorna true se moveu.
+  var ESPACO_ENTRE_EQUIPAMENTOS = 16;
+  function separarEquipamentosSobrepostos(fixoId) {
+    var svg = elCanvas.querySelector("svg");
+    if (!svg) return false;
+    var porId = {};
+    estado.equipamentos.forEach(function (eq) { porId[eq.id] = eq; });
+    var caixas = [];
+    svg.querySelectorAll("g.node").forEach(function (node) {
+      var id = idEquipamentoDoNode(node), eq = porId[id];
+      if (!eq) return;
+      var c = caixaDoNo(node);
+      if (c) { c.eq = eq; c.node = node; c.fixo = id === fixoId; caixas.push(c); }
+    });
+    var e = ESPACO_ENTRE_EQUIPAMENTOS, moveu = false;
+    function mover(c, dx, dy) {
+      c.x1 += dx; c.x2 += dx; c.y1 += dy; c.y2 += dy;
+      var d = c.eq.deslocamento || { x: 0, y: 0 };
+      c.eq.deslocamento = {
+        x: limitarPosicaoNoCanvas(d.x + dx, LIMITE_CANVAS.minX, LIMITE_CANVAS.maxX),
+        y: limitarPosicaoNoCanvas(d.y + dy, LIMITE_CANVAS.minY, LIMITE_CANVAS.maxY)
+      };
+      atualizarPosicaoAbsoluta(c.eq);
+      c.node.setAttribute("transform", "translate(" + c.eq.deslocamento.x + "," + c.eq.deslocamento.y + ")");
+    }
+    for (var passada = 0; passada < 30; passada++) {
+      var houve = false;
+      for (var i = 0; i < caixas.length; i++) {
+        for (var j = i + 1; j < caixas.length; j++) {
+          var a = caixas[i], b = caixas[j];
+          if (Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1) + e <= 0 || Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1) + e <= 0) continue;
+          houve = true;
+          var movel = b.fixo && !a.fixo ? a : b, outro = movel === a ? b : a;
+          var passo = melhorEmpurrao(movel, outro, caixas);
+          mover(movel, passo.dx, passo.dy);
+          moveu = true;
+        }
+      }
+      if (!houve) break;
+    }
+    return moveu;
+  }
+
   // Caixa do nó no desenho (coordenadas do g.graph), com o translate aplicado.
   function caixaDoNo(node, t) {
     var b;
@@ -7116,7 +7160,7 @@
       // Grupos mudaram de lugar: renderiza de novo para as portas acompanharem.
       // As portas podem trocar de lado e mudar o tamanho das caixas, então
       // confere de novo (até 3 rodadas) até nenhuma caixa encostar em outra.
-      for (var rodada = 0; rodada < 3 && separarGruposSobrepostos(fixo); rodada++) {
+      for (var rodada = 0; rodada < 3 && (separarEquipamentosSobrepostos(fixo) | separarGruposSobrepostos(fixo)); rodada++) {
         renderizarSvg();
         sincronizarPosicoes();
         aplicarPosicoesEquipamentos();

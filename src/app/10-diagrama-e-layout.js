@@ -1380,7 +1380,7 @@
       // Grupos mudaram de lugar: renderiza de novo para as portas acompanharem.
       // As portas podem trocar de lado e mudar o tamanho das caixas, então
       // confere de novo (até 3 rodadas) até nenhuma caixa encostar em outra.
-      for (var rodada = 0; rodada < 3 && separarGruposSobrepostos(fixo); rodada++) {
+      for (var rodada = 0; rodada < 3 && (separarEquipamentosSobrepostos(fixo) | separarGruposSobrepostos(fixo)); rodada++) {
         renderizarSvg();
         sincronizarPosicoes();
         aplicarPosicoesEquipamentos();
