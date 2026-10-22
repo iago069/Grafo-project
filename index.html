@@ -205,8 +205,8 @@
             <label>Grupo / rack / sala<input id="editEquipGrupo" data-limite="grupo" list="grupos-sugeridos" autocomplete="off"></label>
           </div>
           <div class="nav-form-grid">
-            <label>Gateway<input id="editEquipGateway" data-limite="ip" placeholder="Ex.: 10.0.0.254" inputmode="decimal" autocomplete="off" spellcheck="false"></label>
-            <label>Máscara<input id="editEquipMascara" placeholder="Ex.: 255.255.255.0 ou /24" autocomplete="off" spellcheck="false"></label>
+            <label>Gateway<input id="editEquipGateway" data-limite="ip" placeholder="Automático" inputmode="decimal" autocomplete="off" spellcheck="false"></label>
+            <label>Máscara<input id="editEquipMascara" placeholder="Automática (pelo IP)" autocomplete="off" spellcheck="false"></label>
           </div>
           <button type="button" class="ghost small full" id="editEquipFicha" title="Texto com nome, Host, gateway e máscara para copiar">Copiar ficha do equipamento</button>
           <label class="full so-modo-redes">VLAN / rede<input id="editEquipRede" data-limite="rede" placeholder="Ex.: VLAN 10 · 10.0.0.0/24" autocomplete="off" spellcheck="false"></label>
@@ -574,10 +574,6 @@
                 <label>Tipo<input id="navEquipTipo" data-limite="tipo" list="tipos-sugeridos" placeholder="Tipo"></label>
               </div>
               <label class="full">IP<input id="navEquipIp" data-limite="ip" placeholder="Ex.: 10.0.0.1" inputmode="decimal" autocomplete="off" spellcheck="false"></label>
-              <div class="nav-form-grid">
-                <label>Gateway<input id="navEquipGateway" data-limite="ip" placeholder="Ex.: 10.0.0.254" inputmode="decimal" autocomplete="off" spellcheck="false"></label>
-                <label>Máscara<input id="navEquipMascara" placeholder="Ex.: 255.255.255.0 ou /24" autocomplete="off" spellcheck="false"></label>
-              </div>
               <label class="full so-modo-redes">VLAN / rede<input id="navEquipRede" data-limite="rede" placeholder="Ex.: VLAN 10 · 10.0.0.0/24" autocomplete="off" spellcheck="false"></label>
               <div class="nav-form-grid">
                 <label>Grupo / rack / sala<input id="navEquipGrupo" data-limite="grupo" list="grupos-sugeridos" placeholder="Ex.: Rack 01" autocomplete="off"></label>
@@ -619,6 +615,7 @@
 
         <div class="nav-section">
           <button class="nav-label" type="button" aria-expanded="true">Documentação</button>
+          <button class="nav-item" id="btnFichas" type="button" data-icon="lista" title="Texto com nome, Host, gateway e máscara de todos os equipamentos, pronto para copiar e enviar">Fichas dos equipamentos</button>
           <button class="nav-item" id="btnDocumentos" type="button" data-icon="documento" title="Manuais, procedimentos e arquivos do projeto">Documentos</button>
           <button class="nav-item" id="btnInventario" type="button" data-icon="planilha" title="Planilha (.xlsx) com equipamentos, IPs, cabos e portas livres e em uso">Relatório de inventário</button>
           <button class="nav-item" id="btnEtiquetas" type="button" data-icon="qrcode" title="PDF com etiquetas para imprimir: equipamentos com QR code e cabos">Etiquetas com QR code</button>

@@ -455,11 +455,9 @@
     var validacao = Esquema.validarEquipamento({ id: novoId(), nome: document.getElementById("navEquipNome").value, modelo: document.getElementById("navEquipModelo").value,
       ip: document.getElementById("navEquipIp").value, tipo: tipo, icone: iconeInformado || iconePorTipo(tipo), imagem: "", corFonte: "#16323D",
       grupo: document.getElementById("navEquipGrupo").value, status: document.getElementById("navEquipStatus").value,
-      rede: document.getElementById("navEquipRede").value,
-      gateway: document.getElementById("navEquipGateway").value, mascara: document.getElementById("navEquipMascara").value });
+      rede: document.getElementById("navEquipRede").value });
     if (!validacao.ok) { mensagem.textContent = textoDosErros(validacao.erros); return; }
     var novoEquipamento = validacao.dados;
-    ["gateway", "mascara"].forEach(function (k) { if (!novoEquipamento[k]) delete novoEquipamento[k]; });
     function concluir(imagem) {
       var comImagem = Esquema.validarEquipamento(Object.assign({}, novoEquipamento, { imagem: imagem || "" }));
       if (!comImagem.ok) { mensagem.textContent = textoDosErros(comImagem.erros); return; }

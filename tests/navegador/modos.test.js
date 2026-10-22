@@ -171,11 +171,18 @@ test("ao adicionar equipamento mostra a ficha nome / Host / gateway / mask; list
   await pagina.click('[data-nav-panel="navAddEquip"]');
   await pagina.fill("#navEquipNome", "OLT-99");
   await pagina.fill("#navEquipIp", "10.20.30.40/24");
-  await pagina.fill("#navEquipGateway", "10.20.30.1");
   await pagina.click('#navEquipForm button[type="submit"]');
   await pagina.waitForSelector("#fichaModal:not(.hidden)");
   assert.equal(await pagina.inputValue("#fichaTexto"), "nome: OLT-99\nHost: 10.20.30.40\ngateway: 10.20.30.1\nmask: 255.255.255.0");
   await pagina.screenshot({ path: process.env.FOTO_FICHA || require("os").tmpdir() + "/ficha.png" });
+  await pagina.click(".modal-actions [data-ficha-fechar]");
+  // Todas as fichas de uma vez (Documentação → Fichas dos equipamentos).
+  if (!(await pagina.isVisible("#btnFichas"))) await pagina.click(".nav-section:has(#btnFichas) > .nav-label");
+  await pagina.click("#btnFichas");
+  await pagina.waitForSelector("#fichaModal:not(.hidden)");
+  const todas = await pagina.inputValue("#fichaTexto");
+  assert.match(todas, /nome: OLT-99\nHost: 10\.20\.30\.40\ngateway: 10\.20\.30\.1\nmask: 255\.255\.255\.0/);
+  assert.ok(todas.split("\n\n").length > 1);
   await pagina.click(".modal-actions [data-ficha-fechar]");
   await pagina.waitForSelector("#fichaModal.hidden", { state: "attached" });
   // Cabos: linha com origem → destino; campos em "Detalhes".

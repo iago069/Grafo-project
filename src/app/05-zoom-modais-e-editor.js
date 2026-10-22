@@ -334,19 +334,38 @@
     for (var i = 0; i < 4; i++) { var bits = Math.max(0, Math.min(8, n - i * 8)); partes.push(256 - Math.pow(2, 8 - bits)); }
     return partes.join(".");
   }
+  // Tudo automático a partir do IP: sem /prefixo vale /24; o gateway é o primeiro
+  // endereço útil da rede (ex.: 10.0.0.25/24 → 10.0.0.1). Gateway e máscara
+  // preenchidos à mão no equipamento têm prioridade.
+  function prefixoDaMascara(m) {
+    if (/^\/?\d{1,2}$/.test(m)) return Number(m.replace("/", ""));
+    var partes = m.split(".").map(Number), bits = 0;
+    partes.forEach(function (o) { while (o & 128) { bits++; o = (o << 1) & 255; } });
+    return partes.length === 4 ? bits : null;
+  }
   function fichaDoEquipamento(eq) {
     var ip = String(eq.ip || "").trim(), barra = ip.indexOf("/");
     var host = barra >= 0 ? ip.slice(0, barra) : ip;
-    var mascara = String(eq.mascara || "").trim();
-    if (/^\/?\d{1,2}$/.test(mascara)) mascara = mascaraDoPrefixo(mascara.replace("/", ""));
-    if (!mascara && barra >= 0 && host.indexOf(":") < 0) mascara = mascaraDoPrefixo(ip.slice(barra + 1));
-    return "nome: " + (eq.nome || eq.id || "") + "\nHost: " + host + "\ngateway: " + String(eq.gateway || "").replace(/\/.*$/, "") + "\nmask: " + mascara;
+    var ipv4 = /^(\d{1,3}\.){3}\d{1,3}$/.test(host);
+    var manual = String(eq.mascara || "").trim();
+    var prefixo = manual ? prefixoDaMascara(manual) : barra >= 0 ? Number(ip.slice(barra + 1)) : 24;
+    var mascara = ipv4 && prefixo != null ? mascaraDoPrefixo(prefixo) : manual;
+    var gateway = String(eq.gateway || "").replace(/\/.*$/, "");
+    if (!gateway && ipv4 && prefixo != null && prefixo < 31) {
+      var n = host.split(".").reduce(function (a, o) { return a * 256 + Number(o); }, 0);
+      var tamanho = Math.pow(2, 32 - prefixo), rede = n - (n % tamanho), gw = rede + 1;
+      if (gw === n) gw = rede + tamanho - 2; // o próprio equipamento é o .1: usa o último útil
+      gateway = [24, 16, 8, 0].map(function (d) { return Math.floor(gw / Math.pow(2, d)) % 256; }).join(".");
+    }
+    return "nome: " + (eq.nome || eq.id || "") + "\nHost: " + host + "\ngateway: " + gateway + "\nmask: " + mascara;
   }
   var fichaModal = document.getElementById("fichaModal");
   function abrirFicha(eq) {
     var campo = document.getElementById("fichaTexto");
-    campo.value = fichaDoEquipamento(eq);
-    document.getElementById("fichaTitulo").textContent = "Ficha: " + (eq.nome || eq.id);
+    var lista = Array.isArray(eq) ? eq : [eq];
+    campo.value = lista.map(fichaDoEquipamento).join("\n\n");
+    campo.rows = Math.min(18, lista.length * 5);
+    document.getElementById("fichaTitulo").textContent = lista.length > 1 ? "Fichas dos equipamentos (" + lista.length + ")" : "Ficha: " + (lista[0].nome || lista[0].id);
     mostrarModalBackdrop(fichaModal);
     campo.focus();
     campo.select();
@@ -364,6 +383,11 @@
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(campo.value).then(copiado, function () { campo.select(); document.execCommand("copy"); copiado(); });
     } else { campo.select(); document.execCommand("copy"); copiado(); }
+  });
+  // Todos os equipamentos do diagrama de uma vez, para copiar e mandar.
+  document.getElementById("btnFichas").addEventListener("click", function () {
+    if (!estado.equipamentos.length) { avisar("Adicione equipamentos primeiro."); return; }
+    abrirFicha(estado.equipamentos);
   });
   campoEditor("editEquipFicha").addEventListener("click", function () {
     var eq = editor.equipamento;
