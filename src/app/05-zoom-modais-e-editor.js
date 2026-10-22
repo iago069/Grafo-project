@@ -340,6 +340,8 @@
     selecionarOpcao(campoEditor("editCaboEstilo"), c.estilo || "solid");
     campoEditor("editCaboVlan").value = c.vlan || "";
     campoEditor("editCaboDistancia").value = c.distanciaKm != null ? c.distanciaKm : "";
+    campoEditor("editCaboTrafegoEntrada").value = c.trafegoEntrada || "";
+    campoEditor("editCaboTrafegoSaida").value = c.trafegoSaida || "";
     campoEditor("editCaboRedeVlan").value = c.redeVlan || "";
     campoEditor("editCaboNumSaida").value = c.numSaida || "";
     campoEditor("editCaboNumChegada").value = c.numChegada || "";
@@ -391,13 +393,14 @@
       grossura: campoEditor("editCaboGrossura").value, estilo: campoEditor("editCaboEstilo").value,
       vlan: campoEditor("editCaboVlan").value, redeVlan: campoEditor("editCaboRedeVlan").value,
       numSaida: campoEditor("editCaboNumSaida").value, numChegada: campoEditor("editCaboNumChegada").value,
-      distanciaKm: campoEditor("editCaboDistancia").value === "" ? null : campoEditor("editCaboDistancia").value
+      distanciaKm: campoEditor("editCaboDistancia").value === "" ? null : campoEditor("editCaboDistancia").value,
+      trafegoEntrada: campoEditor("editCaboTrafegoEntrada").value, trafegoSaida: campoEditor("editCaboTrafegoSaida").value
     }), estado.equipamentos.map(function (eq) { return eq.id; }));
     if (!validacao.ok) { campoEditor("editCaboMensagem").textContent = textoDosErros(validacao.erros); return; }
     // Trocou as pontas: o arraste manual do cabo antigo não vale mais.
     if (de !== c.de || para !== c.para) { delete c.deslocamento; delete validacao.dados.deslocamento; delete c.rota; delete validacao.dados.rota; }
     // Campo da etiqueta apagado: não guarda texto vazio.
-    ["vlan", "redeVlan", "numSaida", "numChegada"].forEach(function (k) { if (!validacao.dados[k]) { delete validacao.dados[k]; delete c[k]; } });
+    ["vlan", "redeVlan", "numSaida", "numChegada", "trafegoEntrada", "trafegoSaida"].forEach(function (k) { if (!validacao.dados[k]) { delete validacao.dados[k]; delete c[k]; } });
     if (validacao.dados.distanciaKm == null) { delete validacao.dados.distanciaKm; delete c.distanciaKm; }
     Object.assign(c, validacao.dados);
     fecharEditor();

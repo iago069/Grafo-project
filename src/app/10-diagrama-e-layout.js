@@ -84,7 +84,7 @@
   function gerarDot(dados, direcao) {
     var modo = modoAtual();
     sinaisFtth = modo === "ftth" ? calcularSinaisFtth(dados) : {};
-    categoriasUsadas = {};
+    prepararCoresDosCabos(dados.conexoes);
     var contagemPortas = {};
     dados.equipamentos.forEach(function (eq) { contagemPortas[eq.id] = 0; });
     dados.conexoes.forEach(function (c) {
@@ -293,7 +293,7 @@
       linhas.push("  }");
     });
     dados.conexoes.forEach(function (c, indice) {
-      var corConexao = corValida(corDoCaboNoDesenho(c, equipamentoPorId), "#5A7284");
+      var corConexao = corValida(corDoCaboNoDesenho(c, equipamentoPorId, indice), "#5A7284");
       var grossura = Math.min(10, Number(c.grossura) || 2);
       var estiloCabo = c.estilo;
       // Monitoramento: cabo que chega a um equipamento offline fica vermelho e tracejado.
@@ -567,6 +567,38 @@
     atualizarJsonAvancado();
   }
 
+  // Depois de organizar: equipamento ligado a um só vizinho anda (na vertical, se o
+  // cabo sai pela lateral; na horizontal, se sai por cima/baixo) até a porta dele
+  // ficar na mesma linha da porta do outro lado. O cabo sai reto, sem degrau.
+  function alinharPortasDasPontas() {
+    var svg = elCanvas.querySelector("svg");
+    if (!svg) return false;
+    var pontos = obterPontosDasPortas(svg), vizinhos = {}, mudou = false;
+    estado.conexoes.forEach(function (c) {
+      (vizinhos[c.de] = vizinhos[c.de] || {})[c.para] = true;
+      (vizinhos[c.para] = vizinhos[c.para] || {})[c.de] = true;
+    });
+    var movidos = {};
+    estado.conexoes.forEach(function (c, i) {
+      var s = pontos[i + ":inicio"], e = pontos[i + ":fim"];
+      if (!s || !e) return;
+      [[c.para, e, s], [c.de, s, e]].some(function (par) {
+        var id = par[0], meu = par[1], outro = par[2];
+        if (movidos[id] || Object.keys(vizinhos[id] || {}).length !== 1) return false;
+        var eq = estado.equipamentos.find(function (x) { return x.id === id; });
+        if (!eq || !posicaoValida(eq.posicao)) return false;
+        var lateral = Math.abs(meu.dx) > 0;
+        var d = lateral ? outro.y - meu.y : outro.x - meu.x;
+        if (Math.abs(d) < 0.5 || Math.abs(d) > 120) return false;
+        eq.posicao = lateral ? { x: eq.posicao.x, y: eq.posicao.y + d } : { x: eq.posicao.x + d, y: eq.posicao.y };
+        movidos[id] = true;
+        mudou = true;
+        return true;
+      });
+    });
+    return mudou;
+  }
+
   // Organizar = voltar ao layout do Graphviz: ele já respeita os grupos (clusters)
   // e a direção escolhida. Apaga as posições salvas e redesenha; na renderização
   // seguinte cada equipamento ganha posição nova a partir desse layout.
@@ -579,6 +611,7 @@
     if (selDirecao.value === "LADO" && posicionarGruposLadoALado()) gerar();
     arrumarDepoisDeOrganizar(); // rotas à mão saem; notas e desenhos longe vêm para perto
     gerar();
+    if (alinharPortasDasPontas()) gerar();
   }
 
   // Arruma blocos {w, h} em prateleiras (linhas), testando larguras máximas e
@@ -1356,7 +1389,6 @@
       rotearCabosOrtogonalmente();
       desenharDesenhos(); // formas, textos e caneta (10-desenho-e-ferramentas.js)
       desenharAnotacoes(); // antes do viewBox: as anotações também contam na área do desenho
-      desenharLegendaCabos();
       ajustarViewBoxAoConteudo(false);
       var revelarAgora = ajustarNaProximaRenderizacao;
       if (ajustarNaProximaRenderizacao) {

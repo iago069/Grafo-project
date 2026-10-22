@@ -466,6 +466,7 @@
       estilo: document.getElementById("navCableEstilo").value, saida: document.getElementById("navCableSaida").value, chegada: document.getElementById("navCableChegada").value, potencia: document.getElementById("navCablePotencia").value
     }, estado.equipamentos.map(function (eq) { return eq.id; }));
     if (!validacao.ok) { mensagem.textContent = textoDosErros(validacao.erros); return; }
+    validacao.dados.cor = corParaNovoCabo(validacao.dados); // cada cabo novo com uma cor diferente
     estado.conexoes.push(validacao.dados);
     renderTudo();
     avisarPortaEmUso(validacao.dados);
@@ -528,6 +529,7 @@
         estilo: document.getElementById("novoCabEstilo").value
       }, estado.equipamentos.map(function (eq) { return eq.id; }));
       if (!validacaoCabo.ok) { mostrarErro("Não foi possível adicionar o cabeamento.", validacaoCabo.erros); return; }
+      validacaoCabo.dados.cor = corParaNovoCabo(validacaoCabo.dados);
       estado.conexoes.push(validacaoCabo.dados);
       renderTudo();
       fecharFormularioCabemamento();

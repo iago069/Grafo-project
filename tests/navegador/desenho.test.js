@@ -286,23 +286,22 @@ test("LAG desenhada como um cabo só: um rótulo com a contagem e o mesmo caminh
   await pagina.context().close();
 });
 
-test("cores por tipo de ligação: Netflix vermelho, entre cores verde, legenda no desenho e selo curto", async () => {
+test("cada ligação com uma cor diferente (LAG com a mesma), tráfego no selo e opção de desligar", async () => {
   const projetos = { "Core": { equipamentos: [{ id: "c", nome: "core-l2-pf", tipo: "Switch" }, { id: "n", nome: "NETFLIX", tipo: "Servidor" }, { id: "e", nome: "core-pfu-evpn-02", tipo: "Switch" }],
     conexoes: [
       { de: "c", para: "n", saida: "xe-0/0/33", chegada: "?", tipo: "LAG ae7 (Netflix1-PFU)", potencia: "10G" },
       { de: "c", para: "n", saida: "xe-0/0/34", chegada: "?", tipo: "LAG ae7 (Netflix1-PFU)", potencia: "10G" },
-      { de: "c", para: "e", saida: "et-0/0/48", chegada: "et-0/0/30", tipo: "CORE-EVPN", potencia: "100G" }
+      { de: "c", para: "e", saida: "et-0/0/48", chegada: "et-0/0/30", tipo: "CORE-EVPN", potencia: "100G", trafegoEntrada: "2.7G", trafegoSaida: "43M" }
     ] } };
   const pagina = await abrirPagina(navegador, site, { projetos });
   await esperarDiagrama(pagina);
-  await pagina.waitForSelector("#canvas g.legenda-cabos");
-  const cores = await pagina.evaluate(() => [...document.querySelectorAll("#canvas g.edge > path")].map(p => p.getAttribute("stroke").toUpperCase()));
-  assert.ok(cores.includes("#D32F2F"), "Netflix em vermelho");
-  assert.ok(cores.includes("#1B7F2A"), "entre cores em verde");
-  assert.match(await pagina.textContent("#canvas g.legenda-cabos"), /Netflix/);
+  const cores = () => pagina.evaluate(() => [...document.querySelectorAll("#canvas g.edge > path")].map(p => p.getAttribute("stroke").toUpperCase()));
+  let c = await cores();
+  assert.equal(c[0], c[1], "as portas da LAG com a mesma cor");
+  assert.notEqual(c[0], c[2], "outra ligação com outra cor");
   const selos = await pagina.evaluate(() => [...document.querySelectorAll("#canvas g.edge > text")].filter(t => t.style.display !== "none").map(t => t.textContent));
-  assert.ok(selos.includes("ae7 · 20G") && selos.includes("100G"), JSON.stringify(selos));
-  // Desligar "Cores por tipo de ligação" volta a cor padrão.
+  assert.ok(selos.includes("ae7 · 20G") && selos.includes("100G ↓2.7G ↑43M"), JSON.stringify(selos));
+  // Desligar a opção volta todos para a cor padrão.
   await pagina.click("#btnCamadas");
   await pagina.locator('#menuCamadas [data-camada="cores"]').uncheck();
   await pagina.waitForFunction(() => [...document.querySelectorAll("#canvas g.edge > path")].every(p => p.getAttribute("stroke").toUpperCase() === "#5A7284"));

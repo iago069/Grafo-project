@@ -394,7 +394,16 @@
     }
   }
 
+  var elSubtitulo = document.getElementById("paginaSubtitulo");
+  if (elSubtitulo) elSubtitulo.addEventListener("change", function () {
+    var v = elSubtitulo.value.trim().slice(0, 120);
+    if (v) estado.subtitulo = v; else delete estado.subtitulo;
+    salvarLocal();
+    atualizarJsonAvancado();
+    avisar("Subtítulo salvo: aparece no cabeçalho do PDF, PNG e SVG.");
+  });
   function abrirPainelPagina(abrir) {
+    if (abrir && elSubtitulo) elSubtitulo.value = estado.subtitulo || "";
     elPainelPagina.hidden = !abrir;
     btnPaginaPdf.setAttribute("aria-expanded", abrir ? "true" : "false");
     btnPaginaPdf.classList.toggle("active", abrir);

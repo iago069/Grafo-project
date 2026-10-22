@@ -282,6 +282,10 @@
             <label>Espessura<input id="editCaboGrossura" type="number" min="1" max="10"></label>
           </div>
           <label>Estilo<select id="editCaboEstilo"><option value="solid">Contínuo</option><option value="dashed">Tracejado</option><option value="dotted">Pontilhado</option></select></label>
+          <div class="nav-form-grid">
+            <label>Tráfego ↓ entrada<input id="editCaboTrafegoEntrada" maxlength="12" placeholder="Ex.: 82.3G" autocomplete="off"></label>
+            <label>Tráfego ↑ saída<input id="editCaboTrafegoSaida" maxlength="12" placeholder="Ex.: 58.8G" autocomplete="off"></label>
+          </div>
           <label class="so-modo-ftth">Distância da fibra (km)<input id="editCaboDistancia" type="number" step="0.01" min="0" max="200" placeholder="Ex.: 1,5"></label>
           <div class="nav-form-grid">
             <label>VLAN<input id="editCaboVlan" maxlength="30" placeholder="Ex.: 2047" autocomplete="off"></label>
@@ -1000,6 +1004,10 @@
       </div>
 
       <form class="painel-pagina-form" id="formPagina" novalidate>
+        <fieldset>
+          <legend>Cabeçalho</legend>
+          <label>Subtítulo (local, POP…)<input type="text" id="paginaSubtitulo" maxlength="120" placeholder="Ex.: POP-PFU01 · Passo Fundo - ERB Petrópolis" autocomplete="off"></label>
+        </fieldset>
         <fieldset>
           <legend>Área de desenho</legend>
           <div class="campos-dupla">

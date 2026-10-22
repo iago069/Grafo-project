@@ -216,6 +216,9 @@
     numSaida: { rotulo: "Número na origem", esquema: texto(10), opcional: true },
     numChegada: { rotulo: "Número no destino", esquema: texto(10), opcional: true },
     etiqueta: { rotulo: "Posição da etiqueta", esquema: ESQUEMA_PONTO, opcional: true },
+    // Tráfego medido (ex.: "82.3G"), mostrado no selo do cabo como ↓ entrada ↑ saída.
+    trafegoEntrada: { rotulo: "Tráfego de entrada", esquema: texto(12), opcional: true },
+    trafegoSaida: { rotulo: "Tráfego de saída", esquema: texto(12), opcional: true },
     // FTTH: comprimento da fibra, em km (perda de 0,35 dB/km).
     distanciaKm: { rotulo: "Distância (km)", esquema: z.coerce.number().finite().min(0).max(200), opcional: true },
     // Rota feita à mão: dobras do cabo, nas coordenadas do desenho.
@@ -404,6 +407,11 @@
       var modoProjeto = ESQUEMA_MODO.safeParse(entrada.modo);
       dados.modo = modoProjeto.success ? modoProjeto.data : "topologia";
       if (!modoProjeto.success) relatorio.ajustes.push({ onde: "modo", mensagem: modoProjeto.error.issues[0].message + " — usado Topologia" });
+    }
+    // Subtítulo do diagrama (local, POP…), no cabeçalho da exportação.
+    if (entrada.subtitulo != null) {
+      var sub = texto(120).safeParse(entrada.subtitulo);
+      if (sub.success && sub.data) dados.subtitulo = sub.data;
     }
     // Anotações são opcionais: projetos sem elas continuam só com as duas listas.
     if (entrada.anotacoes != null) {

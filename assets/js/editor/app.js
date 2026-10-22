@@ -1122,10 +1122,10 @@
       var horizontal = Math.abs(trecho.a.y - trecho.b.y) < 0.5;
       if (horizontal) {
         texto.setAttribute("x", (trecho.a.x + (trecho.b.x - trecho.a.x) * t).toFixed(2));
-        texto.setAttribute("y", (trecho.a.y + (lado > 0 ? 12 : -5)).toFixed(2));
+        texto.setAttribute("y", (trecho.a.y + (lado > 0 ? 18 : -10)).toFixed(2));
         texto.setAttribute("text-anchor", "middle");
       } else {
-        texto.setAttribute("x", (trecho.a.x + (lado > 0 ? -5 : 5)).toFixed(2));
+        texto.setAttribute("x", (trecho.a.x + (lado > 0 ? -12 : 26)).toFixed(2));
         texto.setAttribute("y", (trecho.a.y + (trecho.b.y - trecho.a.y) * t + 3).toFixed(2));
         texto.setAttribute("text-anchor", lado > 0 ? "end" : "start");
       }
@@ -1200,15 +1200,28 @@
       // Rota feita à mão (10-desenho-e-ferramentas.js) passa pelas dobras escolhidas.
       var pts = rotaManualDoCabo(rota.s, rota.e, rota.conexao.rota)
         || tracarRota(rota.s, rota.e, existentes, obstaculosDoCabo(obstaculos, rota.conexao, rota.s, rota.e));
+      pts = endireitarDegraus(pts);
       existentes.push.apply(existentes, segmentosDaRota(pts));
       rota.path.setAttribute("d", caminhoOrtogonalArredondado(pts));
       prepararRotuloCurto(rota.aresta, rota.conexao);
-      posicionarRotuloDaAresta(rota.aresta, pts, rotulos);
       rota.pts = pts;
       rotasDesenhadas[estado.conexoes.indexOf(rota.conexao)] = pts;
       desenharExtrasDoCabo(rota.aresta, pts, rota.conexao);
     });
     juntarCabosDeLag(rotas);
+    // Rótulos por último: desviam dos equipamentos, de todos os cabos e dos outros rótulos.
+    rotas.forEach(function (rota) {
+      var linha = rotasDesenhadas[estado.conexoes.indexOf(rota.conexao)] || rota.pts;
+      for (var i = 1; i < linha.length; i++) {
+        var a = linha[i - 1], b = linha[i];
+        rotulos.push({ x1: Math.min(a.x, b.x) - 3, y1: Math.min(a.y, b.y) - 3, x2: Math.max(a.x, b.x) + 3, y2: Math.max(a.y, b.y) + 3 });
+      }
+    });
+    rotas.forEach(function (rota) {
+      var texto = rota.aresta.querySelector("text");
+      if (texto && texto.style.display === "none" && !texto.hasAttribute("data-sem-espaco")) return; // membro de LAG
+      posicionarRotuloDaAresta(rota.aresta, rotasDesenhadas[estado.conexoes.indexOf(rota.conexao)] || rota.pts, rotulos);
+    });
     rotas.forEach(function (rota) { desenharSeloDoRotulo(rota.aresta); });
     avisarNomesSemEspaco(svg);
   }
@@ -1272,6 +1285,16 @@
       var largura = parseFloat(lider.path.getAttribute("stroke-width")) || 2;
       lider.path.style.strokeWidth = (largura * 1.6).toFixed(1) + "px";
     });
+  }
+
+  // Degrau de poucos pixels (portas quase alinhadas) vira linha reta.
+  function endireitarDegraus(pts) {
+    if (pts.length === 4) {
+      var s = pts[0], e = pts[3];
+      if (Math.abs(s.y - e.y) <= 6 && Math.abs(pts[1].y - s.y) < 0.5) return [s, { x: e.x, y: s.y }];
+      if (Math.abs(s.x - e.x) <= 6 && Math.abs(pts[1].x - s.x) < 0.5) return [s, { x: s.x, y: e.y }];
+    }
+    return pts;
   }
 
   function solicitarRoteamentoCabos() {
@@ -2753,6 +2776,8 @@
     selecionarOpcao(campoEditor("editCaboEstilo"), c.estilo || "solid");
     campoEditor("editCaboVlan").value = c.vlan || "";
     campoEditor("editCaboDistancia").value = c.distanciaKm != null ? c.distanciaKm : "";
+    campoEditor("editCaboTrafegoEntrada").value = c.trafegoEntrada || "";
+    campoEditor("editCaboTrafegoSaida").value = c.trafegoSaida || "";
     campoEditor("editCaboRedeVlan").value = c.redeVlan || "";
     campoEditor("editCaboNumSaida").value = c.numSaida || "";
     campoEditor("editCaboNumChegada").value = c.numChegada || "";
@@ -2804,13 +2829,14 @@
       grossura: campoEditor("editCaboGrossura").value, estilo: campoEditor("editCaboEstilo").value,
       vlan: campoEditor("editCaboVlan").value, redeVlan: campoEditor("editCaboRedeVlan").value,
       numSaida: campoEditor("editCaboNumSaida").value, numChegada: campoEditor("editCaboNumChegada").value,
-      distanciaKm: campoEditor("editCaboDistancia").value === "" ? null : campoEditor("editCaboDistancia").value
+      distanciaKm: campoEditor("editCaboDistancia").value === "" ? null : campoEditor("editCaboDistancia").value,
+      trafegoEntrada: campoEditor("editCaboTrafegoEntrada").value, trafegoSaida: campoEditor("editCaboTrafegoSaida").value
     }), estado.equipamentos.map(function (eq) { return eq.id; }));
     if (!validacao.ok) { campoEditor("editCaboMensagem").textContent = textoDosErros(validacao.erros); return; }
     // Trocou as pontas: o arraste manual do cabo antigo não vale mais.
     if (de !== c.de || para !== c.para) { delete c.deslocamento; delete validacao.dados.deslocamento; delete c.rota; delete validacao.dados.rota; }
     // Campo da etiqueta apagado: não guarda texto vazio.
-    ["vlan", "redeVlan", "numSaida", "numChegada"].forEach(function (k) { if (!validacao.dados[k]) { delete validacao.dados[k]; delete c[k]; } });
+    ["vlan", "redeVlan", "numSaida", "numChegada", "trafegoEntrada", "trafegoSaida"].forEach(function (k) { if (!validacao.dados[k]) { delete validacao.dados[k]; delete c[k]; } });
     if (validacao.dados.distanciaKm == null) { delete validacao.dados.distanciaKm; delete c.distanciaKm; }
     Object.assign(c, validacao.dados);
     fecharEditor();
@@ -3984,6 +4010,7 @@
       estilo: document.getElementById("navCableEstilo").value, saida: document.getElementById("navCableSaida").value, chegada: document.getElementById("navCableChegada").value, potencia: document.getElementById("navCablePotencia").value
     }, estado.equipamentos.map(function (eq) { return eq.id; }));
     if (!validacao.ok) { mensagem.textContent = textoDosErros(validacao.erros); return; }
+    validacao.dados.cor = corParaNovoCabo(validacao.dados); // cada cabo novo com uma cor diferente
     estado.conexoes.push(validacao.dados);
     renderTudo();
     avisarPortaEmUso(validacao.dados);
@@ -4046,6 +4073,7 @@
         estilo: document.getElementById("novoCabEstilo").value
       }, estado.equipamentos.map(function (eq) { return eq.id; }));
       if (!validacaoCabo.ok) { mostrarErro("Não foi possível adicionar o cabeamento.", validacaoCabo.erros); return; }
+      validacaoCabo.dados.cor = corParaNovoCabo(validacaoCabo.dados);
       estado.conexoes.push(validacaoCabo.dados);
       renderTudo();
       fecharFormularioCabemamento();
@@ -5362,7 +5390,7 @@
       if (!destino || destino === origem) return;
       var limite = limiteAtingido("cabo");
       if (limite) { avisar(limite); return; }
-      var v = Esquema.validarConexao({ de: origem, para: destino, tipo: "", saida: "", chegada: "", potencia: "1G", cor: "#5A7284", grossura: 2, estilo: "solid" },
+      var v = Esquema.validarConexao({ de: origem, para: destino, tipo: "", saida: "", chegada: "", potencia: "1G", cor: corParaNovoCabo({ de: origem, para: destino, tipo: "" }), grossura: 2, estilo: "solid" },
         estado.equipamentos.map(function (eq) { return eq.id; }));
       if (!v.ok) { avisar(textoDosErros(v.erros)); return; }
       estado.conexoes.push(v.dados);
@@ -5458,8 +5486,7 @@
     ["desenhos", "Desenhos e formas", "g.camada-desenhos"],
     ["notas", "Notas", "g.anotacao"],
     ["grupos", "Caixas dos grupos", "g.cluster"],
-    ["legenda", "Legenda das cores", "g.legenda-cabos"],
-    ["cores", "Cores por tipo de ligação", null]
+    ["cores", "Cor diferente em cada cabo", null]
   ];
   function chaveCamadas() { return "grafo-camadas:" + projetoAtual; }
   function camadasOcultas() {
@@ -5573,37 +5600,45 @@
   // Cor pela categoria da ligação (só em cabo com a cor padrão), rótulo curto num
   // selo ("ae7 · 20G", descrição completa ao passar o mouse) e legenda no desenho.
   var COR_CABO_PADRAO_APP = "#5A7284";
-  var CATEGORIAS_CABO = {
-    core: { cor: "#1B7F2A", nome: "Entre cores e roteadores" },
-    netflix: { cor: "#D32F2F", nome: "Netflix" },
-    facebook: { cor: "#1E6FD9", nome: "Facebook / Meta" },
-    google: { cor: "#E8A317", nome: "Google" },
-    transito: { cor: "#7CB342", nome: "Trânsito e transporte" },
-    datacom: { cor: "#8E24AA", nome: "Switches Datacom / distribuição" },
-    outros: { cor: "#8D5524", nome: "Demais equipamentos" }
-  };
-  var categoriasUsadas = {};
-  function textoDoEquipamento(eq) { return eq ? [eq.nome, eq.tipo, eq.modelo].join(" ").toLowerCase() : ""; }
-  function categoriaDoCabo(c, porId) {
-    var a = textoDoEquipamento(porId[c.de]), b = textoDoEquipamento(porId[c.para]), ambos = a + " | " + b, tipo = String(c.tipo || "").toLowerCase();
-    if (/netflix|\boca\b/.test(ambos + tipo)) return "netflix";
-    if (/facebook|\bmeta\b|\bfna\b/.test(ambos + tipo)) return "facebook";
-    if (/google|\bggc\b/.test(ambos + tipo)) return "google";
-    // Entre dois equipamentos de núcleo vale a cor de core, mesmo que a descrição fale em operadora.
-    var nucleo = /\bcore\b|core[-_ ]|router|roteador|\bbng\b|\bbras\b|mx204|qfx|cgnat/;
-    if (nucleo.test(a) && nucleo.test(b)) return "core";
-    if (/tr[âa]nsito|transporte|equinix|eletronet|\bix\b|operadora|mhnet|adylnet/.test(ambos + tipo)) return "transito";
-    if (/datacom|distr|dm4\d{3}|dwdm/.test(ambos)) return "datacom";
-    return "outros";
+  // Cada ligação ganha uma cor diferente (as portas da mesma LAG ficam com a mesma).
+  var PALETA_CABOS = ["#1E6FD9", "#D32F2F", "#1B7F2A", "#8E24AA", "#E08A00", "#00897B", "#C2185B", "#5D4037",
+    "#3949AB", "#7CB342", "#F4511E", "#00ACC1", "#6D4C41", "#AD1457", "#546E7A", "#9E9D24"];
+  function chaveDaLigacao(c, i) {
+    var m = /^LAG\s+(ae\d+)/i.exec(c.tipo || "");
+    return m ? [c.de, c.para].sort().join("|") + "|" + m[1].toLowerCase() : "cabo" + i;
+  }
+  function ehCorPadrao(cor) { return !cor || String(cor).toUpperCase() === COR_CABO_PADRAO_APP; }
+  // Cor para um cabo novo: a mesma das outras portas da LAG, ou a da paleta menos usada.
+  function corParaNovoCabo(c) {
+    if (!ehCorPadrao(c.cor)) return c.cor;
+    var chave = chaveDaLigacao(c, -1);
+    var irmao = estado.conexoes.find(function (o, i) { return o !== c && !ehCorPadrao(o.cor) && chaveDaLigacao(o, i) === chave; });
+    if (irmao) return irmao.cor;
+    var uso = {};
+    PALETA_CABOS.forEach(function (cor) { uso[cor] = 0; });
+    var vistas = {};
+    estado.conexoes.forEach(function (o, i) {
+      var k = chaveDaLigacao(o, i), cor = String(o.cor || "").toUpperCase();
+      if (vistas[k] || !(cor in uso)) return;
+      vistas[k] = true;
+      uso[cor]++;
+    });
+    return PALETA_CABOS.slice().sort(function (a, b) { return uso[a] - uso[b] || PALETA_CABOS.indexOf(a) - PALETA_CABOS.indexOf(b); })[0];
   }
   function corAutomaticaLigada() { return !camadasOcultas().cores; }
-  // Cor que o cabo vai ter no desenho (gerarDot chama).
-  function corDoCaboNoDesenho(c, porId) {
-    var cor = String(c.cor || COR_CABO_PADRAO_APP).toUpperCase();
-    if (!corAutomaticaLigada() || cor !== COR_CABO_PADRAO_APP) return c.cor || COR_CABO_PADRAO_APP;
-    var cat = categoriaDoCabo(c, porId);
-    categoriasUsadas[cat] = true;
-    return CATEGORIAS_CABO[cat].cor;
+  // Cabos antigos ainda com a cor padrão: cor da paleta pela ordem das ligações.
+  var corDasLigacoes = {};
+  function prepararCoresDosCabos(conexoes) {
+    corDasLigacoes = {};
+    var n = 0;
+    conexoes.forEach(function (c, i) {
+      var k = chaveDaLigacao(c, i);
+      if (corDasLigacoes[k] == null) corDasLigacoes[k] = PALETA_CABOS[n++ % PALETA_CABOS.length];
+    });
+  }
+  function corDoCaboNoDesenho(c, porId, indice) {
+    if (!corAutomaticaLigada() || !ehCorPadrao(c.cor)) return c.cor || COR_CABO_PADRAO_APP;
+    return corDasLigacoes[chaveDaLigacao(c, indice)] || COR_CABO_PADRAO_APP;
   }
 
   // "10G" × 2 = "20G"; "40G" × 2 = "80G".
@@ -5627,11 +5662,12 @@
   var tamanhoDasLags = {};
   function rotuloCurto(c) {
     var m = /^LAG\s+(ae\d+)/i.exec(c.tipo || "");
+    var trafego = (c.trafegoEntrada ? " ↓" + c.trafegoEntrada : "") + (c.trafegoSaida ? " ↑" + c.trafegoSaida : "");
     if (m) {
       var k = [c.de, c.para].sort().join("|") + "|" + m[1].toLowerCase();
-      return m[1] + " · " + somaVelocidade(c.potencia, tamanhoDasLags[k] || 1);
+      return m[1] + " · " + somaVelocidade(c.potencia, tamanhoDasLags[k] || 1) + trafego;
     }
-    return c.potencia || (c.tipo ? String(c.tipo).slice(0, 18) : "");
+    return (c.potencia || (c.tipo ? String(c.tipo).slice(0, 18) : "")) + trafego;
   }
   // Troca o texto do Graphviz pelo rótulo curto; o texto completo vira dica.
   function prepararRotuloCurto(aresta, c) {
@@ -5660,33 +5696,6 @@
     aresta.insertBefore(g, texto);
     texto.setAttribute("fill", "#14212B");
     texto.setAttribute("font-weight", "700");
-  }
-
-  // Legenda das cores no desenho (sai no PNG/SVG/PDF), acima à esquerda.
-  function desenharLegendaCabos() {
-    var svg = elCanvas.querySelector("svg"), grafo = svg && svg.querySelector("g.graph");
-    if (!grafo) return;
-    var antiga = grafo.querySelector("g.legenda-cabos");
-    if (antiga) antiga.remove();
-    var cats = Object.keys(CATEGORIAS_CABO).filter(function (k) { return categoriasUsadas[k]; });
-    if (cats.length < 2 || !corAutomaticaLigada()) return;
-    var maxX = -Infinity, minY = Infinity;
-    grafo.querySelectorAll("g.node").forEach(function (n) {
-      try { var bb = n.getBBox(), t = translateDoElemento(n); maxX = Math.max(maxX, bb.x + t.x + bb.width); minY = Math.min(minY, bb.y + t.y); } catch (e) {}
-    });
-    if (!isFinite(maxX)) return;
-    var linha = 16, largura = 210, altura = 26 + cats.length * linha;
-    var x = maxX + 60, y = minY; // à direita dos equipamentos, alinhada pelo topo (a caixa de ferramentas fica à esquerda)
-    var g = el("g", { "class": "legenda-cabos" }, grafo);
-    el("rect", { x: x, y: y, width: largura, height: altura, rx: 8, fill: "#FFFFFF", stroke: "#C9D3DB", "stroke-width": 1 }, g);
-    var titulo = el("text", { x: x + 12, y: y + 17, "font-family": "Helvetica, Arial, sans-serif", "font-size": 10, "font-weight": 700, fill: "#14212B" }, g);
-    titulo.textContent = "LEGENDA";
-    cats.forEach(function (k, i) {
-      var yy = y + 32 + i * linha;
-      el("line", { x1: x + 12, y1: yy - 3, x2: x + 34, y2: yy - 3, stroke: CATEGORIAS_CABO[k].cor, "stroke-width": 3, "stroke-linecap": "round" }, g);
-      var t = el("text", { x: x + 42, y: yy, "font-family": "Helvetica, Arial, sans-serif", "font-size": 9.5, fill: "#14212B" }, g);
-      t.textContent = CATEGORIAS_CABO[k].nome;
-    });
   }
 
   // Monta a interface quando o editor carrega.
@@ -5784,7 +5793,7 @@
   function gerarDot(dados, direcao) {
     var modo = modoAtual();
     sinaisFtth = modo === "ftth" ? calcularSinaisFtth(dados) : {};
-    categoriasUsadas = {};
+    prepararCoresDosCabos(dados.conexoes);
     var contagemPortas = {};
     dados.equipamentos.forEach(function (eq) { contagemPortas[eq.id] = 0; });
     dados.conexoes.forEach(function (c) {
@@ -5993,7 +6002,7 @@
       linhas.push("  }");
     });
     dados.conexoes.forEach(function (c, indice) {
-      var corConexao = corValida(corDoCaboNoDesenho(c, equipamentoPorId), "#5A7284");
+      var corConexao = corValida(corDoCaboNoDesenho(c, equipamentoPorId, indice), "#5A7284");
       var grossura = Math.min(10, Number(c.grossura) || 2);
       var estiloCabo = c.estilo;
       // Monitoramento: cabo que chega a um equipamento offline fica vermelho e tracejado.
@@ -6267,6 +6276,38 @@
     atualizarJsonAvancado();
   }
 
+  // Depois de organizar: equipamento ligado a um só vizinho anda (na vertical, se o
+  // cabo sai pela lateral; na horizontal, se sai por cima/baixo) até a porta dele
+  // ficar na mesma linha da porta do outro lado. O cabo sai reto, sem degrau.
+  function alinharPortasDasPontas() {
+    var svg = elCanvas.querySelector("svg");
+    if (!svg) return false;
+    var pontos = obterPontosDasPortas(svg), vizinhos = {}, mudou = false;
+    estado.conexoes.forEach(function (c) {
+      (vizinhos[c.de] = vizinhos[c.de] || {})[c.para] = true;
+      (vizinhos[c.para] = vizinhos[c.para] || {})[c.de] = true;
+    });
+    var movidos = {};
+    estado.conexoes.forEach(function (c, i) {
+      var s = pontos[i + ":inicio"], e = pontos[i + ":fim"];
+      if (!s || !e) return;
+      [[c.para, e, s], [c.de, s, e]].some(function (par) {
+        var id = par[0], meu = par[1], outro = par[2];
+        if (movidos[id] || Object.keys(vizinhos[id] || {}).length !== 1) return false;
+        var eq = estado.equipamentos.find(function (x) { return x.id === id; });
+        if (!eq || !posicaoValida(eq.posicao)) return false;
+        var lateral = Math.abs(meu.dx) > 0;
+        var d = lateral ? outro.y - meu.y : outro.x - meu.x;
+        if (Math.abs(d) < 0.5 || Math.abs(d) > 120) return false;
+        eq.posicao = lateral ? { x: eq.posicao.x, y: eq.posicao.y + d } : { x: eq.posicao.x + d, y: eq.posicao.y };
+        movidos[id] = true;
+        mudou = true;
+        return true;
+      });
+    });
+    return mudou;
+  }
+
   // Organizar = voltar ao layout do Graphviz: ele já respeita os grupos (clusters)
   // e a direção escolhida. Apaga as posições salvas e redesenha; na renderização
   // seguinte cada equipamento ganha posição nova a partir desse layout.
@@ -6279,6 +6320,7 @@
     if (selDirecao.value === "LADO" && posicionarGruposLadoALado()) gerar();
     arrumarDepoisDeOrganizar(); // rotas à mão saem; notas e desenhos longe vêm para perto
     gerar();
+    if (alinharPortasDasPontas()) gerar();
   }
 
   // Arruma blocos {w, h} em prateleiras (linhas), testando larguras máximas e
@@ -7056,7 +7098,6 @@
       rotearCabosOrtogonalmente();
       desenharDesenhos(); // formas, textos e caneta (10-desenho-e-ferramentas.js)
       desenharAnotacoes(); // antes do viewBox: as anotações também contam na área do desenho
-      desenharLegendaCabos();
       ajustarViewBoxAoConteudo(false);
       var revelarAgora = ajustarNaProximaRenderizacao;
       if (ajustarNaProximaRenderizacao) {
@@ -7430,7 +7471,7 @@
     var moldura = el("g", { "class": "moldura-exportacao", "font-family": fonte, fill: tinta });
     moldura.appendChild(el("text", { x: x0 + MARGEM, y: y0 + 28, "font-size": 16, "font-weight": "bold" }, projetoAtual));
     moldura.appendChild(el("text", { x: x0 + MARGEM, y: y0 + 45, "font-size": 9.5, "fill-opacity": 0.65 },
-      MODOS_DIAGRAMA[modoAtual()].exportacao + " · " + data + " · " + plural(estado.equipamentos.length, "equipamento", "equipamentos") + " · " + plural(estado.conexoes.length, "cabo", "cabos")));
+      (estado.subtitulo ? estado.subtitulo + " · " : "") + MODOS_DIAGRAMA[modoAtual()].exportacao + " · " + data + " · " + plural(estado.equipamentos.length, "equipamento", "equipamentos") + " · " + plural(estado.conexoes.length, "cabo", "cabos")));
     moldura.appendChild(el("line", { x1: x0 + MARGEM, x2: x0 + larguraNova - MARGEM, y1: y0 + TOPO - 8, y2: y0 + TOPO - 8, stroke: tinta, "stroke-opacity": 0.15 }));
     moldura.appendChild(el("line", { x1: x0 + MARGEM, x2: x0 + larguraNova - MARGEM, y1: baseRodape + 12, y2: baseRodape + 12, stroke: tinta, "stroke-opacity": 0.15 }));
 
@@ -8112,7 +8153,16 @@
     }
   }
 
+  var elSubtitulo = document.getElementById("paginaSubtitulo");
+  if (elSubtitulo) elSubtitulo.addEventListener("change", function () {
+    var v = elSubtitulo.value.trim().slice(0, 120);
+    if (v) estado.subtitulo = v; else delete estado.subtitulo;
+    salvarLocal();
+    atualizarJsonAvancado();
+    avisar("Subtítulo salvo: aparece no cabeçalho do PDF, PNG e SVG.");
+  });
   function abrirPainelPagina(abrir) {
+    if (abrir && elSubtitulo) elSubtitulo.value = estado.subtitulo || "";
     elPainelPagina.hidden = !abrir;
     btnPaginaPdf.setAttribute("aria-expanded", abrir ? "true" : "false");
     btnPaginaPdf.classList.toggle("active", abrir);

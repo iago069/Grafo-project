@@ -943,7 +943,7 @@
       if (!destino || destino === origem) return;
       var limite = limiteAtingido("cabo");
       if (limite) { avisar(limite); return; }
-      var v = Esquema.validarConexao({ de: origem, para: destino, tipo: "", saida: "", chegada: "", potencia: "1G", cor: "#5A7284", grossura: 2, estilo: "solid" },
+      var v = Esquema.validarConexao({ de: origem, para: destino, tipo: "", saida: "", chegada: "", potencia: "1G", cor: corParaNovoCabo({ de: origem, para: destino, tipo: "" }), grossura: 2, estilo: "solid" },
         estado.equipamentos.map(function (eq) { return eq.id; }));
       if (!v.ok) { avisar(textoDosErros(v.erros)); return; }
       estado.conexoes.push(v.dados);
@@ -1039,8 +1039,7 @@
     ["desenhos", "Desenhos e formas", "g.camada-desenhos"],
     ["notas", "Notas", "g.anotacao"],
     ["grupos", "Caixas dos grupos", "g.cluster"],
-    ["legenda", "Legenda das cores", "g.legenda-cabos"],
-    ["cores", "Cores por tipo de ligação", null]
+    ["cores", "Cor diferente em cada cabo", null]
   ];
   function chaveCamadas() { return "grafo-camadas:" + projetoAtual; }
   function camadasOcultas() {
@@ -1154,37 +1153,45 @@
   // Cor pela categoria da ligação (só em cabo com a cor padrão), rótulo curto num
   // selo ("ae7 · 20G", descrição completa ao passar o mouse) e legenda no desenho.
   var COR_CABO_PADRAO_APP = "#5A7284";
-  var CATEGORIAS_CABO = {
-    core: { cor: "#1B7F2A", nome: "Entre cores e roteadores" },
-    netflix: { cor: "#D32F2F", nome: "Netflix" },
-    facebook: { cor: "#1E6FD9", nome: "Facebook / Meta" },
-    google: { cor: "#E8A317", nome: "Google" },
-    transito: { cor: "#7CB342", nome: "Trânsito e transporte" },
-    datacom: { cor: "#8E24AA", nome: "Switches Datacom / distribuição" },
-    outros: { cor: "#8D5524", nome: "Demais equipamentos" }
-  };
-  var categoriasUsadas = {};
-  function textoDoEquipamento(eq) { return eq ? [eq.nome, eq.tipo, eq.modelo].join(" ").toLowerCase() : ""; }
-  function categoriaDoCabo(c, porId) {
-    var a = textoDoEquipamento(porId[c.de]), b = textoDoEquipamento(porId[c.para]), ambos = a + " | " + b, tipo = String(c.tipo || "").toLowerCase();
-    if (/netflix|\boca\b/.test(ambos + tipo)) return "netflix";
-    if (/facebook|\bmeta\b|\bfna\b/.test(ambos + tipo)) return "facebook";
-    if (/google|\bggc\b/.test(ambos + tipo)) return "google";
-    // Entre dois equipamentos de núcleo vale a cor de core, mesmo que a descrição fale em operadora.
-    var nucleo = /\bcore\b|core[-_ ]|router|roteador|\bbng\b|\bbras\b|mx204|qfx|cgnat/;
-    if (nucleo.test(a) && nucleo.test(b)) return "core";
-    if (/tr[âa]nsito|transporte|equinix|eletronet|\bix\b|operadora|mhnet|adylnet/.test(ambos + tipo)) return "transito";
-    if (/datacom|distr|dm4\d{3}|dwdm/.test(ambos)) return "datacom";
-    return "outros";
+  // Cada ligação ganha uma cor diferente (as portas da mesma LAG ficam com a mesma).
+  var PALETA_CABOS = ["#1E6FD9", "#D32F2F", "#1B7F2A", "#8E24AA", "#E08A00", "#00897B", "#C2185B", "#5D4037",
+    "#3949AB", "#7CB342", "#F4511E", "#00ACC1", "#6D4C41", "#AD1457", "#546E7A", "#9E9D24"];
+  function chaveDaLigacao(c, i) {
+    var m = /^LAG\s+(ae\d+)/i.exec(c.tipo || "");
+    return m ? [c.de, c.para].sort().join("|") + "|" + m[1].toLowerCase() : "cabo" + i;
+  }
+  function ehCorPadrao(cor) { return !cor || String(cor).toUpperCase() === COR_CABO_PADRAO_APP; }
+  // Cor para um cabo novo: a mesma das outras portas da LAG, ou a da paleta menos usada.
+  function corParaNovoCabo(c) {
+    if (!ehCorPadrao(c.cor)) return c.cor;
+    var chave = chaveDaLigacao(c, -1);
+    var irmao = estado.conexoes.find(function (o, i) { return o !== c && !ehCorPadrao(o.cor) && chaveDaLigacao(o, i) === chave; });
+    if (irmao) return irmao.cor;
+    var uso = {};
+    PALETA_CABOS.forEach(function (cor) { uso[cor] = 0; });
+    var vistas = {};
+    estado.conexoes.forEach(function (o, i) {
+      var k = chaveDaLigacao(o, i), cor = String(o.cor || "").toUpperCase();
+      if (vistas[k] || !(cor in uso)) return;
+      vistas[k] = true;
+      uso[cor]++;
+    });
+    return PALETA_CABOS.slice().sort(function (a, b) { return uso[a] - uso[b] || PALETA_CABOS.indexOf(a) - PALETA_CABOS.indexOf(b); })[0];
   }
   function corAutomaticaLigada() { return !camadasOcultas().cores; }
-  // Cor que o cabo vai ter no desenho (gerarDot chama).
-  function corDoCaboNoDesenho(c, porId) {
-    var cor = String(c.cor || COR_CABO_PADRAO_APP).toUpperCase();
-    if (!corAutomaticaLigada() || cor !== COR_CABO_PADRAO_APP) return c.cor || COR_CABO_PADRAO_APP;
-    var cat = categoriaDoCabo(c, porId);
-    categoriasUsadas[cat] = true;
-    return CATEGORIAS_CABO[cat].cor;
+  // Cabos antigos ainda com a cor padrão: cor da paleta pela ordem das ligações.
+  var corDasLigacoes = {};
+  function prepararCoresDosCabos(conexoes) {
+    corDasLigacoes = {};
+    var n = 0;
+    conexoes.forEach(function (c, i) {
+      var k = chaveDaLigacao(c, i);
+      if (corDasLigacoes[k] == null) corDasLigacoes[k] = PALETA_CABOS[n++ % PALETA_CABOS.length];
+    });
+  }
+  function corDoCaboNoDesenho(c, porId, indice) {
+    if (!corAutomaticaLigada() || !ehCorPadrao(c.cor)) return c.cor || COR_CABO_PADRAO_APP;
+    return corDasLigacoes[chaveDaLigacao(c, indice)] || COR_CABO_PADRAO_APP;
   }
 
   // "10G" × 2 = "20G"; "40G" × 2 = "80G".
@@ -1208,11 +1215,12 @@
   var tamanhoDasLags = {};
   function rotuloCurto(c) {
     var m = /^LAG\s+(ae\d+)/i.exec(c.tipo || "");
+    var trafego = (c.trafegoEntrada ? " ↓" + c.trafegoEntrada : "") + (c.trafegoSaida ? " ↑" + c.trafegoSaida : "");
     if (m) {
       var k = [c.de, c.para].sort().join("|") + "|" + m[1].toLowerCase();
-      return m[1] + " · " + somaVelocidade(c.potencia, tamanhoDasLags[k] || 1);
+      return m[1] + " · " + somaVelocidade(c.potencia, tamanhoDasLags[k] || 1) + trafego;
     }
-    return c.potencia || (c.tipo ? String(c.tipo).slice(0, 18) : "");
+    return (c.potencia || (c.tipo ? String(c.tipo).slice(0, 18) : "")) + trafego;
   }
   // Troca o texto do Graphviz pelo rótulo curto; o texto completo vira dica.
   function prepararRotuloCurto(aresta, c) {
@@ -1241,33 +1249,6 @@
     aresta.insertBefore(g, texto);
     texto.setAttribute("fill", "#14212B");
     texto.setAttribute("font-weight", "700");
-  }
-
-  // Legenda das cores no desenho (sai no PNG/SVG/PDF), acima à esquerda.
-  function desenharLegendaCabos() {
-    var svg = elCanvas.querySelector("svg"), grafo = svg && svg.querySelector("g.graph");
-    if (!grafo) return;
-    var antiga = grafo.querySelector("g.legenda-cabos");
-    if (antiga) antiga.remove();
-    var cats = Object.keys(CATEGORIAS_CABO).filter(function (k) { return categoriasUsadas[k]; });
-    if (cats.length < 2 || !corAutomaticaLigada()) return;
-    var maxX = -Infinity, minY = Infinity;
-    grafo.querySelectorAll("g.node").forEach(function (n) {
-      try { var bb = n.getBBox(), t = translateDoElemento(n); maxX = Math.max(maxX, bb.x + t.x + bb.width); minY = Math.min(minY, bb.y + t.y); } catch (e) {}
-    });
-    if (!isFinite(maxX)) return;
-    var linha = 16, largura = 210, altura = 26 + cats.length * linha;
-    var x = maxX + 60, y = minY; // à direita dos equipamentos, alinhada pelo topo (a caixa de ferramentas fica à esquerda)
-    var g = el("g", { "class": "legenda-cabos" }, grafo);
-    el("rect", { x: x, y: y, width: largura, height: altura, rx: 8, fill: "#FFFFFF", stroke: "#C9D3DB", "stroke-width": 1 }, g);
-    var titulo = el("text", { x: x + 12, y: y + 17, "font-family": "Helvetica, Arial, sans-serif", "font-size": 10, "font-weight": 700, fill: "#14212B" }, g);
-    titulo.textContent = "LEGENDA";
-    cats.forEach(function (k, i) {
-      var yy = y + 32 + i * linha;
-      el("line", { x1: x + 12, y1: yy - 3, x2: x + 34, y2: yy - 3, stroke: CATEGORIAS_CABO[k].cor, "stroke-width": 3, "stroke-linecap": "round" }, g);
-      var t = el("text", { x: x + 42, y: yy, "font-family": "Helvetica, Arial, sans-serif", "font-size": 9.5, fill: "#14212B" }, g);
-      t.textContent = CATEGORIAS_CABO[k].nome;
-    });
   }
 
   // Monta a interface quando o editor carrega.
