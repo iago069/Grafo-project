@@ -134,6 +134,17 @@
 
   function ehEquipe(chave) { return Object.prototype.hasOwnProperty.call(projetos, chave); }
 
+  // Projeto de equipe renomeado no editor: muda o nome no servidor e a chave aqui.
+  async function renomear(antiga, nova) {
+    var info = projetos[antiga];
+    if (!info) return;
+    var r = await client.from(TABELA).update({ nome: String(nova).slice(0, 60) }).eq("id", info.id).select("atualizado_em");
+    if (r.error) throw r.error;
+    if (r.data && r.data[0]) info.versao = r.data[0].atualizado_em;
+    projetos[nova] = info;
+    delete projetos[antiga];
+  }
+
   // Divide o mapa do editor: os pessoais vão para grafo_user_data.
   function separar(todos) {
     var pessoais = {};
@@ -726,6 +737,7 @@
     restaurarOffline: restaurarOffline,
     usarVersoesBase: usarVersoesBase,
     ehEquipe: ehEquipe,
+    renomear: renomear,
     // id (uuid) do projeto de equipe, para o histórico de versões; null se for pessoal.
     idDaEquipe: function (chave) { return ehEquipe(chave) ? projetos[chave].id : null; },
     // Grupos (equipe com vários diagramas) e acesso por pessoa.

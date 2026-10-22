@@ -116,6 +116,13 @@
     if (!e && criar) { e = { id: novoId("es"), nome: nome, descricao: "", cor: CORES[dados.estantes.length % CORES.length] }; dados.estantes.push(e); }
     return e;
   }
+  // Projeto renomeado no editor: o livro ligado a ele passa a usar o nome novo.
+  window.addEventListener("grafo:projeto-renomeado", function (ev) {
+    var d = ev.detail || {}, mudou = false;
+    dados.livros.forEach(function (l) { if (l.projeto === d.antigo) { l.projeto = d.novo; mudou = true; } });
+    if (mudou) salvar();
+  });
+
   function livroDoProjeto(nomeProjeto, criar) {
     var l = dados.livros.find(function (x) { return x.projeto === nomeProjeto; });
     if (!l && criar) {

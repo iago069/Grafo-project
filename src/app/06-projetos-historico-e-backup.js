@@ -334,6 +334,43 @@
     avisar("Projeto \"" + nome + "\" criado (" + MODOS_DIAGRAMA[modo].titulo + (modelo ? ", a partir de um modelo" : "") + ").");
   });
 
+  // ---- Renomear o projeto aberto ------------------------------------------------
+  // Leva junto: links "Abre o diagrama" dos outros projetos, camadas escolhidas,
+  // o livro da Biblioteca ligado a ele e, se for de equipe, o nome no servidor.
+  async function renomearProjetoAtual() {
+    var antigo = projetoAtual;
+    var valor = await abrirModal({ title: "Renomear projeto", message: "Novo nome do projeto:", kind: "prompt", defaultValue: antigo, confirmText: "Renomear" });
+    if (valor == null) return;
+    var validacao = Esquema.validarNomeProjeto(valor);
+    if (!validacao.ok) { avisar("Nome inválido: " + validacao.mensagem + "."); return; }
+    var novo = validacao.dados;
+    if (novo === antigo) return;
+    if (projetos[novo]) { avisar("Já existe um projeto chamado “" + novo + "”."); return; }
+    var equipe = window.GrafoEquipe;
+    if (equipe && equipe.ehEquipe && equipe.ehEquipe(antigo)) {
+      try { await equipe.renomear(antigo, novo); }
+      catch (e) { avisar("Não foi possível renomear no servidor: " + (e.message || e)); return; }
+    }
+    salvarLocal(true);
+    projetos[novo] = projetos[antigo];
+    delete projetos[antigo];
+    projetoAtual = novo;
+    Object.keys(projetos).forEach(function (nome) {
+      (projetos[nome].equipamentos || []).forEach(function (eq) { if (eq.diagrama === antigo) eq.diagrama = novo; });
+    });
+    estado.equipamentos.forEach(function (eq) { if (eq.diagrama === antigo) eq.diagrama = novo; });
+    try {
+      var camadas = localStorage.getItem("grafo-camadas:" + antigo);
+      if (camadas) { localStorage.setItem("grafo-camadas:" + novo, camadas); localStorage.removeItem("grafo-camadas:" + antigo); }
+    } catch (e) {}
+    salvarLocal(true);
+    renderProjetos();
+    renderTudo();
+    window.dispatchEvent(new CustomEvent("grafo:projeto-renomeado", { detail: { antigo: antigo, novo: novo } }));
+    avisar("Projeto renomeado para “" + novo + "”.");
+  }
+  document.getElementById("btnRenomearProjeto").addEventListener("click", renomearProjetoAtual);
+
   // Tira um projeto da lista (excluído, ou a pessoa saiu da equipe) e abre outro.
   function removerProjetoDaLista(nome) {
     if (!projetos[nome]) return;

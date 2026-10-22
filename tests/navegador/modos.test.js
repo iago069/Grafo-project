@@ -146,3 +146,20 @@ test("tema Fernando troca a logo pelo símbolo do tema; outro tema volta a logo 
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("renomear projeto depois de salvar: troca o nome na lista e mantém o conteúdo", async () => {
+  const pagina = await abrirPagina(navegador, site);
+  await esperarDiagrama(pagina);
+  const antes = await pagina.evaluate(() => window.GrafoApp.projetoAtual());
+  const qtd = (await projetoSalvo(pagina)).equipamentos.length;
+  await pagina.click("#btnRenomearProjeto");
+  await pagina.fill("#modalInput", "POP Renomeado");
+  await pagina.click("[data-modal-confirm]");
+  await pagina.waitForFunction(() => window.GrafoApp.projetoAtual() === "POP Renomeado");
+  const opcoes = await pagina.$$eval("#projetoSelect option", os => os.map(o => o.value));
+  assert.ok(opcoes.includes("POP Renomeado"));
+  assert.ok(!opcoes.includes(antes));
+  assert.equal((await projetoSalvo(pagina)).equipamentos.length, qtd);
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});
