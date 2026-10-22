@@ -298,6 +298,8 @@
     });
     var obstaculos = coletarObstaculos(svg);
     tamanhoDasLags = contarLags();
+    var maisGrosso = estado.conexoes.reduce(function (m, c) { return Math.max(m, Number(c.grossura) || 2); }, 2);
+    CONFIG_ROTEAMENTO_CABOS.espaco = Math.max(14, Math.round(maisGrosso * 2.2 + 8));
     // Cabos curtos primeiro ficam com a trilha ideal; os longos desviam deles.
     function comprimento(r) { return Math.abs(r.s.x - r.e.x) + Math.abs(r.s.y - r.e.y); }
     rotas.sort(function (a, b) { return comprimento(a) - comprimento(b); });
@@ -379,22 +381,10 @@
       g.slice(1).forEach(function (rota) {
         var t0 = rota.aresta.querySelector("text:not(.cabo-extra)");
         if (t0) t0.style.display = "none";
-        if (L.length < 3) return; // cabo reto: as linhas já correm lado a lado
-        var mesmoSentido = rota.conexao.de === lider.conexao.de;
-        var s = mesmoSentido ? rota.s : rota.e, e = mesmoSentido ? rota.e : rota.s;
-        var F = [s, { x: L[1].x, y: s.y }].concat(L.slice(1, -1), [{ x: L[L.length - 2].x, y: e.y }, e]);
-        if (!mesmoSentido) F.reverse();
-        F = limparPontos(F);
-        rota.path.setAttribute("d", caminhoOrtogonalArredondado(F));
-        rotasDesenhadas[estado.conexoes.indexOf(rota.conexao)] = F;
-        var t = rota.aresta.querySelector("text:not(.cabo-extra)");
-        if (t) t.style.display = "none";
+        // Cada porta segue no seu próprio caminho, lado a lado (nunca um cabo por cima do outro).
         rota.aresta.querySelectorAll(".cabo-etiqueta").forEach(function (e) { e.remove(); });
       });
       lider.aresta.classList.add("lag-tronco");
-      // Tronco mais grosso que um cabo comum (proporcional à espessura escolhida).
-      var largura = parseFloat(lider.path.getAttribute("stroke-width")) || 2;
-      lider.path.style.strokeWidth = (largura * 1.6).toFixed(1) + "px";
     });
   }
 
