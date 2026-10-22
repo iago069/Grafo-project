@@ -157,7 +157,7 @@
     if (alvo === "editor") mostrarEditor(); else irPara({ nome: alvo });
   });
   var marca = document.querySelector(".sidebar .brand");
-  if (marca) { marca.style.cursor = "pointer"; marca.title = "Ir para o Início"; marca.addEventListener("click", function () { irPara({ nome: "inicio" }); }); }
+  if (marca) { marca.style.cursor = "pointer"; marca.title = "Ir para o diagrama"; marca.addEventListener("click", function () { mostrarEditor(); }); }
 
   function definirVista(v) {
     document.body.setAttribute("data-vista", v);
@@ -172,6 +172,8 @@
   // O diagrama só mede direito com o editor visível: mostra primeiro, depois redesenha.
   function mostrarEditor() { pararCena(); definirVista("editor"); if (app.redesenhar) app.redesenhar(); }
   async function irPara(t) {
+    // Sem tela de Início: quem pedia o Início vai para o diagrama.
+    if (t.nome === "inicio") { mostrarEditor(); return; }
     if (tela.editando && !(t.nome === tela.nome && t.paginaId === tela.paginaId)) {
       if (!await confirmar("Há uma página sendo editada. Sair sem salvar?", "Página não salva", "Sair sem salvar")) return;
     }
@@ -642,7 +644,7 @@
   });
 
   window.GrafoBiblioteca = {
-    inicio: function () { irPara({ nome: "inicio" }); },
+    inicio: mostrarEditor,
     editor: mostrarEditor,
     livroDoProjeto: abrirLivroDoProjeto,
     // Para a paleta de comandos (Ctrl+K).

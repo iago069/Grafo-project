@@ -142,7 +142,7 @@ async function abrirPagina(navegador, site, { viewport = { width: 1400, height: 
   await contexto.route("**/@supabase/supabase-js@*/**", r => r.fulfill({ contentType: "text/javascript", body: script }));
   // Nos testes, todas as seções do menu começam abertas (o padrão do app recolhe
   // os grupos depois do primeiro); só vale se a página ainda não guardou escolha.
-  // Os testes abrem direto no diagrama (o app começa na tela de Início).
+  // Os testes abrem direto no diagrama (o app sempre abre no diagrama ou na biblioteca).
   await contexto.addInitScript(() => { try { if (localStorage.getItem("grafo-vista-inicial") === null) localStorage.setItem("grafo-vista-inicial", "editor"); } catch (e) {} });
   await contexto.addInitScript(() => { try { if (localStorage.getItem("grafo-menu-fechado-v2") === null) localStorage.setItem("grafo-menu-fechado-v2", "[]"); } catch (e) {} });
   if (antes) await contexto.addInitScript(antes);

@@ -10,16 +10,16 @@ test.after(async () => { await navegador?.close(); await site?.fechar(); });
 // Sem o atalho dos testes: o app abre onde a pessoa parou, como para as pessoas.
 const comoUsuario = { antes: () => localStorage.removeItem("grafo-vista-inicial") };
 
-test("abre no diagrama; Início pela logo; estante, livro e página; busca; volta ao diagrama", async () => {
+test("abre no diagrama; logo volta ao diagrama; estante, livro e página; busca; volta ao diagrama", async () => {
   const pagina = await abrirPagina(navegador, site, Object.assign({ viewport: { width: 1400, height: 900 } }, comoUsuario));
   await esperarEditor(pagina);
   await pagina.waitForFunction(() => window.GrafoBiblioteca);
   assert.equal(await pagina.getAttribute("body", "data-vista"), "editor", "primeira vez: abre no diagrama");
   assert.equal(await pagina.$('[data-vista-ir="inicio"]'), null, "sem aba Início no topo");
-  // A logo leva ao Início animado.
+  // Sem tela de Início: a logo fica no diagrama.
   await pagina.click(".sidebar .brand");
-  await pagina.waitForSelector(".cena h1");
-  assert.match(await pagina.textContent(".cena-rodape"), /Projeto Ação/);
+  assert.equal(await pagina.getAttribute("body", "data-vista"), "editor");
+  assert.equal(await pagina.$(".cena h1"), null);
   // Estante → livro → página.
   await pagina.click('[data-vista-ir="biblioteca"]');
   await pagina.click('.bib-vazia [data-acao="nova-estante"]');
