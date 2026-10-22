@@ -693,7 +693,7 @@
     if (!grafo) return;
     var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     Array.prototype.forEach.call(grafo.children, function (el) {
-      if (!el.classList || !(el.classList.contains("node") || el.classList.contains("edge") || el.classList.contains("cluster") || el.classList.contains("anotacao"))) return;
+      if (!el.classList || !(el.classList.contains("node") || el.classList.contains("edge") || el.classList.contains("cluster") || el.classList.contains("anotacao") || el.classList.contains("legenda-cabos"))) return;
       var b;
       try { b = el.getBBox(); } catch (e) { return; }
       if (!b || (!b.width && !b.height)) return;
@@ -5666,6 +5666,7 @@
     ["desenhos", "Desenhos e formas", "g.camada-desenhos"],
     ["notas", "Notas", "g.anotacao"],
     ["grupos", "Caixas dos grupos", "g.cluster"],
+    ["legenda", "Legenda dos cabos", "g.legenda-cabos"],
     ["cores", "Cor diferente em cada cabo", null]
   ];
   function chaveCamadas() { return "grafo-camadas:" + projetoAtual; }
@@ -5849,6 +5850,55 @@
     }
     return (c.potencia || (c.tipo ? String(c.tipo).slice(0, 18) : "")) + trafego;
   }
+  // Legenda automática no desenho (sai no PNG/SVG/PDF): uma linha por ligação
+  // (a LAG conta uma vez), com a cor do cabo, as pontas e o selo curto.
+  var LEGENDA_MAX = 30;
+  function desenharLegendaCabos() {
+    var svg = elCanvas.querySelector("svg"), grafo = svg && svg.querySelector("g.graph");
+    if (!grafo) return;
+    var antiga = grafo.querySelector("g.legenda-cabos");
+    if (antiga) antiga.remove();
+    if (!estado.conexoes.length) return;
+    var nomePorId = {};
+    estado.equipamentos.forEach(function (eq) { nomePorId[eq.id] = eq.nome || eq.id; });
+    tamanhoDasLags = contarLags();
+    var vistas = {}, itens = [];
+    estado.conexoes.forEach(function (c, i) {
+      var k = chaveDaLigacao(c, i);
+      if (vistas[k]) return;
+      vistas[k] = true;
+      itens.push({ cor: corValida(corDoCaboNoDesenho(c, null, i), "#5A7284"), nome: (nomePorId[c.de] || c.de) + " ↔ " + (nomePorId[c.para] || c.para), selo: rotuloCurto(c), estilo: c.estilo });
+    });
+    var sobra = itens.length - LEGENDA_MAX;
+    if (sobra > 0) itens = itens.slice(0, LEGENDA_MAX);
+    var maxX = -Infinity, minY = Infinity;
+    grafo.querySelectorAll("g.node, g.cluster").forEach(function (n) {
+      try { var bb = n.getBBox(), t = translateDoElemento(n); maxX = Math.max(maxX, bb.x + t.x + bb.width); minY = Math.min(minY, bb.y + t.y); } catch (e) {}
+    });
+    if (!isFinite(maxX)) return;
+    var maiorTexto = itens.reduce(function (m, it) { return Math.max(m, it.nome.length * 5.6 + (it.selo ? it.selo.length * 5.2 + 14 : 0)); }, 60);
+    var linha = 18, largura = Math.min(520, Math.max(200, 58 + maiorTexto)), altura = 34 + itens.length * linha + (sobra > 0 ? linha : 0);
+    var x = maxX + 60, y = minY;
+    var g = el("g", { "class": "legenda-cabos" }, grafo);
+    el("rect", { x: x, y: y, width: largura, height: altura, rx: 10, fill: "#FFFFFF", stroke: "#D3DCE3", "stroke-width": 1 }, g);
+    var titulo = el("text", { x: x + 14, y: y + 20, "font-family": "Helvetica, Arial, sans-serif", "font-size": 10, "font-weight": 700, "letter-spacing": "0.08em", fill: "#14212B" }, g);
+    titulo.textContent = "LEGENDA · " + (itens.length + Math.max(0, sobra)) + (itens.length + Math.max(0, sobra) === 1 ? " LIGAÇÃO" : " LIGAÇÕES");
+    itens.forEach(function (it, i) {
+      var yy = y + 40 + i * linha;
+      el("line", { x1: x + 14, y1: yy - 3.5, x2: x + 40, y2: yy - 3.5, stroke: it.cor, "stroke-width": 3.5, "stroke-linecap": "round", "stroke-dasharray": it.estilo === "dashed" ? "5 4" : it.estilo === "dotted" ? "1 4" : null }, g);
+      var t = el("text", { x: x + 50, y: yy, "font-family": "Helvetica, Arial, sans-serif", "font-size": 10, fill: "#14212B" }, g);
+      t.textContent = it.nome;
+      if (it.selo) {
+        var s2 = el("tspan", { dx: 8, fill: "#5B6F7E", "font-family": "Menlo, Consolas, monospace", "font-size": 9 }, t);
+        s2.textContent = it.selo;
+      }
+    });
+    if (sobra > 0) {
+      var mais = el("text", { x: x + 50, y: y + 40 + itens.length * linha, "font-family": "Helvetica, Arial, sans-serif", "font-size": 9.5, "font-style": "italic", fill: "#5B6F7E" }, g);
+      mais.textContent = "+ " + sobra + " ligações (veja a lista de cabos)";
+    }
+  }
+
   // Troca o texto do Graphviz pelo rótulo curto; o texto completo vira dica.
   function prepararRotuloCurto(aresta, c) {
     var texto = aresta.querySelector("text");
@@ -7278,6 +7328,7 @@
       rotearCabosOrtogonalmente();
       desenharDesenhos(); // formas, textos e caneta (10-desenho-e-ferramentas.js)
       desenharAnotacoes(); // antes do viewBox: as anotações também contam na área do desenho
+      desenharLegendaCabos(); // legenda automática das ligações (cor de cada cabo)
       ajustarViewBoxAoConteudo(false);
       var revelarAgora = ajustarNaProximaRenderizacao;
       if (ajustarNaProximaRenderizacao) {

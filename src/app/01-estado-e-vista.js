@@ -255,7 +255,7 @@
     if (!grafo) return;
     var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     Array.prototype.forEach.call(grafo.children, function (el) {
-      if (!el.classList || !(el.classList.contains("node") || el.classList.contains("edge") || el.classList.contains("cluster") || el.classList.contains("anotacao"))) return;
+      if (!el.classList || !(el.classList.contains("node") || el.classList.contains("edge") || el.classList.contains("cluster") || el.classList.contains("anotacao") || el.classList.contains("legenda-cabos"))) return;
       var b;
       try { b = el.getBBox(); } catch (e) { return; }
       if (!b || (!b.width && !b.height)) return;

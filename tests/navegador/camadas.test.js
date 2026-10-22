@@ -61,3 +61,17 @@ test("menu lateral: grupos Editar diagrama, Documentação e Importar e exportar
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("legenda automática dos cabos: uma linha por ligação, com a cor do cabo; a camada esconde", async () => {
+  const pagina = await abrirPagina(navegador, site, { viewport: { width: 1400, height: 900 } });
+  await esperarDiagrama(pagina);
+  await pagina.waitForSelector("#canvas g.legenda-cabos");
+  const n = await pagina.evaluate(() => document.querySelectorAll("#canvas g.legenda-cabos line").length);
+  assert.ok(n >= 1);
+  assert.match(await pagina.textContent("#canvas g.legenda-cabos"), /LEGENDA/);
+  assert.match(await pagina.textContent("#canvas g.legenda-cabos"), /↔/);
+  await pagina.waitForTimeout(2500);
+  if (process.env.FOTO_LEGENDA) await pagina.screenshot({ path: process.env.FOTO_LEGENDA });
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

@@ -1389,6 +1389,7 @@
       rotearCabosOrtogonalmente();
       desenharDesenhos(); // formas, textos e caneta (10-desenho-e-ferramentas.js)
       desenharAnotacoes(); // antes do viewBox: as anotações também contam na área do desenho
+      desenharLegendaCabos(); // legenda automática das ligações (cor de cada cabo)
       ajustarViewBoxAoConteudo(false);
       var revelarAgora = ajustarNaProximaRenderizacao;
       if (ajustarNaProximaRenderizacao) {
