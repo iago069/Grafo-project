@@ -1158,7 +1158,7 @@
   var PALETA_CABOS = ["#1E6FD9", "#D32F2F", "#1B7F2A", "#8E24AA", "#E08A00", "#00897B", "#C2185B", "#5D4037",
     "#3949AB", "#7CB342", "#F4511E", "#00ACC1", "#6D4C41", "#AD1457", "#546E7A", "#9E9D24"];
   function chaveDaLigacao(c, i) {
-    var m = /^LAG\s+(ae\d+)/i.exec(c.tipo || "");
+    var m = /^LAG\s+(ae\d+|lag-?\d+)/i.exec(c.tipo || "");
     return m ? [c.de, c.para].sort().join("|") + "|" + m[1].toLowerCase() : "cabo" + i;
   }
   function ehCorPadrao(cor) { return !cor || String(cor).toUpperCase() === COR_CABO_PADRAO_APP; }
@@ -1206,7 +1206,7 @@
   function contarLags() {
     var n = {};
     estado.conexoes.forEach(function (c) {
-      var m = /^LAG\s+(ae\d+)/i.exec(c.tipo || "");
+      var m = /^LAG\s+(ae\d+|lag-?\d+)/i.exec(c.tipo || "");
       if (!m) return;
       var k = [c.de, c.para].sort().join("|") + "|" + m[1].toLowerCase();
       n[k] = (n[k] || 0) + 1;
@@ -1215,7 +1215,7 @@
   }
   var tamanhoDasLags = {};
   function rotuloCurto(c) {
-    var m = /^LAG\s+(ae\d+)/i.exec(c.tipo || "");
+    var m = /^LAG\s+(ae\d+|lag-?\d+)/i.exec(c.tipo || "");
     var trafego = (c.trafegoEntrada ? " ↓" + c.trafegoEntrada : "") + (c.trafegoSaida ? " ↑" + c.trafegoSaida : "");
     if (m) {
       var k = [c.de, c.para].sort().join("|") + "|" + m[1].toLowerCase();

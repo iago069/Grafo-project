@@ -12,7 +12,8 @@
   "use strict";
 
   var IMG = "./assets/images/equipamentos/";
-  var RE_PORTA = /^((?:xe|et|ge|mge|xle|fte)-\d+\/\d+\/\d+(?::\d+)?|ae\d+)$/i;
+  var RE_PORTA = /^((?:xe|et|ge|mge|xle|fte)-\d+\/\d+\/\d+(?::\d+)?|ae\d+|lag-?\d+|(?:(?:hundred|forty|twenty-five|ten)-)?gigabit-ethernet-\d+(?:\/\d+)+)$/i;
+  var RE_LAG = /^(ae\d+|lag-?\d+)$/i;
   var RE_TAXA = /^([\d.,]+)\s*([kmgt]?)bps$/i;
 
   function limpar(t) { return String(t == null ? "" : t).replace(/ /g, " ").trim(); }
@@ -78,9 +79,14 @@
       if (/virtual/i.test(campos[iTipo])) return; // subinterface (.1766): não é cabo
       var iCabo = -1;
       for (var b = iTipo + 1; b < campos.length; b++) if (/^#\d+$/.test(campos[b])) { iCabo = b; break; }
-      var desc = "";
-      for (var c = iTipo + 1; c < (iCabo < 0 ? campos.length : iCabo); c++) if (!vazio(campos[c])) { desc = campos[c]; break; }
-      var reg = { porta: campos[0], velocidade: "", lag: "", desc: desc, fonte: "netbox" };
+      // Depois do tipo: a coluna da LAG ("LAG-1", "ae7") e a descrição.
+      var desc = "", lagCol = "";
+      for (var c = iTipo + 1; c < (iCabo < 0 ? campos.length : iCabo); c++) {
+        if (vazio(campos[c])) continue;
+        if (!lagCol && !desc && RE_LAG.test(campos[c]) && c + 1 < campos.length) { lagCol = campos[c]; continue; }
+        desc = campos[c]; break;
+      }
+      var reg = { porta: campos[0], velocidade: "", lag: lagCol.toLowerCase(), desc: desc, fonte: "netbox" };
       var mv = /\((\d+)GE\)/i.exec(campos[iTipo]);
       if (mv) reg.velocidade = mv[1] + "G";
       if (iCabo >= 0) {
@@ -151,7 +157,7 @@
       var reg = { porta: l[i], velocidade: "", lag: "", desc: "", fonte: "blocos", status: status || "online" };
       if (desc && !/^sem\s+(alias|descri)/i.test(desc)) {
         if (reg.status === "offline") reg.notaDesc = desc;
-        else { var v = vizinhoDaDescricao(desc); reg.desc = desc; reg.vizinho = v.vizinho; if (v.portaVizinho) reg.portaVizinho = v.portaVizinho; }
+        else { var v = vizinhoDaDescricao(desc); reg.desc = desc; reg.vizinho = v.vizinho; reg.vizinhoPalpite = true; if (v.portaVizinho) reg.portaVizinho = v.portaVizinho; }
       }
       regs.push(reg);
     }
@@ -174,7 +180,9 @@
       });
       if (r.taxas && r.taxas.length) atual.taxas = r.taxas;
       // Vizinho: LLDP é o próprio equipamento dizendo; vale mais que o NetBox.
-      if (r.vizinho && (!atual.vizinho || r.fonte === "lldp")) { atual.vizinho = r.vizinho; atual.portaVizinho = r.portaVizinho || atual.portaVizinho; }
+      if (r.vizinho && (!atual.vizinho || r.fonte === "lldp" || (atual.vizinhoPalpite && !r.vizinhoPalpite))) {
+        atual.vizinho = r.vizinho; atual.portaVizinho = r.portaVizinho || atual.portaVizinho; atual.vizinhoPalpite = !!r.vizinhoPalpite;
+      }
       if (manda) atual.fonte = r.fonte;
     });
     return ordem.map(function (k) { return porPorta[k]; });
@@ -217,10 +225,10 @@
 
     // LAGs: membro tem descrição "aeN"; a descrição da LAG diz o destino.
     var lags = {};
-    portas.forEach(function (p) { if (/^ae\d+$/i.test(p.porta)) lags[p.porta.toLowerCase()] = p; });
+    portas.forEach(function (p) { if (RE_LAG.test(p.porta)) lags[p.porta.toLowerCase()] = p; });
     portas.forEach(function (p) {
-      if (/^ae\d+$/i.test(p.porta)) return;
-      if (/^ae\d+$/i.test(p.desc || "")) { p.lag = p.desc.toLowerCase(); p.desc = ""; }
+      if (RE_LAG.test(p.porta)) return;
+      if (RE_LAG.test(p.desc || "")) { p.lag = p.desc.toLowerCase(); p.desc = ""; }
       if (p.lag && !lags[p.lag.toLowerCase()]) lags[p.lag.toLowerCase()] = { porta: p.lag, desc: "", fontes: [] };
     });
 
@@ -235,7 +243,7 @@
     }
 
     portas.forEach(function (p) {
-      if (/^ae\d+$/i.test(p.porta)) return;
+      if (RE_LAG.test(p.porta)) return;
       var lag = p.lag ? lags[p.lag.toLowerCase()] : null;
       var descDestino = (lag && lag.desc) || p.desc || "";
       var nomeViz = p.vizinho || (lag && lag.vizinho) || descDestino;

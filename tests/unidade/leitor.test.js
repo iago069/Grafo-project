@@ -153,3 +153,25 @@ test("lista em blocos (Datacom): porta / descrição / UP-DOWN vira cabos com vi
   assert.ok(r.notas.some(n => /ANTIGO-LINK-CBORGES \(DOWN\)/.test(n)));
   assert.ok(E.validarProjeto(simples(r.projeto()), "estrito").ok);
 });
+
+test("NetBox com portas do Datacom: vizinho e porta do cabo, LAG-1 vira LAG; junto com a lista em blocos o NetBox manda", () => {
+  const netbox = [
+    "ten-gigabit-ethernet-1/1/1\t—\t\tSFP+ (10GE)\t—\t—\t—\t—\tENLACE_POP-SXH03_DISTR-51_XE2\t\t#605\tPOP-SXH03_DISTR-51 (5428682)  ten-gigabit-ethernet-1/1/2\t—\t    ",
+    "\t ten-gigabit-ethernet-1/1/2\t—\t\tSFP+ (10GE)\t—\t—\t—\t—\tOLT34_XE0/0\t\t#606\tPOP-TPA01_OLT-34 (PRKS00B4826F)  10giga-ethernet0/0\t—\t    ",
+    "\t ten-gigabit-ethernet-1/1/8.1753\t—\t\tVirtual\t—\t—\t—\t—\t—\t\t—\t—\t—\t ",
+    "\t ten-gigabit-ethernet-1/1/12\t—\t\tSFP+ (10GE)\t—\tLAG-1\t—\t—\tUPLINK_CORE_TPR_06_XE_0_0_34\t\t#614\tcore-tpr-06 (WS3718330131)  xe-0/0/34\t—\t    ",
+    "\t ten-gigabit-ethernet-1/1/13\t—\t\tSFP+ (10GE)\t—\tLAG-1\t—\t—\tUPLINK_CORE_TPR_06_XE_0_0_35\t\t#615\tcore-tpr-06 (WS3718330131)  xe-0/0/35\t—\t    ",
+    "\t ten-gigabit-ethernet-1/1/16\t—\t\tSFP+ (10GE)\t—\t—\t—\t—\t—\t\t—\t—\t—\t    "
+  ].join("\n");
+  const blocos = ["ten-gigabit-ethernet-1/1/2", "OLT34_XE0/0", "", "UP"].join("\n");
+  const r = L.ler(netbox + "\n" + blocos, "DISTR-TPR");
+  const cabos = simples(r.cabos).map(c => [c.saida, c._vizinho, c.chegada, c.potencia, c.tipo]);
+  assert.deepEqual(cabos.map(c => c.slice(0, 4)).sort((a, b) => a[0].localeCompare(b[0], "pt", { numeric: true })), [
+    ["ten-gigabit-ethernet-1/1/1", "POP-SXH03_DISTR-51", "ten-gigabit-ethernet-1/1/2", "10G"],
+    ["ten-gigabit-ethernet-1/1/2", "POP-TPA01_OLT-34", "10giga-ethernet0/0", "10G"],
+    ["ten-gigabit-ethernet-1/1/12", "core-tpr-06", "xe-0/0/34", "10G"],
+    ["ten-gigabit-ethernet-1/1/13", "core-tpr-06", "xe-0/0/35", "10G"]
+  ]);
+  assert.match(cabos.find(c => c[0].endsWith("/12"))[4], /^LAG lag-1/);
+  assert.ok(E.validarProjeto(simples(r.projeto()), "estrito").ok);
+});

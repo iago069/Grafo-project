@@ -368,7 +368,7 @@
   function juntarCabosDeLag(rotas) {
     var grupos = {};
     rotas.forEach(function (rota) {
-      var m = /^LAG\s+(ae\d+)/i.exec(rota.conexao.tipo || "");
+      var m = /^LAG\s+(ae\d+|lag-?\d+)/i.exec(rota.conexao.tipo || "");
       if (!m || !rota.pts) return;
       var par = [rota.conexao.de, rota.conexao.para].sort().join("|");
       (grupos[par + "|" + m[1].toLowerCase()] = grupos[par + "|" + m[1].toLowerCase()] || []).push(rota);

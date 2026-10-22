@@ -832,7 +832,7 @@
     estado.conexoes.forEach(function (c) {
       if (id && c.de !== id && c.para !== id) return;
       var texto = [c.tipo, c.potencia].filter(Boolean).join(" · ");
-      if (/^LAGs+aed+/i.test(c.tipo || "")) texto += " · 2×";
+      if (/^LAG\s+(ae\d+|lag-?\d+)/i.test(c.tipo || "")) texto += " · 2×";
       maior = Math.max(maior, texto.length);
     });
     return Math.min(420, maior * 5.6);
