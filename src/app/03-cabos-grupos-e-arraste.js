@@ -272,15 +272,10 @@
         }
       }
     }
-    // Nenhum lugar livre: o nome fica escondido (aparece ao passar o mouse no
-    // cabo) em vez de cair em cima de portas e de outros nomes.
-    texto.style.display = "none";
-    texto.setAttribute("data-sem-espaco", "");
-    var dica = aresta.querySelector("title.dica-cabo") || document.createElementNS(NS_SVG, "title");
-    dica.setAttribute("class", "dica-cabo");
-    dica.textContent = texto.textContent;
-    aresta.insertBefore(dica, aresta.firstChild);
-    return false;
+    // Nenhum lugar 100% livre: o nome nunca some. Fica no lugar que menos encosta
+    // (cair em cima de equipamento pesa 20 vezes mais que encostar em outro nome).
+    colocar(trechos[melhor.k], melhor.f, melhor.lado);
+    ocupados.push(caixa() || melhor.caixa);
   }
 
   function rotearCabosOrtogonalmente() {
@@ -336,7 +331,7 @@
       posicionarRotuloDaAresta(rota.aresta, rotasDesenhadas[estado.conexoes.indexOf(rota.conexao)] || rota.pts, rotulos);
     });
     rotas.forEach(function (rota) { desenharSeloDoRotulo(rota.aresta); });
-    avisarNomesSemEspaco(svg);
+    avisarNomesSemEspaco(svg); // some o aviso antigo, se ainda estiver na tela
   }
 
   // Membros da mesma LAG (mesmos equipamentos, tipo "LAG aeN…") seguem o mesmo
