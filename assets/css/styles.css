@@ -3254,3 +3254,10 @@ body:not([data-modo-diagrama="ftth"]) .so-modo-ftth { display: none; }
 .sm-item.escolhido { background: color-mix(in srgb, var(--accent) 16%, transparent); }
 .sm-item.escolhido strong::after { content: " ✓"; color: var(--accent); }
 .sm-vazio { margin: 8px 10px 10px; font-size: 0.78rem; color: var(--text-dim); }
+
+/* "×" das legendas: remove (volta em Camadas). */
+.legenda-cabos .legenda-fechar { cursor: pointer; opacity: 0.55; transition: opacity 0.15s; }
+.legenda-cabos:hover .legenda-fechar, .legenda-cabos .legenda-fechar:hover { opacity: 1; }
+.legenda[hidden] { display: none !important; }
+.legenda-fechar-tipos { width: 22px; height: 22px; min-height: 0; padding: 0; margin-left: auto; border-radius: 7px; border: 1px solid transparent; background: transparent; color: var(--text-dim); font-size: 15px; line-height: 1; cursor: pointer; opacity: 0.6; box-shadow: none; }
+.legenda-fechar-tipos:hover { opacity: 1; background: color-mix(in srgb, var(--text) 8%, transparent); transform: none; }

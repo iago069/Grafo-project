@@ -75,3 +75,23 @@ test("legenda automática dos cabos: uma linha por ligação, com a cor do cabo;
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("remover as legendas pelo ×: some da tela e da exportação; volta em Camadas", async () => {
+  const pagina = await abrirPagina(navegador, site, { viewport: { width: 1400, height: 900 } });
+  await esperarDiagrama(pagina);
+  await pagina.waitForSelector("#canvas g.legenda-cabos .legenda-fechar");
+  await pagina.dispatchEvent("#canvas g.legenda-cabos .legenda-fechar", "click");
+  await pagina.waitForFunction(() => !document.querySelector("#canvas g.legenda-cabos"));
+  await pagina.click("#legenda .legenda-fechar-tipos");
+  assert.equal(await pagina.isVisible("#legenda"), false);
+  // Camadas: as duas aparecem desmarcadas; marcar traz de volta.
+  await pagina.click("#btnCamadas");
+  assert.equal(await pagina.isChecked('[data-camada="legenda"]'), false);
+  assert.equal(await pagina.isChecked('[data-camada="tipos"]'), false);
+  await pagina.check('[data-camada="legenda"]');
+  await pagina.check('[data-camada="tipos"]');
+  await pagina.waitForSelector("#canvas g.legenda-cabos");
+  assert.equal(await pagina.isVisible("#legenda"), true);
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

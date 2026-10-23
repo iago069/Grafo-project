@@ -347,6 +347,13 @@
       }
       elLegenda.appendChild(span);
     });
+    if (elLegenda.childNodes.length) {
+      var fechar = document.createElement("button");
+      fechar.type = "button"; fechar.className = "legenda-fechar-tipos"; fechar.textContent = "×";
+      fechar.title = "Remover a legenda (volta em Camadas)"; fechar.setAttribute("aria-label", fechar.title);
+      fechar.addEventListener("click", function () { ocultarCamada("tipos"); });
+      elLegenda.appendChild(fechar);
+    }
   }
 
   // Nomes das portas de cima e de baixo, na vertical (lidos de baixo para cima).

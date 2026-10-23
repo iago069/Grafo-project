@@ -5663,6 +5663,7 @@
     ["notas", "Notas", "g.anotacao"],
     ["grupos", "Caixas dos grupos", "g.cluster"],
     ["legenda", "Legenda dos cabos", "g.legenda-cabos"],
+    ["tipos", "Legenda dos tipos (embaixo)", null],
     ["cores", "Cor diferente em cada cabo", null]
   ];
   function chaveCamadas() { return "grafo-camadas:" + projetoAtual; }
@@ -5681,9 +5682,20 @@
         else if (e.hasAttribute("data-camada-oculta")) { e.style.display = ""; e.removeAttribute("data-camada-oculta"); }
       });
     });
+    // Legenda dos tipos, embaixo do quadro (fora do desenho).
+    elLegenda.hidden = !!ocultas.tipos;
     var botao = document.getElementById("btnCamadas");
     if (botao) botao.classList.toggle("com-ocultas", Object.keys(ocultas).some(function (k) { return ocultas[k]; }));
   }
+  // Esconde uma camada pelo "×" da própria legenda (volta em Camadas).
+  function ocultarCamada(k) {
+    var ocultas = camadasOcultas();
+    ocultas[k] = true;
+    try { localStorage.setItem(chaveCamadas(), JSON.stringify(ocultas)); } catch (e) {}
+    if (k === "legenda") gerar(); else aplicarCamadas();
+    avisar("Legenda removida. Para mostrar de novo: Camadas.");
+  }
+
   function criarMenuDeCamadas() {
     if (!caixaFerramentas || document.getElementById("btnCamadas")) return;
     var sep = document.createElement("span"); sep.className = "ferramentas-sep";
@@ -5726,7 +5738,7 @@
       var ocultas = camadasOcultas();
       if (event.target.checked) delete ocultas[k]; else ocultas[k] = true;
       try { localStorage.setItem(chaveCamadas(), JSON.stringify(ocultas)); } catch (e) {}
-      if (k === "cores") { gerar(); return; } // muda a cor dos cabos: redesenha
+      if (k === "cores" || k === "legenda") { gerar(); return; } // muda o desenho: redesenha
       aplicarCamadas();
     });
     document.addEventListener("pointerdown", function (event) { if (!menu.hidden && !menu.contains(event.target) && !botao.contains(event.target)) abrir(false); });
@@ -5854,7 +5866,7 @@
     if (!grafo) return;
     var antiga = grafo.querySelector("g.legenda-cabos");
     if (antiga) antiga.remove();
-    if (!estado.conexoes.length) return;
+    if (!estado.conexoes.length || camadasOcultas().legenda) return; // removida: nem ocupa espaço
     var nomePorId = {};
     estado.equipamentos.forEach(function (eq) { nomePorId[eq.id] = eq.nome || eq.id; });
     tamanhoDasLags = contarLags();
@@ -5878,6 +5890,12 @@
     var g = el("g", { "class": "legenda-cabos" }, grafo);
     el("rect", { x: x, y: y, width: largura, height: altura, rx: 10, fill: "#FFFFFF", stroke: "#D3DCE3", "stroke-width": 1 }, g);
     var titulo = el("text", { x: x + 14, y: y + 20, "font-family": "Helvetica, Arial, sans-serif", "font-size": 10, "font-weight": 700, "letter-spacing": "0.08em", fill: "#14212B" }, g);
+    var fechar = el("g", { "class": "legenda-fechar", transform: "translate(" + (x + largura - 22) + "," + (y + 8) + ")" }, g);
+    el("title", null, fechar).textContent = "Remover a legenda (volta em Camadas)";
+    el("rect", { width: 16, height: 16, rx: 5, fill: "#EEF2F5" }, fechar);
+    el("path", { d: "M5 5l6 6M11 5l-6 6", stroke: "#4B5F6E", "stroke-width": 1.6, "stroke-linecap": "round" }, fechar);
+    fechar.addEventListener("pointerdown", function (ev) { ev.stopPropagation(); });
+    fechar.addEventListener("click", function (ev) { ev.stopPropagation(); ocultarCamada("legenda"); });
     titulo.textContent = "LEGENDA · " + (itens.length + Math.max(0, sobra)) + (itens.length + Math.max(0, sobra) === 1 ? " LIGAÇÃO" : " LIGAÇÕES");
     itens.forEach(function (it, i) {
       var yy = y + 40 + i * linha;
@@ -6282,6 +6300,13 @@
       }
       elLegenda.appendChild(span);
     });
+    if (elLegenda.childNodes.length) {
+      var fechar = document.createElement("button");
+      fechar.type = "button"; fechar.className = "legenda-fechar-tipos"; fechar.textContent = "×";
+      fechar.title = "Remover a legenda (volta em Camadas)"; fechar.setAttribute("aria-label", fechar.title);
+      fechar.addEventListener("click", function () { ocultarCamada("tipos"); });
+      elLegenda.appendChild(fechar);
+    }
   }
 
   // Nomes das portas de cima e de baixo, na vertical (lidos de baixo para cima).
@@ -7951,6 +7976,7 @@
 
   async function prepararSvgParaExportacao(svgEl, removerImagens) {
     var copia = svgEl.cloneNode(true);
+    copia.querySelectorAll(".legenda-fechar").forEach(function (b) { b.remove(); }); // botão da tela
     copia.setAttribute("xmlns", "http://www.w3.org/2000/svg");
     copia.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
     copia.style.transform = "none";
@@ -8067,7 +8093,7 @@
     // Legenda: a mesma da tela (por tipo; no Monitoramento, por status).
     var xLegenda = x0 + MARGEM;
     var yLegenda = baseRodape + 30;
-    itensDaLegenda(estado).forEach(function (item) {
+    (camadasOcultas().tipos ? [] : itensDaLegenda(estado)).forEach(function (item) {
       moldura.appendChild(el("rect", { x: xLegenda, y: yLegenda - 7.5, width: 8, height: 8, rx: item.status ? 4 : 1.5, fill: item.cor }));
       var rotulo = el("text", { x: xLegenda + 12, y: yLegenda, "font-size": 9, "fill-opacity": 0.8 }, item.texto);
       moldura.appendChild(rotulo);
@@ -8202,6 +8228,7 @@
 
   async function prepararSvgSeguroParaPng(svgEl) {
     var copia = svgEl.cloneNode(true);
+    copia.querySelectorAll(".legenda-fechar").forEach(function (b) { b.remove(); }); // botão da tela
     copia.setAttribute("xmlns", "http://www.w3.org/2000/svg");
     copia.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
     copia.style.transform = "none";

@@ -163,6 +163,7 @@
 
   async function prepararSvgParaExportacao(svgEl, removerImagens) {
     var copia = svgEl.cloneNode(true);
+    copia.querySelectorAll(".legenda-fechar").forEach(function (b) { b.remove(); }); // botão da tela
     copia.setAttribute("xmlns", "http://www.w3.org/2000/svg");
     copia.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
     copia.style.transform = "none";
@@ -279,7 +280,7 @@
     // Legenda: a mesma da tela (por tipo; no Monitoramento, por status).
     var xLegenda = x0 + MARGEM;
     var yLegenda = baseRodape + 30;
-    itensDaLegenda(estado).forEach(function (item) {
+    (camadasOcultas().tipos ? [] : itensDaLegenda(estado)).forEach(function (item) {
       moldura.appendChild(el("rect", { x: xLegenda, y: yLegenda - 7.5, width: 8, height: 8, rx: item.status ? 4 : 1.5, fill: item.cor }));
       var rotulo = el("text", { x: xLegenda + 12, y: yLegenda, "font-size": 9, "fill-opacity": 0.8 }, item.texto);
       moldura.appendChild(rotulo);
@@ -414,6 +415,7 @@
 
   async function prepararSvgSeguroParaPng(svgEl) {
     var copia = svgEl.cloneNode(true);
+    copia.querySelectorAll(".legenda-fechar").forEach(function (b) { b.remove(); }); // botão da tela
     copia.setAttribute("xmlns", "http://www.w3.org/2000/svg");
     copia.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
     copia.style.transform = "none";
