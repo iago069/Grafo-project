@@ -164,6 +164,32 @@
     return regs;
   }
 
+  // Lista com seta, uma porta por linha (a que o próprio Grafo/Claude escreve):
+  //   XE1/1/1   UP    → POP-SXH03_DISTR-51   XE1/1/2
+  //   XE1/1/12  UP    → core-tpr-06          xe-0/0/34   (LAG-1)
+  //   XE1/1/16  DOWN  sem alias
+  function lerSetas(linhas) {
+    var regs = [];
+    linhas.forEach(function (bruta) {
+      var l = limpar(bruta);
+      var m = /^(\S+)\s+(?:(up|down)\s+)?(?:→|->|=>)\s*(\S+)(?:\s+(\S+))?(?:\s+\((lag[-\s]?\d+|ae\d+)\))?\s*$/i.exec(l);
+      if (m) {
+        var reg = { porta: m[1], velocidade: "", lag: m[5] ? m[5].replace(/\s+/, "-").toLowerCase() : "", desc: "", fonte: "setas", status: /down/i.test(m[2] || "") ? "offline" : "online", vizinho: m[3] };
+        if (m[4]) reg.portaVizinho = m[4];
+        regs.push(reg);
+        return;
+      }
+      var d = /^(\S+)\s+(up|down)\s+(.*)$/i.exec(l);
+      if (d && /\d/.test(d[1]) && /\//.test(d[1])) {
+        var resto = limpar(d[3]);
+        var r2 = { porta: d[1], velocidade: "", lag: "", desc: "", fonte: "setas", status: /down/i.test(d[2]) ? "offline" : "online" };
+        if (resto && !/^sem\s+(alias|descri)/i.test(resto)) r2.notaDesc = resto;
+        regs.push(r2);
+      }
+    });
+    return regs;
+  }
+
   // Nome curto da porta no diagrama: "ten-gigabit-ethernet-1/1/1" → "XE1/1/1",
   // "10giga-ethernet0/0" → "XE0/0", "gigabit-ethernet-1/1/1" → "GE1/1/1".
   function portaCurta(porta) {
@@ -179,7 +205,7 @@
 
   function juntar(regs) {
     var porPorta = {}, ordem = [];
-    var peso = { grafana: 3, junos: 3, blocos: 3, ia: 2, netbox: 1, lldp: 1 };
+    var peso = { grafana: 3, junos: 3, blocos: 3, setas: 3, ia: 2, netbox: 1, lldp: 1 };
     regs.forEach(function (r) {
       var chave = r.porta.toLowerCase();
       var atual = porPorta[chave];
@@ -229,10 +255,10 @@
   // { projeto, cabos (para a revisão), notas, formatos }.
   function ler(texto, nomeCentro, portasDaImagem) {
     var linhas = String(texto || "").replace(/\r/g, "").split("\n");
-    var lidos = { grafana: lerGrafana(linhas), netbox: lerNetbox(linhas), junos: lerDescricoes(linhas), lldp: lerLldp(linhas), blocos: lerBlocos(linhas), ia: registrosDaImagem(portasDaImagem) };
+    var lidos = { grafana: lerGrafana(linhas), netbox: lerNetbox(linhas), junos: lerDescricoes(linhas), lldp: lerLldp(linhas), blocos: lerBlocos(linhas), setas: lerSetas(linhas), ia: registrosDaImagem(portasDaImagem) };
     var formatos = Object.keys(lidos).filter(function (k) { return lidos[k].length; });
-    var portas = juntar([].concat(lidos.grafana, lidos.junos, lidos.blocos, lidos.ia, lidos.netbox, lidos.lldp));
-    var temPrincipal = lidos.grafana.length + lidos.junos.length + lidos.blocos.length + lidos.ia.length > 0;
+    var portas = juntar([].concat(lidos.grafana, lidos.junos, lidos.blocos, lidos.setas, lidos.ia, lidos.netbox, lidos.lldp));
+    var temPrincipal = lidos.grafana.length + lidos.junos.length + lidos.blocos.length + lidos.setas.length + lidos.ia.length > 0;
 
     // LAGs: membro tem descrição "aeN"; a descrição da LAG diz o destino.
     var lags = {};
@@ -258,7 +284,7 @@
       var lag = p.lag ? lags[p.lag.toLowerCase()] : null;
       var descDestino = (lag && lag.desc) || p.desc || "";
       var nomeViz = p.vizinho || (lag && lag.vizinho) || descDestino;
-      var soNetbox = temPrincipal && p.fontes.indexOf("grafana") < 0 && p.fontes.indexOf("junos") < 0 && p.fontes.indexOf("blocos") < 0 && p.fontes.indexOf("ia") < 0;
+      var soNetbox = temPrincipal && p.fontes.indexOf("grafana") < 0 && p.fontes.indexOf("junos") < 0 && p.fontes.indexOf("blocos") < 0 && p.fontes.indexOf("setas") < 0 && p.fontes.indexOf("ia") < 0;
       if (p.notaDesc && !p.vizinho) { notas.push(portaCurta(p.porta) + ": " + p.notaDesc + " (DOWN)"); return; }
       if (!nomeViz) {
         if (lag) (semDestinoPorLag[lag.porta] = semDestinoPorLag[lag.porta] || []).push(portaCurta(p.porta));
@@ -429,7 +455,7 @@
   fundo.addEventListener("click", function (ev) { if (ev.target === fundo) fechar(); });
   document.addEventListener("keydown", function (ev) { if (ev.key === "Escape" && !fundo.hidden) fechar(); });
 
-  var NOMES_FORMATO = { grafana: "Grafana", netbox: "NetBox", junos: "show interfaces descriptions", blocos: "lista de portas (porta / descrição / status)", lldp: "show lldp neighbors", ia: "imagem (lida com IA)" };
+  var NOMES_FORMATO = { grafana: "Grafana", netbox: "NetBox", junos: "show interfaces descriptions", blocos: "lista de portas (porta / descrição / status)", setas: "lista porta → vizinho", lldp: "show lldp neighbors", ia: "imagem (lida com IA)" };
 
   // ---- Imagem (lida no servidor com IA) ----
   var imagem = null; // { tipo, base64, url }
