@@ -231,3 +231,31 @@ test("cadastro automático: tipo pelo nome, próximo IP livre, próxima porta e 
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("modelo pelo nome e Ligar a: cadastra o equipamento já com modelo, tipo e o cabo nas portas livres", async () => {
+  const pagina = await abrirPagina(navegador, site);
+  await esperarDiagrama(pagina);
+  await pagina.waitForFunction(() => window.GrafoAutomatico && window.GrafoAutomatico.modeloPeloNome("POP-X_DM4270-48XS") !== "");
+  await pagina.click('[data-nav-panel="navAddEquip"]');
+  await pagina.waitForSelector("#navEquipNome", { state: "visible" });
+  await pagina.fill("#navEquipNome", "POP-TPR_DM4270-48XS");
+  assert.equal(await pagina.inputValue("#navEquipModelo"), "DM4270-48XS+6CX");
+  assert.equal(await pagina.inputValue("#navEquipTipo"), "Switch");
+  const centro = (await pagina.$$eval("#navEquipLigarA option", os => os.map(o => [o.value, o.textContent]))).find(o => /OLT-Centro/.test(o[1]));
+  await pagina.selectOption("#navEquipLigarA", centro[0]);
+  await pagina.click('#navEquipForm button[type="submit"]');
+  await pagina.locator("#fichaModal:not(.hidden) .modal-actions [data-ficha-fechar]").click({ timeout: 3000 }).catch(() => {});
+  const cabo = await pagina.evaluate(() => {
+    const chave = Object.keys(localStorage).find(k => k.indexOf("grafo-projetos") === 0);
+    const atual = localStorage.getItem(Object.keys(localStorage).find(k => k.indexOf("grafo-projeto-atual") === 0));
+    const proj = JSON.parse(localStorage.getItem(chave))[atual];
+    const novo = proj.equipamentos.find(e => e.nome === "POP-TPR_DM4270-48XS");
+    return proj.conexoes.find(c => c.para === novo.id);
+  });
+  assert.ok(cabo, "cabo criado");
+  assert.equal(cabo.saida, "ge0/3");
+  assert.equal(cabo.chegada, "XE1/1/1");
+  assert.equal(cabo.potencia, "1G");
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

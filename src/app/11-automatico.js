@@ -97,31 +97,82 @@
     return "";
   }
 
+  // Modelo do catálogo citado no nome ("POP-X_DM4270-48XS" → DM4270-48XS+6CX).
+  // Procura o nome inteiro do modelo; senão, a família (parte antes do primeiro "-",
+  // com 5+ caracteres e um número). Na dúvida entre vários, fica o primeiro do catálogo.
+  function modeloPeloNome(nome) {
+    var n = String(nome || "").toUpperCase().replace(/[^A-Z0-9]+/g, "");
+    if (n.length < 4 || !catalogoModelos.length) return null;
+    var limpo = function (t) { return String(t || "").toUpperCase().replace(/[^A-Z0-9]+/g, ""); };
+    var inteiro = catalogoModelos.filter(function (m) { var k = limpo(m.nome); return k.length >= 5 && n.indexOf(k) >= 0; })
+      .sort(function (a, b) { return limpo(b.nome).length - limpo(a.nome).length; })[0];
+    if (inteiro) return inteiro;
+    return catalogoModelos.find(function (m) {
+      var familia = limpo(String(m.nome).split(/[-\s]/)[0]);
+      return familia.length >= 5 && /\d/.test(familia) && n.indexOf(familia) >= 0;
+    }) || null;
+  }
+
+  // "Ligar a" do formulário de equipamento: cria o cabo junto, com as portas
+  // livres sugeridas, a capacidade pela porta e uma cor nova.
+  function ligarEquipamentoNovo(eq) {
+    var campo = document.getElementById("navEquipLigarA");
+    var alvo = campo && campo.value;
+    if (!alvo || alvo === eq.id || !estado.equipamentos.some(function (e) { return e.id === alvo; })) return;
+    if (estado.conexoes.length >= LIMITES.conexoes) return;
+    var saida = proximaPortaLivre(alvo), chegada = proximaPortaLivre(eq.id);
+    var v = Esquema.validarConexao({
+      de: alvo, para: eq.id, tipo: "Fibra", saida: saida, chegada: chegada,
+      potencia: capacidadePelaPorta(saida) || capacidadePelaPorta(chegada) || "1G", cor: "#5A7284", grossura: 2, estilo: "solid"
+    }, estado.equipamentos.map(function (e) { return e.id; }));
+    if (!v.ok) return;
+    v.dados.cor = corParaNovoCabo(v.dados);
+    estado.conexoes.push(v.dados);
+    var nomeAlvo = (estado.equipamentos.find(function (e) { return e.id === alvo; }) || {}).nome || alvo;
+    avisar("Cabo criado: " + nomeAlvo + (saida ? " " + saida : "") + " → " + (eq.nome || eq.id) + (chegada ? " " + chegada : "") + ".");
+  }
+
   // ---- Formulário de equipamento ----
   (function () {
     var nome = document.getElementById("navEquipNome"), tipo = document.getElementById("navEquipTipo"), ip = document.getElementById("navEquipIp");
+    var modelo = document.getElementById("navEquipModelo"), ligarA = document.getElementById("navEquipLigarA");
     var painel = document.getElementById("navAddEquip");
     if (!nome || !tipo || !ip || !painel) return;
-    var tipoAutomatico = true, ipAutomatico = true;
+    var tipoAutomatico = true, ipAutomatico = true, modeloAutomatico = true;
     tipo.addEventListener("input", function () { tipoAutomatico = !tipo.value.trim(); });
     ip.addEventListener("input", function () { ipAutomatico = !ip.value.trim(); });
+    if (modelo) modelo.addEventListener("input", function () { modeloAutomatico = !modelo.value.trim(); });
     nome.addEventListener("input", function () {
+      var m = modeloAutomatico && modelo ? modeloPeloNome(nome.value) : null;
+      if (modelo && modeloAutomatico) { modelo.value = m ? m.nome : ""; modelo.classList.toggle("campo-automatico", !!m); }
       if (!tipoAutomatico) return;
-      var t = tipoPeloNome(nome.value);
+      var t = (m && m.tipo) || tipoPeloNome(nome.value);
       tipo.value = t;
       tipo.classList.toggle("campo-automatico", !!t);
     });
+    // Lista do "Ligar a": os equipamentos do diagrama, o último cadastrado primeiro.
+    function preencherLigarA() {
+      if (!ligarA) return;
+      var atual = ligarA.value;
+      ligarA.innerHTML = '<option value="">— não ligar agora —</option>' + estado.equipamentos.slice().reverse().map(function (e) {
+        return '<option value="' + escaparHtml(e.id) + '">' + escaparHtml(e.nome || e.id) + (e.tipo ? " · " + escaparHtml(e.tipo) : "") + "</option>";
+      }).join("");
+      if (atual && estado.equipamentos.some(function (e) { return e.id === atual; })) ligarA.value = atual;
+    }
     function preencherIp() {
       if (!ipAutomatico || ip.value.trim()) return;
       var sugestao = proximoIpLivre();
       if (sugestao) { ip.value = sugestao; ip.classList.add("campo-automatico"); ip.title = "Próximo IP livre da rede do diagrama (pode trocar)"; }
     }
     new MutationObserver(function () {
-      if (painel.classList.contains("open")) { tipoAutomatico = !tipo.value.trim(); ipAutomatico = true; preencherIp(); }
+      if (painel.classList.contains("open")) { tipoAutomatico = !tipo.value.trim(); modeloAutomatico = !modelo || !modelo.value.trim(); ipAutomatico = true; preencherIp(); preencherLigarA(); }
     }).observe(painel, { attributes: true, attributeFilter: ["class"] });
     // Depois de salvar (o formulário é limpo), o próximo já vem com o IP seguinte.
     document.getElementById("navEquipForm").addEventListener("reset", function () {
-      setTimeout(function () { tipoAutomatico = true; ipAutomatico = true; tipo.classList.remove("campo-automatico"); ip.classList.remove("campo-automatico"); }, 0);
+      setTimeout(function () {
+        tipoAutomatico = true; ipAutomatico = true; modeloAutomatico = true;
+        [tipo, ip, modelo].forEach(function (c) { if (c) c.classList.remove("campo-automatico"); });
+      }, 0);
     });
   })();
 
@@ -193,5 +244,5 @@
     window.GrafoLeitor.abrirComTexto(texto);
   });
 
-  window.GrafoAutomatico = { tipoPeloNome: tipoPeloNome, proximoIpLivre: proximoIpLivre, proximaPortaLivre: proximaPortaLivre, portaCurta: portaCurtaNoEditor, capacidadePelaPorta: capacidadePelaPorta };
+  window.GrafoAutomatico = { modeloPeloNome: function (n) { var m = modeloPeloNome(n); return m ? m.nome : ""; }, tipoPeloNome: tipoPeloNome, proximoIpLivre: proximoIpLivre, proximaPortaLivre: proximaPortaLivre, portaCurta: portaCurtaNoEditor, capacidadePelaPorta: capacidadePelaPorta };
 
