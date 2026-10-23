@@ -56,7 +56,7 @@ test("o modelo é achado pelo nome, com fabricante ou com texto a mais", () => {
 
 const catalogoReal = () => E.normalizarModelos(JSON.parse(fs.readFileSync(path.join(raiz, "data", "equipamentos.json"), "utf8")).modelos);
 
-test("nome curto é reconhecido quando só um modelo começa com ele", () => {
+test("nome curto é reconhecido (vários com o mesmo início: o primeiro do catálogo)", () => {
   const modelos = catalogoReal();
   const nome = t => (E.buscarModelo(modelos, t) || {}).nome;
   assert.equal(nome("CRS326"), "CRS326-24G-2S+");     // usado no exemplo do Grafo
@@ -79,7 +79,7 @@ test("a lista de modelos segue o Tipo do equipamento", () => {
   assert.equal(tipos("UPS"), "Nobreak");               // tipos do catálogo com outro nome
   assert.equal(tipos("RPS"), "RPS");
   assert.equal(tipos("Camera IP"), "Camera IP");
-  assert.ok(nomes("MikroTik").every(n => /^(CCR|CRS|RB|hEX)/.test(n)) && nomes("MikroTik").includes("CRS326-24G-2S+"),
+  assert.ok(nomes("MikroTik").every(n => /^(CCR|CRS|RB|hEX|hAP|L009)/.test(n)) && nomes("MikroTik").includes("CRS326-24G-2S+"),
     "tipo = fabricante: todos os modelos dele, inclusive switches");
   assert.equal(nomes("").length, modelos.length, "sem tipo: todos");
   assert.equal(nomes("Geladeira").length, modelos.length, "tipo desconhecido: todos");

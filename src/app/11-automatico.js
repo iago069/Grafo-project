@@ -107,10 +107,18 @@
     var inteiro = catalogoModelos.filter(function (m) { var k = limpo(m.nome); return k.length >= 5 && n.indexOf(k) >= 0; })
       .sort(function (a, b) { return limpo(b.nome).length - limpo(a.nome).length; })[0];
     if (inteiro) return inteiro;
-    return catalogoModelos.find(function (m) {
-      var familia = limpo(String(m.nome).split(/[-\s]/)[0]);
-      return familia.length >= 5 && /\d/.test(familia) && n.indexOf(familia) >= 0;
-    }) || null;
+    // Senão, o que tiver o maior pedaço inicial do nome dentro do texto
+    // ("DM4270-48XS" escolhe DM4270-48XS+6CX, não o 24XS). Mínimo: a família
+    // (5+ caracteres com número), para "OLT" ou "RB" sozinhos não chutarem.
+    var melhor = null, tamanho = 0;
+    catalogoModelos.forEach(function (m) {
+      var k = limpo(m.nome), familia = limpo(String(m.nome).split(/[-\s]/)[0]);
+      if (familia.length < 5 || !/\d/.test(familia) || n.indexOf(familia) < 0) return;
+      for (var t = k.length; t >= familia.length; t--) {
+        if (n.indexOf(k.slice(0, t)) >= 0) { if (t > tamanho) { tamanho = t; melhor = m; } break; }
+      }
+    });
+    return melhor;
   }
 
   // "Ligar a" do formulário de equipamento: cria o cabo junto, com as portas
@@ -245,4 +253,110 @@
   });
 
   window.GrafoAutomatico = { modeloPeloNome: function (n) { var m = modeloPeloNome(n); return m ? m.nome : ""; }, tipoPeloNome: tipoPeloNome, proximoIpLivre: proximoIpLivre, proximaPortaLivre: proximaPortaLivre, portaCurta: portaCurtaNoEditor, capacidadePelaPorta: capacidadePelaPorta };
+
+  // ---- Seletor de modelos (no lugar da lista nativa do navegador) ----------------
+  // Abre embaixo de qualquer campo Modelo: agrupado por fabricante, com o tipo e a
+  // quantidade de portas, filtra enquanto digita e pelo Tipo já escolhido.
+  // Setas + Enter escolhem; Esc fecha. O campo continua aceitando texto livre.
+  var seletorModelos = document.createElement("div");
+  seletorModelos.className = "seletor-modelos";
+  seletorModelos.hidden = true;
+  seletorModelos.setAttribute("role", "listbox");
+  document.body.appendChild(seletorModelos);
+  var seletorAlvo = null, seletorItens = [], seletorAtivo = -1;
+  var COR_FABRICANTE = { MikroTik: "#E5484D", Datacom: "#1E6FD9", Huawei: "#D9332B", Parks: "#1B7F2A", Juniper: "#0A7C86", Cisco: "#1BA0D7", "Genérico": "#7A8B99" };
+  function soLetrasENumeros(t) { return String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, ""); }
+
+  function ehCampoModelo(el) {
+    return !!el && el.tagName === "INPUT" && (el.id === "navEquipModelo" || el.id === "editEquipModelo" || el.id === "novoEquipModelo" || el.getAttribute("data-field") === "modelo");
+  }
+  function montarSeletor() {
+    if (!seletorAlvo) return;
+    var campoTipo = campoTipoDoModelo(seletorAlvo);
+    var base = Esquema.filtrarModelosPorTipo(catalogoModelos, campoTipo ? campoTipo.value : "");
+    var termo = soLetrasENumeros(seletorAlvo.value);
+    var escolhido = catalogoModelos.find(function (m) { return m.nome === seletorAlvo.value; }) || null;
+    var lista = base.filter(function (m) { return !termo || escolhido || soLetrasENumeros(m.fabricante + m.nome + m.tipo).indexOf(termo) >= 0; });
+    if (!lista.length && termo) lista = catalogoModelos.filter(function (m) { return soLetrasENumeros(m.fabricante + m.nome).indexOf(termo) >= 0; });
+    var grupos = {}, ordem = [];
+    lista.forEach(function (m) { var f = m.fabricante || "Outros"; if (!grupos[f]) { grupos[f] = []; ordem.push(f); } grupos[f].push(m); });
+    seletorItens = [];
+    var html = ordem.map(function (f) {
+      return '<div class="sm-grupo"><div class="sm-fabricante"><i style="background:' + (COR_FABRICANTE[f] || "#7A8B99") + '"></i>' + escaparHtml(f) + "<span>" + grupos[f].length + "</span></div>" +
+        grupos[f].map(function (m) {
+          var i = seletorItens.push(m) - 1;
+          return '<button type="button" class="sm-item' + (escolhido && escolhido.nome === m.nome ? " escolhido" : "") + '" data-i="' + i + '" role="option">' +
+            "<strong>" + escaparHtml(m.nome) + '</strong><span class="sm-tipo">' + escaparHtml(m.tipo || "") + '</span><span class="sm-portas">' + m.portas.length + " portas</span></button>";
+        }).join("") + "</div>";
+    }).join("");
+    var filtroTipo = campoTipo && campoTipo.value.trim() && base.length < catalogoModelos.length;
+    seletorModelos.innerHTML = '<div class="sm-topo">' + (lista.length ? lista.length + (lista.length === 1 ? " modelo" : " modelos") : "Nenhum modelo do catálogo") +
+      (filtroTipo ? " · tipo <b>" + escaparHtml(campoTipo.value.trim()) + "</b>" : "") + "<span>↑↓ Enter</span></div>" +
+      (html || '<p class="sm-vazio">Pode deixar o texto digitado: o modelo fica só sem a lista de portas.</p>');
+    seletorAtivo = -1;
+    posicionarSeletor();
+  }
+  function posicionarSeletor() {
+    if (!seletorAlvo || seletorModelos.hidden) return;
+    var r = seletorAlvo.getBoundingClientRect();
+    var largura = Math.min(Math.max(r.width, 340), window.innerWidth - 16);
+    var abaixo = window.innerHeight - r.bottom - 12, acima = r.top - 12;
+    var paraBaixo = abaixo >= 240 || abaixo >= acima;
+    var altura = Math.min(400, paraBaixo ? abaixo : acima);
+    seletorModelos.style.width = largura + "px";
+    seletorModelos.style.left = Math.max(8, Math.min(r.left, window.innerWidth - largura - 8)) + "px";
+    seletorModelos.style.maxHeight = Math.max(160, altura) + "px";
+    seletorModelos.style.top = (paraBaixo ? r.bottom + 6 : Math.max(8, r.top - 6 - Math.max(160, altura))) + "px";
+  }
+  function abrirSeletor(campo) {
+    seletorAlvo = campo;
+    if (campo.hasAttribute("list")) campo.removeAttribute("list");
+    seletorModelos.hidden = false;
+    montarSeletor();
+  }
+  function fecharSeletor() { seletorModelos.hidden = true; seletorAlvo = null; }
+  function escolher(m) {
+    if (!seletorAlvo || !m) return;
+    var campo = seletorAlvo;
+    campo.value = m.nome;
+    campo.classList.remove("campo-automatico");
+    campo.dispatchEvent(new Event("input", { bubbles: true }));
+    campo.dispatchEvent(new Event("change", { bubbles: true }));
+    var campoTipo = campoTipoDoModelo(campo);
+    if (campoTipo && !campoTipo.value.trim() && m.tipo) { campoTipo.value = m.tipo; campoTipo.dispatchEvent(new Event("input", { bubbles: true })); }
+    fecharSeletor();
+  }
+  function marcarAtivo(i) {
+    var botoes = seletorModelos.querySelectorAll(".sm-item");
+    if (!botoes.length) return;
+    seletorAtivo = (i + botoes.length) % botoes.length;
+    botoes.forEach(function (b, k) { b.classList.toggle("ativo", k === seletorAtivo); });
+    botoes[seletorAtivo].scrollIntoView({ block: "nearest" });
+  }
+  document.addEventListener("focusin", function (e) {
+    if (ehCampoModelo(e.target)) abrirSeletor(e.target);
+    else if (!seletorModelos.contains(e.target)) fecharSeletor();
+  });
+  document.addEventListener("input", function (e) { if (e.target === seletorAlvo) montarSeletor(); });
+  document.addEventListener("keydown", function (e) {
+    if (!seletorAlvo || e.target !== seletorAlvo || seletorModelos.hidden) return;
+    if (e.key === "ArrowDown") { e.preventDefault(); marcarAtivo(seletorAtivo + 1); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); marcarAtivo(seletorAtivo - 1); }
+    else if (e.key === "Enter" && seletorAtivo >= 0) {
+      e.preventDefault();
+      escolher(seletorItens[Number(seletorModelos.querySelectorAll(".sm-item")[seletorAtivo].getAttribute("data-i"))]);
+    }
+    else if (e.key === "Escape") { e.stopPropagation(); fecharSeletor(); }
+    else if (e.key === "Tab") fecharSeletor();
+  }, true);
+  seletorModelos.addEventListener("pointerdown", function (e) { e.preventDefault(); }); // não tira o foco do campo
+  seletorModelos.addEventListener("click", function (e) {
+    var b = e.target.closest(".sm-item");
+    if (b) escolher(seletorItens[Number(b.getAttribute("data-i"))]);
+  });
+  document.addEventListener("focusout", function (e) {
+    if (e.target === seletorAlvo) setTimeout(function () { if (document.activeElement !== seletorAlvo) fecharSeletor(); }, 120);
+  });
+  window.addEventListener("resize", posicionarSeletor);
+  document.addEventListener("scroll", posicionarSeletor, true);
 

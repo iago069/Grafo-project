@@ -581,8 +581,9 @@
       if (contido && (!melhor || nome.length > melhor.peso)) melhor = { m: m, peso: nome.length };
     });
     if (melhor) return melhor.m;
-    // Nome curto ("CRS326", "DM4610", "MikroTik CCR2004"): vale se um único
-    // modelo começa com ele (seguido de "-", espaço ou fim).
+    // Nome curto ("CRS326", "DM4610", "MikroTik CCR2004"): o modelo que começa com
+    // ele (seguido de "-", espaço ou fim). Se vários começam, fica o primeiro do
+    // catálogo, que lista primeiro a versão mais comum de cada família.
     var palavras = alvo.split(" ");
     for (var i = 0; i < palavras.length; i++) {
       var inicio = palavras.slice(i).join(" ");
@@ -591,8 +592,7 @@
         var nome = chaveModelo(m.nome);
         return nome.indexOf(inicio) === 0 && /^([^a-z0-9]|$)/.test(nome.slice(inicio.length));
       });
-      if (candidatos.length === 1) return candidatos[0];
-      if (candidatos.length > 1) return null; // ambíguo: melhor não chutar
+      if (candidatos.length) return candidatos[0];
     }
     return null;
   }

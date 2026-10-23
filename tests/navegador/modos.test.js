@@ -259,3 +259,23 @@ test("modelo pelo nome e Ligar a: cadastra o equipamento já com modelo, tipo e 
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("seletor de modelos: agrupado por fabricante, filtra ao digitar e escolhe com Enter", async () => {
+  const pagina = await abrirPagina(navegador, site, { viewport: { width: 1400, height: 900 } });
+  await esperarDiagrama(pagina);
+  await pagina.click('[data-nav-panel="navAddEquip"]');
+  await pagina.click("#navEquipModelo");
+  await pagina.waitForSelector(".seletor-modelos:not([hidden]) .sm-item");
+  const fabricantes = await pagina.$$eval(".sm-fabricante", l => l.map(e => e.childNodes[1].textContent));
+  for (const f of ["MikroTik", "Datacom", "Parks", "Huawei"]) assert.ok(fabricantes.includes(f), f);
+  await pagina.keyboard.type("4270");
+  if (process.env.FOTO_SELETOR) await pagina.screenshot({ path: process.env.FOTO_SELETOR });
+  assert.ok((await pagina.$$eval(".sm-item strong", l => l.map(e => e.textContent))).every(n => /4270/.test(n)));
+  await pagina.keyboard.press("ArrowDown");
+  await pagina.keyboard.press("Enter");
+  assert.match(await pagina.inputValue("#navEquipModelo"), /^DM4270/);
+  assert.equal(await pagina.inputValue("#navEquipTipo"), "Switch");
+  assert.equal(await pagina.isVisible(".seletor-modelos"), false);
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

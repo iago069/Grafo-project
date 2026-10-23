@@ -3235,3 +3235,22 @@ body:not([data-modo-diagrama="ftth"]) .so-modo-ftth { display: none; }
 /* Campo preenchido sozinho pelo Grafo (11-automatico.js): leve destaque, sempre editável. */
 .campo-automatico { background-image: linear-gradient(90deg, color-mix(in srgb, var(--teal) 10%, transparent), transparent 70%) !important; border-color: color-mix(in srgb, var(--teal) 45%, var(--line)) !important; }
 .rotulo-opcional { font-weight: 400; opacity: 0.65; font-size: 0.9em; }
+
+/* ==== Seletor de modelos (11-automatico.js) ==== */
+.seletor-modelos { position: fixed; z-index: 2000; overflow: auto; padding: 6px; border-radius: 14px; background: var(--bg-panel-2, #fff); color: var(--text); border: 1px solid var(--line); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28); animation: surgir 0.16s var(--ease-out); overscroll-behavior: contain; }
+.seletor-modelos[hidden] { display: none; }
+.sm-topo { position: sticky; top: -6px; z-index: 1; display: flex; align-items: center; gap: 6px; margin: -6px -6px 4px; padding: 9px 12px; font: 600 0.72rem var(--sans); color: var(--text-dim); background: var(--bg-panel-2, #fff); border-bottom: 1px solid var(--line-soft, var(--line)); }
+.sm-topo b { color: var(--text); }
+.sm-topo span { margin-left: auto; font: 500 0.66rem var(--mono); opacity: 0.7; }
+.sm-grupo + .sm-grupo { margin-top: 6px; }
+.sm-fabricante { display: flex; align-items: center; gap: 8px; padding: 6px 8px 4px; font: 700 0.68rem var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); }
+.sm-fabricante i { width: 8px; height: 8px; border-radius: 3px; }
+.sm-fabricante span { margin-left: auto; font: 600 0.64rem var(--mono); opacity: 0.6; letter-spacing: 0; }
+.sm-item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px; width: 100%; min-height: 0; padding: 8px 10px; border: 0; border-radius: 9px; background: transparent; color: inherit; text-align: left; cursor: pointer; font: inherit; box-shadow: none; }
+.sm-item strong { font: 600 0.86rem var(--sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sm-tipo { font: 600 0.66rem var(--sans); padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--teal) 16%, transparent); color: var(--text); }
+.sm-portas { font: 500 0.68rem var(--mono); color: var(--text-dim); min-width: 62px; text-align: right; }
+.sm-item:hover, .sm-item.ativo { background: color-mix(in srgb, var(--text) 7%, transparent); transform: none; }
+.sm-item.escolhido { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.sm-item.escolhido strong::after { content: " ✓"; color: var(--accent); }
+.sm-vazio { margin: 8px 10px 10px; font-size: 0.78rem; color: var(--text-dim); }
