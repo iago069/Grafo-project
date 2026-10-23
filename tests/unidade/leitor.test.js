@@ -143,11 +143,11 @@ test("lista em blocos (Datacom): porta / descrição / UP-DOWN vira cabos com vi
   assert.ok(r.formatos.includes("blocos"));
   const cabos = simples(r.cabos).map(c => [c.saida, c._vizinho, c.chegada, c.potencia]);
   assert.deepEqual(cabos, [
-    ["ten-gigabit-ethernet-1/1/1", "POP-SXH03_DISTR-51", "XE2", "10G"],
-    ["ten-gigabit-ethernet-1/1/2", "OLT34", "XE0/0", "10G"],
-    ["ten-gigabit-ethernet-1/1/10", "CORE_TPR_06", "xe-0/0/36", "10G"],
-    ["ten-gigabit-ethernet-1/1/11", "OLT142", "XE0/0", "10G"],
-    ["ten-gigabit-ethernet-1/1/12", "CORE_TPR_06", "xe-0/0/34", "10G"]
+    ["XE1/1/1", "POP-SXH03_DISTR-51", "XE2", "10G"],
+    ["XE1/1/2", "OLT34", "XE0/0", "10G"],
+    ["XE1/1/10", "CORE_TPR_06", "xe-0/0/36", "10G"],
+    ["XE1/1/11", "OLT142", "XE0/0", "10G"],
+    ["XE1/1/12", "CORE_TPR_06", "xe-0/0/34", "10G"]
   ]);
   assert.equal(r.notas.length, 2);
   assert.ok(r.notas.some(n => /ANTIGO-LINK-CBORGES \(DOWN\)/.test(n)));
@@ -167,11 +167,11 @@ test("NetBox com portas do Datacom: vizinho e porta do cabo, LAG-1 vira LAG; jun
   const r = L.ler(netbox + "\n" + blocos, "DISTR-TPR");
   const cabos = simples(r.cabos).map(c => [c.saida, c._vizinho, c.chegada, c.potencia, c.tipo]);
   assert.deepEqual(cabos.map(c => c.slice(0, 4)).sort((a, b) => a[0].localeCompare(b[0], "pt", { numeric: true })), [
-    ["ten-gigabit-ethernet-1/1/1", "POP-SXH03_DISTR-51", "ten-gigabit-ethernet-1/1/2", "10G"],
-    ["ten-gigabit-ethernet-1/1/2", "POP-TPA01_OLT-34", "10giga-ethernet0/0", "10G"],
-    ["ten-gigabit-ethernet-1/1/12", "core-tpr-06", "xe-0/0/34", "10G"],
-    ["ten-gigabit-ethernet-1/1/13", "core-tpr-06", "xe-0/0/35", "10G"]
+    ["XE1/1/1", "POP-SXH03_DISTR-51", "XE1/1/2", "10G"],
+    ["XE1/1/2", "POP-TPA01_OLT-34", "XE0/0", "10G"],
+    ["XE1/1/12", "core-tpr-06", "xe-0/0/34", "10G"],
+    ["XE1/1/13", "core-tpr-06", "xe-0/0/35", "10G"]
   ]);
-  assert.match(cabos.find(c => c[0].endsWith("/12"))[4], /^LAG lag-1/);
+  assert.match(cabos.find(c => c[0] === "XE1/1/12")[4], /^LAG lag-1/);
   assert.ok(E.validarProjeto(simples(r.projeto()), "estrito").ok);
 });

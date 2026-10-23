@@ -164,6 +164,17 @@
     return regs;
   }
 
+  // Nome curto da porta no diagrama: "ten-gigabit-ethernet-1/1/1" → "XE1/1/1",
+  // "10giga-ethernet0/0" → "XE0/0", "gigabit-ethernet-1/1/1" → "GE1/1/1".
+  function portaCurta(porta) {
+    var t = limpar(porta);
+    var m = /^(?:ten-gigabit-ethernet|10giga-ethernet|tengigabitethernet)[-\s]?(\d+(?:\/\d+)*)$/i.exec(t);
+    if (m) return "XE" + m[1];
+    m = /^(?:gigabit-ethernet|gigabitethernet)[-\s]?(\d+(?:\/\d+)*)$/i.exec(t);
+    if (m) return "GE" + m[1];
+    return t;
+  }
+
   // ---- Juntar e montar o projeto ----------------------------------------------
 
   function juntar(regs) {
@@ -248,17 +259,17 @@
       var descDestino = (lag && lag.desc) || p.desc || "";
       var nomeViz = p.vizinho || (lag && lag.vizinho) || descDestino;
       var soNetbox = temPrincipal && p.fontes.indexOf("grafana") < 0 && p.fontes.indexOf("junos") < 0 && p.fontes.indexOf("blocos") < 0 && p.fontes.indexOf("ia") < 0;
-      if (p.notaDesc && !p.vizinho) { notas.push(p.porta + ": " + p.notaDesc + " (DOWN)"); return; }
+      if (p.notaDesc && !p.vizinho) { notas.push(portaCurta(p.porta) + ": " + p.notaDesc + " (DOWN)"); return; }
       if (!nomeViz) {
-        if (lag) (semDestinoPorLag[lag.porta] = semDestinoPorLag[lag.porta] || []).push(p.porta);
-        else notas.push(p.porta + ": " + (p.status === "offline" ? "offline" : "online") + ", sem descrição e sem vizinho");
+        if (lag) (semDestinoPorLag[lag.porta] = semDestinoPorLag[lag.porta] || []).push(portaCurta(p.porta));
+        else notas.push(portaCurta(p.porta) + ": " + (p.status === "offline" ? "offline" : "online") + ", sem descrição e sem vizinho");
         return;
       }
       var v = vizinhoPara(nomeViz);
       var velocidade = p.velocidade || velocidadePorNome(p.porta);
       var rotulo = lag ? "LAG " + lag.porta + (descDestino ? " (" + descDestino + ")" : "") : (descDestino || "Enlace");
       cabos.push({
-        de: idCentro, para: v.id, saida: p.porta, chegada: p.portaVizinho || "?",
+        de: idCentro, para: v.id, saida: portaCurta(p.porta), chegada: p.portaVizinho ? portaCurta(p.portaVizinho) : "?",
         tipo: soNetbox ? corta(rotulo, 28) + " · só NetBox" : corta(rotulo, 40), potencia: velocidade || "1G",
         grossura: /100G/.test(velocidade) ? 6 : /40G/.test(velocidade) ? 4 : 3, cor: "#5A7284",
         estilo: soNetbox ? "dashed" : "solid",
