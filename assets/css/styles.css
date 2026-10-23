@@ -3231,3 +3231,6 @@ body:not([data-modo-diagrama="ftth"]) .so-modo-ftth { display: none; }
 .login-instalar { background: none; border: 0; color: #e8f1f7; font: 600 0.8rem var(--sans); cursor: pointer; padding: 6px 8px; border-radius: 8px; }
 .login-instalar:hover { background: rgba(255, 255, 255, 0.08); }
 @media (max-width: 480px) { .login-tela .auth-card { padding: 28px 22px 22px; border-radius: 20px; } }
+
+/* Campo preenchido sozinho pelo Grafo (11-automatico.js): leve destaque, sempre editável. */
+.campo-automatico { background-image: linear-gradient(90deg, color-mix(in srgb, var(--teal) 10%, transparent), transparent 70%) !important; border-color: color-mix(in srgb, var(--teal) 45%, var(--line)) !important; }

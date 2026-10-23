@@ -88,3 +88,18 @@ test("lê a lista com seta (XE1/1/1  UP  → vizinho  porta), com LAG e portas D
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("colar uma lista de portas no diagrama abre o Gerar a partir de texto já com o texto", async () => {
+  const pagina = await abrirPagina(navegador, site);
+  await esperarDiagrama(pagina);
+  await pagina.waitForFunction(() => window.GrafoLeitor && window.GrafoLeitor.abrirComTexto);
+  await pagina.evaluate(texto => {
+    const dt = new DataTransfer();
+    dt.setData("text/plain", texto);
+    document.getElementById("canvas").dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
+  }, BLOCOS);
+  await pagina.waitForSelector(".leitor-fundo:not([hidden])");
+  assert.match(await pagina.inputValue("[data-leitor-texto]"), /ten-gigabit-ethernet-1\/1\/1/);
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

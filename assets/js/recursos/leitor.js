@@ -450,6 +450,8 @@
   var leitura = null;
 
   function abrir() { fundo.hidden = false; passoColar.hidden = false; passoRevisar.hidden = true; elNome.focus(); }
+  // Texto colado direto no diagrama (11-automatico.js): abre já com o texto.
+  window.GrafoLeitor.abrirComTexto = function (texto) { abrir(); elTexto.value = texto; elNome.focus(); };
   function fechar() { fundo.hidden = true; }
   botao.addEventListener("click", abrir);
   fundo.addEventListener("click", function (ev) { if (ev.target === fundo) fechar(); });

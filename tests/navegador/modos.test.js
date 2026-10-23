@@ -197,3 +197,37 @@ test("ao adicionar equipamento mostra a ficha nome / Host / gateway / mask; list
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("cadastro automático: tipo pelo nome, próximo IP livre, próxima porta e capacidade pela porta", async () => {
+  const pagina = await abrirPagina(navegador, site);
+  await esperarDiagrama(pagina);
+  await pagina.click('[data-nav-panel="navAddEquip"]');
+  await pagina.waitForSelector("#navEquipNome", { state: "visible" });
+  assert.match(await pagina.inputValue("#navEquipIp"), /^10\.0\.0\.\d+$/, "IP sugerido");
+  await pagina.fill("#navEquipNome", "POP-TPA01_OLT-50");
+  assert.equal(await pagina.inputValue("#navEquipTipo"), "OLT");
+  await pagina.fill("#navEquipNome", "POP-SXH03_DISTR-51");
+  assert.equal(await pagina.inputValue("#navEquipTipo"), "Switch");
+  // Funções puras.
+  const r = await pagina.evaluate(() => {
+    const A = window.GrafoAutomatico;
+    return [A.portaCurta("ten-gigabit-ethernet-1/1/7"), A.capacidadePelaPorta("XE1/1/7"), A.capacidadePelaPorta("ge0/3"),
+    ];
+  });
+  assert.deepEqual(r.slice(0, 3), ["XE1/1/7", "10G", "1G"]);
+  // Cabo: escolher a origem sugere a próxima porta livre dela.
+  await pagina.click('[data-nav-panel="navAddCable"]');
+  await pagina.waitForSelector("#navCableDe", { state: "visible" });
+  {
+    const ids = await pagina.$$eval("#navCableDe option", os => os.map(o => [o.value, o.textContent]));
+    const centro = ids.find(i => /OLT-Centro/.test(i[1]));
+    await pagina.selectOption("#navCableDe", centro[0]);
+    assert.equal(await pagina.inputValue("#navCableSaida"), "ge0/3");
+    assert.equal(await pagina.inputValue("#navCablePotencia"), "1G");
+    await pagina.fill("#navCableChegada", "ten-gigabit-ethernet-1/1/9");
+    await pagina.locator("#navCableChegada").blur();
+    assert.equal(await pagina.inputValue("#navCableChegada"), "XE1/1/9");
+  }
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});
