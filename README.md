@@ -182,7 +182,7 @@ Na barra lateral, **Integração → NetBox e status online**:
 O site na Vercel não alcança a rede interna, então quem fala com o NetBox e dá o ping é o **agente**, um programa sem dependências que roda num computador dentro da rede:
 
 ```bash
-cp agente/.env.exemplo agente/.env   # preencha NETBOX_URL e NETBOX_TOKEN (token só leitura)
+cp agente/.env.example agente/.env   # preencha NETBOX_URL e NETBOX_TOKEN (token só leitura)
 npm run agente                       # http://localhost:8787
 ```
 
@@ -382,7 +382,7 @@ Para conferir, abra `https://thegrafo.vercel.app/api/auth-config`: deve mostrar 
 
 Também é possível publicar direto do computador com a Vercel CLI: `npx vercel deploy --prod`.
 
-**Segurança.** O `vercel.json` envia cabeçalhos de segurança em todas as páginas (o `servidor-local.js` envia os mesmos): um CSP que só aceita scripts do próprio site e do jsDelivr, bloqueia scripts embutidos no HTML e impede que o Grafo seja aberto dentro de outro site; além de `nosniff`, `Referrer-Policy`, `Permissions-Policy` e HSTS. Por isso não há `<script>` embutido nas páginas: o código fica em arquivos (`assets/js/conta/sessao.js`, `assets/js/ver.js`). As bibliotecas do jsDelivr têm versão fixa e `integrity` (SRI): o navegador recusa o arquivo se o CDN entregar outro conteúdo. Ao atualizar uma delas, recalcule o hash (`sha384`). O teste `tests/unidade/seguranca.test.js` confere tudo isso.
+**Segurança.** O `vercel.json` envia cabeçalhos de segurança em todas as páginas (o `servidor-local.js` envia os mesmos): um CSP que só aceita scripts do próprio site e do jsDelivr, bloqueia scripts embutidos no HTML e impede que o Grafo seja aberto dentro de outro site; além de `nosniff`, `Referrer-Policy`, `Permissions-Policy` e HSTS. Por isso não há `<script>` embutido nas páginas: o código fica em arquivos (`assets/js/conta/sessao.js`, `assets/js/paginas/ver.js`). As bibliotecas do jsDelivr têm versão fixa e `integrity` (SRI): o navegador recusa o arquivo se o CDN entregar outro conteúdo. Ao atualizar uma delas, recalcule o hash (`sha384`). O teste `tests/unidade/seguranca.test.js` confere tudo isso.
 
 ### Problemas comuns
 
@@ -401,30 +401,39 @@ Também é possível publicar direto do computador com a Vercel CLI: `npx vercel
 ## Estrutura do projeto
 
 ```
-index.html, ver.html        páginas: o app (login + editor) e o link compartilhado (/ver?t=...)
-manifest.webmanifest, sw.js instalar como aplicativo e funcionar sem internet
-assets/
+index.html                  o app: login + editor
+ver.html                    página do link compartilhado (/ver?t=...)
+manifest.webmanifest, sw.js instalar como aplicativo e funcionar sem internet (ficam na raiz por causa do escopo)
+vercel.json, .vercelignore  publicação na Vercel (cabeçalhos de segurança, rotas)
+
+assets/                     tudo o que o navegador baixa
   css/styles.css            estilos, temas e animações
   images/
-    app/                    logo, favicon e ícones do aplicativo
+    app/                    logo, favicon, ícones do aplicativo e logos dos temas
     equipamentos/           ícones dos equipamentos (quadro de símbolos)
+    racks/                  fotos dos equipamentos para o Bayface de Racks
   js/
-    editor/                 app.js e icones-embutidos.js — GERADOS, não edite à mão
+    comum/                  esquema.js (validação), erros.js (registro de erros), interface.js (menus, dicas)
     conta/                  auth.js (login, cadastro, sincronização), sessao.js (abre o editor rápido)
-    recursos/               compartilhar, equipe, historico, etiquetas, planilha (inventário),
-                            primeiros-passos, instalar
-    comum/                  esquema.js (validação), erros.js (registro de erros), interface.js (menus)
-    ver.js                  página do link compartilhado
+    editor/                 app.js e icones-embutidos.js — GERADOS, não edite à mão
+    paginas/                ver.js (página do link compartilhado)
+    recursos/               módulos do editor: admin, biblioteca, comandos, compartilhar, equipe,
+                            etiquetas, historico, instalar, integracao, leitor, planilha,
+                            primeiros-passos, racks
   vendor/                   Zod (validação), servido localmente
-src/app/                    partes do editor (00-catalogo.js … 12-pagina-e-pdf.js) — É AQUI QUE SE EDITA
-data/equipamentos.json      catálogo de tipos e modelos de equipamento
-api/                        funções da Vercel: catálogo e configuração pública do Supabase
-supabase/                   schema.sql e migracoes/ (SQL para bancos criados antes)
+
+src/app/                    partes do editor, de 00-catalogo.js a 14-pagina-e-pdf.js — É AQUI QUE SE EDITA
+                            (npm run montar junta tudo em assets/js/editor/app.js, na ordem dos números)
+data/equipamentos.json      catálogo de tipos e modelos de equipamento (por fabricante)
+api/                        funções da Vercel: auth-config, equipamentos e ler-imagem (IA)
+agente/                     agente local do NetBox/ping e um NetBox de teste (.env.example)
+supabase/                   schema.sql e migracoes/ (veja migracoes/LEIAME.md para a ordem)
 scripts/                    montar-app.js, gerar-icones-embutidos.js, servidor-local.js
 tests/
   unidade/                  testes rápidos (npm test) e simulador.js (navegador simulado)
-  navegador/                testes num navegador de verdade (npm run test:navegador)
+  navegador/                testes num navegador de verdade (npm run test:navegador) e ajuda.js
 docs/imagens/               imagens deste README
+.github/workflows/          testes automáticos no GitHub
 ```
 
 | Arquivo | Conteúdo |
@@ -440,7 +449,7 @@ docs/imagens/               imagens deste README
 | `assets/js/comum/esquema.js` | Validação dos dados (formulários, JSON, CSV e o que está salvo) |
 | `assets/js/comum/erros.js` | Envia os erros do navegador para a tabela `grafo_erros` do Supabase |
 | `scripts/servidor-local.js` | Servidor Express para rodar localmente; lê o `.env` da raiz |
-| `sw.js` | Se mudar a forma de guardar, troque o nome `grafo-offline-v2` (o antigo é apagado) |
+| `sw.js` | Se mudar a forma de guardar, troque o nome `grafo-offline-v3` (o antigo é apagado) |
 
 Projetos salvos com os caminhos antigos dos ícones (`assets/images/OLT.jpeg`, `assets/images/OLT.png`) continuam abrindo: o editor troca pelo caminho atual.
 > O catálogo fica em `data/`, fora de `api/`, porque na Vercel `api/equipamentos.js` e `api/equipamentos.json` colidiriam na mesma rota. O servidor local se chama `servidor-local.js` (e não `server.js`) para a Vercel não tratar o projeto como app Express.

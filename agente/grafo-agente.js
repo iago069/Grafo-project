@@ -6,7 +6,7 @@
 //   GET  /netbox/projeto?site=X -> projeto no formato do Grafo (equipamentos e cabos do site)
 //   POST /status { ips: [...] } -> { "10.0.0.1": { online: true, ms: 3 }, ... }
 // Sem dependências: node agente/grafo-agente.js (Node 18+). Configuração em
-// variáveis de ambiente ou num agente/.env (veja agente/.env.exemplo).
+// variáveis de ambiente ou num agente/.env (veja agente/.env.example).
 "use strict";
 
 const http = require("http");

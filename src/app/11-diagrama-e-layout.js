@@ -1,4 +1,4 @@
-  // ==== 10-diagrama-e-layout.js: geração do DOT, imagens no SVG, organizar/grade e renderização (parte de assets/js/editor/app.js; npm run montar) ====
+  // ==== 11-diagrama-e-layout.js: geração do DOT, imagens no SVG, organizar/grade e renderização (parte de assets/js/editor/app.js; npm run montar) ====
   // Linhas de texto do cabeçalho do equipamento (acima do ícone), conforme o
   // modo do projeto. aplicarImagensNoSvg usa a quantidade para achar o ícone.
   //   Topologia: nome, modelo, tipo, IP.

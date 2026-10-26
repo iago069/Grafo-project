@@ -1,4 +1,4 @@
-  // ==== 12-pagina-e-pdf.js: página, prévia e PDF; inicialização do editor (parte de assets/js/editor/app.js; npm run montar) ====
+  // ==== 14-pagina-e-pdf.js: página, prévia e PDF; inicialização do editor (parte de assets/js/editor/app.js; npm run montar) ====
   // ---- Página, área de desenho e PDF ------------------------------------------
   // Barra lateral direita. A configuração vale para a conta neste navegador.
   var FORMATOS_PAGINA = { A0: [841, 1189], A1: [594, 841], A2: [420, 594], A3: [297, 420], A4: [210, 297], A5: [148, 210] };

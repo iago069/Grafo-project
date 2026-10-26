@@ -464,7 +464,7 @@
       novoEquipamento = comImagem.dados;
       mensagem.textContent = "";
       estado.equipamentos.push(novoEquipamento);
-      ligarEquipamentoNovo(novoEquipamento); // "Ligar a": já cria o cabo (11-automatico.js)
+      ligarEquipamentoNovo(novoEquipamento); // "Ligar a": já cria o cabo (12-cadastro-automatico.js)
       renderTudo();
       renderSidebarPanels();
       event.target.reset();

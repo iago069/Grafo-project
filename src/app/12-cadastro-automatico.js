@@ -1,3 +1,4 @@
+  // ==== 12-cadastro-automatico.js: tipo/modelo/IP/portas sugeridos, Ligar a, seletores de modelo e tipo, colar lista (parte de assets/js/editor/app.js; npm run montar) ====
   // ---- Cadastro automático: equipamentos e cabos -----------------------------------
   // O que dá para deduzir, o Grafo preenche sozinho (sempre editável):
   // - Equipamento: tipo pelo nome (OLT-34 → OLT, DISTR-51 → Switch) e o próximo

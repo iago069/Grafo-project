@@ -4156,7 +4156,7 @@
       novoEquipamento = comImagem.dados;
       mensagem.textContent = "";
       estado.equipamentos.push(novoEquipamento);
-      ligarEquipamentoNovo(novoEquipamento); // "Ligar a": já cria o cabo (11-automatico.js)
+      ligarEquipamentoNovo(novoEquipamento); // "Ligar a": já cria o cabo (12-cadastro-automatico.js)
       renderTudo();
       renderSidebarPanels();
       event.target.reset();
@@ -5961,7 +5961,7 @@
   if (window.ResizeObserver) new ResizeObserver(posicionarFerramentas).observe(elCanvas);
   window.addEventListener("grafo:render", posicionarFerramentas);
   document.body.setAttribute("data-ferramenta-ativa", ferramentaAtual);
-  // ==== 10-diagrama-e-layout.js: geração do DOT, imagens no SVG, organizar/grade e renderização (parte de assets/js/editor/app.js; npm run montar) ====
+  // ==== 11-diagrama-e-layout.js: geração do DOT, imagens no SVG, organizar/grade e renderização (parte de assets/js/editor/app.js; npm run montar) ====
   // Linhas de texto do cabeçalho do equipamento (acima do ícone), conforme o
   // modo do projeto. aplicarImagensNoSvg usa a quantidade para achar o ícone.
   //   Topologia: nome, modelo, tipo, IP.
@@ -7460,6 +7460,7 @@
     } catch (e) {}
   });
 
+  // ==== 12-cadastro-automatico.js: tipo/modelo/IP/portas sugeridos, Ligar a, seletores de modelo e tipo, colar lista (parte de assets/js/editor/app.js; npm run montar) ====
   // ---- Cadastro automático: equipamentos e cabos -----------------------------------
   // O que dá para deduzir, o Grafo preenche sozinho (sempre editável):
   // - Equipamento: tipo pelo nome (OLT-34 → OLT, DISTR-51 → Switch) e o próximo
@@ -7853,7 +7854,7 @@
   window.addEventListener("resize", posicionarSeletor);
   document.addEventListener("scroll", posicionarSeletor, true);
 
-  // ==== 11-exportacao-svg-png.js: imagens embutidas, moldura e exportação SVG/PNG (parte de assets/js/editor/app.js; npm run montar) ====
+  // ==== 13-exportacao-svg-png.js: imagens embutidas, moldura e exportação SVG/PNG (parte de assets/js/editor/app.js; npm run montar) ====
   function blobParaDataUrl(blob) {
     return new Promise(function (resolver, rejeitar) {
       var leitor = new FileReader();
@@ -8474,7 +8475,7 @@
     }
   });
 
-  // ==== 12-pagina-e-pdf.js: página, prévia e PDF; inicialização do editor (parte de assets/js/editor/app.js; npm run montar) ====
+  // ==== 14-pagina-e-pdf.js: página, prévia e PDF; inicialização do editor (parte de assets/js/editor/app.js; npm run montar) ====
   // ---- Página, área de desenho e PDF ------------------------------------------
   // Barra lateral direita. A configuração vale para a conta neste navegador.
   var FORMATOS_PAGINA = { A0: [841, 1189], A1: [594, 841], A2: [420, 594], A3: [297, 420], A4: [210, 297], A5: [148, 210] };

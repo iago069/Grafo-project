@@ -3232,11 +3232,11 @@ body:not([data-modo-diagrama="ftth"]) .so-modo-ftth { display: none; }
 .login-instalar:hover { background: rgba(255, 255, 255, 0.08); }
 @media (max-width: 480px) { .login-tela .auth-card { padding: 28px 22px 22px; border-radius: 20px; } }
 
-/* Campo preenchido sozinho pelo Grafo (11-automatico.js): leve destaque, sempre editável. */
+/* Campo preenchido sozinho pelo Grafo (12-cadastro-automatico.js): leve destaque, sempre editável. */
 .campo-automatico { background-image: linear-gradient(90deg, color-mix(in srgb, var(--teal) 10%, transparent), transparent 70%) !important; border-color: color-mix(in srgb, var(--teal) 45%, var(--line)) !important; }
 .rotulo-opcional { font-weight: 400; opacity: 0.65; font-size: 0.9em; }
 
-/* ==== Seletor de modelos (11-automatico.js) ==== */
+/* ==== Seletor de modelos (12-cadastro-automatico.js) ==== */
 .seletor-modelos { position: fixed; z-index: 2000; overflow: auto; padding: 6px; border-radius: 14px; background: var(--bg-panel-2, #fff); color: var(--text); border: 1px solid var(--line); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28); animation: surgir 0.16s var(--ease-out); overscroll-behavior: contain; }
 .seletor-modelos[hidden] { display: none; }
 .sm-topo { position: sticky; top: -6px; z-index: 1; display: flex; align-items: center; gap: 6px; margin: -6px -6px 4px; padding: 9px 12px; font: 600 0.72rem var(--sans); color: var(--text-dim); background: var(--bg-panel-2, #fff); border-bottom: 1px solid var(--line-soft, var(--line)); }
