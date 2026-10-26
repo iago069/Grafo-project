@@ -118,6 +118,8 @@
     if (r.right > window.innerWidth - 8) menu.classList.add("para-esquerda");
     botaoMenu.setAttribute("aria-expanded", "true");
     menuAberto = { botao: botaoMenu, menu: menu };
+    // Painéis laterais (Página e PDF) fecham: um não fica por cima do outro.
+    document.dispatchEvent(new CustomEvent("grafo:menu-aberto", { detail: { menu: menu.id } }));
     esconderDica();
     if (focarPrimeiro) { var primeiro = itensDo(menu)[0]; if (primeiro) primeiro.focus(); }
   }

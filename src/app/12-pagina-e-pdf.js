@@ -88,6 +88,14 @@
       colunas: colunas, linhas: linhas, total: colunas * linhas };
   }
 
+  // Formato da área útil da folha, para a moldura ocupar a página inteira (só
+  // com "Ajustar à página": uma folha, cabeçalho no topo e rodapé embaixo).
+  function aspectoDaFolha() {
+    if (configPagina.escala !== "ajustar") return 0;
+    var p = planoDeImpressao(1, 1);
+    return p.areaW / p.areaH;
+  }
+
   // Recorta o desenho rasterizado em páginas: [{ canvas, x, y, w, h }] em mm na folha.
   function paginasDoPlano(canvas, plano) {
     var paginas = [];
@@ -147,7 +155,7 @@
       var pg = tamanhoPaginaMm();
       var escalaMiniatura = LARGURA_PREVIA / Math.max(pg.w, pg.h * 0.8); // px por mm na miniatura
       var plano = null;
-      var r = await rasterizarDiagrama({ moldura: configPagina.moldura, fundo: corDeFundoDaExportacao(), pixelsPorUnidade: function (w, h) {
+      var r = await rasterizarDiagrama({ moldura: configPagina.moldura, aspecto: aspectoDaFolha(), fundo: corDeFundoDaExportacao(), pixelsPorUnidade: function (w, h) {
         plano = planoDeImpressao(w, h);
         return (plano.larguraMm * escalaMiniatura / w) * (window.devicePixelRatio || 1);
       } });
@@ -293,7 +301,7 @@
     var svgEl = elCanvas.querySelector("svg");
     var preparado = await prepararSvgSeguroParaPng(svgEl);
     var svg = preparado.svg;
-    if (configPagina.moldura) adicionarMolduraDeExportacao(svg);
+    if (configPagina.moldura) adicionarMolduraDeExportacao(svg, aspectoDaFolha());
     var vb = String(svg.getAttribute("viewBox") || "").trim().split(/[\s,]+/).map(Number);
     if (vb.length !== 4 || !vb[2] || !vb[3]) throw new Error("Não foi possível determinar o tamanho do diagrama.");
     var plano = planoDeImpressao(vb[2], vb[3]);
@@ -351,7 +359,7 @@
   async function montarPdfRaster(JsPdf) {
     var plano = null;
     // Resolução pelo tamanho impresso (DPI_PDF), limitada pelo máximo seguro do canvas.
-    var r = await rasterizarDiagrama({ moldura: configPagina.moldura, fundo: corDeFundoDaExportacao(), pixelsPorUnidade: function (w, h) {
+    var r = await rasterizarDiagrama({ moldura: configPagina.moldura, aspecto: aspectoDaFolha(), fundo: corDeFundoDaExportacao(), pixelsPorUnidade: function (w, h) {
       plano = planoDeImpressao(w, h);
       return (plano.larguraMm / 25.4 * DPI_PDF) / w;
     } });
@@ -431,6 +439,11 @@
     if (painelPaginaAberto() && telaCelular.matches) elPainelPagina.scrollIntoView({ behavior: "smooth", block: "start" });
   });
   document.getElementById("btnFecharPagina").addEventListener("click", function () { abrirPainelPagina(false); });
+  // Abrir um menu do topo (tema, conta, organizar…) fecha o painel, para não ficarem um sobre o outro.
+  document.addEventListener("grafo:menu-aberto", function (ev) {
+    var menu = ev.detail && ev.detail.menu;
+    if (painelPaginaAberto() && menu && !document.getElementById(menu).contains(btnPaginaPdf)) abrirPainelPagina(false);
+  });
   btnExportarPdf.addEventListener("click", exportarPdf);
 
   var timerAreaDesenho = null;

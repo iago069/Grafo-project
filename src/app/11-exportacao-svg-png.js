@@ -266,16 +266,23 @@
     return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
   }
 
-  function adicionarMolduraDeExportacao(svg) {
+  // aspecto (largura/altura da área útil da folha, opcional): a moldura cresce até
+  // ter o formato da folha. Assim o cabeçalho fica colado no topo, a ficha e a
+  // legenda no rodapé, e o diagrama centralizado no meio.
+  function adicionarMolduraDeExportacao(svg, aspecto) {
     var vb = String(svg.getAttribute("viewBox") || "").trim().split(/[\s,]+/).map(Number);
     if (vb.length !== 4 || vb.some(function (n) { return !Number.isFinite(n); }) || !vb[2] || !vb[3]) return;
     var NS = "http://www.w3.org/2000/svg";
-    var MARGEM = 32, TOPO = 108, RODAPE = 48;
-    var larguraNova = Math.max(vb[2] + 2 * MARGEM, 440);
+    var MARGEM = 32, TOPO = 96, RODAPE = 70;
+    var larguraNova = Math.max(vb[2] + 2 * MARGEM, 520);
     var alturaNova = vb[3] + TOPO + RODAPE;
+    if (aspecto > 0) {
+      if (larguraNova / alturaNova < aspecto) larguraNova = alturaNova * aspecto;
+      else alturaNova = larguraNova / aspecto;
+    }
     var x0 = vb[0] - (larguraNova - vb[2]) / 2;
-    var y0 = vb[1] - TOPO;
-    var baseRodape = vb[1] + vb[3];
+    var y0 = vb[1] - TOPO - (alturaNova - vb[3] - TOPO - RODAPE) / 2;
+    var fimFolha = y0 + alturaNova;
 
     var escuro = papelEscuroNaTela();
     var fundo = corDeFundoDaExportacao();
@@ -287,7 +294,6 @@
       if (texto != null) no.textContent = texto;
       return no;
     }
-    function plural(n, singular, pluralTexto) { return n + " " + (n === 1 ? singular : pluralTexto); }
 
     var fonte = "Helvetica, Arial, sans-serif";
     var agora = new Date();
@@ -295,45 +301,43 @@
     var DESTAQUE = "#E0932F", AZUL = "#0E2233", SUAVE = "#6B7C89";
     var moldura = el("g", { "class": "moldura-exportacao", "font-family": fonte, fill: AZUL });
     var xi = x0 + MARGEM, xf = x0 + larguraNova - MARGEM;
-    // Faixa fina de cor no topo da folha.
-    moldura.appendChild(el("rect", { x: x0, y: y0, width: larguraNova, height: 5, fill: AZUL }));
-    moldura.appendChild(el("rect", { x: x0, y: y0, width: Math.min(160, larguraNova * 0.25), height: 5, fill: DESTAQUE }));
-    // Marca: losango com o nó do Grafo + nome.
-    var marca = el("g", { transform: "translate(" + xi + "," + (y0 + 26) + ")" });
-    marca.appendChild(el("rect", { x: 0, y: 0, width: 34, height: 34, rx: 9, fill: AZUL }));
-    marca.appendChild(el("path", { d: "M17 8 L26 17 L17 26 L8 17 Z", fill: "none", stroke: DESTAQUE, "stroke-width": 2 }));
-    marca.appendChild(el("circle", { cx: 17, cy: 17, r: 3.2, fill: "#5FD4C4" }));
-    moldura.appendChild(marca);
-    // Título e subtítulo.
-    moldura.appendChild(el("text", { x: xi + 46, y: y0 + 44, "font-size": 24, "font-weight": "bold", "letter-spacing": "-0.4" }, projetoAtual));
-    moldura.appendChild(el("text", { x: xi + 46, y: y0 + 62, "font-size": 11, fill: SUAVE },
-      estado.subtitulo || ("Documentação de rede · " + MODOS_DIAGRAMA[modoAtual()].exportacao)));
-    // Ficha à direita: rótulo pequeno em cima, valor embaixo.
-    var ficha = [["TIPO", MODOS_DIAGRAMA[modoAtual()].exportacao], ["EQUIPAMENTOS", String(estado.equipamentos.length)], ["CABOS", String(estado.conexoes.length)], ["DATA", data + " · " + hora]];
-    var xFicha = xf;
-    ficha.slice().reverse().forEach(function (item) {
-      var largura = Math.max(item[0].length * 5.4, item[1].length * 6.4) + 18;
-      xFicha -= largura;
-      moldura.appendChild(el("line", { x1: xFicha, x2: xFicha, y1: y0 + 30, y2: y0 + 62, stroke: AZUL, "stroke-opacity": 0.12 }));
-      moldura.appendChild(el("text", { x: xFicha + 10, y: y0 + 40, "font-size": 7.5, "font-weight": "bold", "letter-spacing": "1.2", fill: SUAVE }, item[0]));
-      moldura.appendChild(el("text", { x: xFicha + 10, y: y0 + 56, "font-size": 11.5, "font-weight": "bold" }, item[1]));
-    });
-    // Linha embaixo do cabeçalho com um trecho na cor de destaque.
-    moldura.appendChild(el("line", { x1: xi, x2: xf, y1: y0 + TOPO - 14, y2: y0 + TOPO - 14, stroke: AZUL, "stroke-opacity": 0.14 }));
-    moldura.appendChild(el("line", { x1: xi, x2: xi + 72, y1: y0 + TOPO - 14, y2: y0 + TOPO - 14, stroke: DESTAQUE, "stroke-width": 2.4 }));
-    // Rodapé.
-    moldura.appendChild(el("line", { x1: xi, x2: xf, y1: baseRodape + 12, y2: baseRodape + 12, stroke: AZUL, "stroke-opacity": 0.14 }));
 
-    // Legenda: a mesma da tela (por tipo; no Monitoramento, por status).
+    // ---- Cabeçalho, no topo da folha ----
+    moldura.appendChild(el("rect", { x: x0, y: y0, width: larguraNova, height: 5, fill: AZUL }));
+    moldura.appendChild(el("rect", { x: x0, y: y0, width: Math.min(180, larguraNova * 0.25), height: 5, fill: DESTAQUE }));
+    var marca = el("g", { transform: "translate(" + xi + "," + (y0 + 24) + ")" });
+    marca.appendChild(el("rect", { x: 0, y: 0, width: 38, height: 38, rx: 10, fill: AZUL }));
+    marca.appendChild(el("path", { d: "M19 9 L29 19 L19 29 L9 19 Z", fill: "none", stroke: DESTAQUE, "stroke-width": 2.2 }));
+    marca.appendChild(el("circle", { cx: 19, cy: 19, r: 3.6, fill: "#5FD4C4" }));
+    moldura.appendChild(marca);
+    moldura.appendChild(el("text", { x: xi + 52, y: y0 + 44, "font-size": 26, "font-weight": "bold", "letter-spacing": "-0.4" }, projetoAtual));
+    moldura.appendChild(el("text", { x: xi + 52, y: y0 + 62, "font-size": 11.5, fill: SUAVE },
+      estado.subtitulo || ("Documentação de rede · " + MODOS_DIAGRAMA[modoAtual()].exportacao)));
+    moldura.appendChild(el("text", { x: xf, y: y0 + 40, "font-size": 8, "font-weight": "bold", "letter-spacing": "1.6", fill: SUAVE, "text-anchor": "end" }, "DIAGRAMA DE REDE"));
+    moldura.appendChild(el("text", { x: xf, y: y0 + 56, "font-size": 12, "font-weight": "bold", "text-anchor": "end" }, MODOS_DIAGRAMA[modoAtual()].exportacao));
+    moldura.appendChild(el("line", { x1: xi, x2: xf, y1: y0 + TOPO - 14, y2: y0 + TOPO - 14, stroke: AZUL, "stroke-opacity": 0.14 }));
+    moldura.appendChild(el("line", { x1: xi, x2: xi + 80, y1: y0 + TOPO - 14, y2: y0 + TOPO - 14, stroke: DESTAQUE, "stroke-width": 2.4 }));
+
+    // ---- Rodapé, no fim da folha: legenda à esquerda, ficha à direita ----
+    var yLinha = fimFolha - RODAPE + 8;
+    moldura.appendChild(el("line", { x1: xi, x2: xf, y1: yLinha, y2: yLinha, stroke: AZUL, "stroke-opacity": 0.14 }));
+    var yBase = fimFolha - 22;
     var xLegenda = xi;
-    var yLegenda = baseRodape + 30;
     (camadasOcultas().tipos ? [] : itensDaLegenda(estado)).forEach(function (item) {
-      moldura.appendChild(el("rect", { x: xLegenda, y: yLegenda - 7.5, width: 8, height: 8, rx: item.status ? 4 : 1.5, fill: item.cor }));
-      var rotulo = el("text", { x: xLegenda + 12, y: yLegenda, "font-size": 9, fill: SUAVE }, item.texto);
-      moldura.appendChild(rotulo);
+      moldura.appendChild(el("rect", { x: xLegenda, y: yBase - 7.5, width: 8, height: 8, rx: item.status ? 4 : 1.5, fill: item.cor }));
+      moldura.appendChild(el("text", { x: xLegenda + 12, y: yBase, "font-size": 9, fill: SUAVE }, item.texto));
       xLegenda += 12 + item.texto.length * 5.2 + 16;
     });
-    moldura.appendChild(el("text", { x: xf, y: yLegenda, "font-size": 8.5, fill: SUAVE, "text-anchor": "end" }, "Gerado com Grafo · thegrafo.vercel.app"));
+    var ficha = [["EQUIPAMENTOS", String(estado.equipamentos.length)], ["CABOS", String(estado.conexoes.length)], ["DATA", data + " · " + hora]];
+    var xFicha = xf;
+    ficha.slice().reverse().forEach(function (item, i) {
+      var largura = Math.max(item[0].length * 5.2, item[1].length * 6.2) + 18;
+      xFicha -= largura;
+      if (i < ficha.length) moldura.appendChild(el("line", { x1: xFicha, x2: xFicha, y1: yBase - 22, y2: yBase + 4, stroke: AZUL, "stroke-opacity": 0.12 }));
+      moldura.appendChild(el("text", { x: xFicha + 10, y: yBase - 12, "font-size": 7, "font-weight": "bold", "letter-spacing": "1.2", fill: SUAVE }, item[0]));
+      moldura.appendChild(el("text", { x: xFicha + 10, y: yBase + 2, "font-size": 11, "font-weight": "bold" }, item[1]));
+    });
+    moldura.appendChild(el("text", { x: xf, y: fimFolha - 6, "font-size": 7, fill: SUAVE, "text-anchor": "end", "fill-opacity": 0.8 }, "Gerado com Grafo · thegrafo.vercel.app"));
 
     // Caixa da legenda dos cabos na mesma cor do papel (só a borda aparece).
     svg.querySelectorAll("g.legenda-cabos > rect").forEach(function (r) { r.setAttribute("fill", fundo); });
@@ -554,7 +558,7 @@
     var svgEl = elCanvas.querySelector("svg");
     if (!svgEl) throw new Error("Gere o diagrama antes de exportar.");
     var preparado = await prepararSvgSeguroParaPng(svgEl);
-    if (opcoes.moldura !== false) adicionarMolduraDeExportacao(preparado.svg);
+    if (opcoes.moldura !== false) adicionarMolduraDeExportacao(preparado.svg, opcoes.aspecto);
     var svgText = new XMLSerializer().serializeToString(preparado.svg);
     var carregado = await carregarSvgSerializadoComoImagem(svgText);
     try {
