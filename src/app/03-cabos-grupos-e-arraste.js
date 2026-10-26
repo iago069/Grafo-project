@@ -472,8 +472,10 @@
   // e fica com a que menos sobrepõe os demais grupos; empate vai para a menor
   // distância. Só olhar o eixo de menor sobreposição deixava um grupo espremido
   // entre dois vizinhos indo e voltando entre eles.
-  function melhorEmpurrao(movel, outro, grupos) {
-    var e = ESPACO_ENTRE_GRUPOS;
+  // pesoLateral > 1: empurrar para os lados custa mais (equipamentos em coluna
+  // continuam alinhados; preferem descer ou subir).
+  function melhorEmpurrao(movel, outro, grupos, pesoLateral) {
+    var e = ESPACO_ENTRE_GRUPOS, lateral = pesoLateral || 1;
     var candidatos = [
       { dx: outro.x2 + e - movel.x1, dy: 0 },
       { dx: outro.x1 - e - movel.x2, dy: 0 },
@@ -489,7 +491,7 @@
         var oy = Math.min(movel.y2 + c.dy, g.y2) - Math.max(movel.y1 + c.dy, g.y1) + e;
         if (ox > 0 && oy > 0) area += ox * oy;
       });
-      var custo = area * 1000 + Math.abs(c.dx) + Math.abs(c.dy);
+      var custo = area * 1000 + Math.abs(c.dx) * lateral + Math.abs(c.dy);
       if (!melhor || custo < melhor.custo) melhor = { dx: c.dx, dy: c.dy, custo: custo };
     });
     return melhor;
@@ -584,7 +586,7 @@
           if (Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1) + e <= 0 || Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1) + e <= 0) continue;
           houve = true;
           var movel = b.fixo && !a.fixo ? a : b, outro = movel === a ? b : a;
-          var passo = melhorEmpurrao(movel, outro, caixas);
+          var passo = melhorEmpurrao(movel, outro, caixas, 6);
           mover(movel, passo.dx, passo.dy);
           moveu = true;
         }

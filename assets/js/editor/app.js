@@ -1361,8 +1361,10 @@
   // e fica com a que menos sobrepõe os demais grupos; empate vai para a menor
   // distância. Só olhar o eixo de menor sobreposição deixava um grupo espremido
   // entre dois vizinhos indo e voltando entre eles.
-  function melhorEmpurrao(movel, outro, grupos) {
-    var e = ESPACO_ENTRE_GRUPOS;
+  // pesoLateral > 1: empurrar para os lados custa mais (equipamentos em coluna
+  // continuam alinhados; preferem descer ou subir).
+  function melhorEmpurrao(movel, outro, grupos, pesoLateral) {
+    var e = ESPACO_ENTRE_GRUPOS, lateral = pesoLateral || 1;
     var candidatos = [
       { dx: outro.x2 + e - movel.x1, dy: 0 },
       { dx: outro.x1 - e - movel.x2, dy: 0 },
@@ -1378,7 +1380,7 @@
         var oy = Math.min(movel.y2 + c.dy, g.y2) - Math.max(movel.y1 + c.dy, g.y1) + e;
         if (ox > 0 && oy > 0) area += ox * oy;
       });
-      var custo = area * 1000 + Math.abs(c.dx) + Math.abs(c.dy);
+      var custo = area * 1000 + Math.abs(c.dx) * lateral + Math.abs(c.dy);
       if (!melhor || custo < melhor.custo) melhor = { dx: c.dx, dy: c.dy, custo: custo };
     });
     return melhor;
@@ -1473,7 +1475,7 @@
           if (Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1) + e <= 0 || Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1) + e <= 0) continue;
           houve = true;
           var movel = b.fixo && !a.fixo ? a : b, outro = movel === a ? b : a;
-          var passo = melhorEmpurrao(movel, outro, caixas);
+          var passo = melhorEmpurrao(movel, outro, caixas, 6);
           mover(movel, passo.dx, passo.dy);
           moveu = true;
         }
@@ -8125,8 +8127,13 @@
     var vb = String(svg.getAttribute("viewBox") || "").trim().split(/[\s,]+/).map(Number);
     if (vb.length !== 4 || vb.some(function (n) { return !Number.isFinite(n); }) || !vb[2] || !vb[3]) return;
     var NS = "http://www.w3.org/2000/svg";
-    var MARGEM = 32, TOPO = 96, RODAPE = 70;
-    var larguraNova = Math.max(vb[2] + 2 * MARGEM, 520);
+    // Escala do cabeçalho e do rodapé: acompanham o tamanho do desenho, para as
+    // letras terem sempre o mesmo tamanho na folha (diagrama grande não as encolhe).
+    var maior = Math.max(vb[2], vb[3] * (aspecto > 0 ? aspecto : 1.414));
+    var k = Math.max(1, maior / 760);
+    function z(n) { return n * k; }
+    var MARGEM = z(32), TOPO = z(100), RODAPE = z(74);
+    var larguraNova = Math.max(vb[2] + 2 * MARGEM, z(520));
     var alturaNova = vb[3] + TOPO + RODAPE;
     if (aspecto > 0) {
       if (larguraNova / alturaNova < aspecto) larguraNova = alturaNova * aspecto;
@@ -8142,7 +8149,7 @@
 
     function el(tag, atributos, texto) {
       var no = document.createElementNS(NS, tag);
-      Object.keys(atributos).forEach(function (k) { no.setAttribute(k, atributos[k]); });
+      Object.keys(atributos).forEach(function (chave) { no.setAttribute(chave, atributos[chave]); });
       if (texto != null) no.textContent = texto;
       return no;
     }
@@ -8155,41 +8162,41 @@
     var xi = x0 + MARGEM, xf = x0 + larguraNova - MARGEM;
 
     // ---- Cabeçalho, no topo da folha ----
-    moldura.appendChild(el("rect", { x: x0, y: y0, width: larguraNova, height: 5, fill: AZUL }));
-    moldura.appendChild(el("rect", { x: x0, y: y0, width: Math.min(180, larguraNova * 0.25), height: 5, fill: DESTAQUE }));
-    var marca = el("g", { transform: "translate(" + xi + "," + (y0 + 24) + ")" });
-    marca.appendChild(el("rect", { x: 0, y: 0, width: 38, height: 38, rx: 10, fill: AZUL }));
-    marca.appendChild(el("path", { d: "M19 9 L29 19 L19 29 L9 19 Z", fill: "none", stroke: DESTAQUE, "stroke-width": 2.2 }));
-    marca.appendChild(el("circle", { cx: 19, cy: 19, r: 3.6, fill: "#5FD4C4" }));
+    moldura.appendChild(el("rect", { x: x0, y: y0, width: larguraNova, height: z(5), fill: AZUL }));
+    moldura.appendChild(el("rect", { x: x0, y: y0, width: Math.min(z(180), larguraNova * 0.25), height: z(5), fill: DESTAQUE }));
+    var marca = el("g", { transform: "translate(" + xi + "," + (y0 + z(24)) + ") scale(" + k + ")" });
+    marca.appendChild(el("rect", { x: 0, y: 0, width: 40, height: 40, rx: 10, fill: AZUL }));
+    marca.appendChild(el("path", { d: "M20 9 L31 20 L20 31 L9 20 Z", fill: "none", stroke: DESTAQUE, "stroke-width": 2.2 }));
+    marca.appendChild(el("circle", { cx: 20, cy: 20, r: 3.8, fill: "#5FD4C4" }));
     moldura.appendChild(marca);
-    moldura.appendChild(el("text", { x: xi + 52, y: y0 + 44, "font-size": 26, "font-weight": "bold", "letter-spacing": "-0.4" }, projetoAtual));
-    moldura.appendChild(el("text", { x: xi + 52, y: y0 + 62, "font-size": 11.5, fill: SUAVE },
+    moldura.appendChild(el("text", { x: xi + z(54), y: y0 + z(46), "font-size": z(28), "font-weight": "bold", "letter-spacing": z(-0.4) }, projetoAtual));
+    moldura.appendChild(el("text", { x: xi + z(54), y: y0 + z(65), "font-size": z(12.5), fill: SUAVE },
       estado.subtitulo || ("Documentação de rede · " + MODOS_DIAGRAMA[modoAtual()].exportacao)));
-    moldura.appendChild(el("text", { x: xf, y: y0 + 40, "font-size": 8, "font-weight": "bold", "letter-spacing": "1.6", fill: SUAVE, "text-anchor": "end" }, "DIAGRAMA DE REDE"));
-    moldura.appendChild(el("text", { x: xf, y: y0 + 56, "font-size": 12, "font-weight": "bold", "text-anchor": "end" }, MODOS_DIAGRAMA[modoAtual()].exportacao));
-    moldura.appendChild(el("line", { x1: xi, x2: xf, y1: y0 + TOPO - 14, y2: y0 + TOPO - 14, stroke: AZUL, "stroke-opacity": 0.14 }));
-    moldura.appendChild(el("line", { x1: xi, x2: xi + 80, y1: y0 + TOPO - 14, y2: y0 + TOPO - 14, stroke: DESTAQUE, "stroke-width": 2.4 }));
+    moldura.appendChild(el("text", { x: xf, y: y0 + z(40), "font-size": z(8.5), "font-weight": "bold", "letter-spacing": z(1.6), fill: SUAVE, "text-anchor": "end" }, "DIAGRAMA DE REDE"));
+    moldura.appendChild(el("text", { x: xf, y: y0 + z(58), "font-size": z(13), "font-weight": "bold", "text-anchor": "end" }, MODOS_DIAGRAMA[modoAtual()].exportacao));
+    moldura.appendChild(el("line", { x1: xi, x2: xf, y1: y0 + TOPO - z(14), y2: y0 + TOPO - z(14), stroke: AZUL, "stroke-opacity": 0.14, "stroke-width": k }));
+    moldura.appendChild(el("line", { x1: xi, x2: xi + z(84), y1: y0 + TOPO - z(14), y2: y0 + TOPO - z(14), stroke: DESTAQUE, "stroke-width": z(2.6) }));
 
     // ---- Rodapé, no fim da folha: legenda à esquerda, ficha à direita ----
-    var yLinha = fimFolha - RODAPE + 8;
-    moldura.appendChild(el("line", { x1: xi, x2: xf, y1: yLinha, y2: yLinha, stroke: AZUL, "stroke-opacity": 0.14 }));
-    var yBase = fimFolha - 22;
+    var yLinha = fimFolha - RODAPE + z(8);
+    moldura.appendChild(el("line", { x1: xi, x2: xf, y1: yLinha, y2: yLinha, stroke: AZUL, "stroke-opacity": 0.14, "stroke-width": k }));
+    var yBase = fimFolha - z(24);
     var xLegenda = xi;
     (camadasOcultas().tipos ? [] : itensDaLegenda(estado)).forEach(function (item) {
-      moldura.appendChild(el("rect", { x: xLegenda, y: yBase - 7.5, width: 8, height: 8, rx: item.status ? 4 : 1.5, fill: item.cor }));
-      moldura.appendChild(el("text", { x: xLegenda + 12, y: yBase, "font-size": 9, fill: SUAVE }, item.texto));
-      xLegenda += 12 + item.texto.length * 5.2 + 16;
+      moldura.appendChild(el("rect", { x: xLegenda, y: yBase - z(8.5), width: z(10), height: z(10), rx: item.status ? z(5) : z(2), fill: item.cor }));
+      moldura.appendChild(el("text", { x: xLegenda + z(15), y: yBase, "font-size": z(11), fill: SUAVE }, item.texto));
+      xLegenda += z(15 + item.texto.length * 6.3 + 18);
     });
     var ficha = [["EQUIPAMENTOS", String(estado.equipamentos.length)], ["CABOS", String(estado.conexoes.length)], ["DATA", data + " · " + hora]];
     var xFicha = xf;
-    ficha.slice().reverse().forEach(function (item, i) {
-      var largura = Math.max(item[0].length * 5.2, item[1].length * 6.2) + 18;
+    ficha.slice().reverse().forEach(function (item) {
+      var largura = z(Math.max(item[0].length * 6, item[1].length * 7.4) + 20);
       xFicha -= largura;
-      if (i < ficha.length) moldura.appendChild(el("line", { x1: xFicha, x2: xFicha, y1: yBase - 22, y2: yBase + 4, stroke: AZUL, "stroke-opacity": 0.12 }));
-      moldura.appendChild(el("text", { x: xFicha + 10, y: yBase - 12, "font-size": 7, "font-weight": "bold", "letter-spacing": "1.2", fill: SUAVE }, item[0]));
-      moldura.appendChild(el("text", { x: xFicha + 10, y: yBase + 2, "font-size": 11, "font-weight": "bold" }, item[1]));
+      moldura.appendChild(el("line", { x1: xFicha, x2: xFicha, y1: yBase - z(26), y2: yBase + z(4), stroke: AZUL, "stroke-opacity": 0.12, "stroke-width": k }));
+      moldura.appendChild(el("text", { x: xFicha + z(11), y: yBase - z(14), "font-size": z(8), "font-weight": "bold", "letter-spacing": z(1.2), fill: SUAVE }, item[0]));
+      moldura.appendChild(el("text", { x: xFicha + z(11), y: yBase + z(2), "font-size": z(13), "font-weight": "bold" }, item[1]));
     });
-    moldura.appendChild(el("text", { x: xf, y: fimFolha - 6, "font-size": 7, fill: SUAVE, "text-anchor": "end", "fill-opacity": 0.8 }, "Gerado com Grafo · thegrafo.vercel.app"));
+    moldura.appendChild(el("text", { x: xf, y: fimFolha - z(7), "font-size": z(7.5), fill: SUAVE, "text-anchor": "end", "fill-opacity": 0.8 }, "Gerado com Grafo · thegrafo.vercel.app"));
 
     // Caixa da legenda dos cabos na mesma cor do papel (só a borda aparece).
     svg.querySelectorAll("g.legenda-cabos > rect").forEach(function (r) { r.setAttribute("fill", fundo); });
