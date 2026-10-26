@@ -230,11 +230,10 @@
     if (h) return "rgb(" + [0, 2, 4].map(function (i) { return parseInt(h[1].slice(i, i + 2), 16); }).join(", ") + ")";
     return v || getComputedStyle(document.body).backgroundColor;
   }
-  // Exportação escura quando o quadro OU o tema do app são escuros: o PDF fica
-  // todo na cor do layout, sem o papel branco.
-  function papelEscuroNaTela() {
-    return !!(corEscura(getComputedStyle(elCanvas).backgroundColor) || corEscura(corDoLayout()));
-  }
+  // Exportação sempre em papel claro (fica bonito impresso e gasta pouca tinta),
+  // independente do tema da tela.
+  function papelEscuroNaTela() { return false; }
+  var COR_PAPEL = "#FBF8F2"; // bege bem leve: a folha inteira nessa cor, sem faixa
   function aplicarPapelEscuroNaCopia(svg) {
     svg.querySelectorAll("text").forEach(function (t) {
       var nova = CORES_PAPEL_ESCURO.text[String(t.getAttribute("fill") || "").toLowerCase()];
@@ -260,15 +259,8 @@
 
   // Emoldura a cópia exportada: cabeçalho (projeto, data, totais), rodapé com a
   // legenda de tipos e fundo sólido. Aumenta o viewBox em volta do desenho.
-  // Cor de fundo da exportação: a mesma do quadro na tela (papel escuro → azul-noite).
-  // Fundo transparente na tela vira branco.
-  function corDeFundoDaExportacao() {
-    var c = papelEscuroNaTela() ? (corEscura(corDoLayout()) ? corDoLayout() : getComputedStyle(elCanvas).backgroundColor) : (getComputedStyle(elCanvas).backgroundColor || "");
-    if (papelEscuroNaTela() && !/rgb/.test(c)) return "#0E1C27";
-    var m = /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s/]+([\d.]+))?/.exec(c);
-    if (!m || (m[4] != null && Number(m[4]) < 0.5)) return "#ffffff";
-    return "#" + [m[1], m[2], m[3]].map(function (n) { return ("0" + Number(n).toString(16)).slice(-2); }).join("");
-  }
+  // Cor de fundo da exportação: o papel (a mesma na folha, no desenho e no cabeçalho).
+  function corDeFundoDaExportacao() { return COR_PAPEL; }
   function rgbDaCor(hex) {
     var h = String(hex).replace("#", "");
     return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
@@ -278,17 +270,15 @@
     var vb = String(svg.getAttribute("viewBox") || "").trim().split(/[\s,]+/).map(Number);
     if (vb.length !== 4 || vb.some(function (n) { return !Number.isFinite(n); }) || !vb[2] || !vb[3]) return;
     var NS = "http://www.w3.org/2000/svg";
-    var MARGEM = 28, TOPO = 104, RODAPE = 46;
+    var MARGEM = 32, TOPO = 108, RODAPE = 48;
     var larguraNova = Math.max(vb[2] + 2 * MARGEM, 440);
     var alturaNova = vb[3] + TOPO + RODAPE;
     var x0 = vb[0] - (larguraNova - vb[2]) / 2;
     var y0 = vb[1] - TOPO;
     var baseRodape = vb[1] + vb[3];
 
-    var estilo = getComputedStyle(elCanvas);
     var escuro = papelEscuroNaTela();
     var fundo = corDeFundoDaExportacao();
-    var tinta = escuro ? "#E8F1F8" : (estilo.getPropertyValue("--ink").trim() || "#16323D");
     if (escuro) aplicarPapelEscuroNaCopia(svg);
 
     function el(tag, atributos, texto) {
@@ -300,24 +290,53 @@
     function plural(n, singular, pluralTexto) { return n + " " + (n === 1 ? singular : pluralTexto); }
 
     var fonte = "Helvetica, Arial, sans-serif";
-    var data = new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
-    var moldura = el("g", { "class": "moldura-exportacao", "font-family": fonte, fill: tinta });
-    moldura.appendChild(el("text", { x: x0 + MARGEM, y: y0 + 46, "font-size": 30, "font-weight": "bold", "letter-spacing": "-0.5" }, projetoAtual));
-    moldura.appendChild(el("text", { x: x0 + MARGEM, y: y0 + 72, "font-size": 13, "fill-opacity": 0.7 },
-      (estado.subtitulo ? estado.subtitulo + " · " : "") + MODOS_DIAGRAMA[modoAtual()].exportacao + " · " + data + " · " + plural(estado.equipamentos.length, "equipamento", "equipamentos") + " · " + plural(estado.conexoes.length, "cabo", "cabos")));
-    moldura.appendChild(el("line", { x1: x0 + MARGEM, x2: x0 + larguraNova - MARGEM, y1: y0 + TOPO - 8, y2: y0 + TOPO - 8, stroke: tinta, "stroke-opacity": 0.15 }));
-    moldura.appendChild(el("line", { x1: x0 + MARGEM, x2: x0 + larguraNova - MARGEM, y1: baseRodape + 12, y2: baseRodape + 12, stroke: tinta, "stroke-opacity": 0.15 }));
+    var agora = new Date();
+    var data = agora.toLocaleDateString("pt-BR"), hora = agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    var DESTAQUE = "#E0932F", AZUL = "#0E2233", SUAVE = "#6B7C89";
+    var moldura = el("g", { "class": "moldura-exportacao", "font-family": fonte, fill: AZUL });
+    var xi = x0 + MARGEM, xf = x0 + larguraNova - MARGEM;
+    // Faixa fina de cor no topo da folha.
+    moldura.appendChild(el("rect", { x: x0, y: y0, width: larguraNova, height: 5, fill: AZUL }));
+    moldura.appendChild(el("rect", { x: x0, y: y0, width: Math.min(160, larguraNova * 0.25), height: 5, fill: DESTAQUE }));
+    // Marca: losango com o nó do Grafo + nome.
+    var marca = el("g", { transform: "translate(" + xi + "," + (y0 + 26) + ")" });
+    marca.appendChild(el("rect", { x: 0, y: 0, width: 34, height: 34, rx: 9, fill: AZUL }));
+    marca.appendChild(el("path", { d: "M17 8 L26 17 L17 26 L8 17 Z", fill: "none", stroke: DESTAQUE, "stroke-width": 2 }));
+    marca.appendChild(el("circle", { cx: 17, cy: 17, r: 3.2, fill: "#5FD4C4" }));
+    moldura.appendChild(marca);
+    // Título e subtítulo.
+    moldura.appendChild(el("text", { x: xi + 46, y: y0 + 44, "font-size": 24, "font-weight": "bold", "letter-spacing": "-0.4" }, projetoAtual));
+    moldura.appendChild(el("text", { x: xi + 46, y: y0 + 62, "font-size": 11, fill: SUAVE },
+      estado.subtitulo || ("Documentação de rede · " + MODOS_DIAGRAMA[modoAtual()].exportacao)));
+    // Ficha à direita: rótulo pequeno em cima, valor embaixo.
+    var ficha = [["TIPO", MODOS_DIAGRAMA[modoAtual()].exportacao], ["EQUIPAMENTOS", String(estado.equipamentos.length)], ["CABOS", String(estado.conexoes.length)], ["DATA", data + " · " + hora]];
+    var xFicha = xf;
+    ficha.slice().reverse().forEach(function (item) {
+      var largura = Math.max(item[0].length * 5.4, item[1].length * 6.4) + 18;
+      xFicha -= largura;
+      moldura.appendChild(el("line", { x1: xFicha, x2: xFicha, y1: y0 + 30, y2: y0 + 62, stroke: AZUL, "stroke-opacity": 0.12 }));
+      moldura.appendChild(el("text", { x: xFicha + 10, y: y0 + 40, "font-size": 7.5, "font-weight": "bold", "letter-spacing": "1.2", fill: SUAVE }, item[0]));
+      moldura.appendChild(el("text", { x: xFicha + 10, y: y0 + 56, "font-size": 11.5, "font-weight": "bold" }, item[1]));
+    });
+    // Linha embaixo do cabeçalho com um trecho na cor de destaque.
+    moldura.appendChild(el("line", { x1: xi, x2: xf, y1: y0 + TOPO - 14, y2: y0 + TOPO - 14, stroke: AZUL, "stroke-opacity": 0.14 }));
+    moldura.appendChild(el("line", { x1: xi, x2: xi + 72, y1: y0 + TOPO - 14, y2: y0 + TOPO - 14, stroke: DESTAQUE, "stroke-width": 2.4 }));
+    // Rodapé.
+    moldura.appendChild(el("line", { x1: xi, x2: xf, y1: baseRodape + 12, y2: baseRodape + 12, stroke: AZUL, "stroke-opacity": 0.14 }));
 
     // Legenda: a mesma da tela (por tipo; no Monitoramento, por status).
-    var xLegenda = x0 + MARGEM;
+    var xLegenda = xi;
     var yLegenda = baseRodape + 30;
     (camadasOcultas().tipos ? [] : itensDaLegenda(estado)).forEach(function (item) {
       moldura.appendChild(el("rect", { x: xLegenda, y: yLegenda - 7.5, width: 8, height: 8, rx: item.status ? 4 : 1.5, fill: item.cor }));
-      var rotulo = el("text", { x: xLegenda + 12, y: yLegenda, "font-size": 9, "fill-opacity": 0.8 }, item.texto);
+      var rotulo = el("text", { x: xLegenda + 12, y: yLegenda, "font-size": 9, fill: SUAVE }, item.texto);
       moldura.appendChild(rotulo);
       xLegenda += 12 + item.texto.length * 5.2 + 16;
     });
-    moldura.appendChild(el("text", { x: x0 + larguraNova - MARGEM, y: yLegenda, "font-size": 8.5, "fill-opacity": 0.5, "text-anchor": "end" }, "Gerado com Grafo"));
+    moldura.appendChild(el("text", { x: xf, y: yLegenda, "font-size": 8.5, fill: SUAVE, "text-anchor": "end" }, "Gerado com Grafo · thegrafo.vercel.app"));
+
+    // Caixa da legenda dos cabos na mesma cor do papel (só a borda aparece).
+    svg.querySelectorAll("g.legenda-cabos > rect").forEach(function (r) { r.setAttribute("fill", fundo); });
 
     svg.insertBefore(el("rect", { x: x0, y: y0, width: larguraNova, height: alturaNova, fill: fundo }), svg.firstChild);
     svg.appendChild(moldura);
