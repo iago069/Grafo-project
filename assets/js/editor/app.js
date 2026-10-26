@@ -8056,6 +8056,20 @@
 
   // Emoldura a cópia exportada: cabeçalho (projeto, data, totais), rodapé com a
   // legenda de tipos e fundo sólido. Aumenta o viewBox em volta do desenho.
+  // Cor de fundo da exportação: a mesma do quadro na tela (papel escuro → azul-noite).
+  // Fundo transparente na tela vira branco.
+  function corDeFundoDaExportacao() {
+    if (papelEscuroNaTela()) return "#0E1C27";
+    var c = getComputedStyle(elCanvas).backgroundColor || "";
+    var m = /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s/]+([\d.]+))?/.exec(c);
+    if (!m || (m[4] != null && Number(m[4]) < 0.5)) return "#ffffff";
+    return "#" + [m[1], m[2], m[3]].map(function (n) { return ("0" + Number(n).toString(16)).slice(-2); }).join("");
+  }
+  function rgbDaCor(hex) {
+    var h = String(hex).replace("#", "");
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  }
+
   function adicionarMolduraDeExportacao(svg) {
     var vb = String(svg.getAttribute("viewBox") || "").trim().split(/[\s,]+/).map(Number);
     if (vb.length !== 4 || vb.some(function (n) { return !Number.isFinite(n); }) || !vb[2] || !vb[3]) return;
@@ -8069,7 +8083,7 @@
 
     var estilo = getComputedStyle(elCanvas);
     var escuro = papelEscuroNaTela();
-    var fundo = escuro ? "#0E1C27" : (estilo.backgroundColor || "#ffffff");
+    var fundo = corDeFundoDaExportacao();
     var tinta = escuro ? "#E8F1F8" : (estilo.getPropertyValue("--ink").trim() || "#16323D");
     if (escuro) aplicarPapelEscuroNaCopia(svg);
 
@@ -8522,7 +8536,7 @@
       var pg = tamanhoPaginaMm();
       var escalaMiniatura = LARGURA_PREVIA / Math.max(pg.w, pg.h * 0.8); // px por mm na miniatura
       var plano = null;
-      var r = await rasterizarDiagrama({ moldura: configPagina.moldura, fundo: "#ffffff", pixelsPorUnidade: function (w, h) {
+      var r = await rasterizarDiagrama({ moldura: configPagina.moldura, fundo: corDeFundoDaExportacao(), pixelsPorUnidade: function (w, h) {
         plano = planoDeImpressao(w, h);
         return (plano.larguraMm * escalaMiniatura / w) * (window.devicePixelRatio || 1);
       } });
@@ -8543,7 +8557,7 @@
         folha.style.height = Math.round(pg.h * escalaFolha) + "px";
         var ctx = folha.getContext("2d");
         var k = escalaFolha * dpr;
-        ctx.fillStyle = "#ffffff";
+        ctx.fillStyle = corDeFundoDaExportacao(); // a folha inteira na cor do layout, como no PDF
         ctx.fillRect(0, 0, folha.width, folha.height);
         ctx.imageSmoothingQuality = "high";
         ctx.drawImage(p.canvas, p.x * k, p.y * k, p.w * k, p.h * k);
@@ -8694,8 +8708,7 @@
           // seu pedaço do desenho inteiro, recortado na área útil.
           var x = plano.margem + (plano.total === 1 ? (plano.areaW - wMm) / 2 : 0);
           var y = plano.margem + (plano.total === 1 ? (plano.areaH - hMm) / 2 : 0);
-          doc.setFillColor(255, 255, 255);
-          doc.rect(x, y, wMm, hMm, "F");
+          pintarFolha(doc, plano);
           doc.saveGraphicsState();
           doc.rect(x, y, wMm, hMm, null);
           doc.clip();
@@ -8716,11 +8729,18 @@
     }
   }
 
+  // Folha inteira na cor de fundo do layout: sem faixas brancas na impressão.
+  function pintarFolha(doc, plano) {
+    var rgb = rgbDaCor(corDeFundoDaExportacao());
+    doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+    doc.rect(0, 0, plano.pagina.w, plano.pagina.h, "F");
+  }
+
   // PDF com o diagrama como imagem (~DPI_PDF). Usado se o modo vetorial falhar.
   async function montarPdfRaster(JsPdf) {
     var plano = null;
     // Resolução pelo tamanho impresso (DPI_PDF), limitada pelo máximo seguro do canvas.
-    var r = await rasterizarDiagrama({ moldura: configPagina.moldura, fundo: "#ffffff", pixelsPorUnidade: function (w, h) {
+    var r = await rasterizarDiagrama({ moldura: configPagina.moldura, fundo: corDeFundoDaExportacao(), pixelsPorUnidade: function (w, h) {
       plano = planoDeImpressao(w, h);
       return (plano.larguraMm / 25.4 * DPI_PDF) / w;
     } });
@@ -8730,6 +8750,7 @@
     doc.setProperties({ title: projetoAtual, subject: MODOS_DIAGRAMA[modoAtual()].exportacao, creator: "Grafo" });
     paginas.forEach(function (p, i) {
       if (i > 0) doc.addPage();
+      pintarFolha(doc, plano);
       doc.addImage(p.canvas, "PNG", p.x, p.y, p.w, p.h, undefined, "FAST");
       if (paginas.length > 1) {
         doc.setFontSize(7);

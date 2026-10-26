@@ -3261,3 +3261,10 @@ body:not([data-modo-diagrama="ftth"]) .so-modo-ftth { display: none; }
 .legenda[hidden] { display: none !important; }
 .legenda-fechar-tipos { width: 22px; height: 22px; min-height: 0; padding: 0; margin-left: auto; border-radius: 7px; border: 1px solid transparent; background: transparent; color: var(--text-dim); font-size: 15px; line-height: 1; cursor: pointer; opacity: 0.6; box-shadow: none; }
 .legenda-fechar-tipos:hover { opacity: 1; background: color-mix(in srgb, var(--text) 8%, transparent); transform: none; }
+
+/* Impressão pelo navegador (Ctrl+P): sem margem branca, o fundo do layout vai junto. */
+@page { margin: 0; }
+@media print {
+  html, body { margin: 0 !important; background: var(--bg) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

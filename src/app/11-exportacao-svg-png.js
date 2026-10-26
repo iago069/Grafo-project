@@ -243,6 +243,20 @@
 
   // Emoldura a cópia exportada: cabeçalho (projeto, data, totais), rodapé com a
   // legenda de tipos e fundo sólido. Aumenta o viewBox em volta do desenho.
+  // Cor de fundo da exportação: a mesma do quadro na tela (papel escuro → azul-noite).
+  // Fundo transparente na tela vira branco.
+  function corDeFundoDaExportacao() {
+    if (papelEscuroNaTela()) return "#0E1C27";
+    var c = getComputedStyle(elCanvas).backgroundColor || "";
+    var m = /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s/]+([\d.]+))?/.exec(c);
+    if (!m || (m[4] != null && Number(m[4]) < 0.5)) return "#ffffff";
+    return "#" + [m[1], m[2], m[3]].map(function (n) { return ("0" + Number(n).toString(16)).slice(-2); }).join("");
+  }
+  function rgbDaCor(hex) {
+    var h = String(hex).replace("#", "");
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  }
+
   function adicionarMolduraDeExportacao(svg) {
     var vb = String(svg.getAttribute("viewBox") || "").trim().split(/[\s,]+/).map(Number);
     if (vb.length !== 4 || vb.some(function (n) { return !Number.isFinite(n); }) || !vb[2] || !vb[3]) return;
@@ -256,7 +270,7 @@
 
     var estilo = getComputedStyle(elCanvas);
     var escuro = papelEscuroNaTela();
-    var fundo = escuro ? "#0E1C27" : (estilo.backgroundColor || "#ffffff");
+    var fundo = corDeFundoDaExportacao();
     var tinta = escuro ? "#E8F1F8" : (estilo.getPropertyValue("--ink").trim() || "#16323D");
     if (escuro) aplicarPapelEscuroNaCopia(svg);
 
