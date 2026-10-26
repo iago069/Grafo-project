@@ -218,10 +218,22 @@
   var CORES_PAPEL_ESCURO = {
     text: { "#14212b": "#E8F1F8", "#111111": "#E8F1F8", "#405363": "#9CB7C8", "#34495a": "#9CB7C8", "#1f5f8b": "#71C7F0", "#2ead68": "#4BE08C" }
   };
-  function papelEscuroNaTela() {
-    var m = String(getComputedStyle(elCanvas).backgroundColor || "").match(/\d+(\.\d+)?/g);
-    if (!m || m.length < 3) return false;
+  function corEscura(cor) {
+    var m = String(cor || "").match(/\d+(\.\d+)?/g);
+    if (!m || m.length < 3 || (m.length > 3 && Number(m[3]) < 0.5)) return null;
     return (0.299 * m[0] + 0.587 * m[1] + 0.114 * m[2]) < 90;
+  }
+  // Fundo do layout (o do app, atrás dos painéis).
+  function corDoLayout() {
+    var v = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
+    var h = /^#([0-9a-f]{6})$/i.exec(v);
+    if (h) return "rgb(" + [0, 2, 4].map(function (i) { return parseInt(h[1].slice(i, i + 2), 16); }).join(", ") + ")";
+    return v || getComputedStyle(document.body).backgroundColor;
+  }
+  // Exportação escura quando o quadro OU o tema do app são escuros: o PDF fica
+  // todo na cor do layout, sem o papel branco.
+  function papelEscuroNaTela() {
+    return !!(corEscura(getComputedStyle(elCanvas).backgroundColor) || corEscura(corDoLayout()));
   }
   function aplicarPapelEscuroNaCopia(svg) {
     svg.querySelectorAll("text").forEach(function (t) {
@@ -237,6 +249,11 @@
       if (String(p.getAttribute("stroke") || "").toLowerCase() === "#5a7284") { p.setAttribute("stroke", "#7FA3BC"); if (p.tagName.toLowerCase() === "polygon") p.setAttribute("fill", "#7FA3BC"); }
     });
     svg.querySelectorAll(".eq-moldura-icone").forEach(function (r) { r.setAttribute("stroke", "#8FA9BC"); });
+    // Legenda dos cabos: a caixa acompanha o fundo, sem retângulo branco.
+    svg.querySelectorAll("g.legenda-cabos rect").forEach(function (r) { r.setAttribute("fill", "#FFFFFF"); r.setAttribute("fill-opacity", "0.05"); r.setAttribute("stroke", "#4E6A80"); });
+    svg.querySelectorAll("g.legenda-cabos text").forEach(function (t) { t.setAttribute("fill", "#E8F1F8"); });
+    svg.querySelectorAll("g.legenda-cabos tspan").forEach(function (t) { t.setAttribute("fill", "#9CB7C8"); });
+    svg.querySelectorAll("g.edge g.selo-cabo rect, g.edge rect.selo-cabo").forEach(function (r) { if (String(r.getAttribute("fill") || "").toLowerCase() === "#ffffff") { r.setAttribute("fill", "#132636"); } });
     // Etiquetas de cabo e IPs ficam legíveis por cima das linhas.
     svg.querySelectorAll("g.edge text").forEach(function (t) { t.setAttribute("fill", "#9CB7C8"); });
   }
@@ -246,8 +263,8 @@
   // Cor de fundo da exportação: a mesma do quadro na tela (papel escuro → azul-noite).
   // Fundo transparente na tela vira branco.
   function corDeFundoDaExportacao() {
-    if (papelEscuroNaTela()) return "#0E1C27";
-    var c = getComputedStyle(elCanvas).backgroundColor || "";
+    var c = papelEscuroNaTela() ? (corEscura(corDoLayout()) ? corDoLayout() : getComputedStyle(elCanvas).backgroundColor) : (getComputedStyle(elCanvas).backgroundColor || "");
+    if (papelEscuroNaTela() && !/rgb/.test(c)) return "#0E1C27";
     var m = /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s/]+([\d.]+))?/.exec(c);
     if (!m || (m[4] != null && Number(m[4]) < 0.5)) return "#ffffff";
     return "#" + [m[1], m[2], m[3]].map(function (n) { return ("0" + Number(n).toString(16)).slice(-2); }).join("");
@@ -261,7 +278,7 @@
     var vb = String(svg.getAttribute("viewBox") || "").trim().split(/[\s,]+/).map(Number);
     if (vb.length !== 4 || vb.some(function (n) { return !Number.isFinite(n); }) || !vb[2] || !vb[3]) return;
     var NS = "http://www.w3.org/2000/svg";
-    var MARGEM = 24, TOPO = 62, RODAPE = 42;
+    var MARGEM = 28, TOPO = 104, RODAPE = 46;
     var larguraNova = Math.max(vb[2] + 2 * MARGEM, 440);
     var alturaNova = vb[3] + TOPO + RODAPE;
     var x0 = vb[0] - (larguraNova - vb[2]) / 2;
@@ -285,8 +302,8 @@
     var fonte = "Helvetica, Arial, sans-serif";
     var data = new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
     var moldura = el("g", { "class": "moldura-exportacao", "font-family": fonte, fill: tinta });
-    moldura.appendChild(el("text", { x: x0 + MARGEM, y: y0 + 28, "font-size": 16, "font-weight": "bold" }, projetoAtual));
-    moldura.appendChild(el("text", { x: x0 + MARGEM, y: y0 + 45, "font-size": 9.5, "fill-opacity": 0.65 },
+    moldura.appendChild(el("text", { x: x0 + MARGEM, y: y0 + 46, "font-size": 30, "font-weight": "bold", "letter-spacing": "-0.5" }, projetoAtual));
+    moldura.appendChild(el("text", { x: x0 + MARGEM, y: y0 + 72, "font-size": 13, "fill-opacity": 0.7 },
       (estado.subtitulo ? estado.subtitulo + " · " : "") + MODOS_DIAGRAMA[modoAtual()].exportacao + " · " + data + " · " + plural(estado.equipamentos.length, "equipamento", "equipamentos") + " · " + plural(estado.conexoes.length, "cabo", "cabos")));
     moldura.appendChild(el("line", { x1: x0 + MARGEM, x2: x0 + larguraNova - MARGEM, y1: y0 + TOPO - 8, y2: y0 + TOPO - 8, stroke: tinta, "stroke-opacity": 0.15 }));
     moldura.appendChild(el("line", { x1: x0 + MARGEM, x2: x0 + larguraNova - MARGEM, y1: baseRodape + 12, y2: baseRodape + 12, stroke: tinta, "stroke-opacity": 0.15 }));
