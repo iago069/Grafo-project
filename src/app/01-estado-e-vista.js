@@ -229,9 +229,21 @@
     var alturaCanvas = elCanvas.clientHeight;
     if (!tamanho.largura || !tamanho.altura || !larguraCanvas || !alturaCanvas) return;
     var folga = 32;
-    var escala = limitarZoom(Math.min(1, (larguraCanvas - folga) / tamanho.largura, (alturaCanvas - folga) / tamanho.altura));
-    var x = (larguraCanvas - tamanho.largura * escala) / 2;
-    var y = (alturaCanvas - tamanho.altura * escala) / 2;
+    // Área livre de verdade: sem a caixa de ferramentas presa à esquerda do
+    // quadro e só a parte do quadro que cabe na tela (no celular ele é mais
+    // alto que a tela e o desenho ia parar lá embaixo).
+    var quadro = elCanvas.getBoundingClientRect();
+    var esquerda = 0;
+    var caixa = document.getElementById("caixaFerramentas");
+    if (caixa && caixa.offsetParent) {
+      var rc = caixa.getBoundingClientRect();
+      if (rc.left < quadro.left + quadro.width / 3 && rc.height > rc.width) esquerda = Math.max(0, rc.right - quadro.left + 8);
+    }
+    var alturaVisivel = Math.max(160, Math.min(alturaCanvas, window.innerHeight - Math.max(0, quadro.top)));
+    var larguraLivre = larguraCanvas - esquerda;
+    var escala = limitarZoom(Math.min(1, (larguraLivre - folga) / tamanho.largura, (alturaVisivel - folga) / tamanho.altura));
+    var x = esquerda + (larguraLivre - tamanho.largura * escala) / 2;
+    var y = Math.max(folga / 2, (alturaVisivel - tamanho.altura * escala) / 2);
     if (animar === true) { moverCameraPara(escala, x, y); return; }
     pararCamera();
     canvasView.scale = escala;

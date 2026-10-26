@@ -123,6 +123,7 @@
   elFiltroConex.addEventListener("input", filtrarListas);
 
   function renderConexoes() {
+    prepararCoresDosCabos(estado.conexoes); // a marca de cada cabo com a mesma cor do desenho
     var opcoesEquip = estado.equipamentos.map(function (eq) { return { id: eq.id, nome: eq.nome || eq.id }; });
     elListaConex.innerHTML = estado.conexoes.map(function (c, j) {
       function opcoes(selecionado) {

@@ -174,6 +174,8 @@
     elWorkspace.classList.toggle("modo-avancado-fechado", fechado);
     btnModoAvancado.classList.toggle("active", !fechado);
     btnModoAvancado.textContent = fechado ? "Editar em lista" : "Fechar lista";
+    // O quadro muda de largura: reenquadra o diagrama depois da animação.
+    setTimeout(function () { ajustarATela(true); }, 320);
   });
 
   var modalRef = {

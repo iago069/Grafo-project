@@ -595,17 +595,19 @@
                 <label>Origem<select id="navCableDe" required></select></label>
                 <label>Destino<select id="navCablePara" required></select></label>
               </div>
-              <label>Tipo de enlace<input id="navCableTipo" data-limite="tipoCabo" required placeholder="Ex.: Fibra GPON"></label>
               <div class="nav-form-grid">
-                <label>Cor<input id="navCableCor" type="color" value="#5A7284"></label>
-                <label>Espessura<input id="navCableGrossura" type="number" min="1" max="10" value="2"></label>
+                <label>Porta na origem<input id="navCableSaida" data-limite="porta" placeholder="Ex.: XE1/1/1"></label>
+                <label>Porta no destino<input id="navCableChegada" data-limite="porta" placeholder="Ex.: XE1/1/7"></label>
+              </div>
+              <div class="nav-form-grid">
+                <label>Capacidade<input id="navCablePotencia" data-limite="capacidade" list="capacidades-sugeridas" autocomplete="off" value="1G" placeholder="Ex.: 10G"></label>
+                <label>Tipo de enlace<input id="navCableTipo" data-limite="tipoCabo" required placeholder="Fibra"></label>
               </div>
               <div class="nav-form-grid">
                 <label>Estilo<select id="navCableEstilo"><option value="solid">Contínuo</option><option value="dashed">Tracejado</option><option value="dotted">Pontilhado</option></select></label>
-                <label>Porta equipamento 1<input id="navCableSaida" data-limite="porta" placeholder="Ex.: xe1/1/1"></label>
-                <label>Porta equipamento 2<input id="navCableChegada" data-limite="porta" placeholder="Ex.: XE1/1/7"></label>
+                <label>Espessura<input id="navCableGrossura" type="number" min="1" max="10" value="2"></label>
               </div>
-              <label>Capacidade do cabo<input id="navCablePotencia" data-limite="capacidade" list="capacidades-sugeridas" autocomplete="off" value="1G" placeholder="Ex.: 10G"></label>
+              <label>Cor <span class="rotulo-opcional">(automática: cada cabo uma cor)</span><input id="navCableCor" type="color" value="#5A7284"></label>
               <div class="nav-form-actions"><button class="primary" type="submit">Adicionar</button><button class="ghost" type="button" data-nav-close>Cancelar</button></div>
               <div class="nav-panel-message" id="navCableMessage"></div>
             </form>

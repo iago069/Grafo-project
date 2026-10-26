@@ -667,9 +667,21 @@
     var alturaCanvas = elCanvas.clientHeight;
     if (!tamanho.largura || !tamanho.altura || !larguraCanvas || !alturaCanvas) return;
     var folga = 32;
-    var escala = limitarZoom(Math.min(1, (larguraCanvas - folga) / tamanho.largura, (alturaCanvas - folga) / tamanho.altura));
-    var x = (larguraCanvas - tamanho.largura * escala) / 2;
-    var y = (alturaCanvas - tamanho.altura * escala) / 2;
+    // Área livre de verdade: sem a caixa de ferramentas presa à esquerda do
+    // quadro e só a parte do quadro que cabe na tela (no celular ele é mais
+    // alto que a tela e o desenho ia parar lá embaixo).
+    var quadro = elCanvas.getBoundingClientRect();
+    var esquerda = 0;
+    var caixa = document.getElementById("caixaFerramentas");
+    if (caixa && caixa.offsetParent) {
+      var rc = caixa.getBoundingClientRect();
+      if (rc.left < quadro.left + quadro.width / 3 && rc.height > rc.width) esquerda = Math.max(0, rc.right - quadro.left + 8);
+    }
+    var alturaVisivel = Math.max(160, Math.min(alturaCanvas, window.innerHeight - Math.max(0, quadro.top)));
+    var larguraLivre = larguraCanvas - esquerda;
+    var escala = limitarZoom(Math.min(1, (larguraLivre - folga) / tamanho.largura, (alturaVisivel - folga) / tamanho.altura));
+    var x = esquerda + (larguraLivre - tamanho.largura * escala) / 2;
+    var y = Math.max(folga / 2, (alturaVisivel - tamanho.altura * escala) / 2);
     if (animar === true) { moverCameraPara(escala, x, y); return; }
     pararCamera();
     canvasView.scale = escala;
@@ -2641,6 +2653,8 @@
     elWorkspace.classList.toggle("modo-avancado-fechado", fechado);
     btnModoAvancado.classList.toggle("active", !fechado);
     btnModoAvancado.textContent = fechado ? "Editar em lista" : "Fechar lista";
+    // O quadro muda de largura: reenquadra o diagrama depois da animação.
+    setTimeout(function () { ajustarATela(true); }, 320);
   });
 
   var modalRef = {
@@ -3815,6 +3829,7 @@
   elFiltroConex.addEventListener("input", filtrarListas);
 
   function renderConexoes() {
+    prepararCoresDosCabos(estado.conexoes); // a marca de cada cabo com a mesma cor do desenho
     var opcoesEquip = estado.equipamentos.map(function (eq) { return { id: eq.id, nome: eq.nome || eq.id }; });
     elListaConex.innerHTML = estado.conexoes.map(function (c, j) {
       function opcoes(selecionado) {
