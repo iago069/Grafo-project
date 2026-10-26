@@ -40,7 +40,7 @@ test("Automático: projeto grande fica em estrela; Esquerda → Direita volta ao
   const direita = vizinhos.filter(v => v.x > c.x + 50).length;
   const embaixo = vizinhos.filter(v => Math.abs(v.x - c.x) <= 50 || v.y > c.y + 150 && Math.abs(v.x - c.x) < Math.abs(v.y - c.y) / 2).length;
   assert.ok(esquerda >= 3 && direita >= 3, `vizinhos dos dois lados (esq ${esquerda}, dir ${direita})`);
-  assert.ok(embaixo >= 1, "alguns vizinhos embaixo");
+  assert.equal(embaixo, 0, "ninguém embaixo do centro: só as duas colunas");
   // O que vem atrás de um vizinho fica mais longe do centro, do mesmo lado.
   assert.ok(Math.abs(p.x1.x - c.x) > Math.abs(p.v1.x - c.x) || Math.abs(p.x1.y - c.y) > Math.abs(p.v1.y - c.y));
   // Colunas laterais: o vizinho mais alto ainda recebe o cabo pela lateral do núcleo.

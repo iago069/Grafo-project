@@ -1005,11 +1005,12 @@
         ramos.push(ramo);
       });
 
-      // Divide os ramos: embaixo só com muitos (cerca de 1/5); o resto
-      // equilibrado entre esquerda e direita pelo número de equipamentos.
+      // Divide os ramos em duas colunas, esquerda e direita, equilibradas pelo
+      // número de equipamentos. Ninguém vai para baixo do centro: fica tudo em
+      // coluna, na ordem das portas.
       var lados = { esquerda: [], direita: [], baixo: [] };
       var carga = { esquerda: 0, direita: 0, baixo: 0 };
-      var pesos = ramos.length >= 10 ? { direita: 0.4, esquerda: 0.4, baixo: 0.2 } : { direita: 0.5, esquerda: 0.5 };
+      var pesos = { direita: 0.5, esquerda: 0.5 };
       ramos.map(function (ramo, i) { return { ramo: ramo, i: i }; })
         .sort(function (a, b) { return b.ramo.length - a.ramo.length || a.i - b.i; })
         .forEach(function (item) {
