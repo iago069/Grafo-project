@@ -263,15 +263,43 @@
   seletorModelos.hidden = true;
   seletorModelos.setAttribute("role", "listbox");
   document.body.appendChild(seletorModelos);
-  var seletorAlvo = null, seletorItens = [], seletorAtivo = -1;
+  var seletorAlvo = null, seletorItens = [], seletorAtivo = -1, seletorModo = "modelo";
   var COR_FABRICANTE = { MikroTik: "#E5484D", Datacom: "#1E6FD9", Huawei: "#D9332B", Parks: "#1B7F2A", Juniper: "#0A7C86", Cisco: "#1BA0D7", "Genérico": "#7A8B99" };
   function soLetrasENumeros(t) { return String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, ""); }
 
   function ehCampoModelo(el) {
     return !!el && el.tagName === "INPUT" && (el.id === "navEquipModelo" || el.id === "editEquipModelo" || el.id === "novoEquipModelo" || el.getAttribute("data-field") === "modelo");
   }
+  function ehCampoTipo(el) {
+    return !!el && el.tagName === "INPUT" && (el.id === "navEquipTipo" || el.id === "editEquipTipo" || el.id === "novoEquipTipo" || (el.getAttribute("data-field") === "tipo" && !!el.closest("#listaEquip")));
+  }
+  // Tipos: os símbolos do quadro (sem os nomes repetidos), com o ícone.
+  function montarSeletorTipos() {
+    var termo = normalizarTextoEquipamento(seletorAlvo.value);
+    var todos = tiposParaBiblioteca();
+    var primeiro = TIPOS_PRIMEIRO_POR_MODO[modoAtual()] || [];
+    todos.sort(function (a, b) {
+      var ia = primeiro.indexOf(a.nome), ib = primeiro.indexOf(b.nome);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    });
+    var escolhido = todos.find(function (t) { return t.nome === seletorAlvo.value; });
+    var lista = todos.filter(function (t) { return !termo || escolhido || normalizarTextoEquipamento(t.nome).indexOf(termo) >= 0; });
+    // O que começa com o texto vem primeiro ("olt" acha OLT antes de Volt).
+    if (termo && !escolhido) lista.sort(function (a, b) { return normalizarTextoEquipamento(a.nome).indexOf(termo) - normalizarTextoEquipamento(b.nome).indexOf(termo); });
+    seletorItens = [];
+    var html = lista.map(function (t) {
+      var i = seletorItens.push(t) - 1, icone = t.icone || iconePorTipo(t.nome);
+      return '<button type="button" class="sm-item sm-item-tipo' + (escolhido && escolhido.nome === t.nome ? " escolhido" : "") + '" data-i="' + i + '" role="option">' +
+        '<span class="sm-icone">' + (icone && /[\/.]/.test(icone) ?'<img src="' + escaparHtml(icone) + '" alt="">' : escaparHtml(icone || "")) + "</span><strong>" + escaparHtml(t.nome) + "</strong></button>";
+    }).join("");
+    seletorModelos.innerHTML = '<div class="sm-topo">' + (lista.length ? lista.length + " tipos" : "Tipo novo: será criado com esse nome") + "<span>↑↓ Enter</span></div>" +
+      (html ? '<div class="sm-grade-tipos">' + html + "</div>" : "");
+    seletorAtivo = -1;
+    posicionarSeletor();
+  }
   function montarSeletor() {
     if (!seletorAlvo) return;
+    if (seletorModo === "tipo") { montarSeletorTipos(); return; }
     var campoTipo = campoTipoDoModelo(seletorAlvo);
     var base = Esquema.filtrarModelosPorTipo(catalogoModelos, campoTipo ? campoTipo.value : "");
     var termo = soLetrasENumeros(seletorAlvo.value);
@@ -308,8 +336,10 @@
     seletorModelos.style.maxHeight = Math.max(160, altura) + "px";
     seletorModelos.style.top = (paraBaixo ? r.bottom + 6 : Math.max(8, r.top - 6 - Math.max(160, altura))) + "px";
   }
-  function abrirSeletor(campo) {
+  function abrirSeletor(campo, modo) {
     seletorAlvo = campo;
+    seletorModo = modo || "modelo";
+    seletorModelos.classList.toggle("modo-tipo", seletorModo === "tipo");
     if (campo.hasAttribute("list")) campo.removeAttribute("list");
     seletorModelos.hidden = false;
     montarSeletor();
@@ -322,7 +352,7 @@
     campo.classList.remove("campo-automatico");
     campo.dispatchEvent(new Event("input", { bubbles: true }));
     campo.dispatchEvent(new Event("change", { bubbles: true }));
-    var campoTipo = campoTipoDoModelo(campo);
+    var campoTipo = seletorModo === "modelo" ? campoTipoDoModelo(campo) : null;
     if (campoTipo && !campoTipo.value.trim() && m.tipo) { campoTipo.value = m.tipo; campoTipo.dispatchEvent(new Event("input", { bubbles: true })); }
     fecharSeletor();
   }
@@ -334,7 +364,8 @@
     botoes[seletorAtivo].scrollIntoView({ block: "nearest" });
   }
   document.addEventListener("focusin", function (e) {
-    if (ehCampoModelo(e.target)) abrirSeletor(e.target);
+    if (ehCampoModelo(e.target)) abrirSeletor(e.target, "modelo");
+    else if (ehCampoTipo(e.target)) abrirSeletor(e.target, "tipo");
     else if (!seletorModelos.contains(e.target)) fecharSeletor();
   });
   document.addEventListener("input", function (e) { if (e.target === seletorAlvo) montarSeletor(); });

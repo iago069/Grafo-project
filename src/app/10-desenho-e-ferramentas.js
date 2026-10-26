@@ -772,8 +772,14 @@
 
   function tiposParaBiblioteca() {
     var lista = (typeof catalogoTiposEquipamentos !== "undefined" ? catalogoTiposEquipamentos : []).filter(function (t) { return t && t.nome; });
-    var vistos = {};
-    return lista.filter(function (t) { var k = t.nome.toLowerCase(); if (vistos[k]) return false; vistos[k] = true; return true; });
+    var vistos = {}, icones = {};
+    return lista.filter(function (t) {
+      if (t.apelido) return false; // outro nome para um símbolo que já está na lista
+      var k = normalizarTextoEquipamento(t.nome), ic = String(t.icone || "");
+      if (vistos[k] || (ic && icones[ic] && !/CX\.png$/i.test(ic))) return false; // CTO e CX usam o mesmo desenho, de propósito
+      vistos[k] = true; if (ic) icones[ic] = true;
+      return true;
+    });
   }
 
   function criarBibliotecaDeEquipamentos() {

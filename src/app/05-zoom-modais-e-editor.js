@@ -161,7 +161,9 @@
     btnSidebarCollapse.title = rotulo;
   }
   btnSidebarCollapse.addEventListener("click", function () {
-    definirSidebarRecolhida(!elSidebar.classList.contains("collapsed"));
+    var recolher = !elSidebar.classList.contains("collapsed");
+    if (recolher) fecharPaineisLaterais(); // recolhida não deixa formulário aberto
+    definirSidebarRecolhida(recolher);
   });
   if (telaCelular.matches) definirSidebarRecolhida(true);
   var ouvirTela = function () { definirSidebarRecolhida(elSidebar.classList.contains("collapsed")); };

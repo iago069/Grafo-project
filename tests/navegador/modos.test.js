@@ -279,3 +279,27 @@ test("seletor de modelos: agrupado por fabricante, filtra ao digitar e escolhe c
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("seletor de Tipo com ícone, biblioteca sem tipos repetidos e recolher a barra fecha as abas", async () => {
+  const pagina = await abrirPagina(navegador, site, { viewport: { width: 1400, height: 900 } });
+  await esperarDiagrama(pagina);
+  await pagina.click('[data-nav-panel="navAddEquip"]');
+  await pagina.click("#navEquipTipo");
+  await pagina.waitForSelector(".seletor-modelos.modo-tipo:not([hidden]) .sm-item-tipo img");
+  await pagina.keyboard.type("olt");
+  if (process.env.FOTO_TIPO) await pagina.screenshot({ path: process.env.FOTO_TIPO });
+  await pagina.keyboard.press("ArrowDown");
+  await pagina.keyboard.press("Enter");
+  assert.equal(await pagina.inputValue("#navEquipTipo"), "OLT");
+  // Recolher a barra fecha o formulário aberto.
+  await pagina.click("#btnSidebarCollapse");
+  assert.equal(await pagina.$$eval(".nav-panel.open", l => l.length), 0);
+  await pagina.click("#btnSidebarCollapse");
+  // Biblioteca: sem UPS, AR, HVAC, RPS, MikroTik, VOLT, Camera IP.
+  await pagina.click("#btnBibliotecaEquip");
+  const nomes = await pagina.$$eval("#bibliotecaEquip .be-nome", l => l.map(e => e.textContent));
+  for (const n of ["UPS", "AR", "HVAC", "RPS", "MikroTik", "VOLT", "Camera IP"]) assert.ok(!nomes.includes(n), n);
+  assert.ok(nomes.includes("Nobreak") && nomes.includes("RB / CCR"));
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

@@ -3268,3 +3268,11 @@ body:not([data-modo-diagrama="ftth"]) .so-modo-ftth { display: none; }
   html, body { margin: 0 !important; background: var(--bg) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* Seletor de Tipo: grade com o ícone de cada tipo. */
+.seletor-modelos.modo-tipo { width: 360px; }
+.sm-grade-tipos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; }
+.sm-item.sm-item-tipo { grid-template-columns: 28px minmax(0, 1fr); padding: 6px 8px; }
+.sm-icone { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 7px; background: color-mix(in srgb, var(--text) 6%, transparent); font-size: 16px; }
+.sm-icone img { width: 22px; height: 22px; object-fit: contain; }
+.sm-item-tipo strong { font-size: 0.82rem; }
