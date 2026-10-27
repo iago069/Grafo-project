@@ -8030,6 +8030,28 @@
     });
     return melhor;
   }
+  // Siglas de localidade da Anatel (CNL): "POP-TPA01" → TPA → Tapera. Arquivo
+  // data/cnl-siglas.json, carregado só quando precisa.
+  var siglasCnl = null;
+  async function carregarSiglasCnl() {
+    if (siglasCnl) return siglasCnl;
+    try { siglasCnl = (await (await fetch("./data/cnl-siglas.json")).json()).siglas || {}; } catch (e) { siglasCnl = {}; }
+    return siglasCnl;
+  }
+  // Sigla CNL no nome do POP: o pedaço de 2 a 4 letras (com número junto ou não)
+  // logo depois de "POP", ou qualquer pedaço assim que exista na tabela da UF.
+  function municipioPelaSigla(nomeEquip, tabela) {
+    if (!tabela) return "";
+    var partes = String(nomeEquip || "").toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
+    var candidatos = [];
+    partes.forEach(function (p, i) {
+      var m = /^([A-Z]{2,4})\d{0,3}$/.exec(p);
+      if (!m) return;
+      if (i > 0 && partes[i - 1] === "POP") candidatos.unshift(m[1]); else candidatos.push(m[1]);
+    });
+    for (var i = 0; i < candidatos.length; i++) if (tabela[candidatos[i]] && candidatos[i] !== "POP") return tabela[candidatos[i]];
+    return "";
+  }
   async function gerarMapaIbge(uf, soDoDiagrama, detalhado) {
     var codigo = UFS_IBGE[uf];
     if (!codigo) throw new Error("escolha o estado.");
@@ -8044,11 +8066,15 @@
       var cod = String((f.properties || {}).codarea || "");
       return { type: "Feature", geometry: f.geometry, properties: { NM_MUN: nomePorCodigo[cod] || cod, CD_MUN: cod } };
     });
-    // Equipamentos sem município: tenta achar a cidade no nome.
+    // Equipamentos sem município: primeiro a sigla CNL da Anatel no nome do POP
+    // (POP-TPA01 → Tapera), depois a cidade escrita no nome.
+    var tabelaUf = (await carregarSiglasCnl())[uf];
     var preenchidos = 0;
     estado.equipamentos.forEach(function (eq) {
       if (eq.municipio) return;
-      var achado = municipioNoNome(eq.nome, nomes);
+      var pelaSigla = municipioPelaSigla(eq.nome, tabelaUf);
+      var oficial = pelaSigla && nomes.find(function (n) { return normalizarTextoEquipamento(n) === normalizarTextoEquipamento(pelaSigla); });
+      var achado = oficial || municipioNoNome(eq.nome, nomes);
       if (achado) { eq.municipio = achado; preenchidos++; }
     });
     var usados = {};
@@ -8503,7 +8529,22 @@
     tipo.addEventListener("input", function () { tipoAutomatico = !tipo.value.trim(); });
     ip.addEventListener("input", function () { ipAutomatico = !ip.value.trim(); });
     if (modelo) modelo.addEventListener("input", function () { modeloAutomatico = !modelo.value.trim(); });
+    // Município pela sigla CNL da Anatel no nome do POP (POP-TPA01 → Tapera), na UF
+    // escolhida no Mapa de regiões (RS se nenhuma).
+    var campoMunicipio = document.getElementById("navEquipMunicipio"), municipioAutomatico = true;
+    if (campoMunicipio) campoMunicipio.addEventListener("input", function () { municipioAutomatico = !campoMunicipio.value.trim(); campoMunicipio.classList.remove("campo-automatico"); });
     nome.addEventListener("input", function () {
+      if (campoMunicipio && municipioAutomatico) {
+        var uf = "RS";
+        try { uf = localStorage.getItem("grafo-mapa-uf") || "RS"; } catch (e) {}
+        var texto = nome.value;
+        carregarSiglasCnl().then(function (tabelas) {
+          if (!municipioAutomatico || nome.value !== texto) return;
+          var achado = municipioPelaSigla(texto, tabelas[uf]);
+          campoMunicipio.value = achado;
+          campoMunicipio.classList.toggle("campo-automatico", !!achado);
+        });
+      }
       var m = modeloAutomatico && modelo ? modeloPeloNome(nome.value) : null;
       if (modelo && modeloAutomatico) { modelo.value = m ? m.nome : ""; modelo.classList.toggle("campo-automatico", !!m); }
       if (!tipoAutomatico) return;
@@ -8531,7 +8572,7 @@
     // Depois de salvar (o formulário é limpo), o próximo já vem com o IP seguinte.
     document.getElementById("navEquipForm").addEventListener("reset", function () {
       setTimeout(function () {
-        tipoAutomatico = true; ipAutomatico = true; modeloAutomatico = true;
+        tipoAutomatico = true; ipAutomatico = true; modeloAutomatico = true; municipioAutomatico = true;
         [tipo, ip, modelo].forEach(function (c) { if (c) c.classList.remove("campo-automatico"); });
       }, 0);
     });
@@ -9668,6 +9709,9 @@
     var svgEl = elCanvas.querySelector("svg");
     var preparado = await prepararSvgSeguroParaPng(svgEl);
     var svg = preparado.svg;
+    // O gerador de PDF não entende paint-order: o contorno claro dos textos sobre o
+    // mapa cobriria as letras. No PDF vetorial os textos vão sem esse contorno.
+    svg.querySelectorAll("text[paint-order]").forEach(function (t) { ["stroke", "stroke-width", "stroke-opacity", "stroke-linejoin", "paint-order"].forEach(function (a) { t.removeAttribute(a); }); });
     if (configPagina.moldura) adicionarMolduraDeExportacao(svg, aspectoDaFolha());
     var vb = String(svg.getAttribute("viewBox") || "").trim().split(/[\s,]+/).map(Number);
     if (vb.length !== 4 || !vb[2] || !vb[3]) throw new Error("Não foi possível determinar o tamanho do diagrama.");

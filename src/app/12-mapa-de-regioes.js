@@ -433,6 +433,28 @@
     });
     return melhor;
   }
+  // Siglas de localidade da Anatel (CNL): "POP-TPA01" → TPA → Tapera. Arquivo
+  // data/cnl-siglas.json, carregado só quando precisa.
+  var siglasCnl = null;
+  async function carregarSiglasCnl() {
+    if (siglasCnl) return siglasCnl;
+    try { siglasCnl = (await (await fetch("./data/cnl-siglas.json")).json()).siglas || {}; } catch (e) { siglasCnl = {}; }
+    return siglasCnl;
+  }
+  // Sigla CNL no nome do POP: o pedaço de 2 a 4 letras (com número junto ou não)
+  // logo depois de "POP", ou qualquer pedaço assim que exista na tabela da UF.
+  function municipioPelaSigla(nomeEquip, tabela) {
+    if (!tabela) return "";
+    var partes = String(nomeEquip || "").toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
+    var candidatos = [];
+    partes.forEach(function (p, i) {
+      var m = /^([A-Z]{2,4})\d{0,3}$/.exec(p);
+      if (!m) return;
+      if (i > 0 && partes[i - 1] === "POP") candidatos.unshift(m[1]); else candidatos.push(m[1]);
+    });
+    for (var i = 0; i < candidatos.length; i++) if (tabela[candidatos[i]] && candidatos[i] !== "POP") return tabela[candidatos[i]];
+    return "";
+  }
   async function gerarMapaIbge(uf, soDoDiagrama, detalhado) {
     var codigo = UFS_IBGE[uf];
     if (!codigo) throw new Error("escolha o estado.");
@@ -447,11 +469,15 @@
       var cod = String((f.properties || {}).codarea || "");
       return { type: "Feature", geometry: f.geometry, properties: { NM_MUN: nomePorCodigo[cod] || cod, CD_MUN: cod } };
     });
-    // Equipamentos sem município: tenta achar a cidade no nome.
+    // Equipamentos sem município: primeiro a sigla CNL da Anatel no nome do POP
+    // (POP-TPA01 → Tapera), depois a cidade escrita no nome.
+    var tabelaUf = (await carregarSiglasCnl())[uf];
     var preenchidos = 0;
     estado.equipamentos.forEach(function (eq) {
       if (eq.municipio) return;
-      var achado = municipioNoNome(eq.nome, nomes);
+      var pelaSigla = municipioPelaSigla(eq.nome, tabelaUf);
+      var oficial = pelaSigla && nomes.find(function (n) { return normalizarTextoEquipamento(n) === normalizarTextoEquipamento(pelaSigla); });
+      var achado = oficial || municipioNoNome(eq.nome, nomes);
       if (achado) { eq.municipio = achado; preenchidos++; }
     });
     var usados = {};

@@ -152,7 +152,22 @@
     tipo.addEventListener("input", function () { tipoAutomatico = !tipo.value.trim(); });
     ip.addEventListener("input", function () { ipAutomatico = !ip.value.trim(); });
     if (modelo) modelo.addEventListener("input", function () { modeloAutomatico = !modelo.value.trim(); });
+    // Município pela sigla CNL da Anatel no nome do POP (POP-TPA01 → Tapera), na UF
+    // escolhida no Mapa de regiões (RS se nenhuma).
+    var campoMunicipio = document.getElementById("navEquipMunicipio"), municipioAutomatico = true;
+    if (campoMunicipio) campoMunicipio.addEventListener("input", function () { municipioAutomatico = !campoMunicipio.value.trim(); campoMunicipio.classList.remove("campo-automatico"); });
     nome.addEventListener("input", function () {
+      if (campoMunicipio && municipioAutomatico) {
+        var uf = "RS";
+        try { uf = localStorage.getItem("grafo-mapa-uf") || "RS"; } catch (e) {}
+        var texto = nome.value;
+        carregarSiglasCnl().then(function (tabelas) {
+          if (!municipioAutomatico || nome.value !== texto) return;
+          var achado = municipioPelaSigla(texto, tabelas[uf]);
+          campoMunicipio.value = achado;
+          campoMunicipio.classList.toggle("campo-automatico", !!achado);
+        });
+      }
       var m = modeloAutomatico && modelo ? modeloPeloNome(nome.value) : null;
       if (modelo && modeloAutomatico) { modelo.value = m ? m.nome : ""; modelo.classList.toggle("campo-automatico", !!m); }
       if (!tipoAutomatico) return;
@@ -180,7 +195,7 @@
     // Depois de salvar (o formulário é limpo), o próximo já vem com o IP seguinte.
     document.getElementById("navEquipForm").addEventListener("reset", function () {
       setTimeout(function () {
-        tipoAutomatico = true; ipAutomatico = true; modeloAutomatico = true;
+        tipoAutomatico = true; ipAutomatico = true; modeloAutomatico = true; municipioAutomatico = true;
         [tipo, ip, modelo].forEach(function (c) { if (c) c.classList.remove("campo-automatico"); });
       }, 0);
     });

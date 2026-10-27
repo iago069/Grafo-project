@@ -180,3 +180,31 @@ test("Gerar mapa (IBGE): baixa a malha do estado, fica só com os municípios do
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("sigla CNL da Anatel no nome do POP: preenche o município (POP-TPA01 → Tapera) e entra no mapa do IBGE", async () => {
+  const pagina = await abrirPagina(navegador, site, { viewport: { width: 1400, height: 900 } });
+  const quad = (x, cod) => ({ type: "Feature", properties: { codarea: cod }, geometry: { type: "Polygon", coordinates: [[[x, -28.6], [x + 0.2, -28.6], [x + 0.2, -28.4], [x, -28.4], [x, -28.6]]] } });
+  await pagina.route("https://servicodados.ibge.gov.br/api/v3/malhas/**", r => r.fulfill({ contentType: "application/json", body: JSON.stringify({ type: "FeatureCollection", features: [quad(-53.2, "4321105"), quad(-53.0, "4320701")] }) }));
+  await pagina.route("https://servicodados.ibge.gov.br/api/v1/localidades/**", r => r.fulfill({ contentType: "application/json", body: JSON.stringify([{ id: 4321105, nome: "Tapera" }, { id: 4320701, nome: "Selbach" }]) }));
+  await esperarDiagrama(pagina);
+  await pagina.click('[data-nav-panel="navAddEquip"]');
+  await pagina.waitForSelector("#navEquipNome", { state: "visible" });
+  await pagina.fill("#navEquipNome", "POP-TPA01_DISTR-11");
+  await pagina.waitForFunction(() => document.getElementById("navEquipMunicipio").value === "Tapera", null, { timeout: 10000 });
+  await pagina.click('#navEquipForm button[type="submit"]');
+  await pagina.locator("#fichaModal:not(.hidden) .modal-actions [data-ficha-fechar]").click({ timeout: 3000 }).catch(() => {});
+  // Outro POP só com a sigla no nome (sem Município): acha pelo CNL na hora de gerar o mapa.
+  await pagina.click('[data-nav-panel="navAddEquip"]');
+  await pagina.fill("#navEquipNome", "POP-SXH03_DISTR-51");
+  await pagina.fill("#navEquipMunicipio", "");
+  await pagina.click('#navEquipForm button[type="submit"]');
+  await pagina.locator("#fichaModal:not(.hidden) .modal-actions [data-ficha-fechar]").click({ timeout: 3000 }).catch(() => {});
+  await pagina.click('[data-nav-panel="navMapa"]');
+  await pagina.selectOption("#mapaUf", "RS");
+  await pagina.click("#mapaGerarIbge");
+  await pagina.waitForFunction(() => document.querySelectorAll("#canvas g.camada-mapa g.mapa-regioes > path").length === 2, null, { timeout: 20000 });
+  const p = await salvo(pagina);
+  assert.equal(p.equipamentos.find(e => e.nome === "POP-SXH03_DISTR-51").municipio, "Selbach");
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

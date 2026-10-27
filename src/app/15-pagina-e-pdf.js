@@ -301,6 +301,9 @@
     var svgEl = elCanvas.querySelector("svg");
     var preparado = await prepararSvgSeguroParaPng(svgEl);
     var svg = preparado.svg;
+    // O gerador de PDF não entende paint-order: o contorno claro dos textos sobre o
+    // mapa cobriria as letras. No PDF vetorial os textos vão sem esse contorno.
+    svg.querySelectorAll("text[paint-order]").forEach(function (t) { ["stroke", "stroke-width", "stroke-opacity", "stroke-linejoin", "paint-order"].forEach(function (a) { t.removeAttribute(a); }); });
     if (configPagina.moldura) adicionarMolduraDeExportacao(svg, aspectoDaFolha());
     var vb = String(svg.getAttribute("viewBox") || "").trim().split(/[\s,]+/).map(Number);
     if (vb.length !== 4 || !vb[2] || !vb[3]) throw new Error("Não foi possível determinar o tamanho do diagrama.");
