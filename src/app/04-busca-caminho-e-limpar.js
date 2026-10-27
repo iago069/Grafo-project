@@ -187,11 +187,17 @@
 
   var SEM_TIPO = "(sem tipo)", SEM_GRUPO = "(sem grupo)";
 
-  // Quais equipamentos e cabos a opção escolhida remove.
+  // O que a opção escolhida remove: equipamentos, cabos e, conforme a opção,
+  // notas, desenhos e o mapa de fundo.
   function selecaoParaLimpar() {
     var modo = (limpar.form.querySelector('input[name="limparModo"]:checked') || {}).value;
-    if (modo === "tudo") return { equipamentos: estado.equipamentos.slice(), conexoes: estado.conexoes.slice() };
-    if (modo === "cabos") return { equipamentos: [], conexoes: estado.conexoes.slice() };
+    var vazio = { equipamentos: [], conexoes: [], anotacoes: [], desenhos: [], mapa: false };
+    if (modo === "tudo") return { equipamentos: estado.equipamentos.slice(), conexoes: estado.conexoes.slice(),
+      anotacoes: (estado.anotacoes || []).slice(), desenhos: (estado.desenhos || []).slice(), mapa: !!estado.mapa };
+    if (modo === "cabos") return Object.assign({}, vazio, { conexoes: estado.conexoes.slice() });
+    if (modo === "mapa") return Object.assign({}, vazio, { mapa: !!estado.mapa });
+    if (modo === "notas") return Object.assign({}, vazio, { anotacoes: (estado.anotacoes || []).slice() });
+    if (modo === "desenhos") return Object.assign({}, vazio, { desenhos: (estado.desenhos || []).slice() });
     var filtro = {
       tipo: function (eq) { return (String(eq.tipo || "").trim() || SEM_TIPO) === limpar.tipo.value; },
       grupo: function (eq) { return (String(eq.grupo || "").trim() || SEM_GRUPO) === limpar.grupo.value; },
@@ -200,15 +206,20 @@
     var equipamentos = filtro ? estado.equipamentos.filter(filtro) : [];
     var ids = {};
     equipamentos.forEach(function (eq) { ids[eq.id] = true; });
-    return { equipamentos: equipamentos, conexoes: estado.conexoes.filter(function (c) { return ids[c.de] || ids[c.para]; }) };
+    return Object.assign({}, vazio, { equipamentos: equipamentos, conexoes: estado.conexoes.filter(function (c) { return ids[c.de] || ids[c.para]; }) });
   }
 
   function atualizarResumoLimpar() {
     var s = selecaoParaLimpar();
-    var total = s.equipamentos.length + s.conexoes.length;
+    var partes = [];
+    if (s.equipamentos.length) partes.push(plural(s.equipamentos.length, "equipamento", "equipamentos"));
+    if (s.conexoes.length) partes.push(plural(s.conexoes.length, "cabo", "cabos"));
+    if (s.anotacoes.length) partes.push(plural(s.anotacoes.length, "nota", "notas"));
+    if (s.desenhos.length) partes.push(plural(s.desenhos.length, "desenho", "desenhos"));
+    if (s.mapa) partes.push("o mapa");
+    var total = partes.length;
     limpar.resumo.innerHTML = total
-      ? "Vai remover <strong>" + escaparHtml(plural(s.equipamentos.length, "equipamento", "equipamentos")) + "</strong> e <strong>" +
-        escaparHtml(plural(s.conexoes.length, "cabo", "cabos")) + "</strong>. Dá para desfazer com ↶."
+      ? "Vai remover " + partes.map(function (t) { return "<strong>" + escaparHtml(t) + "</strong>"; }).join(", ").replace(/, ([^,]*)$/, " e $1") + ". Dá para desfazer com ↶."
       : "Nada para remover com essa opção.";
     limpar.confirmar.disabled = !total;
   }
@@ -259,6 +270,9 @@
     s.equipamentos.forEach(function (eq) { removerEq[eq.id] = true; });
     estado.equipamentos = estado.equipamentos.filter(function (eq) { return !removerEq[eq.id]; });
     estado.conexoes = estado.conexoes.filter(function (c) { return !removerCabo.has(c); });
+    if (s.anotacoes.length) estado.anotacoes = (estado.anotacoes || []).filter(function (a) { return s.anotacoes.indexOf(a) < 0; });
+    if (s.desenhos.length) estado.desenhos = (estado.desenhos || []).filter(function (d) { return s.desenhos.indexOf(d) < 0; });
+    if (s.mapa) delete estado.mapa;
     fecharLimpar();
     fecharCaminho();
     renderTudo();

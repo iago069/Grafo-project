@@ -532,8 +532,11 @@
         <form class="nav-form" id="limparForm">
           <fieldset class="limpar-opcoes">
             <legend>O que remover</legend>
-            <label><input type="radio" name="limparModo" value="tudo" checked> Tudo (equipamentos e cabos)</label>
+            <label><input type="radio" name="limparModo" value="tudo" checked> Tudo (equipamentos, cabos, notas, desenhos e mapa)</label>
             <label><input type="radio" name="limparModo" value="cabos"> Só os cabos</label>
+            <label><input type="radio" name="limparModo" value="mapa"> Só o mapa (municípios e imagem de fundo)</label>
+            <label><input type="radio" name="limparModo" value="notas"> Só as notas</label>
+            <label><input type="radio" name="limparModo" value="desenhos"> Só os desenhos (formas, textos e caneta)</label>
             <label><input type="radio" name="limparModo" value="tipo"> Equipamentos do tipo <select id="limparTipo" aria-label="Tipo"></select></label>
             <label><input type="radio" name="limparModo" value="grupo"> Equipamentos do grupo <select id="limparGrupo" aria-label="Grupo"></select></label>
             <label><input type="radio" name="limparModo" value="status"> Equipamentos com status <select id="limparStatus" aria-label="Status"><option value="offline">Offline</option><option value="manutencao">Manutenção</option><option value="ativo">Ativo</option></select></label>

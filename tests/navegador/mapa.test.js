@@ -229,3 +229,21 @@ test("Gerar a partir de texto já monta sobre o mapa: estado e cidades descobert
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("Limpar: só o mapa tira municípios e imagem e deixa equipamentos e cabos", async () => {
+  const pagina = await abrirPagina(navegador, site, { viewport: { width: 1400, height: 900 } });
+  await esperarDiagrama(pagina);
+  await importar(pagina, "cidades.geojson", GEOJSON, "application/json");
+  const antes = await salvo(pagina);
+  await pagina.click("#btnLimpar");
+  await pagina.check('input[name="limparModo"][value="mapa"]');
+  assert.match(await pagina.textContent("#limparResumo"), /o mapa/);
+  await pagina.click("#limparConfirmar");
+  await pagina.waitForFunction(() => !document.querySelector("#canvas g.camada-mapa"));
+  const depois = await salvo(pagina);
+  assert.equal(depois.mapa, undefined);
+  assert.equal(depois.equipamentos.length, antes.equipamentos.length);
+  assert.equal(depois.conexoes.length, antes.conexoes.length);
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

@@ -2423,11 +2423,17 @@
 
   var SEM_TIPO = "(sem tipo)", SEM_GRUPO = "(sem grupo)";
 
-  // Quais equipamentos e cabos a opção escolhida remove.
+  // O que a opção escolhida remove: equipamentos, cabos e, conforme a opção,
+  // notas, desenhos e o mapa de fundo.
   function selecaoParaLimpar() {
     var modo = (limpar.form.querySelector('input[name="limparModo"]:checked') || {}).value;
-    if (modo === "tudo") return { equipamentos: estado.equipamentos.slice(), conexoes: estado.conexoes.slice() };
-    if (modo === "cabos") return { equipamentos: [], conexoes: estado.conexoes.slice() };
+    var vazio = { equipamentos: [], conexoes: [], anotacoes: [], desenhos: [], mapa: false };
+    if (modo === "tudo") return { equipamentos: estado.equipamentos.slice(), conexoes: estado.conexoes.slice(),
+      anotacoes: (estado.anotacoes || []).slice(), desenhos: (estado.desenhos || []).slice(), mapa: !!estado.mapa };
+    if (modo === "cabos") return Object.assign({}, vazio, { conexoes: estado.conexoes.slice() });
+    if (modo === "mapa") return Object.assign({}, vazio, { mapa: !!estado.mapa });
+    if (modo === "notas") return Object.assign({}, vazio, { anotacoes: (estado.anotacoes || []).slice() });
+    if (modo === "desenhos") return Object.assign({}, vazio, { desenhos: (estado.desenhos || []).slice() });
     var filtro = {
       tipo: function (eq) { return (String(eq.tipo || "").trim() || SEM_TIPO) === limpar.tipo.value; },
       grupo: function (eq) { return (String(eq.grupo || "").trim() || SEM_GRUPO) === limpar.grupo.value; },
@@ -2436,15 +2442,20 @@
     var equipamentos = filtro ? estado.equipamentos.filter(filtro) : [];
     var ids = {};
     equipamentos.forEach(function (eq) { ids[eq.id] = true; });
-    return { equipamentos: equipamentos, conexoes: estado.conexoes.filter(function (c) { return ids[c.de] || ids[c.para]; }) };
+    return Object.assign({}, vazio, { equipamentos: equipamentos, conexoes: estado.conexoes.filter(function (c) { return ids[c.de] || ids[c.para]; }) });
   }
 
   function atualizarResumoLimpar() {
     var s = selecaoParaLimpar();
-    var total = s.equipamentos.length + s.conexoes.length;
+    var partes = [];
+    if (s.equipamentos.length) partes.push(plural(s.equipamentos.length, "equipamento", "equipamentos"));
+    if (s.conexoes.length) partes.push(plural(s.conexoes.length, "cabo", "cabos"));
+    if (s.anotacoes.length) partes.push(plural(s.anotacoes.length, "nota", "notas"));
+    if (s.desenhos.length) partes.push(plural(s.desenhos.length, "desenho", "desenhos"));
+    if (s.mapa) partes.push("o mapa");
+    var total = partes.length;
     limpar.resumo.innerHTML = total
-      ? "Vai remover <strong>" + escaparHtml(plural(s.equipamentos.length, "equipamento", "equipamentos")) + "</strong> e <strong>" +
-        escaparHtml(plural(s.conexoes.length, "cabo", "cabos")) + "</strong>. Dá para desfazer com ↶."
+      ? "Vai remover " + partes.map(function (t) { return "<strong>" + escaparHtml(t) + "</strong>"; }).join(", ").replace(/, ([^,]*)$/, " e $1") + ". Dá para desfazer com ↶."
       : "Nada para remover com essa opção.";
     limpar.confirmar.disabled = !total;
   }
@@ -2495,6 +2506,9 @@
     s.equipamentos.forEach(function (eq) { removerEq[eq.id] = true; });
     estado.equipamentos = estado.equipamentos.filter(function (eq) { return !removerEq[eq.id]; });
     estado.conexoes = estado.conexoes.filter(function (c) { return !removerCabo.has(c); });
+    if (s.anotacoes.length) estado.anotacoes = (estado.anotacoes || []).filter(function (a) { return s.anotacoes.indexOf(a) < 0; });
+    if (s.desenhos.length) estado.desenhos = (estado.desenhos || []).filter(function (d) { return s.desenhos.indexOf(d) < 0; });
+    if (s.mapa) delete estado.mapa;
     fecharLimpar();
     fecharCaminho();
     renderTudo();
@@ -7908,6 +7922,16 @@
     return Object.keys(usados).length;
   }
   function mapaSoDeFundo() { return municipiosComEquipamento() < 2; }
+  // Caixa ocupada por um grupo de equipamentos (centros + tamanho de cada um).
+  function caixaDoGrupo(g) {
+    var c = { x1: Infinity, y1: Infinity, x2: -Infinity, y2: -Infinity };
+    g.forEach(function (eq) {
+      var t = tamanhoDoNo(eq);
+      c.x1 = Math.min(c.x1, eq.posicao.x - t.w / 2); c.x2 = Math.max(c.x2, eq.posicao.x + t.w / 2);
+      c.y1 = Math.min(c.y1, eq.posicao.y - t.h / 2); c.y2 = Math.max(c.y2, eq.posicao.y + t.h / 2);
+    });
+    return c;
+  }
   // Tamanho do equipamento no desenho (o que está na tela agora).
   function tamanhoDoNo(eq) {
     var svg = elCanvas.querySelector("svg"), no = svg && obterNodePorId(svg, eq.id);
@@ -7931,16 +7955,12 @@
       if (g.length < 3 || !g.every(function (eq) { return posicaoValida(eq.posicao); })) return;
       var alvo = pontoNoMunicipio(g[0].municipio, 0);
       if (!alvo) return;
-      // Grade compacta em volta do ponto interno, na mesma ordem do desenho
-      // (de cima para baixo, da esquerda para a direita).
-      var ordenados = g.slice().sort(function (a, b) { return Math.round((a.posicao.y - b.posicao.y) / 120) || a.posicao.x - b.posicao.x; });
-      var colunas = Math.ceil(Math.sqrt(ordenados.length)), linhas = Math.ceil(ordenados.length / colunas);
-      // Células do tamanho do maior equipamento do grupo (+ folga): sem sobrepor.
-      var maior = g.reduce(function (m2, eq) { var t = tamanhoDoNo(eq); return { w: Math.max(m2.w, t.w), h: Math.max(m2.h, t.h) }; }, { w: 0, h: 0 });
-      var PASSO_X = Math.max(260, maior.w + 70), PASSO_Y = Math.max(220, maior.h + 70);
-      ordenados.forEach(function (eq, i) {
-        var c = i % colunas, l = Math.floor(i / colunas);
-        eq.posicao = { x: Math.round(alvo.x + (c - (colunas - 1) / 2) * PASSO_X), y: Math.round(alvo.y + (l - (linhas - 1) / 2) * PASSO_Y) };
+      // Mantém o desenho que o grupo já tinha (estrela, portas, cabos retos) e só
+      // leva o grupo inteiro para dentro da cidade (o mapa é dimensionado para caber).
+      var caixa = caixaDoGrupo(g);
+      var dx = alvo.x - (caixa.x1 + caixa.x2) / 2, dy = alvo.y - (caixa.y1 + caixa.y2) / 2;
+      g.forEach(function (eq) {
+        eq.posicao = { x: Math.round(eq.posicao.x + dx), y: Math.round(eq.posicao.y + dy) };
         delete eq.deslocamento; movidos[eq.id] = true; n++;
       });
     });
@@ -7992,7 +8012,7 @@
     var esc = Number(m.escala) || 1;
     // Recorte: só a área em volta dos equipamentos (cidade grande não encolhe a rede).
     if (m.recorte) {
-      var cx = caixaDosEquipamentos(), folga = 360;
+      var cx = caixaDosEquipamentos(), folga = 220;
       var defs = no("defs", {}, camada);
       var clip = no("clipPath", { id: "recorte-mapa", clipPathUnits: "userSpaceOnUse" }, defs);
       no("rect", { x: cx.x1 - folga, y: cx.y1 - folga, width: cx.x2 - cx.x1 + 2 * folga, height: cx.y2 - cx.y1 + 2 * folga, rx: 24 }, clip);
@@ -8022,8 +8042,30 @@
         var s = 1, mm = r.transform && /scale\(([-\d.e]+)\)/.exec(r.transform);
         if (mm) s = +mm[1];
         if (b.width * s * esc < 70) return; // região pequena demais para o nome
-        var pi = pontoInterno(p) || { x: b.x + b.width / 2, y: b.y + b.height / 2 };
-        var t = no("text", { x: pi.x, y: pi.y, "font-size": 12 / esc / s }, nomes);
+        // Nome na parte livre da cidade: ponto de dentro mais longe dos equipamentos.
+        var tx = 0, ty = 0, ts = 1, mt = r.transform && /translate(([-d.e]+),([-d.e]+))s*scale(([-d.e]+))/.exec(r.transform);
+        if (mt) { tx = +mt[1]; ty = +mt[2]; ts = +mt[3]; }
+        var evitar = estado.equipamentos.filter(function (eq) { return posicaoValida(eq.posicao); }).map(function (eq) {
+          return { x: ((eq.posicao.x - (m.x || 0)) / esc - tx) / ts, y: ((eq.posicao.y - (m.y || 0)) / esc - ty) / ts };
+        });
+        // Dentro do recorte (com espaço para o texto), quando ele está ligado.
+        var visivel = null;
+        if (m.recorte) {
+          var cr = caixaDosEquipamentos(), fr = 220, meiaLarg = r.nome.length * 30 * 0.32 / esc / ts, meiaAlt = 24 / esc / ts;
+          visivel = { x1: ((cr.x1 - fr - (m.x || 0)) / esc - tx) / ts + meiaLarg, x2: ((cr.x2 + fr - (m.x || 0)) / esc - tx) / ts - meiaLarg,
+            y1: ((cr.y1 - fr - (m.y || 0)) / esc - ty) / ts + meiaAlt, y2: ((cr.y2 + fr - (m.y || 0)) / esc - ty) / ts - meiaAlt };
+        }
+        var pi = null, melhorD = -1, NN = 14;
+        for (var gi = 1; gi < NN; gi++) for (var gj = 1; gj < NN; gj++) {
+          var cand = { x: b.x + b.width * gi / NN, y: b.y + b.height * gj / NN };
+          if (visivel && (cand.x < visivel.x1 || cand.x > visivel.x2 || cand.y < visivel.y1 || cand.y > visivel.y2)) continue;
+          var spt = p.ownerSVGElement.createSVGPoint(); spt.x = cand.x; spt.y = cand.y;
+          if (!p.isPointInFill || !p.isPointInFill(spt)) continue;
+          var dmin = evitar.reduce(function (mm, e) { return Math.min(mm, Math.hypot(e.x - cand.x, e.y - cand.y)); }, Infinity);
+          if (dmin > melhorD) { melhorD = dmin; pi = cand; }
+        }
+        pi = pi || pontoInterno(p) || { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+        var t = no("text", { x: pi.x, y: pi.y, "font-size": 30 / esc / s, "letter-spacing": 2 / esc / s }, nomes);
         if (r.transform) t.setAttribute("transform", r.transform);
         t.textContent = r.nome.toUpperCase();
       });
@@ -8143,14 +8185,20 @@
   function escalaPelasCidades(mapa) {
     var tamanhoMaximo = estado.equipamentos.reduce(function (m2, eq) { var t = tamanhoDoNo(eq); return Math.max(m2, t.w, t.h * 0.8); }, 220);
     var porCidade = {};
-    estado.equipamentos.forEach(function (eq) { if (eq.municipio) { var k = normalizarTextoEquipamento(eq.municipio); porCidade[k] = (porCidade[k] || 0) + 1; } });
+    estado.equipamentos.forEach(function (eq) { if (eq.municipio) { var k = normalizarTextoEquipamento(eq.municipio); (porCidade[k] = porCidade[k] || []).push(eq); } });
     var esc = 0.3;
     mapa.regioes.forEach(function (r) {
-      var b = caixaDoCaminho(r.d), n = porCidade[normalizarTextoEquipamento(r.nome)] || 0;
-      if (!n) return; // cidade sem equipamento não manda no tamanho
-      var lado = Math.sqrt(b.w * b.h) * 0.5; // parte útil da cidade (folga para não invadir a vizinha)
-      var precisa = n === 1 ? tamanhoMaximo + 80 : Math.ceil(Math.sqrt(n)) * (tamanhoMaximo + 80);
-      esc = Math.max(esc, precisa / lado);
+      var b = caixaDoCaminho(r.d), g = porCidade[normalizarTextoEquipamento(r.nome)] || [];
+      if (!g.length) return; // cidade sem equipamento não manda no tamanho
+      var precisa;
+      if (g.length >= 3 && g.every(function (eq) { return posicaoValida(eq.posicao); })) {
+        // O desenho do grupo (como está) precisa caber em ~60% da cidade.
+        var c = caixaDoGrupo(g);
+        precisa = Math.max((c.x2 - c.x1 + 120) / (b.w * 0.6), (c.y2 - c.y1 + 120) / (b.h * 0.6));
+      } else {
+        precisa = (g.length === 1 ? tamanhoMaximo + 80 : Math.ceil(Math.sqrt(g.length)) * (tamanhoMaximo + 80)) / (Math.sqrt(b.w * b.h) * 0.5);
+      }
+      esc = Math.max(esc, precisa);
     });
     return Math.round(Math.min(esc, 400) * 1000) / 1000;
   }
@@ -8184,8 +8232,9 @@
     var r = await gerarMapaIbge(uf, opcoes.soDoDiagrama !== false, opcoes.detalhado !== false);
     if (opcoes.minimoCidades && r.mapa.regioes.length < opcoes.minimoCidades) return null;
     var anterior = estado.mapa || {};
-    var estilo = ESTILOS_MAPA[anterior.estilo === "grafo" ? "grafo" : "referencia"];
-    var novo = { regioes: r.mapa.regioes, largura: r.mapa.largura, altura: r.mapa.altura, estilo: anterior.estilo || "referencia",
+    // Automático: estilo suave do Grafo (legível); o Referência fica a um clique.
+    var estilo = ESTILOS_MAPA[anterior.estilo === "referencia" ? "referencia" : "grafo"];
+    var novo = { regioes: r.mapa.regioes, largura: r.mapa.largura, altura: r.mapa.altura, estilo: anterior.estilo || "grafo",
       cor: anterior.cor || estilo.cor, contorno: anterior.contorno || estilo.contorno, sombra: anterior.sombra != null ? anterior.sombra : estilo.sombra,
       nomes: anterior.nomes != null ? anterior.nomes : true, cabosPretos: anterior.cabosPretos != null ? anterior.cabosPretos : estilo.cabosPretos,
       recorte: anterior.recorte != null ? anterior.recorte : true };
