@@ -1,4 +1,4 @@
-  // ==== 12-cadastro-automatico.js: tipo/modelo/IP/portas sugeridos, Ligar a, seletores de modelo e tipo, colar lista (parte de assets/js/editor/app.js; npm run montar) ====
+  // ==== 13-cadastro-automatico.js: tipo/modelo/IP/portas sugeridos, Ligar a, seletores de modelo e tipo, colar lista (parte de assets/js/editor/app.js; npm run montar) ====
   // ---- Cadastro automático: equipamentos e cabos -----------------------------------
   // O que dá para deduzir, o Grafo preenche sozinho (sempre editável):
   // - Equipamento: tipo pelo nome (OLT-34 → OLT, DISTR-51 → Switch) e o próximo
@@ -175,7 +175,7 @@
       if (sugestao) { ip.value = sugestao; ip.classList.add("campo-automatico"); ip.title = "Próximo IP livre da rede do diagrama (pode trocar)"; }
     }
     new MutationObserver(function () {
-      if (painel.classList.contains("open")) { tipoAutomatico = !tipo.value.trim(); modeloAutomatico = !modelo || !modelo.value.trim(); ipAutomatico = true; preencherIp(); preencherLigarA(); }
+      if (painel.classList.contains("open")) { preencherCampoMunicipio(document.getElementById("navEquipMunicipio"), ""); tipoAutomatico = !tipo.value.trim(); modeloAutomatico = !modelo || !modelo.value.trim(); ipAutomatico = true; preencherIp(); preencherLigarA(); }
     }).observe(painel, { attributes: true, attributeFilter: ["class"] });
     // Depois de salvar (o formulário é limpo), o próximo já vem com o IP seguinte.
     document.getElementById("navEquipForm").addEventListener("reset", function () {

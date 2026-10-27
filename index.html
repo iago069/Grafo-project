@@ -175,6 +175,7 @@
             <label class="modelo-opcao"><input type="radio" name="modeloProjeto" value="" checked><strong>Em branco</strong><small>Diagrama vazio</small></label>
             <label class="modelo-opcao"><input type="radio" name="modeloProjeto" value="pop"><strong>POP com OLT</strong><small>Borda, switch, OLT, DIO e energia</small></label>
             <label class="modelo-opcao"><input type="radio" name="modeloProjeto" value="datacenter"><strong>Core de datacenter</strong><small>EVPN, L2, L3, BNG, CGNAT e CDN</small></label>
+            <label class="modelo-opcao"><input type="radio" name="modeloProjeto" value="rota100g"><strong>Rota 100G no mapa</strong><small>Exemplo do PDF: Ibirubá → Boqueirão do Leão</small></label>
             <label class="modelo-opcao"><input type="radio" name="modeloProjeto" value="ftth"><strong>Rede FTTH</strong><small>OLT, splitter, CTOs e clientes com sinal</small></label>
           </fieldset>
           <p class="nav-dica">Dá para trocar depois, na barra do diagrama.</p>
@@ -221,6 +222,10 @@
           <label class="full campo-tamanho">Tamanho no desenho <output id="editEquipTamanhoValor">100%</output>
             <span class="tamanho-controles"><button type="button" class="ghost small" data-tamanho-passo="-10" aria-label="Diminuir">−</button><input id="editEquipTamanho" type="range" min="50" max="250" step="1" value="100"><button type="button" class="ghost small" data-tamanho-passo="10" aria-label="Aumentar">+</button></span></label>
           <label class="full so-modo-ftth">Potência de saída (dBm)<input id="editEquipPotenciaDbm" type="number" step="0.1" min="-20" max="20" placeholder="OLT: ex. 5"></label>
+          <div class="nav-form-grid">
+            <label>Município <span class="rotulo-opcional">(mapa)</span><select id="editEquipMunicipio"><option value="">— nenhum —</option></select></label>
+            <label class="opcao-check campo-fixo"><input id="editEquipFixo" type="checkbox"> Fixar posição</label>
+          </div>
           <label class="full">Abre o diagrama<select id="editEquipDiagrama"><option value="">— nenhum —</option></select></label>
           <div class="nav-panel-message" id="editEquipMensagem" aria-live="polite"></div>
           <div class="nav-form-actions">
@@ -575,6 +580,7 @@
                 <label>Modelo<input id="navEquipModelo" data-limite="modelo" list="modelos-sugeridos" autocomplete="off" placeholder="Ex.: CRS326-24G-2S+"></label>
                 <label>Tipo<input id="navEquipTipo" data-limite="tipo" list="tipos-sugeridos" placeholder="Tipo"></label>
               </div>
+              <label class="full" hidden>Município <span class="rotulo-opcional">(mapa: já vai para dentro dele)</span><select id="navEquipMunicipio"><option value="">— nenhum —</option></select></label>
               <label class="full">Ligar a <span class="rotulo-opcional">(opcional: já cria o cabo)</span><select id="navEquipLigarA"><option value="">— não ligar agora —</option></select></label>
               <label class="full">IP<input id="navEquipIp" data-limite="ip" placeholder="Ex.: 10.0.0.1" inputmode="decimal" autocomplete="off" spellcheck="false"></label>
               <label class="full so-modo-redes">VLAN / rede<input id="navEquipRede" data-limite="rede" placeholder="Ex.: VLAN 10 · 10.0.0.0/24" autocomplete="off" spellcheck="false"></label>
@@ -615,6 +621,71 @@
             </form>
           </div>
           
+          <button class="nav-item" type="button" data-nav-panel="navMapa" data-icon="mapa" title="Cidades e regiões no fundo do diagrama (arquivo do mapshaper.org)">Mapa de regiões</button>
+          <div class="nav-panel" id="navMapa">
+            <div class="nav-form mapa-painel">
+              <p class="mapa-ajuda">Monte a rede sobre os municípios. No <b>mapshaper.org</b>, abra a malha (ex.: malha municipal do IBGE), use <b>Simplify</b> e exporte em <b>GeoJSON</b>, <b>TopoJSON</b> ou <b>SVG</b>.</p>
+              <div class="mapa-entradas">
+                <label class="mapa-arquivo">Municípios (vetor)<input id="mapaArquivo" type="file" accept=".json,.geojson,.topojson,.svg,application/json,image/svg+xml"></label>
+                <label class="mapa-arquivo">Imagem de fundo<input id="mapaArquivoImagem" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
+              </div>
+              <p class="mapa-dica">A imagem é só um desenho: não tem municípios nem coordenadas. Para escolher cidades e posicionar equipamentos nelas, use o arquivo de municípios.</p>
+              <p class="mapa-situacao" id="mapaSituacao">Nenhum mapa ainda.</p>
+
+              <div id="mapaControles" hidden>
+                <div class="mapa-estilos" role="group" aria-label="Estilo">
+                  <button type="button" class="ghost small" id="mapaEstiloReferencia" title="Verde, limites pretos, cabos pretos (como o PDF de referência)">Estilo Referência</button>
+                  <button type="button" class="ghost small" id="mapaEstiloGrafo" title="Cores suaves e cabos coloridos do Grafo">Estilo Grafo</button>
+                </div>
+                <div class="nav-form-grid">
+                  <label>Preenchimento<input id="mapaCor" type="color" value="#008A2E"></label>
+                  <label>Limites<input id="mapaContorno" type="color" value="#000000"></label>
+                </div>
+                <label class="opcao-check"><input id="mapaSombra" type="checkbox" checked> Sombra (relevo)</label>
+                <label class="opcao-check"><input id="mapaNomes" type="checkbox"> Nome das cidades</label>
+                <label class="opcao-check"><input id="mapaCabosPretos" type="checkbox"> Cabos em preto</label>
+                <p class="mapa-subtitulo">Municípios</p>
+                <input id="mapaBuscaRegiao" type="search" placeholder="Buscar por nome ou código IBGE" autocomplete="off">
+                <div class="mapa-lista-acoes">
+                  <button type="button" class="ghost small" id="mapaMarcarTodos">Mostrar todos</button>
+                  <button type="button" class="ghost small" id="mapaDesmarcarTodos" title="Oculta os da busca (ou todos)">Ocultar</button>
+                  <button type="button" class="ghost small" id="mapaSoComEquipamentos" title="Mostra só os municípios que têm equipamento">Só com equipamentos</button>
+                </div>
+                <div class="mapa-lista" id="mapaListaRegioes"></div>
+                <div class="nav-form-actions">
+                  <button type="button" class="ghost small" id="mapaEncaixarSelecao" title="Ajusta o mapa: municípios visíveis em volta dos equipamentos">Encaixar na seleção</button>
+                  <button type="button" class="primary small" id="mapaPosicionar" title="Coloca cada equipamento dentro do município escolhido nele">Pôr nos municípios</button>
+                </div>
+                <button type="button" class="ghost small danger-texto" id="mapaRemover">Remover municípios</button>
+              </div>
+
+              <div id="mapaControlesImagem" hidden>
+                <p class="mapa-subtitulo">Imagem de fundo</p>
+                <label>Opacidade<input id="mapaOpacidade" type="range" min="5" max="100" step="5" value="100"></label>
+                <label>Girar <output id="mapaRotacaoValor">0°</output><input id="mapaRotacao" type="range" min="-180" max="180" step="1" value="0"></label>
+                <label class="opcao-check"><input id="mapaImagemVisivel" type="checkbox" checked> Mostrar</label>
+                <label class="opcao-check"><input id="mapaImagemBloqueada" type="checkbox"> Bloquear (não mexer sem querer)</label>
+                <button type="button" class="ghost small danger-texto" id="mapaRemoverImagem">Remover imagem</button>
+              </div>
+
+              <div id="mapaAjuste" hidden>
+                <p class="mapa-subtitulo">Posição e tamanho</p>
+                <div class="mapa-estilos" role="group" aria-label="O que ajustar">
+                  <button type="button" class="ghost small" id="mapaAlvoMunicipios">Municípios</button>
+                  <button type="button" class="ghost small" id="mapaAlvoImagem">Imagem</button>
+                </div>
+                <span class="mapa-setas">
+                  <button type="button" class="ghost small" data-mapa-mover="cima" aria-label="Mover para cima">↑</button>
+                  <button type="button" class="ghost small" data-mapa-mover="baixo" aria-label="Mover para baixo">↓</button>
+                  <button type="button" class="ghost small" data-mapa-mover="menor" aria-label="Diminuir">−</button>
+                  <button type="button" class="ghost small" data-mapa-mover="esquerda" aria-label="Mover para a esquerda">←</button>
+                  <button type="button" class="ghost small" data-mapa-mover="direita" aria-label="Mover para a direita">→</button>
+                  <button type="button" class="ghost small" data-mapa-mover="maior" aria-label="Aumentar">+</button>
+                </span>
+                <button type="button" class="ghost small" id="mapaEnquadrar" title="Encaixa em volta dos equipamentos">Encaixar nos equipamentos</button>
+              </div>
+            </div>
+          </div>
           <button class="nav-item" id="btnModoAvancado" type="button" data-icon="lista" title="Abre a lista de equipamentos e cabos para editar vários de uma vez">Editar em lista</button>
         </div>
 

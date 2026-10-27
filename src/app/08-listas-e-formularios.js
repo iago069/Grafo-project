@@ -456,16 +456,22 @@
     var validacao = Esquema.validarEquipamento({ id: novoId(), nome: document.getElementById("navEquipNome").value, modelo: document.getElementById("navEquipModelo").value,
       ip: document.getElementById("navEquipIp").value, tipo: tipo, icone: iconeInformado || iconePorTipo(tipo), imagem: "", corFonte: "#16323D",
       grupo: document.getElementById("navEquipGrupo").value, status: document.getElementById("navEquipStatus").value,
-      rede: document.getElementById("navEquipRede").value });
+      rede: document.getElementById("navEquipRede").value, municipio: document.getElementById("navEquipMunicipio").value });
     if (!validacao.ok) { mensagem.textContent = textoDosErros(validacao.erros); return; }
     var novoEquipamento = validacao.dados;
+    if (!novoEquipamento.municipio) delete novoEquipamento.municipio;
+    else {
+      var jaNoMunicipio = estado.equipamentos.filter(function (e) { return normalizarTextoEquipamento(e.municipio) === normalizarTextoEquipamento(novoEquipamento.municipio); }).length;
+      var ponto = pontoNoMunicipio(novoEquipamento.municipio, jaNoMunicipio);
+      if (ponto) novoEquipamento.posicao = ponto;
+    }
     function concluir(imagem) {
       var comImagem = Esquema.validarEquipamento(Object.assign({}, novoEquipamento, { imagem: imagem || "" }));
       if (!comImagem.ok) { mensagem.textContent = textoDosErros(comImagem.erros); return; }
       novoEquipamento = comImagem.dados;
       mensagem.textContent = "";
       estado.equipamentos.push(novoEquipamento);
-      ligarEquipamentoNovo(novoEquipamento); // "Ligar a": já cria o cabo (12-cadastro-automatico.js)
+      ligarEquipamentoNovo(novoEquipamento); // "Ligar a": já cria o cabo (13-cadastro-automatico.js)
       renderTudo();
       renderSidebarPanels();
       event.target.reset();

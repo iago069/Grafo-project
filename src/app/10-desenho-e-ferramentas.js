@@ -1045,6 +1045,8 @@
     ["desenhos", "Desenhos e formas", "g.camada-desenhos"],
     ["notas", "Notas", "g.anotacao"],
     ["grupos", "Caixas dos grupos", "g.cluster"],
+    ["mapa", "Mapa (municípios e imagem)", null],
+    ["cidades", "Nome das cidades", null],
     ["legenda", "Legenda dos cabos", "g.legenda-cabos"],
     ["tipos", "Legenda dos tipos (embaixo)", null],
     ["cores", "Cor diferente em cada cabo", null]
@@ -1121,7 +1123,7 @@
       var ocultas = camadasOcultas();
       if (event.target.checked) delete ocultas[k]; else ocultas[k] = true;
       try { localStorage.setItem(chaveCamadas(), JSON.stringify(ocultas)); } catch (e) {}
-      if (k === "cores" || k === "legenda") { gerar(); return; } // muda o desenho: redesenha
+      if (k === "cores" || k === "legenda" || k === "mapa" || k === "cidades") { gerar(); return; } // muda o desenho: redesenha
       aplicarCamadas();
     });
     document.addEventListener("pointerdown", function (event) { if (!menu.hidden && !menu.contains(event.target) && !botao.contains(event.target)) abrir(false); });
@@ -1209,6 +1211,7 @@
     });
   }
   function corDoCaboNoDesenho(c, porId, indice) {
+    if (estado.mapa && estado.mapa.cabosPretos && ehCorPadrao(c.cor)) return "#111111"; // estilo mapa
     if (!corAutomaticaLigada() || !ehCorPadrao(c.cor)) return c.cor || COR_CABO_PADRAO_APP;
     return corDasLigacoes[chaveDaLigacao(c, indice)] || COR_CABO_PADRAO_APP;
   }
@@ -1234,7 +1237,8 @@
   var tamanhoDasLags = {};
   function rotuloCurto(c) {
     var m = /^LAG\s+(ae\d+|lag-?\d+)/i.exec(c.tipo || "");
-    var trafego = (c.trafegoEntrada ? " ↓" + c.trafegoEntrada : "") + (c.trafegoSaida ? " ↑" + c.trafegoSaida : "");
+    var trafego = (c.trafegoEntrada ? " ↓" + c.trafegoEntrada : "") + (c.trafegoSaida ? " ↑" + c.trafegoSaida : "") +
+      (c.distanciaKm != null && c.distanciaKm !== "" ? " · " + String(c.distanciaKm).replace(".", ",") + " km" : "");
     if (m) {
       var k = [c.de, c.para].sort().join("|") + "|" + m[1].toLowerCase();
       return m[1] + " · " + somaVelocidade(c.potencia, tamanhoDasLags[k] || 1) + trafego;

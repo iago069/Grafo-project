@@ -1,4 +1,4 @@
-  // ==== 13-exportacao-svg-png.js: imagens embutidas, moldura e exportação SVG/PNG (parte de assets/js/editor/app.js; npm run montar) ====
+  // ==== 14-exportacao-svg-png.js: imagens embutidas, moldura e exportação SVG/PNG (parte de assets/js/editor/app.js; npm run montar) ====
   function blobParaDataUrl(blob) {
     return new Promise(function (resolver, rejeitar) {
       var leitor = new FileReader();

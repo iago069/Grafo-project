@@ -237,7 +237,50 @@
         eqs.push(eqModelo("onu" + l, "CLIENTE " + l, "ONU"));
         cabos.push(caboModelo("cto" + l, "onu" + l, "P1", "PON", "Drop", "", { distanciaKm: 0.2 }));
       });
-      return { equipamentos: eqs, conexoes: cabos }; } }
+      return { equipamentos: eqs, conexoes: cabos }; } },
+    // Rota 100G do PDF "ROTA FINAL 100G MAPA": nomes, IP, modelos, portas,
+    // capacidades e distâncias como aparecem no PDF. Posições na mesma
+    // distribuição do PDF; o mapa (malha municipal) é importado pelo usuário.
+    // Pendências de revisão na nota do diagrama.
+    rota100g: { modo: "topologia", dados: function () {
+      var k = 2.4; // escala das posições (pixels do PDF → desenho)
+      function eq(id, nome, municipio, modelo, x, y, extra) {
+        return eqModelo(id, nome, "Switch", Object.assign({ modelo: modelo, municipio: municipio, posicao: { x: Math.round(x * k), y: Math.round(y * k) } }, extra || {}));
+      }
+      function cabo(de, para, saida, chegada, capacidade, km) {
+        return caboModelo(de, para, saida, chegada, "Fibra", capacidade, { distanciaKm: km, grossura: capacidade === "100G" ? 4 : 2 });
+      }
+      return {
+        subtitulo: "Rota final 100G · Ibirubá → Boqueirão do Leão",
+        equipamentos: [
+          eq("ibr", "POP-IBR01_DISTR-14 | Ibirubá - Coprel", "Ibirubá", "DM4270 48XS+4CX", 470, 230, { ip: "10.200.200.14" }),
+          eq("qzn", "POP-QZN01_DISTR-13 | Quinze de Novembro - Cidade", "Quinze de Novembro", "NOVO DM4270-48XS-6CS", 512, 330),
+          eq("fvz", "DISTRIBUICAO_FVZ_017", "Fortaleza dos Valos", "NOVO DM4270-48X-6C", 432, 378),
+          eq("esq", "ESQ_GAUCHA_FV_101 | Fortaleza dos Valos - Esquina Gaúcha", "Fortaleza dos Valos", "NOVO DM4270 24X4C", 343, 460),
+          eq("stj", "DISTRIBUICAO_STJ_121 | Salto do Jacuí - Sindicato", "Salto do Jacuí", "NOVO DM4270-48XS-6CS", 432, 572),
+          eq("jacz", "POP-JACZ01_DISTR-136 | Jacuizinho - Cidade", "Jacuizinho", "NOVO DM4270-48XS-6CS", 548, 535),
+          eq("ths03", "POP-THS03_DISTR-220 | Tunas - Sindicato", "Tunas", "DM4270 48XS+6CX", 632, 612),
+          eq("ths01", "POP-THS01_DISTR-137 | Tunas - Cidade", "Tunas", "DM4370 4GT+4GX+4XS", 696, 570),
+          eq("laa", "POP-LAA01_DISTR-221 | Lagoão - Torre", "Lagoão", "DM4270 48XS+6CX", 722, 682),
+          eq("grxa", "POP-GRXA01_DISTR-232 | Gramado Xavier - Torre", "Gramado Xavier", "DM4270 48XS+6CX", 868, 720),
+          eq("bql", "POP-BQL01_DISTR-3 | Boqueirão do Leão - Cidade", "Boqueirão do Leão", "DM4270 48XS+6CX", 982, 722)
+        ],
+        conexoes: [
+          cabo("ibr", "qzn", "HE1/4", "HE1/2", "100G", 20),
+          cabo("qzn", "fvz", "HE1/1", "HE1/2", "100G", 30),
+          cabo("fvz", "esq", "HE1/1", "HE1/2", "100G", 16),
+          cabo("esq", "stj", "HE1/1", "HE1/2", "100G", 26),
+          cabo("stj", "jacz", "HE1/1", "HE1/2", "100G", 20),
+          cabo("jacz", "ths03", "HE1/1", "HE1/2", "100G", 16),
+          cabo("ths03", "ths01", "HE1/4", "GE1/4", "1G", 1),
+          cabo("ths03", "laa", "HE1/3", "HE1/2", "100G", 15),
+          cabo("laa", "grxa", "HE1/1", "HE1/2", "100G", 52),
+          cabo("grxa", "bql", "HE1/1", "HE1/2", "100G", 20)
+        ],
+        anotacoes: [{ id: "revisar", x: Math.round(250 * k), y: Math.round(820 * k), cor: "#FFF3B0", texto:
+          "Exemplo montado a partir do PDF ROTA FINAL 100G MAPA. REVISAR: modelos, a ordem das portas HE1/x em cada ponta e qual distância vai em cada trecho " +
+          "(lidas na ordem do PDF). Mapa: Mapa de regiões → importe a malha municipal do RS (IBGE, pelo mapshaper) → Só com equipamentos → Pôr nos municípios." }]
+      }; } }
   };
   var elModoDiagrama = document.getElementById("modoDiagrama");
   var modoNaTela = null, modoJaMostrado = false;

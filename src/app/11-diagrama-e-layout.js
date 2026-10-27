@@ -614,7 +614,17 @@
   // seguinte cada equipamento ganha posição nova a partir desse layout.
   function organizarUmaVez() {
     if (!estado.equipamentos.length) return;
-    estado.equipamentos.forEach(function (eq) { delete eq.posicao; delete eq.deslocamento; });
+    // Com mapa: ninguém sai do seu município nem os fixados se mexem; quem tem
+    // município volta para dentro dele, os outros ficam onde estão.
+    if (temRegioes()) {
+      var n = posicionarNosMunicipios(null);
+      avisar(n ? n + (n === 1 ? " equipamento arrumado" : " equipamentos arrumados") + " dentro do seu município." : "Com mapa, o Organizar só arruma quem tem município. Escolha o município na edição do equipamento.");
+      salvarLocal(); gerar();
+      return;
+    }
+    var fixos = {};
+    estado.equipamentos.forEach(function (eq) { if (eq.fixo && eq.posicao) fixos[eq.id] = eq.posicao; });
+    estado.equipamentos.forEach(function (eq) { if (!fixos[eq.id]) { delete eq.posicao; delete eq.deslocamento; } });
     gerar();
     // Grade: o layout do Graphviz acima só serve para medir os equipamentos.
     if (selDirecao.value === "GRADE" && posicionarEmGrade()) gerar();
@@ -1401,6 +1411,7 @@
       desenharDesenhos(); // formas, textos e caneta (10-desenho-e-ferramentas.js)
       desenharAnotacoes(); // antes do viewBox: as anotações também contam na área do desenho
       desenharLegendaCabos(); // legenda automática das ligações (cor de cada cabo)
+      desenharMapa(); // mapa de regiões no fundo (12-mapa-de-regioes.js)
       ajustarViewBoxAoConteudo(false);
       var revelarAgora = ajustarNaProximaRenderizacao;
       if (ajustarNaProximaRenderizacao) {

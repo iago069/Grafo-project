@@ -198,6 +198,9 @@
     // Tamanho do equipamento no desenho, em % (100 = normal).
     tamanho: { rotulo: "Tamanho (%)", esquema: z.coerce.number().int().min(50).max(250), opcional: true },
     potenciaDbm: { rotulo: "Potência de saída (dBm)", esquema: z.coerce.number().finite().min(-20).max(20), opcional: true },
+    // Mapa Regional: município do equipamento e posição fixada (Organizar não mexe).
+    municipio: { rotulo: "Município", esquema: texto(80), opcional: true },
+    fixo: { rotulo: "Posição fixada", esquema: z.boolean(), opcional: true },
     // Nome de outro diagrama que abre ao clicar no selo do equipamento.
     diagrama: { rotulo: "Diagrama ligado", esquema: texto(LIMITES.nomeProjeto), opcional: true },
     posicao: { rotulo: "Posição", esquema: ESQUEMA_PONTO, opcional: true },
@@ -418,6 +421,12 @@
       var sub = texto(120).safeParse(entrada.subtitulo);
       if (sub.success && sub.data) dados.subtitulo = sub.data;
     }
+    // Mapa de regiões no fundo (opcional).
+    if (entrada.mapa != null) {
+      var mapa = validarMapa(entrada.mapa);
+      if (mapa.ok) dados.mapa = mapa.dados;
+      else falha("mapa", mapa.mensagem + (modo === "reparar" ? " — mapa descartado" : ""));
+    }
     // Anotações são opcionais: projetos sem elas continuam só com as duas listas.
     if (entrada.anotacoes != null) {
       var anotacoesBrutas = entrada.anotacoes;
@@ -508,6 +517,52 @@
 
   // Nome de projeto: texto de 1 a LIMITES.nomeProjeto caracteres.
   var ESQUEMA_NOME_PROJETO = texto(LIMITES.nomeProjeto, true);
+  // Mapa de regiões: caminhos SVG já projetados + posição e estilo.
+  var COR_HEX = z.string().regex(/^#[0-9a-f]{6}$/i, "cor inválida");
+  var ESQUEMA_MAPA = z.object({
+    regioes: z.array(z.object({
+      nome: z.string().max(80).optional().default(""),
+      codigo: z.string().max(20).optional(),
+      d: z.string().min(3).max(400000).regex(/^[MmLlHhVvCcSsQqTtAaZz0-9eE.,\s+-]+$/, "caminho inválido"),
+      transform: z.string().max(120).regex(/^(translate|scale)[0-9eE().,\s+a-z-]*$/, "transform inválido").optional(),
+      oculta: z.boolean().optional(),
+      cor: COR_HEX.optional()
+    })).max(6000).default([]),
+    largura: z.coerce.number().positive().max(100000).default(1000),
+    altura: z.coerce.number().positive().max(100000).default(1000),
+    x: z.coerce.number().finite().min(-200000).max(200000).default(0),
+    y: z.coerce.number().finite().min(-200000).max(200000).default(0),
+    escala: z.coerce.number().positive().max(1000).default(1),
+    estilo: z.enum(["referencia", "grafo"]).default("referencia"),
+    cor: COR_HEX.default("#008A2E"),
+    contorno: COR_HEX.default("#000000"),
+    sombra: z.boolean().default(true),
+    nomes: z.boolean().default(false),
+    cabosPretos: z.boolean().default(false),
+    // Imagem de fundo: guardada no próprio projeto (data URL), para continuar
+    // disponível ao reabrir. Só PNG, JPEG e SVG (já limpo de scripts).
+    imagem: z.object({
+      src: z.string().max(3600000).regex(/^data:image\/(png|jpeg|svg\+xml);base64,[A-Za-z0-9+\/=]+$/, "imagem inválida"),
+      largura: z.coerce.number().positive().max(20000),
+      altura: z.coerce.number().positive().max(20000),
+      x: z.coerce.number().finite().min(-200000).max(200000).default(0),
+      y: z.coerce.number().finite().min(-200000).max(200000).default(0),
+      escala: z.coerce.number().positive().max(1000).default(1),
+      rotacao: z.coerce.number().min(-360).max(360).default(0),
+      opacidade: z.coerce.number().min(0.05).max(1).default(1),
+      visivel: z.boolean().default(true),
+      bloqueado: z.boolean().default(false)
+    }).optional()
+  });
+  function validarMapa(mapa) {
+    var r = ESQUEMA_MAPA.safeParse(mapa);
+    if (!r.success) return { ok: false, mensagem: (r.error.issues[0].path.join(".") || "mapa") + ": " + r.error.issues[0].message };
+    var total = r.data.regioes.reduce(function (s, x) { return s + x.d.length; }, 0);
+    if (total > 1500000) return { ok: false, mensagem: "mapa detalhado demais (simplifique no mapshaper)" };
+    if (!r.data.regioes.length && !r.data.imagem) return { ok: false, mensagem: "mapa vazio (sem municípios e sem imagem)" };
+    return { ok: true, dados: r.data };
+  }
+
   function validarNomeProjeto(nome) {
     var r = ESQUEMA_NOME_PROJETO.safeParse(nome);
     return r.success ? { ok: true, dados: r.data } : { ok: false, mensagem: r.error.issues[0].message };
@@ -853,6 +908,7 @@
     validarEquipamento: validarEquipamento,
     validarConexao: validarConexao,
     validarNomeProjeto: validarNomeProjeto,
+    validarMapa: validarMapa,
     expandirPortas: expandirPortas,
     normalizarModelos: normalizarModelos,
     buscarModelo: buscarModelo,

@@ -119,6 +119,19 @@ Ao criar um projeto (botão **+**), escolha o tipo de diagrama. Dá para trocar 
 
 Cada tipo também põe primeiro, na lista de **Tipo**, os equipamentos que fazem sentido para ele (Monitoramento: câmera, NVR, controle de acesso…; Redes: RB/CCR, switch, OLT…). O PDF/PNG/SVG exportado mostra o tipo no cabeçalho, e o nome do arquivo leva `-rede` ou `-monitoramento`. O status é o que você marca em cada equipamento (ativo, manutenção, offline); o Grafo não testa os IPs sozinho.
 
+## Mapa Regional
+
+Monta a rede por cima dos municípios (**Editar diagrama → Mapa de regiões**).
+
+1. **Municípios (vetor):** importe GeoJSON, TopoJSON ou SVG com polígonos. Para o Brasil, use a malha municipal oficial do IBGE (Malhas Territoriais, municípios por UF), abra no [mapshaper.org](https://mapshaper.org), aplique *Simplify* e exporte. Coordenadas em graus são projetadas mantendo a proporção (norte para cima); coordenadas já projetadas (UTM etc.) só são escaladas. Shapefile e KML precisam passar pelo mapshaper antes.
+2. **Escolha os municípios:** busque por nome ou código IBGE, mostre/oculte, dê uma cor a cada um ou use *Só com equipamentos*.
+3. **Equipamentos:** escolha o **Município** no cadastro ou na edição; o equipamento vai para um ponto dentro do território (não o centro da caixa). Vários no mesmo município ficam empilhados. **Fixar posição** impede o Organizar de mexer. Com mapa, o Organizar só devolve cada equipamento para dentro do seu município.
+4. **Cabos:** os mesmos do diagrama, com o traçado esquemático (horizontal/vertical) e dobras manuais. A **distância** é a cadastrada no cabo (aparece no selo, ex.: `100G · 20 km`); o Grafo nunca calcula quilômetros pelo desenho.
+5. **Estilos:** *Referência* (verde, limites e cabos pretos, sombra) ou *Grafo* (cores suaves e cabos coloridos). Cor de preenchimento, limites, sombra e nomes das cidades são ajustáveis.
+6. **Imagem de fundo:** PNG, JPG ou SVG (o SVG é limpo de scripts). Tem opacidade, rotação, mostrar/ocultar e bloquear. É só um desenho: não tem municípios nem coordenadas.
+
+O mapa fica salvo no projeto (inclusive a imagem) e sai no PDF, PNG e SVG. Camadas: *Mapa* e *Nome das cidades*. Modelo pronto: **Rota 100G no mapa** (exemplo do PDF de Ibirubá a Boqueirão do Leão, com pendências de revisão na nota).
+
 ## Bayface de Racks
 
 Disposição **física** dos equipamentos nos racks — independente do diagrama lógico (IP, VLAN e rotas continuam no diagrama). Crie um projeto do tipo **Bayface de Racks** (ou troque o tipo de um projeto existente no seletor da barra do diagrama: o diagrama lógico fica guardado e volta quando você troca de novo).
@@ -422,7 +435,7 @@ assets/                     tudo o que o navegador baixa
                             primeiros-passos, racks
   vendor/                   Zod (validação), servido localmente
 
-src/app/                    partes do editor, de 00-catalogo.js a 14-pagina-e-pdf.js — É AQUI QUE SE EDITA
+src/app/                    partes do editor, de 00-catalogo.js a 15-pagina-e-pdf.js — É AQUI QUE SE EDITA
                             (npm run montar junta tudo em assets/js/editor/app.js, na ordem dos números)
 data/equipamentos.json      catálogo de tipos e modelos de equipamento (por fabricante)
 api/                        funções da Vercel: auth-config, equipamentos e ler-imagem (IA)

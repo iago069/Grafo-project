@@ -323,6 +323,8 @@
     if (eq.diagrama && outros.indexOf(eq.diagrama) < 0) outros.unshift(eq.diagrama);
     campoEditor("editEquipDiagrama").innerHTML = '<option value="">— nenhum —</option>' + outros.map(function (n) { return '<option value="' + escaparHtml(n) + '">' + escaparHtml(n) + "</option>"; }).join("");
     campoEditor("editEquipDiagrama").value = eq.diagrama || "";
+    preencherCampoMunicipio(campoEditor("editEquipMunicipio"), eq.municipio || "");
+    campoEditor("editEquipFixo").checked = !!eq.fixo;
     campoEditor("editEquipPotenciaDbm").value = eq.potenciaDbm != null ? eq.potenciaDbm : "";
     campoEditor("editEquipTamanho").value = tamanhoDoEquipamento(eq);
     campoEditor("editEquipTamanhoValor").textContent = tamanhoDoEquipamento(eq) + "%";
@@ -463,15 +465,20 @@
       corFonte: campoEditor("editEquipCor").value,
       corIcone: campoEditor("editEquipCorIconeOriginal").checked ? "" : campoEditor("editEquipCorIcone").value,
       diagrama: campoEditor("editEquipDiagrama").value,
+      municipio: campoEditor("editEquipMunicipio").value, fixo: campoEditor("editEquipFixo").checked,
       potenciaDbm: campoEditor("editEquipPotenciaDbm").value === "" ? null : campoEditor("editEquipPotenciaDbm").value,
       tamanho: Number(campoEditor("editEquipTamanho").value) || tamanhoPadraoDoTipo(tipo)
     }));
     if (!validacao.ok) { campoEditor("editEquipMensagem").textContent = textoDosErros(validacao.erros); return; }
     if (!validacao.dados.diagrama) { delete validacao.dados.diagrama; delete eq.diagrama; }
+    var municipioNovo = validacao.dados.municipio && validacao.dados.municipio !== eq.municipio;
+    if (!validacao.dados.municipio) { delete validacao.dados.municipio; delete eq.municipio; }
+    if (!validacao.dados.fixo) { delete validacao.dados.fixo; delete eq.fixo; }
     if (validacao.dados.potenciaDbm == null) { delete validacao.dados.potenciaDbm; delete eq.potenciaDbm; }
     ["gateway", "mascara"].forEach(function (k) { if (!validacao.dados[k]) { delete validacao.dados[k]; delete eq[k]; } });
     if (validacao.dados.tamanho === tamanhoPadraoDoTipo(validacao.dados.tipo)) { delete validacao.dados.tamanho; delete eq.tamanho; } // padrão do tipo: não grava
     Object.assign(eq, validacao.dados);
+    if (municipioNovo && !eq.fixo) { var ponto = pontoNoMunicipio(eq.municipio, 0); if (ponto) { eq.posicao = ponto; delete eq.deslocamento; } }
     fecharEditor();
     renderTudo();
   });

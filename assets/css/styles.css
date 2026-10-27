@@ -3232,11 +3232,11 @@ body:not([data-modo-diagrama="ftth"]) .so-modo-ftth { display: none; }
 .login-instalar:hover { background: rgba(255, 255, 255, 0.08); }
 @media (max-width: 480px) { .login-tela .auth-card { padding: 28px 22px 22px; border-radius: 20px; } }
 
-/* Campo preenchido sozinho pelo Grafo (12-cadastro-automatico.js): leve destaque, sempre editável. */
+/* Campo preenchido sozinho pelo Grafo (13-cadastro-automatico.js): leve destaque, sempre editável. */
 .campo-automatico { background-image: linear-gradient(90deg, color-mix(in srgb, var(--teal) 10%, transparent), transparent 70%) !important; border-color: color-mix(in srgb, var(--teal) 45%, var(--line)) !important; }
 .rotulo-opcional { font-weight: 400; opacity: 0.65; font-size: 0.9em; }
 
-/* ==== Seletor de modelos (12-cadastro-automatico.js) ==== */
+/* ==== Seletor de modelos (13-cadastro-automatico.js) ==== */
 .seletor-modelos { position: fixed; z-index: 2000; overflow: auto; padding: 6px; border-radius: 14px; background: var(--bg-panel-2, #fff); color: var(--text); border: 1px solid var(--line); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28); animation: surgir 0.16s var(--ease-out); overscroll-behavior: contain; }
 .seletor-modelos[hidden] { display: none; }
 .sm-topo { position: sticky; top: -6px; z-index: 1; display: flex; align-items: center; gap: 6px; margin: -6px -6px 4px; padding: 9px 12px; font: 600 0.72rem var(--sans); color: var(--text-dim); background: var(--bg-panel-2, #fff); border-bottom: 1px solid var(--line-soft, var(--line)); }
@@ -3282,3 +3282,29 @@ body:not([data-modo-diagrama="ftth"]) .so-modo-ftth { display: none; }
 .tamanho-controles { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 .tamanho-controles input[type="range"] { flex: 1; accent-color: var(--accent); }
 .tamanho-controles button { width: 30px; min-width: 30px; height: 30px; padding: 0 !important; font-size: 16px; }
+
+/* Mapa de regiões (12-mapa-de-regioes.js). */
+.mapa-ajuda { margin: 0 0 10px; font-size: 0.78rem; line-height: 1.45; color: var(--text-dim); }
+.mapa-arquivo { display: block; }
+.mapa-arquivo input { margin-top: 6px; width: 100%; }
+.mapa-situacao { margin: 8px 0; font: 600 0.76rem var(--sans); color: var(--text); }
+.mapa-setas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 4px; }
+.mapa-setas button { min-height: 28px; padding: 0 !important; }
+#mapaControles .opcao-check { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 0.82rem; }
+  .nav-item[data-icon="mapa"] { --icone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z'/%3E%3Cpath d='M9 4v14M15 6v14'/%3E%3C/svg%3E"); }
+
+.mapa-entradas { display: grid; gap: 8px; }
+.mapa-dica { margin: 8px 0 0; font-size: 0.72rem; color: var(--text-dim); line-height: 1.4; }
+.mapa-subtitulo { margin: 14px 0 6px; font: 700 0.68rem var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); }
+.mapa-estilos { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+.mapa-estilos .active { background: color-mix(in srgb, var(--accent) 22%, transparent); border-color: var(--accent); color: var(--text); }
+.mapa-lista-acoes { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+.mapa-lista { max-height: 220px; overflow: auto; border: 1px solid var(--line-soft, var(--line)); border-radius: 10px; padding: 4px; }
+.mapa-regiao { display: grid; grid-template-columns: auto minmax(0, 1fr) auto 26px; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 7px; font-size: 0.8rem; cursor: pointer; }
+.mapa-regiao:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
+.mapa-regiao span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mapa-regiao em { font: 500 0.66rem var(--mono); color: var(--text-dim); font-style: normal; }
+.mapa-regiao input[type="color"] { width: 24px; height: 20px; padding: 0; border: 0; background: none; }
+.mapa-mais { margin: 6px; font-size: 0.74rem; color: var(--text-dim); }
+#mapaRotacaoValor { float: right; font: 600 0.74rem var(--mono); color: var(--accent); }
+.campo-fixo { align-self: end; padding-bottom: 8px; }
