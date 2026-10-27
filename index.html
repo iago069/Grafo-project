@@ -624,29 +624,28 @@
           <button class="nav-item" type="button" data-nav-panel="navMapa" data-icon="mapa" title="Cidades e regiões no fundo do diagrama (arquivo do mapshaper.org)">Mapa de regiões</button>
           <div class="nav-panel" id="navMapa">
             <div class="nav-form mapa-painel">
-              <p class="mapa-ajuda">Monte a rede sobre os municípios. No <b>mapshaper.org</b>, abra a malha (ex.: malha municipal do IBGE), use <b>Simplify</b> e exporte em <b>GeoJSON</b>, <b>TopoJSON</b> ou <b>SVG</b>.</p>
-              <div class="mapa-ibge">
-                <p class="mapa-subtitulo">Gerar automaticamente</p>
+              <div class="mapa-destaque">
+                <button type="button" class="primary mapa-botao-principal" id="mapaGerarIbge" title="Descobre as cidades pelos POPs e baixa os contornos do IBGE">Montar mapa automático</button>
+                <p class="mapa-dica">Descobre a cidade de cada POP pela sigla da Anatel (POP-TPA01 → Tapera) e coloca cada um dentro dela.</p>
+                <p class="mapa-situacao" id="mapaSituacao">Nenhum mapa ainda.</p>
+              </div>
+              <details class="mapa-avancado">
+                <summary>Opções avançadas</summary>
                 <div class="nav-form-grid">
                   <label>Estado<select id="mapaUf">
-                    <option value="AUTO" selected>Automático (pelos POPs)</option>
+                    <option value="AUTO" selected>Automático</option>
                     <option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option>
                     <option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option>PB</option><option>PR</option><option>PE</option><option>PI</option>
                     <option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option><option>SE</option><option>TO</option>
                   </select></label>
-                  <button type="button" class="primary" id="mapaGerarIbge" title="Baixa a malha municipal oficial do IBGE">Gerar mapa (IBGE)</button>
+                  <span></span>
                 </div>
                 <label class="opcao-check"><input id="mapaSoDiagrama" type="checkbox" checked> Só os municípios do diagrama</label>
                 <label class="opcao-check"><input id="mapaDetalhado" type="checkbox" checked> Contornos detalhados</label>
-                <p class="mapa-dica">Descobre a cidade de cada POP pela sigla da Anatel (POP-TPA01 → Tapera), pelo Município ou pelo nome, e já coloca cada um dentro da sua cidade. Fonte: IBGE, malha municipal (API de Malhas v3).</p>
-              </div>
-              <p class="mapa-subtitulo">Ou usar um arquivo</p>
-              <div class="mapa-entradas">
-                <label class="mapa-arquivo">Municípios (vetor)<input id="mapaArquivo" type="file" accept=".json,.geojson,.topojson,.svg,application/json,image/svg+xml"></label>
-                <label class="mapa-arquivo">Imagem de fundo<input id="mapaArquivoImagem" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
-              </div>
-              <p class="mapa-dica">A imagem é só um desenho: não tem municípios nem coordenadas. Para escolher cidades e posicionar equipamentos nelas, use o arquivo de municípios.</p>
-              <p class="mapa-situacao" id="mapaSituacao">Nenhum mapa ainda.</p>
+                <label class="mapa-arquivo">Municípios de um arquivo <span class="rotulo-opcional">(GeoJSON, TopoJSON ou SVG do mapshaper.org)</span><input id="mapaArquivo" type="file" accept=".json,.geojson,.topojson,.svg,application/json,image/svg+xml"></label>
+                <label class="mapa-arquivo">Imagem de fundo <span class="rotulo-opcional">(PNG, JPG ou SVG — só desenho, sem cidades)</span><input id="mapaArquivoImagem" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
+                <p class="mapa-dica">Fonte dos contornos: IBGE, malha municipal (API de Malhas v3). Siglas: Anatel, CNL.</p>
+              </details>
 
               <div id="mapaControles" hidden>
                 <div class="mapa-estilos" role="group" aria-label="Estilo">
@@ -999,6 +998,7 @@
                     </select>
                   </div>
                 </div>
+                <button class="ghost ferramenta" id="btnMontarMapa" type="button" data-icone="mapa" data-dica="Montar mapa: descobre as cidades pelos POPs e põe o diagrama sobre elas (IBGE)">Montar mapa</button>
                 <button class="ghost ferramenta" id="btnCaminho" type="button" data-icone="caminho" data-dica="Rastrear caminho entre dois equipamentos" aria-expanded="false" aria-controls="caminhoBar">Rastrear caminho</button>
                 <button class="ghost ferramenta" id="btnAnotacao" type="button" data-icone="anotacao" data-dica="Anotação: caixa de texto livre no diagrama">Anotação</button>
                 <button class="ghost ferramenta" id="btnLimpar" type="button" data-icone="limpar" data-dica="Limpar: tudo, só os cabos ou parte dos equipamentos">Limpar…</button>

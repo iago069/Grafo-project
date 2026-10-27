@@ -7908,6 +7908,12 @@
     return Object.keys(usados).length;
   }
   function mapaSoDeFundo() { return municipiosComEquipamento() < 2; }
+  // Tamanho do equipamento no desenho (o que está na tela agora).
+  function tamanhoDoNo(eq) {
+    var svg = elCanvas.querySelector("svg"), no = svg && obterNodePorId(svg, eq.id);
+    try { var b = no && no.getBBox(); if (b && b.width) return { w: b.width, h: b.height }; } catch (e) {}
+    return { w: 220, h: 200 };
+  }
   // Põe os equipamentos com município dentro dele (os fixados ficam onde estão).
   // Cidade com 3 ou mais equipamentos: o grupo inteiro vai junto, mantendo o
   // desenho dele (não espalha um POP grande em volta de um ponto).
@@ -7929,7 +7935,9 @@
       // (de cima para baixo, da esquerda para a direita).
       var ordenados = g.slice().sort(function (a, b) { return Math.round((a.posicao.y - b.posicao.y) / 120) || a.posicao.x - b.posicao.x; });
       var colunas = Math.ceil(Math.sqrt(ordenados.length)), linhas = Math.ceil(ordenados.length / colunas);
-      var PASSO_X = 300, PASSO_Y = 260;
+      // Células do tamanho do maior equipamento do grupo (+ folga): sem sobrepor.
+      var maior = g.reduce(function (m2, eq) { var t = tamanhoDoNo(eq); return { w: Math.max(m2.w, t.w), h: Math.max(m2.h, t.h) }; }, { w: 0, h: 0 });
+      var PASSO_X = Math.max(260, maior.w + 70), PASSO_Y = Math.max(220, maior.h + 70);
       ordenados.forEach(function (eq, i) {
         var c = i % colunas, l = Math.floor(i / colunas);
         eq.posicao = { x: Math.round(alvo.x + (c - (colunas - 1) / 2) * PASSO_X), y: Math.round(alvo.y + (l - (linhas - 1) / 2) * PASSO_Y) };
@@ -8133,14 +8141,15 @@
     return { w: Math.max(1, x2 - x1), h: Math.max(1, y2 - y1) };
   }
   function escalaPelasCidades(mapa) {
+    var tamanhoMaximo = estado.equipamentos.reduce(function (m2, eq) { var t = tamanhoDoNo(eq); return Math.max(m2, t.w, t.h * 0.8); }, 220);
     var porCidade = {};
     estado.equipamentos.forEach(function (eq) { if (eq.municipio) { var k = normalizarTextoEquipamento(eq.municipio); porCidade[k] = (porCidade[k] || 0) + 1; } });
     var esc = 0.3;
     mapa.regioes.forEach(function (r) {
       var b = caixaDoCaminho(r.d), n = porCidade[normalizarTextoEquipamento(r.nome)] || 0;
       if (!n) return; // cidade sem equipamento não manda no tamanho
-      var lado = Math.sqrt(b.w * b.h) * 0.7; // parte útil da cidade
-      var precisa = n === 1 ? 300 : Math.ceil(Math.sqrt(Math.min(n, 6))) * 300;
+      var lado = Math.sqrt(b.w * b.h) * 0.5; // parte útil da cidade (folga para não invadir a vizinha)
+      var precisa = n === 1 ? tamanhoMaximo + 80 : Math.ceil(Math.sqrt(n)) * (tamanhoMaximo + 80);
       esc = Math.max(esc, precisa / lado);
     });
     return Math.round(Math.min(esc, 400) * 1000) / 1000;
@@ -8192,9 +8201,13 @@
     } else {
       // Escala do mapa: cada cidade com espaço para os seus equipamentos (grade de
       // ~300 por equipamento) e nenhuma cidade menor que ~2 equipamentos.
-      novo.escala = escalaPelasCidades(novo);
-      novo.x = Math.round(area.x1);
-      novo.y = Math.round(area.y1);
+      // Escala pelas cidades, mas cabendo na área de desenho (equipamento fora
+      // dela é puxado de volta para a borda) e centrada nos equipamentos.
+      var limW = (LIMITE_CANVAS.maxX - LIMITE_CANVAS.minX) * 0.8, limH = (LIMITE_CANVAS.maxY - LIMITE_CANVAS.minY) * 0.8;
+      novo.escala = Math.min(escalaPelasCidades(novo), limW / novo.largura, limH / novo.altura);
+      novo.escala = Math.round(novo.escala * 1000) / 1000;
+      novo.x = Math.round((area.x1 + area.x2) / 2 - novo.largura * novo.escala / 2);
+      novo.y = Math.round((area.y1 + area.y2) / 2 - novo.altura * novo.escala / 2);
     }
     var v = Esquema.validarMapa(novo);
     if (!v.ok) { if (anterior.regioes) estado.mapa = anterior; else delete estado.mapa; throw new Error(v.mensagem); }
@@ -8203,9 +8216,15 @@
     ajustarNaProximaRenderizacao = true;
     gerar();
     // Espera o mapa aparecer no desenho e põe cada equipamento no seu município.
+    // Duas passadas: a primeira põe nas cidades; o redesenho pode mudar o tamanho
+    // do desenho (e a referência das posições), então confere e acerta de novo.
     if (!soFundo) esperarMapaDesenhado(function () {
       var n = posicionarNosMunicipios(null);
-      if (n) { salvarLocal(); ajustarNaProximaRenderizacao = true; gerar(); }
+      if (!n) return;
+      salvarLocal(); ajustarNaProximaRenderizacao = true; gerar();
+      setTimeout(function () { esperarMapaDesenhado(function () {
+        if (posicionarNosMunicipios(null)) { salvarLocal(); ajustarNaProximaRenderizacao = true; gerar(); }
+      }); }, 400);
     });
     avisar("Mapa montado (" + uf + ", IBGE): " + r.mapa.regioes.length + (r.mapa.regioes.length === 1 ? " município." : " municípios.") +
       (soFundo ? " Só uma cidade com equipamento: o mapa ficou de fundo e o diagrama não foi mexido." : "") +
@@ -8224,7 +8243,17 @@
       montarMapaAutomatico({ uf: "AUTO", minimoCidades: 2 }).catch(function () {});
     })();
   }
-  window.GrafoMapa = { montarAutomatico: montarMapaAutomatico, montarDepoisDeCriar: montarMapaDepoisDeCriar, detectarUf: detectarUf };
+  // Botão "Montar mapa" no topo (ao lado do Organizar): tudo automático.
+  var botaoTopo = document.getElementById("btnMontarMapa");
+  if (botaoTopo) botaoTopo.addEventListener("click", async function () {
+    if (!estado.equipamentos.length) { avisar("Adicione os equipamentos (ou use Gerar a partir de texto) antes de montar o mapa."); return; }
+    botaoTopo.disabled = true;
+    botaoTopo.classList.add("carregando");
+    try { await montarMapaAutomatico({ uf: "AUTO" }); }
+    catch (e) { avisar("Não deu para montar o mapa: " + (e.message || e) + (e instanceof TypeError ? " (sem internet ou o IBGE fora do ar)" : "")); }
+    finally { botaoTopo.disabled = false; botaoTopo.classList.remove("carregando"); }
+  });
+  window.GrafoMapa = { pontoNoMunicipio: pontoNoMunicipio, montarAutomatico: montarMapaAutomatico, montarDepoisDeCriar: montarMapaDepoisDeCriar, detectarUf: detectarUf };
 
   function esperarMapaDesenhado(depois) {
     var inicio = Date.now();
@@ -8243,7 +8272,7 @@
     var arquivo = campo("mapaArquivo"), arquivoImagem = campo("mapaArquivoImagem"), situacao = campo("mapaSituacao");
     var listaRegioes = campo("mapaListaRegioes"), buscaRegiao = campo("mapaBuscaRegiao");
     var alvoAjuste = "municipios"; // "municipios" | "imagem"
-    try { var ufSalva = localStorage.getItem("grafo-mapa-uf"); if (ufSalva && (UFS_IBGE[ufSalva] || ufSalva === "AUTO")) campo("mapaUf").value = ufSalva; } catch (e) {}
+    // Estado: sempre começa em Automático (as siglas dos POPs dizem a UF).
     campo("mapaGerarIbge").addEventListener("click", async function () {
       var botao = campo("mapaGerarIbge"), uf = campo("mapaUf").value;
       try { localStorage.setItem("grafo-mapa-uf", uf); } catch (e) {}

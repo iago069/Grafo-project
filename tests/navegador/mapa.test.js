@@ -171,7 +171,6 @@ test("Gerar mapa (IBGE): baixa a malha do estado, fica só com os municípios do
     await pagina.locator("#fichaModal:not(.hidden) .modal-actions [data-ficha-fechar]").click({ timeout: 3000 }).catch(() => {});
   }
   await pagina.click('[data-nav-panel="navMapa"]');
-  await pagina.selectOption("#mapaUf", "RS");
   await pagina.click("#mapaGerarIbge");
   await pagina.waitForFunction(() => document.querySelectorAll("#canvas g.camada-mapa g.mapa-regioes > path").length === 2, null, { timeout: 20000 });
   const p = await salvo(pagina);
@@ -200,7 +199,6 @@ test("sigla CNL da Anatel no nome do POP: preenche o município (POP-TPA01 → T
   await pagina.click('#navEquipForm button[type="submit"]');
   await pagina.locator("#fichaModal:not(.hidden) .modal-actions [data-ficha-fechar]").click({ timeout: 3000 }).catch(() => {});
   await pagina.click('[data-nav-panel="navMapa"]');
-  await pagina.selectOption("#mapaUf", "RS");
   await pagina.click("#mapaGerarIbge");
   await pagina.waitForFunction(() => document.querySelectorAll("#canvas g.camada-mapa g.mapa-regioes > path").length === 2, null, { timeout: 20000 });
   const p = await salvo(pagina);

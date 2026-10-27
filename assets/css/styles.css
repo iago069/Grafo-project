@@ -3311,3 +3311,18 @@ body:not([data-modo-diagrama="ftth"]) .so-modo-ftth { display: none; }
 
 .mapa-ibge .nav-form-grid { align-items: end; }
 .mapa-ibge #mapaGerarIbge { min-height: 40px; }
+
+/* Painel do mapa (enxuto) e botão do topo. */
+[data-icone="mapa"] { --icone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z'/%3E%3Cpath d='M9 4v14M15 6v14'/%3E%3C/svg%3E"); }
+.mapa-destaque { display: grid; gap: 8px; padding: 12px; border-radius: 14px; background: color-mix(in srgb, var(--teal) 8%, transparent); border: 1px solid color-mix(in srgb, var(--teal) 25%, var(--line)); }
+.mapa-botao-principal { width: 100%; min-height: 44px; font-size: 0.95rem; }
+.mapa-destaque .mapa-dica, .mapa-destaque .mapa-situacao { margin: 0; }
+.mapa-avancado { margin: 10px 0 4px; border: 1px solid var(--line-soft, var(--line)); border-radius: 12px; padding: 0 12px; }
+.mapa-avancado[open] { padding-bottom: 12px; }
+.mapa-avancado summary { cursor: pointer; padding: 10px 0; font: 600 0.8rem var(--sans); color: var(--text-dim); list-style: none; }
+.mapa-avancado summary::-webkit-details-marker { display: none; }
+.mapa-avancado summary::after { content: "›"; float: right; transition: transform 0.2s; }
+.mapa-avancado[open] summary::after { transform: rotate(90deg); }
+.mapa-avancado .mapa-arquivo { margin-top: 10px; font-size: 0.8rem; }
+.mapa-avancado .mapa-arquivo input { font-size: 0.75rem; }
+.mapa-painel .mapa-ajuda, .mapa-painel .mapa-ibge, .mapa-painel .mapa-entradas { display: none; }
