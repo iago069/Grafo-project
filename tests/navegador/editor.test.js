@@ -323,3 +323,49 @@ test("Importar projeto e Importar CSV abrem pelo teclado (Tab + Enter)", async (
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("tamanho do equipamento: + e − nos selecionados, A+/A− na barra e o controle do editor", async () => {
+  const pagina = await abrirPagina(navegador, site, { viewport: { width: 1400, height: 900 } });
+  await esperarDiagrama(pagina);
+  const largura = () => pagina.evaluate(() => {
+    const no = [...document.querySelectorAll("#canvas svg g.node")].find(g => g.textContent.includes("OLT-Centro"));
+    return no.getBBox().width * no.getBBox().height;
+  });
+  const salvo = () => pagina.evaluate(() => {
+    const chave = Object.keys(localStorage).find(k => k.indexOf("grafo-projetos") === 0);
+    const atual = localStorage.getItem(Object.keys(localStorage).find(k => k.indexOf("grafo-projeto-atual") === 0));
+    return JSON.parse(localStorage.getItem(chave))[atual].equipamentos.find(e => e.nome === "OLT-Centro").tamanho;
+  });
+  const antes = await largura();
+  await pagina.click("#canvas");
+  await pagina.keyboard.press("Control+a");
+  await pagina.keyboard.press("+");
+  await pagina.keyboard.press("+");
+  await pagina.waitForFunction(a => {
+    const no = [...document.querySelectorAll("#canvas svg g.node")].find(g => g.textContent.includes("OLT-Centro"));
+    return no && no.getBBox().width * no.getBBox().height > a * 1.1;
+  }, antes, { timeout: 20000 });
+  assert.equal(await salvo(), 120);
+  await pagina.click('[data-selecao="menor"]');
+  await pagina.waitForFunction(() => {
+    const chave = Object.keys(localStorage).find(k => k.indexOf("grafo-projetos") === 0);
+    const atual = localStorage.getItem(Object.keys(localStorage).find(k => k.indexOf("grafo-projeto-atual") === 0));
+    return JSON.parse(localStorage.getItem(chave))[atual].equipamentos.find(e => e.nome === "OLT-Centro").tamanho === 110;
+  });
+  // Editor: o controle mostra o tamanho atual.
+  await pagina.keyboard.press("Escape");
+  const no = pagina.locator("#canvas g.node", { hasText: "OLT-Centro" }).first();
+  await no.dblclick();
+  await pagina.waitForSelector("#editEquipTamanho", { state: "visible" });
+  assert.equal(await pagina.inputValue("#editEquipTamanho"), "110");
+  await pagina.click('[data-tamanho-passo="-10"]');
+  assert.equal(await pagina.textContent("#editEquipTamanhoValor"), "100%");
+  await pagina.click('#editorEquipForm button[type="submit"], #editorEquipForm .primary');
+  await pagina.waitForFunction(() => {
+    const chave = Object.keys(localStorage).find(k => k.indexOf("grafo-projetos") === 0);
+    const atual = localStorage.getItem(Object.keys(localStorage).find(k => k.indexOf("grafo-projeto-atual") === 0));
+    return JSON.parse(localStorage.getItem(chave))[atual].equipamentos.find(e => e.nome === "OLT-Centro").tamanho === undefined;
+  });
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

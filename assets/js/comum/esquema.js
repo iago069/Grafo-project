@@ -195,6 +195,8 @@
     // Tom do ícone (ex.: switch verde). "" ou ausente: cores originais da imagem.
     corIcone: { rotulo: "Cor do ícone", esquema: z.string().trim().regex(/^(#[0-9a-f]{6})?$/i, "cor inválida (use o formato #1A2B3C)"), opcional: true },
     // FTTH: potência de saída da OLT/porta PON, em dBm.
+    // Tamanho do equipamento no desenho, em % (100 = normal).
+    tamanho: { rotulo: "Tamanho (%)", esquema: z.coerce.number().int().min(50).max(250), opcional: true },
     potenciaDbm: { rotulo: "Potência de saída (dBm)", esquema: z.coerce.number().finite().min(-20).max(20), opcional: true },
     // Nome de outro diagrama que abre ao clicar no selo do equipamento.
     diagrama: { rotulo: "Diagrama ligado", esquema: texto(LIMITES.nomeProjeto), opcional: true },

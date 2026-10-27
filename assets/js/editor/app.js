@@ -1783,6 +1783,24 @@
     avisar("Grupo desfeito.");
   }
 
+  // Aumenta ou diminui os equipamentos selecionados (passo de 10%, de 50% a 250%).
+  function redimensionarSelecao(passo) {
+    var ids = idsSelecionados();
+    if (!ids.length) return;
+    var mudou = false;
+    estado.equipamentos.forEach(function (eq) {
+      if (!selecao[eq.id]) return;
+      var novo = Math.max(50, Math.min(250, (Number(eq.tamanho) || 100) + passo));
+      if (novo === (Number(eq.tamanho) || 100)) return;
+      if (novo === 100) delete eq.tamanho; else eq.tamanho = novo;
+      mudou = true;
+    });
+    if (!mudou) { avisar(passo > 0 ? "Já está no tamanho máximo (250%)." : "Já está no tamanho mínimo (50%)."); return; }
+    renderTudo();
+    var exemplo = estado.equipamentos.find(function (eq) { return selecao[eq.id]; });
+    avisar("Tamanho: " + ((exemplo && exemplo.tamanho) || 100) + "%");
+  }
+
   function atualizarBarraSelecao() {
     if (!elBarraSelecao) return;
     var n = idsSelecionados().length;
@@ -1940,6 +1958,8 @@
     if (ctrl && tecla === "v") { event.preventDefault(); colar(lerCopia()); return; }
     if (ctrl && tecla === "d" && idsSelecionados().length) { event.preventDefault(); colar(copiarSelecao()); return; }
     if ((event.key === "Delete" || event.key === "Backspace") && idsSelecionados().length) { event.preventDefault(); excluirSelecao(); return; }
+    if (!ctrl && (event.key === "+" || event.key === "=") && idsSelecionados().length) { event.preventDefault(); redimensionarSelecao(10); return; }
+    if (!ctrl && (event.key === "-" || event.key === "_") && idsSelecionados().length) { event.preventDefault(); redimensionarSelecao(-10); return; }
     if (event.key === "Escape") limparSelecao();
   });
 
@@ -1949,6 +1969,8 @@
       if (!acao) return;
       var qual = acao.getAttribute("data-selecao");
       if (qual === "duplicar") colar(copiarSelecao());
+      else if (qual === "maior") redimensionarSelecao(10);
+      else if (qual === "menor") redimensionarSelecao(-10);
       else if (qual === "copiar") { var n = copiarSelecao().equipamentos.length; avisar(plural(n, "equipamento copiado", "equipamentos copiados") + ". Ctrl+V cola."); }
       else if (qual === "excluir") excluirSelecao();
       else if (qual === "limpar") limparSelecao();
@@ -2803,6 +2825,8 @@
     campoEditor("editEquipDiagrama").innerHTML = '<option value="">— nenhum —</option>' + outros.map(function (n) { return '<option value="' + escaparHtml(n) + '">' + escaparHtml(n) + "</option>"; }).join("");
     campoEditor("editEquipDiagrama").value = eq.diagrama || "";
     campoEditor("editEquipPotenciaDbm").value = eq.potenciaDbm != null ? eq.potenciaDbm : "";
+    campoEditor("editEquipTamanho").value = eq.tamanho || 100;
+    campoEditor("editEquipTamanhoValor").textContent = (eq.tamanho || 100) + "%";
     mostrarEditor("Editar equipamento", editor.formEquip);
   }
 
@@ -2911,6 +2935,15 @@
   }
 
   campoEditor("editEquipIp").addEventListener("input", function (event) { event.target.setCustomValidity(""); });
+  // Tamanho: o número ao lado acompanha o controle; − e + andam de 10 em 10.
+  campoEditor("editEquipTamanho").addEventListener("input", function (event) { campoEditor("editEquipTamanhoValor").textContent = event.target.value + "%"; });
+  editor.formEquip.querySelectorAll("[data-tamanho-passo]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var campo = campoEditor("editEquipTamanho");
+      campo.value = Math.max(50, Math.min(250, Number(campo.value) + Number(b.getAttribute("data-tamanho-passo"))));
+      campo.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  });
   // Escolher uma cor já desmarca "Original".
   campoEditor("editEquipCorIcone").addEventListener("input", function () { campoEditor("editEquipCorIconeOriginal").checked = false; });
 
@@ -2931,12 +2964,14 @@
       corFonte: campoEditor("editEquipCor").value,
       corIcone: campoEditor("editEquipCorIconeOriginal").checked ? "" : campoEditor("editEquipCorIcone").value,
       diagrama: campoEditor("editEquipDiagrama").value,
-      potenciaDbm: campoEditor("editEquipPotenciaDbm").value === "" ? null : campoEditor("editEquipPotenciaDbm").value
+      potenciaDbm: campoEditor("editEquipPotenciaDbm").value === "" ? null : campoEditor("editEquipPotenciaDbm").value,
+      tamanho: Number(campoEditor("editEquipTamanho").value) || 100
     }));
     if (!validacao.ok) { campoEditor("editEquipMensagem").textContent = textoDosErros(validacao.erros); return; }
     if (!validacao.dados.diagrama) { delete validacao.dados.diagrama; delete eq.diagrama; }
     if (validacao.dados.potenciaDbm == null) { delete validacao.dados.potenciaDbm; delete eq.potenciaDbm; }
     ["gateway", "mascara"].forEach(function (k) { if (!validacao.dados[k]) { delete validacao.dados[k]; delete eq[k]; } });
+    if (validacao.dados.tamanho === 100) { delete validacao.dados.tamanho; delete eq.tamanho; } // 100% = padrão, não grava
     Object.assign(eq, validacao.dados);
     fecharEditor();
     renderTudo();
@@ -6216,7 +6251,9 @@
           '</TR></TABLE></TD></TR>';
       }
       var alturaPortasLaterais = Math.max(portas.esquerda.length, portas.direita.length) * layoutLateral.alturaPorta;
-      var alturaMeio = Math.max(ALTURA_BASE_EQUIPAMENTO, alturaPortasLaterais);
+      var fatorTamanho = (Number(eq.tamanho) || 100) / 100; // "Tamanho" do equipamento
+      var larguraIcone = Math.round(88 * fatorTamanho);
+      var alturaMeio = Math.max(Math.round(ALTURA_BASE_EQUIPAMENTO * fatorTamanho), alturaPortasLaterais);
 
       // Ordem das linhas = ordem em que o Graphviz desenha as portas:
       // cima, (cabeçalho), esquerda, direita, (status), baixo.
@@ -6244,8 +6281,8 @@
         // Portas laterais e área do ícone num bloco só: se o nome ao lado das
         // portas de cima alargar o equipamento, a sobra fica por fora do bloco e
         // as portas laterais continuam coladas no ícone.
-        '<TR><TD COLSPAN="3"><TABLE BORDER="0" CELLSPACING="0" CELLPADDING="0" FIXEDSIZE="TRUE" WIDTH="' + (2 * CONFIG_PORTA.largura + 88) + '" HEIGHT="' + alturaMeio + '"><TR>' + colunaPortas(portas.esquerda) +
-        '<TD BORDER="0" CELLPADDING="0" WIDTH="88" HEIGHT="' + alturaMeio + '"></TD>' +
+        '<TR><TD COLSPAN="3"><TABLE BORDER="0" CELLSPACING="0" CELLPADDING="0" FIXEDSIZE="TRUE" WIDTH="' + (2 * CONFIG_PORTA.largura + larguraIcone) + '" HEIGHT="' + alturaMeio + '"><TR>' + colunaPortas(portas.esquerda) +
+        '<TD BORDER="0" CELLPADDING="0" WIDTH="' + larguraIcone + '" HEIGHT="' + alturaMeio + '"></TD>' +
         colunaPortas(portas.direita) + '</TR></TABLE></TD></TR>' +
         (portas.baixo.length
           ? linhaPortasComTexto(portas.baixo, htmlStatus, larguraStatus, "TOP")
@@ -6454,8 +6491,9 @@
         var areaAltura = Math.max(16, areaBaixo - areaTopo);
 
         var ehCatalogo = !!imagemDoIcone(equipamento.icone);
-        var tamanhoDesejado = ehCatalogo ? 84 : 48;
-        var tam = Math.max(12, Math.min(tamanhoDesejado, areaAltura - 4, 108));
+        var fator = (Number(equipamento.tamanho) || 100) / 100;
+        var tamanhoDesejado = (ehCatalogo ? 84 : 48) * fator;
+        var tam = Math.max(12, Math.min(tamanhoDesejado, areaAltura - 4, 108 * fator));
 
         var centroX = bboxNode.x + bboxNode.width / 2;
         var x = centroX - tam / 2;

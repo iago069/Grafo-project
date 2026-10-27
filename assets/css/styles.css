@@ -3276,3 +3276,9 @@ body:not([data-modo-diagrama="ftth"]) .so-modo-ftth { display: none; }
 .sm-icone { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 7px; background: color-mix(in srgb, var(--text) 6%, transparent); font-size: 16px; }
 .sm-icone img { width: 22px; height: 22px; object-fit: contain; }
 .sm-item-tipo strong { font-size: 0.82rem; }
+
+/* Tamanho do equipamento (editor). */
+.campo-tamanho output { float: right; font: 600 0.78rem var(--mono); color: var(--accent); }
+.tamanho-controles { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.tamanho-controles input[type="range"] { flex: 1; accent-color: var(--accent); }
+.tamanho-controles button { width: 30px; min-width: 30px; height: 30px; padding: 0 !important; font-size: 16px; }

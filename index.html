@@ -218,6 +218,8 @@
             <label>Cor da fonte<input id="editEquipCor" type="color"></label>
             <label>Cor do ícone<span class="cor-icone-campo"><input id="editEquipCorIcone" type="color" value="#2E9E5B" title="Tom aplicado ao ícone"><label class="opcao-check"><input id="editEquipCorIconeOriginal" type="checkbox"> Original</label></span></label>
           </div>
+          <label class="full campo-tamanho">Tamanho no desenho <output id="editEquipTamanhoValor">100%</output>
+            <span class="tamanho-controles"><button type="button" class="ghost small" data-tamanho-passo="-10" aria-label="Diminuir">−</button><input id="editEquipTamanho" type="range" min="50" max="250" step="10" value="100"><button type="button" class="ghost small" data-tamanho-passo="10" aria-label="Aumentar">+</button></span></label>
           <label class="full so-modo-ftth">Potência de saída (dBm)<input id="editEquipPotenciaDbm" type="number" step="0.1" min="-20" max="20" placeholder="OLT: ex. 5"></label>
           <label class="full">Abre o diagrama<select id="editEquipDiagrama"><option value="">— nenhum —</option></select></label>
           <div class="nav-panel-message" id="editEquipMensagem" aria-live="polite"></div>
@@ -967,6 +969,8 @@
             <span data-selecao-contagem>0 selecionados</span>
             <button type="button" class="ghost small" data-selecao="duplicar" title="Duplicar (Ctrl+D)">Duplicar</button>
             <button type="button" class="ghost small" data-selecao="copiar" title="Copiar (Ctrl+C) — cole com Ctrl+V, também em outro diagrama">Copiar</button>
+            <button type="button" class="ghost small" data-selecao="menor" title="Diminuir os selecionados (tecla -)">A−</button>
+            <button type="button" class="ghost small" data-selecao="maior" title="Aumentar os selecionados (tecla +)">A+</button>
             <button type="button" class="ghost small" data-selecao="agrupar" title="Pôr numa caixa com nome (POP, rack, sala)">Agrupar</button>
             <button type="button" class="ghost small" data-selecao="desagrupar" title="Tirar do grupo">Desagrupar</button>
             <button type="button" class="ghost small danger-texto" data-selecao="excluir" title="Excluir (Delete)">Excluir</button>

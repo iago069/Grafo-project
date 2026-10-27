@@ -882,6 +882,24 @@
     avisar("Grupo desfeito.");
   }
 
+  // Aumenta ou diminui os equipamentos selecionados (passo de 10%, de 50% a 250%).
+  function redimensionarSelecao(passo) {
+    var ids = idsSelecionados();
+    if (!ids.length) return;
+    var mudou = false;
+    estado.equipamentos.forEach(function (eq) {
+      if (!selecao[eq.id]) return;
+      var novo = Math.max(50, Math.min(250, (Number(eq.tamanho) || 100) + passo));
+      if (novo === (Number(eq.tamanho) || 100)) return;
+      if (novo === 100) delete eq.tamanho; else eq.tamanho = novo;
+      mudou = true;
+    });
+    if (!mudou) { avisar(passo > 0 ? "Já está no tamanho máximo (250%)." : "Já está no tamanho mínimo (50%)."); return; }
+    renderTudo();
+    var exemplo = estado.equipamentos.find(function (eq) { return selecao[eq.id]; });
+    avisar("Tamanho: " + ((exemplo && exemplo.tamanho) || 100) + "%");
+  }
+
   function atualizarBarraSelecao() {
     if (!elBarraSelecao) return;
     var n = idsSelecionados().length;
@@ -1039,6 +1057,8 @@
     if (ctrl && tecla === "v") { event.preventDefault(); colar(lerCopia()); return; }
     if (ctrl && tecla === "d" && idsSelecionados().length) { event.preventDefault(); colar(copiarSelecao()); return; }
     if ((event.key === "Delete" || event.key === "Backspace") && idsSelecionados().length) { event.preventDefault(); excluirSelecao(); return; }
+    if (!ctrl && (event.key === "+" || event.key === "=") && idsSelecionados().length) { event.preventDefault(); redimensionarSelecao(10); return; }
+    if (!ctrl && (event.key === "-" || event.key === "_") && idsSelecionados().length) { event.preventDefault(); redimensionarSelecao(-10); return; }
     if (event.key === "Escape") limparSelecao();
   });
 
@@ -1048,6 +1068,8 @@
       if (!acao) return;
       var qual = acao.getAttribute("data-selecao");
       if (qual === "duplicar") colar(copiarSelecao());
+      else if (qual === "maior") redimensionarSelecao(10);
+      else if (qual === "menor") redimensionarSelecao(-10);
       else if (qual === "copiar") { var n = copiarSelecao().equipamentos.length; avisar(plural(n, "equipamento copiado", "equipamentos copiados") + ". Ctrl+V cola."); }
       else if (qual === "excluir") excluirSelecao();
       else if (qual === "limpar") limparSelecao();

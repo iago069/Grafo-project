@@ -238,7 +238,9 @@
           '</TR></TABLE></TD></TR>';
       }
       var alturaPortasLaterais = Math.max(portas.esquerda.length, portas.direita.length) * layoutLateral.alturaPorta;
-      var alturaMeio = Math.max(ALTURA_BASE_EQUIPAMENTO, alturaPortasLaterais);
+      var fatorTamanho = (Number(eq.tamanho) || 100) / 100; // "Tamanho" do equipamento
+      var larguraIcone = Math.round(88 * fatorTamanho);
+      var alturaMeio = Math.max(Math.round(ALTURA_BASE_EQUIPAMENTO * fatorTamanho), alturaPortasLaterais);
 
       // Ordem das linhas = ordem em que o Graphviz desenha as portas:
       // cima, (cabeçalho), esquerda, direita, (status), baixo.
@@ -266,8 +268,8 @@
         // Portas laterais e área do ícone num bloco só: se o nome ao lado das
         // portas de cima alargar o equipamento, a sobra fica por fora do bloco e
         // as portas laterais continuam coladas no ícone.
-        '<TR><TD COLSPAN="3"><TABLE BORDER="0" CELLSPACING="0" CELLPADDING="0" FIXEDSIZE="TRUE" WIDTH="' + (2 * CONFIG_PORTA.largura + 88) + '" HEIGHT="' + alturaMeio + '"><TR>' + colunaPortas(portas.esquerda) +
-        '<TD BORDER="0" CELLPADDING="0" WIDTH="88" HEIGHT="' + alturaMeio + '"></TD>' +
+        '<TR><TD COLSPAN="3"><TABLE BORDER="0" CELLSPACING="0" CELLPADDING="0" FIXEDSIZE="TRUE" WIDTH="' + (2 * CONFIG_PORTA.largura + larguraIcone) + '" HEIGHT="' + alturaMeio + '"><TR>' + colunaPortas(portas.esquerda) +
+        '<TD BORDER="0" CELLPADDING="0" WIDTH="' + larguraIcone + '" HEIGHT="' + alturaMeio + '"></TD>' +
         colunaPortas(portas.direita) + '</TR></TABLE></TD></TR>' +
         (portas.baixo.length
           ? linhaPortasComTexto(portas.baixo, htmlStatus, larguraStatus, "TOP")
@@ -476,8 +478,9 @@
         var areaAltura = Math.max(16, areaBaixo - areaTopo);
 
         var ehCatalogo = !!imagemDoIcone(equipamento.icone);
-        var tamanhoDesejado = ehCatalogo ? 84 : 48;
-        var tam = Math.max(12, Math.min(tamanhoDesejado, areaAltura - 4, 108));
+        var fator = (Number(equipamento.tamanho) || 100) / 100;
+        var tamanhoDesejado = (ehCatalogo ? 84 : 48) * fator;
+        var tam = Math.max(12, Math.min(tamanhoDesejado, areaAltura - 4, 108 * fator));
 
         var centroX = bboxNode.x + bboxNode.width / 2;
         var x = centroX - tam / 2;
