@@ -19,6 +19,7 @@
     [/servidor|server|\bsrv\b|cache|netflix|cgnat|\ba10\b/i, "Servidor"],
     [/radio|rádio|ptp|\bap\b|antena/i, "Rádio"],
     [/nobreak|ups\b/i, "Nobreak"],
+    [/retificador|\bxps\b|\brps\b/i, "Retificador"],
     [/firewall|\bfw\b|fortigate|pfsense/i, "Firewall"]
   ];
   function tipoPeloNome(nome) {

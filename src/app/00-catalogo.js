@@ -91,7 +91,7 @@
   ];
   // Outros nomes para o mesmo equipamento (VOLT = Volt POP Protect, UPS =
   // Nobreak...), que projetos já salvos usam: reconhecidos, mas fora da lista.
-  var TIPOS_ANTIGOS = [["MikroTik", "MIKROTIK.png"], ["VOLT", "VOLT.png"], ["UPS", "NOBREAK.png"], ["AR", "AR.png"], ["RPS", "RETIFICADOR.png"], ["Camera IP", "CAMERA.png"]];
+  var TIPOS_ANTIGOS = [["MikroTik", "MIKROTIK.png"], ["VOLT", "VOLT.png"], ["UPS", "NOBREAK.png"], ["AR", "AR.png"], ["RPS", "RETIFICADOR.png"], ["XPS", "RETIFICADOR.png"], ["Camera IP", "CAMERA.png"]];
   var TIPOS_BASE = SIMBOLOS.map(function (s) { return { nome: s[0], icone: caminhoImagem(s[1]) }; })
     .concat(TIPOS_ANTIGOS.map(function (s) { return { nome: s[0], icone: caminhoImagem(s[1]), apelido: true }; }));
   var ICONES_DOS_SIMBOLOS = SIMBOLOS.map(function (s) { return caminhoImagem(s[1]); });
