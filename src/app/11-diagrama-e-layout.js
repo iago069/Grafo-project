@@ -238,7 +238,7 @@
           '</TR></TABLE></TD></TR>';
       }
       var alturaPortasLaterais = Math.max(portas.esquerda.length, portas.direita.length) * layoutLateral.alturaPorta;
-      var fatorTamanho = (Number(eq.tamanho) || 100) / 100; // "Tamanho" do equipamento
+      var fatorTamanho = tamanhoDoEquipamento(eq) / 100; // "Tamanho" do equipamento (ou o padrão do tipo)
       var larguraIcone = Math.round(88 * fatorTamanho);
       var alturaMeio = Math.max(Math.round(ALTURA_BASE_EQUIPAMENTO * fatorTamanho), alturaPortasLaterais);
 
@@ -478,7 +478,7 @@
         var areaAltura = Math.max(16, areaBaixo - areaTopo);
 
         var ehCatalogo = !!imagemDoIcone(equipamento.icone);
-        var fator = (Number(equipamento.tamanho) || 100) / 100;
+        var fator = tamanhoDoEquipamento(equipamento) / 100;
         var tamanhoDesejado = (ehCatalogo ? 84 : 48) * fator;
         var tam = Math.max(12, Math.min(tamanhoDesejado, areaAltura - 4, 108 * fator));
 

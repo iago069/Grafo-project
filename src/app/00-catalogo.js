@@ -433,6 +433,14 @@
     });
   }
 
+  // Tamanho padrão no desenho: equipamentos de apoio/monitoramento (Volt, RB/CCR,
+  // retificador/RPS, ar-condicionado, nobreak) começam com 2/3 do tamanho normal.
+  var TAMANHO_REDUZIDO = 67;
+  var TIPOS_REDUZIDOS = /volt|\brb\b|rb ?\/ ?ccr|\bccr\b|mikrotik|retificador|\brps\b|\bxps\b|ar condicionado|^ar$|hvac|nobreak|\bups\b/i;
+  function tamanhoPadraoDoTipo(tipo) { return TIPOS_REDUZIDOS.test(String(tipo || "")) ? TAMANHO_REDUZIDO : 100; }
+  // Tamanho efetivo (%): o escolhido no equipamento ou o padrão do tipo.
+  function tamanhoDoEquipamento(eq) { return Number(eq && eq.tamanho) || tamanhoPadraoDoTipo(eq && eq.tipo); }
+
   renderizarTiposSugeridos();
   carregarTiposDeEquipamento();
 

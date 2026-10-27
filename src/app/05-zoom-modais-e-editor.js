@@ -324,8 +324,8 @@
     campoEditor("editEquipDiagrama").innerHTML = '<option value="">— nenhum —</option>' + outros.map(function (n) { return '<option value="' + escaparHtml(n) + '">' + escaparHtml(n) + "</option>"; }).join("");
     campoEditor("editEquipDiagrama").value = eq.diagrama || "";
     campoEditor("editEquipPotenciaDbm").value = eq.potenciaDbm != null ? eq.potenciaDbm : "";
-    campoEditor("editEquipTamanho").value = eq.tamanho || 100;
-    campoEditor("editEquipTamanhoValor").textContent = (eq.tamanho || 100) + "%";
+    campoEditor("editEquipTamanho").value = tamanhoDoEquipamento(eq);
+    campoEditor("editEquipTamanhoValor").textContent = tamanhoDoEquipamento(eq) + "%";
     mostrarEditor("Editar equipamento", editor.formEquip);
   }
 
@@ -439,7 +439,7 @@
   editor.formEquip.querySelectorAll("[data-tamanho-passo]").forEach(function (b) {
     b.addEventListener("click", function () {
       var campo = campoEditor("editEquipTamanho");
-      campo.value = Math.max(50, Math.min(250, Number(campo.value) + Number(b.getAttribute("data-tamanho-passo"))));
+      campo.value = Math.max(50, Math.min(250, Math.round((Number(campo.value) + Number(b.getAttribute("data-tamanho-passo"))) / 10) * 10 || 50));
       campo.dispatchEvent(new Event("input", { bubbles: true }));
     });
   });
@@ -464,13 +464,13 @@
       corIcone: campoEditor("editEquipCorIconeOriginal").checked ? "" : campoEditor("editEquipCorIcone").value,
       diagrama: campoEditor("editEquipDiagrama").value,
       potenciaDbm: campoEditor("editEquipPotenciaDbm").value === "" ? null : campoEditor("editEquipPotenciaDbm").value,
-      tamanho: Number(campoEditor("editEquipTamanho").value) || 100
+      tamanho: Number(campoEditor("editEquipTamanho").value) || tamanhoPadraoDoTipo(tipo)
     }));
     if (!validacao.ok) { campoEditor("editEquipMensagem").textContent = textoDosErros(validacao.erros); return; }
     if (!validacao.dados.diagrama) { delete validacao.dados.diagrama; delete eq.diagrama; }
     if (validacao.dados.potenciaDbm == null) { delete validacao.dados.potenciaDbm; delete eq.potenciaDbm; }
     ["gateway", "mascara"].forEach(function (k) { if (!validacao.dados[k]) { delete validacao.dados[k]; delete eq[k]; } });
-    if (validacao.dados.tamanho === 100) { delete validacao.dados.tamanho; delete eq.tamanho; } // 100% = padrão, não grava
+    if (validacao.dados.tamanho === tamanhoPadraoDoTipo(validacao.dados.tipo)) { delete validacao.dados.tamanho; delete eq.tamanho; } // padrão do tipo: não grava
     Object.assign(eq, validacao.dados);
     fecharEditor();
     renderTudo();

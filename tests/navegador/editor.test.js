@@ -369,3 +369,25 @@ test("tamanho do equipamento: + e − nos selecionados, A+/A− na barra e o con
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("Volt, RB, retificador, ar e nobreak começam com 2/3 do tamanho", async () => {
+  const pagina = await abrirPagina(navegador, site, { viewport: { width: 1400, height: 900 } });
+  await esperarDiagrama(pagina);
+  for (const [nome, tipo] of [["NB-01", "Nobreak"], ["SW-01", "Switch"]]) {
+    await pagina.click('[data-nav-panel="navAddEquip"]');
+    await pagina.waitForSelector("#navEquipNome", { state: "visible" });
+    await pagina.fill("#navEquipNome", nome);
+    await pagina.fill("#navEquipTipo", tipo);
+    await pagina.keyboard.press("Escape");
+    await pagina.click('#navEquipForm button[type="submit"]');
+    await pagina.locator("#fichaModal:not(.hidden) .modal-actions [data-ficha-fechar]").click({ timeout: 3000 }).catch(() => {});
+    await pagina.waitForFunction(n => document.getElementById("canvas").textContent.includes(n), nome, { timeout: 20000 });
+  }
+  const tam = await pagina.evaluate(() => {
+    const img = n => [...document.querySelectorAll("#canvas svg g.node")].find(g => g.textContent.includes(n)).getBBox().height;
+    return { nb: img("NB-01"), sw: img("SW-01") };
+  });
+  assert.ok(tam.nb < tam.sw * 0.9, JSON.stringify(tam));
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

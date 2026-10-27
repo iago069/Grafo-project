@@ -889,15 +889,16 @@
     var mudou = false;
     estado.equipamentos.forEach(function (eq) {
       if (!selecao[eq.id]) return;
-      var novo = Math.max(50, Math.min(250, (Number(eq.tamanho) || 100) + passo));
-      if (novo === (Number(eq.tamanho) || 100)) return;
-      if (novo === 100) delete eq.tamanho; else eq.tamanho = novo;
+      var atual = tamanhoDoEquipamento(eq);
+      var novo = Math.max(50, Math.min(250, atual + passo));
+      if (novo === atual) return;
+      if (novo === tamanhoPadraoDoTipo(eq.tipo)) delete eq.tamanho; else eq.tamanho = novo;
       mudou = true;
     });
     if (!mudou) { avisar(passo > 0 ? "Já está no tamanho máximo (250%)." : "Já está no tamanho mínimo (50%)."); return; }
     renderTudo();
     var exemplo = estado.equipamentos.find(function (eq) { return selecao[eq.id]; });
-    avisar("Tamanho: " + ((exemplo && exemplo.tamanho) || 100) + "%");
+    avisar("Tamanho: " + tamanhoDoEquipamento(exemplo) + "%");
   }
 
   function atualizarBarraSelecao() {

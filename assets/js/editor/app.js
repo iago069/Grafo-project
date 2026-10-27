@@ -433,6 +433,14 @@
     });
   }
 
+  // Tamanho padrão no desenho: equipamentos de apoio/monitoramento (Volt, RB/CCR,
+  // retificador/RPS, ar-condicionado, nobreak) começam com 2/3 do tamanho normal.
+  var TAMANHO_REDUZIDO = 67;
+  var TIPOS_REDUZIDOS = /volt|\brb\b|rb ?\/ ?ccr|\bccr\b|mikrotik|retificador|\brps\b|\bxps\b|ar condicionado|^ar$|hvac|nobreak|\bups\b/i;
+  function tamanhoPadraoDoTipo(tipo) { return TIPOS_REDUZIDOS.test(String(tipo || "")) ? TAMANHO_REDUZIDO : 100; }
+  // Tamanho efetivo (%): o escolhido no equipamento ou o padrão do tipo.
+  function tamanhoDoEquipamento(eq) { return Number(eq && eq.tamanho) || tamanhoPadraoDoTipo(eq && eq.tipo); }
+
   renderizarTiposSugeridos();
   carregarTiposDeEquipamento();
 
@@ -1790,15 +1798,16 @@
     var mudou = false;
     estado.equipamentos.forEach(function (eq) {
       if (!selecao[eq.id]) return;
-      var novo = Math.max(50, Math.min(250, (Number(eq.tamanho) || 100) + passo));
-      if (novo === (Number(eq.tamanho) || 100)) return;
-      if (novo === 100) delete eq.tamanho; else eq.tamanho = novo;
+      var atual = tamanhoDoEquipamento(eq);
+      var novo = Math.max(50, Math.min(250, atual + passo));
+      if (novo === atual) return;
+      if (novo === tamanhoPadraoDoTipo(eq.tipo)) delete eq.tamanho; else eq.tamanho = novo;
       mudou = true;
     });
     if (!mudou) { avisar(passo > 0 ? "Já está no tamanho máximo (250%)." : "Já está no tamanho mínimo (50%)."); return; }
     renderTudo();
     var exemplo = estado.equipamentos.find(function (eq) { return selecao[eq.id]; });
-    avisar("Tamanho: " + ((exemplo && exemplo.tamanho) || 100) + "%");
+    avisar("Tamanho: " + tamanhoDoEquipamento(exemplo) + "%");
   }
 
   function atualizarBarraSelecao() {
@@ -2825,8 +2834,8 @@
     campoEditor("editEquipDiagrama").innerHTML = '<option value="">— nenhum —</option>' + outros.map(function (n) { return '<option value="' + escaparHtml(n) + '">' + escaparHtml(n) + "</option>"; }).join("");
     campoEditor("editEquipDiagrama").value = eq.diagrama || "";
     campoEditor("editEquipPotenciaDbm").value = eq.potenciaDbm != null ? eq.potenciaDbm : "";
-    campoEditor("editEquipTamanho").value = eq.tamanho || 100;
-    campoEditor("editEquipTamanhoValor").textContent = (eq.tamanho || 100) + "%";
+    campoEditor("editEquipTamanho").value = tamanhoDoEquipamento(eq);
+    campoEditor("editEquipTamanhoValor").textContent = tamanhoDoEquipamento(eq) + "%";
     mostrarEditor("Editar equipamento", editor.formEquip);
   }
 
@@ -2940,7 +2949,7 @@
   editor.formEquip.querySelectorAll("[data-tamanho-passo]").forEach(function (b) {
     b.addEventListener("click", function () {
       var campo = campoEditor("editEquipTamanho");
-      campo.value = Math.max(50, Math.min(250, Number(campo.value) + Number(b.getAttribute("data-tamanho-passo"))));
+      campo.value = Math.max(50, Math.min(250, Math.round((Number(campo.value) + Number(b.getAttribute("data-tamanho-passo"))) / 10) * 10 || 50));
       campo.dispatchEvent(new Event("input", { bubbles: true }));
     });
   });
@@ -2965,13 +2974,13 @@
       corIcone: campoEditor("editEquipCorIconeOriginal").checked ? "" : campoEditor("editEquipCorIcone").value,
       diagrama: campoEditor("editEquipDiagrama").value,
       potenciaDbm: campoEditor("editEquipPotenciaDbm").value === "" ? null : campoEditor("editEquipPotenciaDbm").value,
-      tamanho: Number(campoEditor("editEquipTamanho").value) || 100
+      tamanho: Number(campoEditor("editEquipTamanho").value) || tamanhoPadraoDoTipo(tipo)
     }));
     if (!validacao.ok) { campoEditor("editEquipMensagem").textContent = textoDosErros(validacao.erros); return; }
     if (!validacao.dados.diagrama) { delete validacao.dados.diagrama; delete eq.diagrama; }
     if (validacao.dados.potenciaDbm == null) { delete validacao.dados.potenciaDbm; delete eq.potenciaDbm; }
     ["gateway", "mascara"].forEach(function (k) { if (!validacao.dados[k]) { delete validacao.dados[k]; delete eq[k]; } });
-    if (validacao.dados.tamanho === 100) { delete validacao.dados.tamanho; delete eq.tamanho; } // 100% = padrão, não grava
+    if (validacao.dados.tamanho === tamanhoPadraoDoTipo(validacao.dados.tipo)) { delete validacao.dados.tamanho; delete eq.tamanho; } // padrão do tipo: não grava
     Object.assign(eq, validacao.dados);
     fecharEditor();
     renderTudo();
@@ -6251,7 +6260,7 @@
           '</TR></TABLE></TD></TR>';
       }
       var alturaPortasLaterais = Math.max(portas.esquerda.length, portas.direita.length) * layoutLateral.alturaPorta;
-      var fatorTamanho = (Number(eq.tamanho) || 100) / 100; // "Tamanho" do equipamento
+      var fatorTamanho = tamanhoDoEquipamento(eq) / 100; // "Tamanho" do equipamento (ou o padrão do tipo)
       var larguraIcone = Math.round(88 * fatorTamanho);
       var alturaMeio = Math.max(Math.round(ALTURA_BASE_EQUIPAMENTO * fatorTamanho), alturaPortasLaterais);
 
@@ -6491,7 +6500,7 @@
         var areaAltura = Math.max(16, areaBaixo - areaTopo);
 
         var ehCatalogo = !!imagemDoIcone(equipamento.icone);
-        var fator = (Number(equipamento.tamanho) || 100) / 100;
+        var fator = tamanhoDoEquipamento(equipamento) / 100;
         var tamanhoDesejado = (ehCatalogo ? 84 : 48) * fator;
         var tam = Math.max(12, Math.min(tamanhoDesejado, areaAltura - 4, 108 * fator));
 
