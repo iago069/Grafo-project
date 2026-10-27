@@ -3308,3 +3308,6 @@ body:not([data-modo-diagrama="ftth"]) .so-modo-ftth { display: none; }
 .mapa-mais { margin: 6px; font-size: 0.74rem; color: var(--text-dim); }
 #mapaRotacaoValor { float: right; font: 600 0.74rem var(--mono); color: var(--accent); }
 .campo-fixo { align-self: end; padding-bottom: 8px; }
+
+.mapa-ibge .nav-form-grid { align-items: end; }
+.mapa-ibge #mapaGerarIbge { min-height: 40px; }

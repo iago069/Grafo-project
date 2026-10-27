@@ -223,7 +223,7 @@
             <span class="tamanho-controles"><button type="button" class="ghost small" data-tamanho-passo="-10" aria-label="Diminuir">−</button><input id="editEquipTamanho" type="range" min="50" max="250" step="1" value="100"><button type="button" class="ghost small" data-tamanho-passo="10" aria-label="Aumentar">+</button></span></label>
           <label class="full so-modo-ftth">Potência de saída (dBm)<input id="editEquipPotenciaDbm" type="number" step="0.1" min="-20" max="20" placeholder="OLT: ex. 5"></label>
           <div class="nav-form-grid">
-            <label>Município <span class="rotulo-opcional">(mapa)</span><select id="editEquipMunicipio"><option value="">— nenhum —</option></select></label>
+            <label>Município <span class="rotulo-opcional">(mapa)</span><input id="editEquipMunicipio" data-limite="nome" list="municipios-sugeridos" autocomplete="off" placeholder="Ex.: Ibirubá"></label>
             <label class="opcao-check campo-fixo"><input id="editEquipFixo" type="checkbox"> Fixar posição</label>
           </div>
           <label class="full">Abre o diagrama<select id="editEquipDiagrama"><option value="">— nenhum —</option></select></label>
@@ -580,7 +580,7 @@
                 <label>Modelo<input id="navEquipModelo" data-limite="modelo" list="modelos-sugeridos" autocomplete="off" placeholder="Ex.: CRS326-24G-2S+"></label>
                 <label>Tipo<input id="navEquipTipo" data-limite="tipo" list="tipos-sugeridos" placeholder="Tipo"></label>
               </div>
-              <label class="full" hidden>Município <span class="rotulo-opcional">(mapa: já vai para dentro dele)</span><select id="navEquipMunicipio"><option value="">— nenhum —</option></select></label>
+              <label class="full">Município <span class="rotulo-opcional">(para o Mapa de regiões)</span><input id="navEquipMunicipio" data-limite="nome" list="municipios-sugeridos" autocomplete="off" placeholder="Ex.: Ibirubá"></label>
               <label class="full">Ligar a <span class="rotulo-opcional">(opcional: já cria o cabo)</span><select id="navEquipLigarA"><option value="">— não ligar agora —</option></select></label>
               <label class="full">IP<input id="navEquipIp" data-limite="ip" placeholder="Ex.: 10.0.0.1" inputmode="decimal" autocomplete="off" spellcheck="false"></label>
               <label class="full so-modo-redes">VLAN / rede<input id="navEquipRede" data-limite="rede" placeholder="Ex.: VLAN 10 · 10.0.0.0/24" autocomplete="off" spellcheck="false"></label>
@@ -625,6 +625,21 @@
           <div class="nav-panel" id="navMapa">
             <div class="nav-form mapa-painel">
               <p class="mapa-ajuda">Monte a rede sobre os municípios. No <b>mapshaper.org</b>, abra a malha (ex.: malha municipal do IBGE), use <b>Simplify</b> e exporte em <b>GeoJSON</b>, <b>TopoJSON</b> ou <b>SVG</b>.</p>
+              <div class="mapa-ibge">
+                <p class="mapa-subtitulo">Gerar automaticamente</p>
+                <div class="nav-form-grid">
+                  <label>Estado<select id="mapaUf">
+                    <option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option><option>DF</option><option>ES</option><option>GO</option>
+                    <option>MA</option><option>MT</option><option>MS</option><option>MG</option><option>PA</option><option>PB</option><option>PR</option><option>PE</option><option>PI</option>
+                    <option>RJ</option><option>RN</option><option selected>RS</option><option>RO</option><option>RR</option><option>SC</option><option>SP</option><option>SE</option><option>TO</option>
+                  </select></label>
+                  <button type="button" class="primary" id="mapaGerarIbge" title="Baixa a malha municipal oficial do IBGE">Gerar mapa (IBGE)</button>
+                </div>
+                <label class="opcao-check"><input id="mapaSoDiagrama" type="checkbox" checked> Só os municípios do diagrama</label>
+                <label class="opcao-check"><input id="mapaDetalhado" type="checkbox" checked> Contornos detalhados</label>
+                <p class="mapa-dica">Usa o Município de cada equipamento (ou a cidade escrita no nome) e já coloca cada um dentro da sua cidade. Fonte: IBGE, malha municipal (API de Malhas v3).</p>
+              </div>
+              <p class="mapa-subtitulo">Ou usar um arquivo</p>
               <div class="mapa-entradas">
                 <label class="mapa-arquivo">Municípios (vetor)<input id="mapaArquivo" type="file" accept=".json,.geojson,.topojson,.svg,application/json,image/svg+xml"></label>
                 <label class="mapa-arquivo">Imagem de fundo<input id="mapaArquivoImagem" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml"></label>
@@ -1126,6 +1141,7 @@
 <datalist id="modelos-sugeridos"></datalist>
 <datalist id="portas-sugeridas"></datalist>
 <datalist id="grupos-sugeridos"></datalist>
+<datalist id="municipios-sugeridos"></datalist>
 <datalist id="capacidades-sugeridas">
   <option value="100M"></option><option value="1G"></option><option value="2.5G"></option><option value="10G"></option>
   <option value="25G"></option><option value="40G"></option><option value="100G"></option><option value="400G"></option>

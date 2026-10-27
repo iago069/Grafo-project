@@ -7878,7 +7878,22 @@
     var mm = r.transform && /translate\(([-\d.e]+),([-\d.e]+)\)\s*scale\(([-\d.e]+)\)/.exec(r.transform);
     if (mm) { tx = +mm[1]; ty = +mm[2]; s = +mm[3]; }
     var m = estado.mapa, esc = Number(m.escala) || 1;
-    return { x: Math.round(m.x + (p.x * s + tx) * esc), y: Math.round(m.y + (p.y * s + ty) * esc + (ordem || 0) * 170) };
+    // Segundo, terceiro...: em volta do primeiro, só em lugares dentro do
+    // município (cidade pequena não joga o equipamento para fora).
+    if (ordem) {
+      var passo = 260 / (esc * s); // ~260 unidades do desenho (um equipamento), em unidades do caminho
+      var volta = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1], [2, 0], [-2, 0], [0, 2], [0, -2]];
+      var dentro = [];
+      [1, 0.6, 0.35].forEach(function (f) {
+        volta.forEach(function (v) {
+          var q = { x: p.x + v[0] * passo * f, y: p.y + v[1] * passo * f };
+          var pt = path.ownerSVGElement.createSVGPoint(); pt.x = q.x; pt.y = q.y;
+          if (path.isPointInFill && path.isPointInFill(pt) && !dentro.some(function (d) { return Math.abs(d.x - q.x) < passo * 0.3 && Math.abs(d.y - q.y) < passo * 0.3; })) dentro.push(q);
+        });
+      });
+      p = dentro[ordem - 1] || { x: p.x, y: p.y + ordem * 170 / (esc * s) };
+    }
+    return { x: Math.round(m.x + (p.x * s + tx) * esc), y: Math.round(m.y + (p.y * s + ty) * esc) };
   }
   // Põe os equipamentos com município dentro dele (os fixados ficam onde estão).
   function posicionarNosMunicipios(ids) {
@@ -7966,6 +7981,69 @@
     });
   }
 
+  // ---- Gerar automaticamente: malha municipal do IBGE ----
+  // Fonte: IBGE, API de Malhas v3 (malha municipal vigente) e API de Localidades
+  // v1 (nomes). Serviço público e gratuito; os contornos não são inventados.
+  var UFS_IBGE = { AC: 12, AL: 27, AP: 16, AM: 13, BA: 29, CE: 23, DF: 53, ES: 32, GO: 52, MA: 21, MT: 51, MS: 50, MG: 31, PA: 15, PB: 25, PR: 41,
+    PE: 26, PI: 22, RJ: 33, RN: 24, RS: 43, RO: 11, RR: 14, SC: 42, SP: 35, SE: 28, TO: 17 };
+  var URL_IBGE = "https://servicodados.ibge.gov.br/api/";
+  async function baixarJson(url) {
+    var resposta = await fetch(url, { cache: "force-cache" });
+    if (!resposta.ok) throw new Error("o IBGE respondeu " + resposta.status + ".");
+    return resposta.json();
+  }
+  // Acha o município citado no nome do equipamento ("... | Ibiruba - Coprel" → Ibirubá).
+  function municipioNoNome(nomeEquip, nomes) {
+    var alvo = " " + normalizarTextoEquipamento(nomeEquip).replace(/[^a-z0-9]+/g, " ") + " ";
+    var melhor = "";
+    nomes.forEach(function (n) {
+      var k = normalizarTextoEquipamento(n).replace(/[^a-z0-9]+/g, " ").trim();
+      if (k.length >= 4 && alvo.indexOf(" " + k + " ") >= 0 && k.length > normalizarTextoEquipamento(melhor).length) melhor = n;
+    });
+    return melhor;
+  }
+  async function gerarMapaIbge(uf, soDoDiagrama, detalhado) {
+    var codigo = UFS_IBGE[uf];
+    if (!codigo) throw new Error("escolha o estado.");
+    var dados = await Promise.all([
+      baixarJson(URL_IBGE + "v3/malhas/estados/" + codigo + "?formato=application/vnd.geo%2Bjson&qualidade=" + (detalhado ? "intermediaria" : "minima") + "&intrarregiao=municipio"),
+      baixarJson(URL_IBGE + "v1/localidades/estados/" + codigo + "/municipios")
+    ]);
+    var nomePorCodigo = {};
+    (dados[1] || []).forEach(function (m) { nomePorCodigo[String(m.id)] = m.nome; });
+    var nomes = Object.keys(nomePorCodigo).map(function (k) { return nomePorCodigo[k]; });
+    var feicoes = (dados[0].features || []).map(function (f) {
+      var cod = String((f.properties || {}).codarea || "");
+      return { type: "Feature", geometry: f.geometry, properties: { NM_MUN: nomePorCodigo[cod] || cod, CD_MUN: cod } };
+    });
+    // Equipamentos sem município: tenta achar a cidade no nome.
+    var preenchidos = 0;
+    estado.equipamentos.forEach(function (eq) {
+      if (eq.municipio) return;
+      var achado = municipioNoNome(eq.nome, nomes);
+      if (achado) { eq.municipio = achado; preenchidos++; }
+    });
+    var usados = {};
+    estado.equipamentos.forEach(function (eq) { if (eq.municipio) usados[normalizarTextoEquipamento(eq.municipio)] = true; });
+    var naoAchados = Object.keys(usados).filter(function (k) { return !nomes.some(function (n) { return normalizarTextoEquipamento(n) === k; }); });
+    if (soDoDiagrama) {
+      if (!Object.keys(usados).length) throw new Error("nenhum equipamento tem município (nem no nome). Preencha o Município ou desmarque \"Só os municípios do diagrama\".");
+      feicoes = feicoes.filter(function (f) { return usados[normalizarTextoEquipamento(f.properties.NM_MUN)]; });
+      if (!feicoes.length) throw new Error("os municípios dos equipamentos não são de " + uf + ".");
+    }
+    var mapa = lerGeoJson({ type: "FeatureCollection", features: feicoes });
+    return { mapa: mapa, preenchidos: preenchidos, naoAchados: naoAchados };
+  }
+
+  function esperarMapaDesenhado(depois) {
+    var inicio = Date.now();
+    (function conferir() {
+      var svg = elCanvas.querySelector("svg");
+      if (svg && svg.querySelector("g.camada-mapa g.mapa-regioes > path")) { depois(); return; }
+      if (Date.now() - inicio < 8000) setTimeout(conferir, 80);
+    })();
+  }
+
   // ---- Painel "Mapa regional" ----
   (function () {
     var painel = document.getElementById("navMapa");
@@ -7974,6 +8052,49 @@
     var arquivo = campo("mapaArquivo"), arquivoImagem = campo("mapaArquivoImagem"), situacao = campo("mapaSituacao");
     var listaRegioes = campo("mapaListaRegioes"), buscaRegiao = campo("mapaBuscaRegiao");
     var alvoAjuste = "municipios"; // "municipios" | "imagem"
+    try { var ufSalva = localStorage.getItem("grafo-mapa-uf"); if (ufSalva && UFS_IBGE[ufSalva]) campo("mapaUf").value = ufSalva; } catch (e) {}
+    campo("mapaGerarIbge").addEventListener("click", async function () {
+      var botao = campo("mapaGerarIbge"), uf = campo("mapaUf").value;
+      try { localStorage.setItem("grafo-mapa-uf", uf); } catch (e) {}
+      botao.disabled = true;
+      var texto = botao.textContent;
+      botao.textContent = "Baixando malha do IBGE…";
+      try {
+        var r = await gerarMapaIbge(uf, campo("mapaSoDiagrama").checked, campo("mapaDetalhado").checked);
+        var anterior = estado.mapa || {};
+        var estilo = ESTILOS_MAPA[anterior.estilo === "grafo" ? "grafo" : "referencia"];
+        var novo = { regioes: r.mapa.regioes, largura: r.mapa.largura, altura: r.mapa.altura, estilo: anterior.estilo || "referencia",
+          cor: anterior.cor || estilo.cor, contorno: anterior.contorno || estilo.contorno, sombra: anterior.sombra != null ? anterior.sombra : estilo.sombra,
+          nomes: anterior.nomes != null ? anterior.nomes : true, cabosPretos: anterior.cabosPretos != null ? anterior.cabosPretos : estilo.cabosPretos };
+        if (anterior.imagem) novo.imagem = anterior.imagem;
+        // Mapa do tamanho que caiba os equipamentos com folga (cada município ~ 3 equipamentos).
+        var area = caixaDosEquipamentos();
+        var lado = Math.max(2000, Math.sqrt(Math.max(1, estado.equipamentos.length)) * 950);
+        encaixar(novo, { x1: area.x1, y1: area.y1, x2: area.x1 + lado, y2: area.y1 + lado * novo.altura / novo.largura }, 0);
+        var v = Esquema.validarMapa(novo);
+        if (!v.ok) throw new Error(v.mensagem);
+        estado.mapa = v.dados;
+        alvoAjuste = "municipios";
+        salvarLocal();
+        // Depois de desenhar o mapa, coloca cada equipamento dentro do seu município.
+        gerar();
+        // Espera o mapa aparecer no desenho (o Graphviz desenha em seguida) e
+        // então coloca cada equipamento dentro do seu município.
+        esperarMapaDesenhado(function () {
+          var n = posicionarNosMunicipios(null);
+          if (n) { salvarLocal(); ajustarNaProximaRenderizacao = true; gerar(); }
+        });
+        atualizarPainel();
+        avisar("Mapa do IBGE (" + uf + "): " + r.mapa.regioes.length + (r.mapa.regioes.length === 1 ? " município." : " municípios.") +
+          (r.preenchidos ? " " + r.preenchidos + " equipamento(s) tiveram o município achado pelo nome." : "") +
+          (r.naoAchados.length ? " Não achei em " + uf + ": " + r.naoAchados.slice(0, 4).join(", ") + "." : ""));
+      } catch (e) {
+        avisar("Não deu para gerar o mapa: " + (e.message || e) + (e instanceof TypeError ? " (sem internet ou o IBGE fora do ar)" : ""));
+      } finally {
+        botao.disabled = false;
+        botao.textContent = texto;
+      }
+    });
 
     function atualizarPainel() {
       var m = estado.mapa;
@@ -8177,17 +8298,19 @@
   // ---- Município no editor do equipamento ----
   // Lista os municípios do mapa; ao salvar com município novo, o equipamento vai
   // para dentro dele (a não ser que esteja fixado).
-  function preencherCampoMunicipio(select, valor) {
-    if (!select) return;
-    var nomes = temRegioes() ? estado.mapa.regioes.map(function (r) { return r.nome; }).filter(Boolean) : [];
-    nomes = nomes.filter(function (n, i) { return nomes.indexOf(n) === i; }).sort(function (a, b) { return a.localeCompare(b, "pt"); });
-    if (valor && nomes.indexOf(valor) < 0) nomes.unshift(valor);
-    select.innerHTML = '<option value="">— nenhum —</option>' + nomes.map(function (n) { return '<option value="' + escaparHtml(n) + '">' + escaparHtml(n) + "</option>"; }).join("");
-    select.value = valor || "";
-    var rotulo = select.closest("label");
-    if (rotulo) rotulo.hidden = !temRegioes() && !valor;
+  function preencherCampoMunicipio(campo, valor) {
+    if (!campo) return;
+    var lista = document.getElementById("municipios-sugeridos");
+    if (lista) {
+      var nomes = temRegioes() ? estado.mapa.regioes.map(function (r) { return r.nome; }).filter(Boolean) : [];
+      estado.equipamentos.forEach(function (eq) { if (eq.municipio) nomes.push(eq.municipio); });
+      nomes = nomes.filter(function (n, i) { return nomes.indexOf(n) === i; }).sort(function (a, b) { return a.localeCompare(b, "pt"); });
+      lista.innerHTML = nomes.map(function (n) { return '<option value="' + escaparHtml(n) + '"></option>'; }).join("");
+    }
+    campo.value = valor || "";
+    var rotulo = campo.closest("label");
+    if (rotulo) rotulo.hidden = false;
   }
-
   // ==== 13-cadastro-automatico.js: tipo/modelo/IP/portas sugeridos, Ligar a, seletores de modelo e tipo, colar lista (parte de assets/js/editor/app.js; npm run montar) ====
   // ---- Cadastro automático: equipamentos e cabos -----------------------------------
   // O que dá para deduzir, o Grafo preenche sozinho (sempre editável):

@@ -74,7 +74,7 @@ test("município no equipamento: vai para dentro dele; ocultar municípios; Orga
   // Edita a OLT-Centro: município Cidade C.
   await pagina.locator("#canvas g.node", { hasText: "OLT-Centro" }).first().dblclick();
   await pagina.waitForSelector("#editEquipMunicipio", { state: "visible" });
-  await pagina.selectOption("#editEquipMunicipio", "Cidade C");
+  await pagina.fill("#editEquipMunicipio", "Cidade C");
   await pagina.click("#editorEquipForm .primary");
   const dentro = () => pagina.evaluate(() => {
     const path = document.querySelector('#canvas g.camada-mapa g.mapa-regioes > path[data-regiao="2"]');
@@ -140,6 +140,37 @@ test("projeto de exemplo Rota 100G (PDF): 11 equipamentos, 10 enlaces, km e muni
   assert.equal(p.equipamentos.filter(e => e.municipio === "Tunas").length, 2);
   assert.match(await pagina.textContent("#canvas"), /20 km/);
   if (process.env.FOTO_ROTA) { await pagina.waitForTimeout(1500); await pagina.screenshot({ path: process.env.FOTO_ROTA }); }
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});
+
+test("Gerar mapa (IBGE): baixa a malha do estado, fica só com os municípios do diagrama e acha a cidade no nome", async () => {
+  const pagina = await abrirPagina(navegador, site, { viewport: { width: 1400, height: 900 } });
+  // IBGE simulado (o teste não depende da internet).
+  const malha = { type: "FeatureCollection", features: [
+    { type: "Feature", properties: { codarea: "4300001" }, geometry: { type: "Polygon", coordinates: [[[-53.2, -28.6], [-53.0, -28.6], [-53.0, -28.4], [-53.2, -28.4], [-53.2, -28.6]]] } },
+    { type: "Feature", properties: { codarea: "4300002" }, geometry: { type: "Polygon", coordinates: [[[-53.0, -28.6], [-52.8, -28.6], [-52.8, -28.4], [-53.0, -28.4], [-53.0, -28.6]]] } },
+    { type: "Feature", properties: { codarea: "4300003" }, geometry: { type: "Polygon", coordinates: [[[-52.8, -28.6], [-52.6, -28.6], [-52.6, -28.4], [-52.8, -28.4], [-52.8, -28.6]]] } }
+  ] };
+  const nomes = [{ id: 4300001, nome: "Ibirubá" }, { id: 4300002, nome: "Quinze de Novembro" }, { id: 4300003, nome: "Tunas" }];
+  await pagina.route("https://servicodados.ibge.gov.br/api/v3/malhas/**", r => r.fulfill({ contentType: "application/json", body: JSON.stringify(malha) }));
+  await pagina.route("https://servicodados.ibge.gov.br/api/v1/localidades/**", r => r.fulfill({ contentType: "application/json", body: JSON.stringify(nomes) }));
+  await esperarDiagrama(pagina);
+  // Dois equipamentos com a cidade no nome (sem preencher o Município).
+  for (const nome of ["POP-IBR01 | Ibiruba - Coprel", "POP-THS01 | Tunas - Cidade"]) {
+    await pagina.click('[data-nav-panel="navAddEquip"]');
+    await pagina.waitForSelector("#navEquipNome", { state: "visible" });
+    await pagina.fill("#navEquipNome", nome);
+    await pagina.click('#navEquipForm button[type="submit"]');
+    await pagina.locator("#fichaModal:not(.hidden) .modal-actions [data-ficha-fechar]").click({ timeout: 3000 }).catch(() => {});
+  }
+  await pagina.click('[data-nav-panel="navMapa"]');
+  await pagina.selectOption("#mapaUf", "RS");
+  await pagina.click("#mapaGerarIbge");
+  await pagina.waitForFunction(() => document.querySelectorAll("#canvas g.camada-mapa g.mapa-regioes > path").length === 2, null, { timeout: 20000 });
+  const p = await salvo(pagina);
+  assert.deepEqual(p.mapa.regioes.map(r => r.nome).sort(), ["Ibirubá", "Tunas"]);
+  assert.equal(p.equipamentos.find(e => e.nome.startsWith("POP-IBR01")).municipio, "Ibirubá");
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
