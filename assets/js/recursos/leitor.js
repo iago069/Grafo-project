@@ -439,6 +439,7 @@
           '<button type="button" class="ghost" data-leitor-voltar>Voltar</button>' +
           '<button type="button" class="ghost" data-leitor-comparar title="Mostra o que está diferente entre o texto e o diagrama aberto">Comparar com o diagrama aberto</button>' +
           '<button type="button" class="ghost" data-leitor-mesclar>Mesclar no diagrama aberto</button>' +
+          '<label class="opcao-check leitor-mapa"><input type="checkbox" data-leitor-mapa checked> Montar sobre o mapa das cidades (IBGE)</label>' +
           '<button type="button" class="primary" data-leitor-novo>Criar diagrama novo</button>' +
         '</div>' +
       '</div>' +
@@ -585,6 +586,9 @@
       input.files = dt.files;
       input.dispatchEvent(new Event("change", { bubbles: true }));
       fechar();
+      // As siglas dos POPs dizem as cidades: monta o diagrama sobre o mapa delas.
+      var comMapa = fundo.querySelector("[data-leitor-mapa]");
+      if (comMapa && comMapa.checked && window.GrafoMapa) window.GrafoMapa.montarDepoisDeCriar();
     } catch (e) { app.avisar("Não foi possível criar o diagrama neste navegador."); }
   });
 

@@ -208,3 +208,26 @@ test("sigla CNL da Anatel no nome do POP: preenche o município (POP-TPA01 → T
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("Gerar a partir de texto já monta sobre o mapa: estado e cidades descobertos pelas siglas dos POPs", async () => {
+  const pagina = await abrirPagina(navegador, site, { viewport: { width: 1400, height: 900 } });
+  const quad = (x, cod) => ({ type: "Feature", properties: { codarea: cod }, geometry: { type: "Polygon", coordinates: [[[x, -28.6], [x + 0.2, -28.6], [x + 0.2, -28.4], [x, -28.4], [x, -28.6]]] } });
+  let ufPedida = "";
+  await pagina.route("https://servicodados.ibge.gov.br/api/v3/malhas/**", r => { ufPedida = r.request().url().match(/estados\/(\d+)/)[1]; return r.fulfill({ contentType: "application/json", body: JSON.stringify({ type: "FeatureCollection", features: [quad(-53.2, "1"), quad(-53.0, "2"), quad(-52.8, "3")] }) }); });
+  await pagina.route("https://servicodados.ibge.gov.br/api/v1/localidades/**", r => r.fulfill({ contentType: "application/json", body: JSON.stringify([{ id: 1, nome: "Tapera" }, { id: 2, nome: "Selbach" }, { id: 3, nome: "Espumoso" }]) }));
+  await esperarDiagrama(pagina);
+  await pagina.waitForFunction(() => window.GrafoLeitor);
+  await pagina.click("#btnGerarTexto");
+  await pagina.fill("[data-leitor-nome]", "POP-TPA01_DISTR-11");
+  await pagina.fill("[data-leitor-texto]", "ten-gigabit-ethernet-1/1/1\nENLACE_POP-SXH03_DISTR-51_XE2\n\nUP\n\nten-gigabit-ethernet-1/1/8\nENLACE_POP-EPO01_DISTR-12_XE1\n\nUP\n");
+  await pagina.click("[data-leitor-ler]");
+  await pagina.waitForSelector('[data-passo="revisar"]:not([hidden])');
+  assert.equal(await pagina.isChecked("[data-leitor-mapa]"), true);
+  await pagina.click("[data-leitor-novo]");
+  await pagina.waitForFunction(() => document.querySelectorAll("#canvas g.camada-mapa g.mapa-regioes > path").length === 3, null, { timeout: 30000 });
+  assert.equal(ufPedida, "43", "RS descoberto pelas siglas");
+  const p = await salvo(pagina);
+  assert.deepEqual(p.equipamentos.map(e => e.municipio).sort(), ["Espumoso", "Selbach", "Tapera"]);
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

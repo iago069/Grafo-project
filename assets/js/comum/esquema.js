@@ -539,6 +539,7 @@
     sombra: z.boolean().default(true),
     nomes: z.boolean().default(false),
     cabosPretos: z.boolean().default(false),
+    recorte: z.boolean().default(false), // mostra só a área em volta dos equipamentos
     // Imagem de fundo: guardada no próprio projeto (data URL), para continuar
     // disponível ao reabrir. Só PNG, JPEG e SVG (já limpo de scripts).
     imagem: z.object({

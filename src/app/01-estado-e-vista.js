@@ -270,6 +270,9 @@
       if (!el.classList || !(el.classList.contains("node") || el.classList.contains("edge") || el.classList.contains("cluster") || el.classList.contains("anotacao") || el.classList.contains("legenda-cabos") || el.classList.contains("camada-mapa"))) return;
       var b;
       try { b = el.getBBox(); } catch (e) { return; }
+      // Mapa recortado: conta só a área do recorte (getBBox ignora o clip-path).
+      var recorte = el.classList.contains("camada-mapa") && el.querySelector("clipPath rect");
+      if (recorte) { try { var rb = recorte.getBBox(); b = { x: Math.max(b.x, rb.x), y: Math.max(b.y, rb.y), width: Math.min(b.x + b.width, rb.x + rb.width) - Math.max(b.x, rb.x), height: Math.min(b.y + b.height, rb.y + rb.height) - Math.max(b.y, rb.y) }; } catch (e) {} }
       if (!b || (!b.width && !b.height)) return;
       var t = translateDoElemento(el);
       minX = Math.min(minX, b.x + t.x);
