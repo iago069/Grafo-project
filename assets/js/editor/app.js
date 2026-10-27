@@ -6698,7 +6698,7 @@
     if (!estado.equipamentos.length) return;
     // Com mapa: ninguém sai do seu município nem os fixados se mexem; quem tem
     // município volta para dentro dele, os outros ficam onde estão.
-    if (temRegioes()) {
+    if (temRegioes() && !mapaSoDeFundo()) {
       var n = posicionarNosMunicipios(null);
       avisar(n ? n + (n === 1 ? " equipamento arrumado" : " equipamentos arrumados") + " dentro do seu município." : "Com mapa, o Organizar só arruma quem tem município. Escolha o município na edição do equipamento.");
       salvarLocal(); gerar();
@@ -6714,6 +6714,8 @@
     arrumarDepoisDeOrganizar(); // rotas à mão saem; notas e desenhos longe vêm para perto
     gerar();
     if (alinharPortasDasPontas()) gerar();
+    // Mapa só de fundo (uma cidade): reenquadra o mapa atrás do diagrama novo.
+    if (temRegioes() && mapaSoDeFundo()) { encaixar(estado.mapa, caixaDosEquipamentos(), 180); salvarLocal(); gerar(); }
   }
 
   // Arruma blocos {w, h} em prateleiras (linhas), testando larguras máximas e
@@ -7895,11 +7897,37 @@
     }
     return { x: Math.round(m.x + (p.x * s + tx) * esc), y: Math.round(m.y + (p.y * s + ty) * esc) };
   }
+  // Quantos municípios do mapa têm equipamento. Com menos de 2, o mapa é só o
+  // fundo: o diagrama não é rearrumado por cidade (ficaria tudo empilhado).
+  function municipiosComEquipamento() {
+    var usados = {};
+    estado.equipamentos.forEach(function (eq) { var i = regiaoPorNome(eq.municipio); if (i >= 0) usados[i] = true; });
+    return Object.keys(usados).length;
+  }
+  function mapaSoDeFundo() { return municipiosComEquipamento() < 2; }
   // Põe os equipamentos com município dentro dele (os fixados ficam onde estão).
+  // Cidade com 3 ou mais equipamentos: o grupo inteiro vai junto, mantendo o
+  // desenho dele (não espalha um POP grande em volta de um ponto).
   function posicionarNosMunicipios(ids) {
     if (!temRegioes()) return 0;
-    var contagem = {}, n = 0;
+    var contagem = {}, n = 0, grupos = {};
     estado.equipamentos.forEach(function (eq) {
+      if (!eq.municipio || eq.fixo || (ids && ids.indexOf(eq.id) < 0)) return;
+      var k = normalizarTextoEquipamento(eq.municipio);
+      (grupos[k] = grupos[k] || []).push(eq);
+    });
+    var movidos = {};
+    Object.keys(grupos).forEach(function (k) {
+      var g = grupos[k];
+      if (g.length < 3 || !g.every(function (eq) { return posicaoValida(eq.posicao); })) return;
+      var alvo = pontoNoMunicipio(g[0].municipio, 0);
+      if (!alvo) return;
+      var cx = g.reduce(function (s2, eq) { return s2 + eq.posicao.x; }, 0) / g.length;
+      var cy = g.reduce(function (s2, eq) { return s2 + eq.posicao.y; }, 0) / g.length;
+      g.forEach(function (eq) { eq.posicao = { x: Math.round(eq.posicao.x + alvo.x - cx), y: Math.round(eq.posicao.y + alvo.y - cy) }; delete eq.deslocamento; movidos[eq.id] = true; n++; });
+    });
+    estado.equipamentos.forEach(function (eq) {
+      if (movidos[eq.id]) return;
       if (!eq.municipio) return;
       var k = normalizarTextoEquipamento(eq.municipio);
       var ordem = contagem[k] || 0;
@@ -8067,25 +8095,35 @@
           cor: anterior.cor || estilo.cor, contorno: anterior.contorno || estilo.contorno, sombra: anterior.sombra != null ? anterior.sombra : estilo.sombra,
           nomes: anterior.nomes != null ? anterior.nomes : true, cabosPretos: anterior.cabosPretos != null ? anterior.cabosPretos : estilo.cabosPretos };
         if (anterior.imagem) novo.imagem = anterior.imagem;
-        // Mapa do tamanho que caiba os equipamentos com folga (cada município ~ 3 equipamentos).
         var area = caixaDosEquipamentos();
-        var lado = Math.max(2000, Math.sqrt(Math.max(1, estado.equipamentos.length)) * 950);
-        encaixar(novo, { x1: area.x1, y1: area.y1, x2: area.x1 + lado, y2: area.y1 + lado * novo.altura / novo.largura }, 0);
+        estado.mapa = novo; // provisório, para contar os municípios com equipamento
+        var soFundo = mapaSoDeFundo();
+        if (soFundo) {
+          // Uma cidade só: o mapa enquadra o diagrama por trás, sem mexer nele,
+          // no estilo suave (verde forte atrás de um POP inteiro atrapalha a leitura).
+          if (!anterior.estilo) Object.assign(novo, { estilo: "grafo" }, ESTILOS_MAPA.grafo);
+          encaixar(novo, area, 180);
+        } else {
+          // Mapa do tamanho que caiba os equipamentos com folga (cada município ~ 3 equipamentos).
+          var lado = Math.max(2000, Math.sqrt(Math.max(1, estado.equipamentos.length)) * 950);
+          encaixar(novo, { x1: area.x1, y1: area.y1, x2: area.x1 + lado, y2: area.y1 + lado * novo.altura / novo.largura }, 0);
+        }
         var v = Esquema.validarMapa(novo);
         if (!v.ok) throw new Error(v.mensagem);
         estado.mapa = v.dados;
         alvoAjuste = "municipios";
         salvarLocal();
-        // Depois de desenhar o mapa, coloca cada equipamento dentro do seu município.
+        ajustarNaProximaRenderizacao = true;
         gerar();
         // Espera o mapa aparecer no desenho (o Graphviz desenha em seguida) e
         // então coloca cada equipamento dentro do seu município.
-        esperarMapaDesenhado(function () {
+        if (!soFundo) esperarMapaDesenhado(function () {
           var n = posicionarNosMunicipios(null);
           if (n) { salvarLocal(); ajustarNaProximaRenderizacao = true; gerar(); }
         });
         atualizarPainel();
         avisar("Mapa do IBGE (" + uf + "): " + r.mapa.regioes.length + (r.mapa.regioes.length === 1 ? " município." : " municípios.") +
+          (soFundo ? " Só uma cidade com equipamento: o mapa ficou de fundo e o diagrama não foi mexido. Para espalhar por cidades, preencha o Município dos equipamentos das outras cidades." : "") +
           (r.preenchidos ? " " + r.preenchidos + " equipamento(s) tiveram o município achado pelo nome." : "") +
           (r.naoAchados.length ? " Não achei em " + uf + ": " + r.naoAchados.slice(0, 4).join(", ") + "." : ""));
       } catch (e) {

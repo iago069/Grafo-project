@@ -616,7 +616,7 @@
     if (!estado.equipamentos.length) return;
     // Com mapa: ninguém sai do seu município nem os fixados se mexem; quem tem
     // município volta para dentro dele, os outros ficam onde estão.
-    if (temRegioes()) {
+    if (temRegioes() && !mapaSoDeFundo()) {
       var n = posicionarNosMunicipios(null);
       avisar(n ? n + (n === 1 ? " equipamento arrumado" : " equipamentos arrumados") + " dentro do seu município." : "Com mapa, o Organizar só arruma quem tem município. Escolha o município na edição do equipamento.");
       salvarLocal(); gerar();
@@ -632,6 +632,8 @@
     arrumarDepoisDeOrganizar(); // rotas à mão saem; notas e desenhos longe vêm para perto
     gerar();
     if (alinharPortasDasPontas()) gerar();
+    // Mapa só de fundo (uma cidade): reenquadra o mapa atrás do diagrama novo.
+    if (temRegioes() && mapaSoDeFundo()) { encaixar(estado.mapa, caixaDosEquipamentos(), 180); salvarLocal(); gerar(); }
   }
 
   // Arruma blocos {w, h} em prateleiras (linhas), testando larguras máximas e

@@ -76,6 +76,12 @@ test("município no equipamento: vai para dentro dele; ocultar municípios; Orga
   await pagina.waitForSelector("#editEquipMunicipio", { state: "visible" });
   await pagina.fill("#editEquipMunicipio", "Cidade C");
   await pagina.click("#editorEquipForm .primary");
+  // Um segundo município com equipamento (com uma cidade só, o mapa é só fundo).
+  await pagina.waitForTimeout(800);
+  await pagina.locator("#canvas g.node", { hasText: "ONU Ação" }).first().dblclick();
+  await pagina.waitForSelector("#editEquipMunicipio", { state: "visible" });
+  await pagina.fill("#editEquipMunicipio", "Cidade A");
+  await pagina.click("#editorEquipForm .primary");
   const dentro = () => pagina.evaluate(() => {
     const path = document.querySelector('#canvas g.camada-mapa g.mapa-regioes > path[data-regiao="2"]');
     const no = [...document.querySelectorAll("#canvas svg g.node")].find(g => g.textContent.includes("OLT-Centro"));
