@@ -52,7 +52,7 @@
 
   // Sem arredondar: a animação do zoom dá passos pequenos que o arredondamento
   // "comia" (em 12%, 0.1212 virava 0.12 e o zoom travava). A tela mostra o valor redondo.
-  function limitarZoom(valor) { return Math.min(3, Math.max(0.08, Number(valor) || 1)); }
+  function limitarZoom(valor) { return Math.min(3, Math.max(0.04, Number(valor) || 1)); }
 
   function limitarPosicaoNoCanvas(valor, min, max) {
     var numero = Number(valor) || 0;

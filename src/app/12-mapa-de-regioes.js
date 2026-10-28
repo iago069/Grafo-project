@@ -419,6 +419,8 @@
     });
     if (m.nomes && !camadasOcultas().cidades) {
       var claro = (function () { var h = cor.replace("#", ""); var l = 0.299 * parseInt(h.slice(0, 2), 16) + 0.587 * parseInt(h.slice(2, 4), 16) + 0.114 * parseInt(h.slice(4, 6), 16); return l < 140; })();
+      // Nome acompanha o tamanho do mapa (com o mapa inteiro na tela continua legível).
+      var fonte = Math.max(30, (Number(m.largura) || 0) * esc / 40);
       var nomes = no("g", { "class": "mapa-nomes", "font-family": "Helvetica, Arial, sans-serif", "font-weight": "bold", fill: claro ? "#FFFFFF" : "#16323D", "fill-opacity": 0.6, "text-anchor": "middle" }, g);
       regioes.querySelectorAll("path").forEach(function (p) {
         var r = m.regioes[Number(p.getAttribute("data-regiao"))];
@@ -437,7 +439,7 @@
         // Dentro do recorte (com espaço para o texto), quando ele está ligado.
         var visivel = null;
         if (m.recorte) {
-          var cr = caixaDosEquipamentos(), fr = 220, meiaLarg = r.nome.length * 30 * 0.32 / esc / ts, meiaAlt = 24 / esc / ts;
+          var cr = caixaDosEquipamentos(), fr = 220, meiaLarg = r.nome.length * fonte * 0.32 / esc / ts, meiaAlt = fonte * 0.8 / esc / ts;
           visivel = { x1: ((cr.x1 - fr - (m.x || 0)) / esc - tx) / ts + meiaLarg, x2: ((cr.x2 + fr - (m.x || 0)) / esc - tx) / ts - meiaLarg,
             y1: ((cr.y1 - fr - (m.y || 0)) / esc - ty) / ts + meiaAlt, y2: ((cr.y2 + fr - (m.y || 0)) / esc - ty) / ts - meiaAlt };
         }
@@ -451,7 +453,7 @@
           if (dmin > melhorD) { melhorD = dmin; pi = cand; }
         }
         pi = pi || pontoInterno(p) || { x: b.x + b.width / 2, y: b.y + b.height / 2 };
-        var t = no("text", { x: pi.x, y: pi.y, "font-size": 30 / esc / s, "letter-spacing": 2 / esc / s }, nomes);
+        var t = no("text", { x: pi.x, y: pi.y, "font-size": fonte / esc / s, "letter-spacing": fonte / 15 / esc / s }, nomes);
         if (r.transform) t.setAttribute("transform", r.transform);
         t.textContent = r.nome.toUpperCase();
       });
@@ -623,7 +625,8 @@
     var novo = { regioes: r.mapa.regioes, largura: r.mapa.largura, altura: r.mapa.altura, estilo: anterior.estilo || "grafo",
       cor: anterior.cor || estilo.cor, contorno: anterior.contorno || estilo.contorno, sombra: anterior.sombra != null ? anterior.sombra : estilo.sombra,
       nomes: anterior.nomes != null ? anterior.nomes : true, cabosPretos: anterior.cabosPretos != null ? anterior.cabosPretos : estilo.cabosPretos,
-      recorte: anterior.recorte != null ? anterior.recorte : true };
+      // Sem recorte: o retângulo em volta da rede escondia o contorno das cidades.
+      recorte: false };
     if (anterior.imagem) novo.imagem = anterior.imagem;
     var area = caixaDosEquipamentos();
     estado.mapa = novo; // provisório, para contar os municípios com equipamento
