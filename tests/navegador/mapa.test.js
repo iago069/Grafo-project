@@ -247,3 +247,42 @@ test("Limpar: só o mapa tira municípios e imagem e deixa equipamentos e cabos"
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("sigla do POP manda: corrige cidade errada já gravada e não lê CCR (MikroTik) como Cachoeira do Sul; Apagar mapa no topo", async () => {
+  const pagina = await abrirPagina(navegador, site, { viewport: { width: 1400, height: 900 } });
+  const quad = (x, cod) => ({ type: "Feature", properties: { codarea: cod }, geometry: { type: "Polygon", coordinates: [[[x, -28.6], [x + 0.2, -28.6], [x + 0.2, -28.4], [x, -28.4], [x, -28.6]]] } });
+  await pagina.route("https://servicodados.ibge.gov.br/api/v3/malhas/**", r => r.fulfill({ contentType: "application/json", body: JSON.stringify({ type: "FeatureCollection", features: [quad(-53.2, "1"), quad(-53.0, "2"), quad(-52.8, "3"), quad(-52.6, "4")] }) }));
+  await pagina.route("https://servicodados.ibge.gov.br/api/v1/localidades/**", r => r.fulfill({ contentType: "application/json", body: JSON.stringify([{ id: 1, nome: "Tapera" }, { id: 2, nome: "Selbach" }, { id: 3, nome: "Espumoso" }, { id: 4, nome: "Cachoeira do Sul" }]) }));
+  await esperarDiagrama(pagina);
+  const adicionar = async (nome, municipio) => {
+    await pagina.click('[data-nav-panel="navAddEquip"]');
+    await pagina.waitForSelector("#navEquipNome", { state: "visible" });
+    await pagina.fill("#navEquipNome", nome);
+    await pagina.waitForTimeout(400);
+    await pagina.fill("#navEquipMunicipio", municipio);
+    await pagina.click('#navEquipForm button[type="submit"]');
+    await pagina.locator("#fichaModal:not(.hidden) .modal-actions [data-ficha-fechar]").click({ timeout: 3000 }).catch(() => {});
+  };
+  await adicionar("POP-TPA01_DISTR-11", "");
+  await adicionar("POP-SXH03_DISTR-51", "Espumoso"); // cidade errada gravada antes
+  await adicionar("SW-CCR-01", "");
+  assert.equal(await pagina.isVisible("#btnApagarMapa"), false, "sem mapa, sem botão de apagar");
+  await pagina.click("#btnMontarMapa");
+  await pagina.waitForSelector("#canvas g.camada-mapa g.mapa-regioes > path", { state: "attached", timeout: 20000 });
+  const p = await salvo(pagina);
+  const cidade = nome => p.equipamentos.find(e => e.nome === nome).municipio;
+  assert.equal(cidade("POP-TPA01_DISTR-11"), "Tapera");
+  assert.equal(cidade("POP-SXH03_DISTR-51"), "Selbach");
+  assert.notEqual(cidade("SW-CCR-01"), "Cachoeira do Sul");
+  // Apagar mapa direto no topo.
+  await pagina.waitForSelector("#btnApagarMapa", { state: "visible" });
+  await pagina.click("#btnApagarMapa");
+  await pagina.click("[data-modal-confirm]");
+  await pagina.waitForFunction(() => !document.querySelector("#canvas g.camada-mapa"));
+  const depois = await salvo(pagina);
+  assert.equal(depois.mapa, undefined);
+  assert.equal(depois.equipamentos.length, p.equipamentos.length);
+  assert.equal(await pagina.isVisible("#btnApagarMapa"), false);
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

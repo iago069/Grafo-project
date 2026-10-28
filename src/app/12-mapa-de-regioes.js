@@ -493,18 +493,28 @@
     try { siglasCnl = (await (await fetch("./data/cnl-siglas.json")).json()).siglas || {}; } catch (e) { siglasCnl = {}; }
     return siglasCnl;
   }
-  // Sigla CNL no nome do POP: o pedaço de 2 a 4 letras (com número junto ou não)
-  // logo depois de "POP", ou qualquer pedaço assim que exista na tabela da UF.
+  // Palavras de rede que também são siglas CNL (CCR = Cachoeira do Sul, SFP = São
+  // Francisco de Paula...): nunca valem como cidade fora do "POP-".
+  var NAO_SAO_SIGLA = ("CCR CRS SFP ASR OLT ONU ONT CPE BNG CGR RTR SWT PTP DIO ODF PON GPON EPON XGS ETH TEN GIG LAG VLAN LINK CORE " +
+    "DIST AGG ACC UPL NOC BKP MGMT WAN LAN NET TEL CDN DNS NAT ATN ETX RACK ROTA ANEL SITE TORR REDE CABO FIBR RADI PARK HUAW " +
+    "NOKI CISC JUNI MIKR UBNT DATA ENL PORT XPS NMS ERB BTS SPLT").split(" ");
+  // Sigla CNL no nome: a que vem logo depois de "POP" (POP-TPA01, POP_TPA, POPTPA01)
+  // manda. Nome com POP e sigla desconhecida não chuta outra. Sem POP no nome: o
+  // primeiro pedaço de 3 ou 4 letras (com número junto ou não) que esteja na tabela.
   function municipioPelaSigla(nomeEquip, tabela) {
     if (!tabela) return "";
     var partes = String(nomeEquip || "").toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
-    var candidatos = [];
-    partes.forEach(function (p, i) {
-      var m = /^([A-Z]{2,4})\d{0,3}$/.exec(p);
-      if (!m) return;
-      if (i > 0 && partes[i - 1] === "POP") candidatos.unshift(m[1]); else candidatos.push(m[1]);
-    });
-    for (var i = 0; i < candidatos.length; i++) if (tabela[candidatos[i]] && candidatos[i] !== "POP") return tabela[candidatos[i]];
+    var temPop = false;
+    for (var i = 0; i < partes.length; i++) {
+      var m = partes[i] === "POP" && i + 1 < partes.length ? /^([A-Z]{3,4})\d*$/.exec(partes[i + 1]) : /^POP([A-Z]{3,4})\d*$/.exec(partes[i]);
+      if (partes[i] === "POP" || m) temPop = true;
+      if (m && tabela[m[1]]) return tabela[m[1]];
+    }
+    if (temPop) return "";
+    for (var j = 0; j < partes.length; j++) {
+      var s = /^([A-Z]{3,4})\d{0,3}$/.exec(partes[j]);
+      if (s && NAO_SAO_SIGLA.indexOf(s[1]) < 0 && tabela[s[1]]) return tabela[s[1]];
+    }
     return "";
   }
   async function gerarMapaIbge(uf, soDoDiagrama, detalhado) {
@@ -521,23 +531,27 @@
       var cod = String((f.properties || {}).codarea || "");
       return { type: "Feature", geometry: f.geometry, properties: { NM_MUN: nomePorCodigo[cod] || cod, CD_MUN: cod } };
     });
-    // Equipamentos sem município: primeiro a sigla CNL da Anatel no nome do POP
-    // (POP-TPA01 → Tapera), depois a cidade escrita no nome.
+    // Cidade de cada equipamento, sempre refeita (uma cidade errada gravada antes
+    // não fica): 1) a sigla CNL da Anatel no nome do POP (POP-TPA01 → Tapera),
+    // que manda sobre o que já estava; 2) a cidade escrita no nome; 3) a do vizinho.
     var tabelaUf = (await carregarSiglasCnl())[uf];
-    var preenchidos = 0;
+    var preenchidos = 0, semCidade = {}, guardada = {};
     estado.equipamentos.forEach(function (eq) {
-      if (eq.municipio) return;
       var pelaSigla = municipioPelaSigla(eq.nome, tabelaUf);
       var oficial = pelaSigla && nomes.find(function (n) { return normalizarTextoEquipamento(n) === normalizarTextoEquipamento(pelaSigla); });
       var achado = oficial || municipioNoNome(eq.nome, nomes);
-      if (achado) { eq.municipio = achado; preenchidos++; }
+      if (achado) { if (achado !== eq.municipio) preenchidos++; eq.municipio = achado; return; }
+      // Sem cidade no nome: some por agora; volta pelo vizinho (ou a de antes).
+      semCidade[eq.id] = true;
+      if (eq.municipio) guardada[eq.id] = eq.municipio;
+      delete eq.municipio;
     });
     // Sem cidade no nome (OLT-34, core...): herda a do vizinho ligado a ele (se
     // todos os vizinhos com cidade estão na mesma). Repete para quem fica atrás.
     for (var volta = 0; volta < 4; volta++) {
       var mudou = false;
       estado.equipamentos.forEach(function (eq) {
-        if (eq.municipio) return;
+        if (eq.municipio || !semCidade[eq.id]) return;
         var cidades = {};
         estado.conexoes.forEach(function (c) {
           var outro = c.de === eq.id ? c.para : c.para === eq.id ? c.de : null;
@@ -545,10 +559,11 @@
           if (viz && viz.municipio) cidades[viz.municipio] = true;
         });
         var lista = Object.keys(cidades);
-        if (lista.length === 1) { eq.municipio = lista[0]; preenchidos++; mudou = true; }
+        if (lista.length === 1) { if (lista[0] !== guardada[eq.id]) preenchidos++; eq.municipio = lista[0]; mudou = true; }
       });
       if (!mudou) break;
     }
+    estado.equipamentos.forEach(function (eq) { if (!eq.municipio && guardada[eq.id]) eq.municipio = guardada[eq.id]; });
     var usados = {};
     estado.equipamentos.forEach(function (eq) { if (eq.municipio) usados[normalizarTextoEquipamento(eq.municipio)] = true; });
     var naoAchados = Object.keys(usados).filter(function (k) { return !nomes.some(function (n) { return normalizarTextoEquipamento(n) === k; }); });
@@ -927,6 +942,15 @@
       estado.mapa.regioes = [];
       if (!temImagemDeFundo()) delete estado.mapa;
       mudou(true);
+    });
+    // Botão "Apagar mapa" no topo (só aparece com mapa): tira cidades e imagem de uma vez.
+    var botaoApagar = document.getElementById("btnApagarMapa");
+    if (botaoApagar) botaoApagar.addEventListener("click", async function () {
+      if (!mapaAtivo()) return;
+      if (!await abrirModal({ title: "Apagar o mapa", message: "Tirar o mapa (cidades e imagem de fundo) deste diagrama? Equipamentos e cabos ficam como estão. Dá para desfazer com ↶.", confirmText: "Apagar mapa" })) return;
+      delete estado.mapa;
+      mudou(true);
+      avisar("Mapa apagado. Equipamentos e cabos continuam no lugar.");
     });
   })();
 
