@@ -94,7 +94,7 @@
     var maiorQtdPortas = Math.max.apply(null, [1].concat(Object.keys(contagemPortas).map(function (id) { return contagemPortas[id]; })));
     var ranksepAuto = Math.max(1.15, Math.min(4.5, 0.95 + maiorQtdPortas * 0.16), (larguraDoMaiorRotulo() + 80) / 72);
     // A grade parte do layout "LR" do Graphviz e depois reposiciona (posicionarEmGrade).
-    var linhas = ["digraph G {", '  rankdir=' + (direcao === "TB" ? "TB" : "LR") + ';', '  splines=ortho;', '  concentrate=false;', '  overlap=false;', '  nodesep=0.7;', '  ranksep=' + ranksepAuto.toFixed(2) + ';', '  pad=0;', '  margin=0;', '  bgcolor="transparent";',
+    var linhas = ["digraph G {", '  rankdir=' + (direcao === "TB" ? "TB" : "LR") + ';', '  splines=false;', '  concentrate=false;', '  overlap=false;', '  nodesep=0.7;', '  ranksep=' + ranksepAuto.toFixed(2) + ';', '  pad=0;', '  margin=0;', '  bgcolor="transparent";',
       '  node [shape=box, style="filled", fontname="Helvetica", fontsize=10, margin="0.02,0.02", color="#547184", penwidth=1.1];',
       '  edge [fontname="Helvetica", fontsize=8, color="#263746", fontcolor="#344D61", penwidth=1.5, arrowhead=none, labeldistance=1.25, labelangle=0, labelfontname="Helvetica", labelfontsize=8];'];
     // Cada ponta de cabo vira uma porta no lado do equipamento voltado para o

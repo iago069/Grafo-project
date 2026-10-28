@@ -249,11 +249,19 @@
     // Mede o texto uma vez só: nas outras posições testadas a caixa é calculada
     // (mesmo tamanho; muda só o x/y e o alinhamento). Medir a cada tentativa
     // forçava o navegador a recalcular o layout dezenas de vezes por cabo.
-    var b0;
-    try { b0 = texto.getBBox(); } catch (e) { return; }
+    // Arrastando, o texto não muda: a medida (tamanho e deslocamento em relação ao
+    // x/y) fica guardada nele e o quadro não força o navegador a refazer o layout.
+    var med = arrastandoEquipamento && texto.__medidaRotulo && texto.__medidaRotulo.texto === texto.textContent ? texto.__medidaRotulo : null;
+    if (!med) {
+      var bb;
+      try { bb = texto.getBBox(); } catch (e) { return; }
+      var desloc0 = texto.getAttribute("text-anchor") === "middle" ? bb.width / 2 : texto.getAttribute("text-anchor") === "end" ? bb.width : 0;
+      med = { texto: texto.textContent, width: bb.width, height: bb.height,
+        offX: bb.x - (Number(texto.getAttribute("x")) - desloc0), offY: bb.y - Number(texto.getAttribute("y")) };
+      texto.__medidaRotulo = med;
+    }
+    var b0 = med, offX = med.offX, offY = med.offY;
     function deslocAncora(ancora) { return ancora === "middle" ? b0.width / 2 : ancora === "end" ? b0.width : 0; }
-    var offX = b0.x - (Number(texto.getAttribute("x")) - deslocAncora(texto.getAttribute("text-anchor")));
-    var offY = b0.y - Number(texto.getAttribute("y"));
     function caixa() {
       var b = { x: Number(texto.getAttribute("x")) - deslocAncora(texto.getAttribute("text-anchor")) + offX,
         y: Number(texto.getAttribute("y")) + offY, width: b0.width, height: b0.height };
