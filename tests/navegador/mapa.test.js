@@ -286,3 +286,56 @@ test("sigla do POP manda: corrige cidade errada já gravada e não lê CCR (Mikr
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("abreviação própria da cidade (PFU → Passo Fundo, MRU → Marau) e diagrama inteiro dentro do contorno da cidade", async () => {
+  const pagina = await abrirPagina(navegador, site, { viewport: { width: 1400, height: 900 } });
+  const quad = (x, cod) => ({ type: "Feature", properties: { codarea: cod }, geometry: { type: "Polygon", coordinates: [[[x, -28.6], [x + 0.2, -28.6], [x + 0.2, -28.4], [x, -28.4], [x, -28.6]]] } });
+  // Marau em formato de L: a caixa dele tem um canto vazio (fora da cidade).
+  const ele = { type: "Feature", properties: { codarea: "2" }, geometry: { type: "Polygon", coordinates: [[[-53.0, -28.6], [-52.6, -28.6], [-52.6, -28.5], [-52.9, -28.5], [-52.9, -28.2], [-53.0, -28.2], [-53.0, -28.6]]] } };
+  await pagina.route("https://servicodados.ibge.gov.br/api/v3/malhas/**", r => r.fulfill({ contentType: "application/json", body: JSON.stringify({ type: "FeatureCollection", features: [quad(-53.4, "1"), ele, quad(-52.4, "3")] }) }));
+  await pagina.route("https://servicodados.ibge.gov.br/api/v1/localidades/**", r => r.fulfill({ contentType: "application/json", body: JSON.stringify([{ id: 1, nome: "Passo Fundo" }, { id: 2, nome: "Marau" }, { id: 3, nome: "Morro Reuter" }]) }));
+  await esperarDiagrama(pagina);
+  const adicionar = async (nome) => {
+    await pagina.click('[data-nav-panel="navAddEquip"]');
+    await pagina.waitForSelector("#navEquipNome", { state: "visible" });
+    await pagina.fill("#navEquipNome", nome);
+    await pagina.waitForTimeout(300);
+    await pagina.fill("#navEquipMunicipio", "");
+    await pagina.click('#navEquipForm button[type="submit"]');
+    await pagina.locator("#fichaModal:not(.hidden) .modal-actions [data-ficha-fechar]").click({ timeout: 3000 }).catch(() => {});
+  };
+  // Só os equipamentos novos: limpa o exemplo antes.
+  await pagina.click("#btnLimpar");
+  await pagina.check('input[name="limparModo"][value="tudo"]');
+  await pagina.click("#limparConfirmar");
+  await adicionar("COMP MRU (Marau)");
+  await adicionar("SW MRU 02");
+  await adicionar("core_mru_03");
+  await pagina.click("#btnMontarMapa");
+  await pagina.waitForSelector("#canvas g.camada-mapa g.mapa-regioes > path", { state: "attached", timeout: 20000 });
+  await pagina.waitForTimeout(1500);
+  let p = await salvo(pagina);
+  assert.deepEqual(p.equipamentos.map(e => e.municipio), ["Marau", "Marau", "Marau"], "MRU vira Marau (já achado no diagrama), não Morro Reuter");
+  // Todos os cantos de cada equipamento dentro do contorno de Marau (não só da caixa do mapa).
+  const fora = await pagina.evaluate(() => {
+    const path = document.querySelector("#canvas g.camada-mapa g.mapa-regioes > path");
+    const inv = path.getScreenCTM().inverse(), svg = path.ownerSVGElement, saida = [];
+    document.querySelectorAll("#canvas g.node").forEach(n => {
+      const b = n.getBoundingClientRect();
+      [[b.left, b.top], [b.right, b.top], [b.left, b.bottom], [b.right, b.bottom]].forEach(([x, y]) => {
+        const pt = svg.createSVGPoint(); pt.x = x; pt.y = y;
+        if (!path.isPointInFill(pt.matrixTransform(inv))) saida.push(n.id);
+      });
+    });
+    return saida;
+  });
+  assert.deepEqual(fora, [], "nenhum equipamento para fora da cidade");
+  // Abreviação de outra cidade: PFU → Passo Fundo (não está na tabela da Anatel).
+  await adicionar("core_pfu_01");
+  await pagina.click("#btnMontarMapa");
+  await pagina.waitForFunction(() => document.querySelectorAll("#canvas g.camada-mapa g.mapa-regioes > path").length === 2, null, { timeout: 20000 });
+  p = await salvo(pagina);
+  assert.equal(p.equipamentos.find(e => e.nome === "core_pfu_01").municipio, "Passo Fundo");
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

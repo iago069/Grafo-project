@@ -633,7 +633,7 @@
     gerar();
     if (alinharPortasDasPontas()) gerar();
     // Mapa só de fundo (uma cidade): reenquadra o mapa atrás do diagrama novo.
-    if (temRegioes() && mapaSoDeFundo()) { encaixar(estado.mapa, caixaDosEquipamentos(), 180); salvarLocal(); gerar(); }
+    if (temRegioes() && mapaSoDeFundo()) { encaixarNaCidade(estado.mapa, caixaDosEquipamentos()); salvarLocal(); gerar(); }
   }
 
   // Arruma blocos {w, h} em prateleiras (linhas), testando larguras máximas e

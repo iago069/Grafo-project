@@ -318,11 +318,100 @@
     });
     return c;
   }
+  // Contorno da região (unidades do mapa) como anéis de pontos, lido do caminho.
+  function aneisDoCaminho(d) {
+    return String(d || "").split(/M/i).map(function (parte) {
+      var nums = parte.match(/-?\d+(\.\d+)?/g) || [], anel = [];
+      for (var i = 0; i + 1 < nums.length; i += 2) anel.push([+nums[i], +nums[i + 1]]);
+      return anel;
+    }).filter(function (anel) { return anel.length > 2; });
+  }
+  function dentroDosAneis(aneis, x, y) {
+    var dentro = false;
+    aneis.forEach(function (a) {
+      for (var i = 0, j = a.length - 1; i < a.length; j = i++) {
+        if ((a[i][1] > y) !== (a[j][1] > y) && x < (a[j][0] - a[i][0]) * (y - a[i][1]) / (a[j][1] - a[i][1]) + a[i][0]) dentro = !dentro;
+      }
+    });
+    return dentro;
+  }
+  // Maior retângulo com a proporção w:h que cabe inteiro dentro da região:
+  // devolve o centro (unidades do mapa) e k (o retângulo mede k*w por k*h).
+  // Grade de centros candidatos e busca binária do tamanho; depois refina perto
+  // do melhor. Bordas conferidas em vários pontos (cidade com recortes).
+  var cacheRetangulo = {};
+  function maiorRetanguloDentro(regiao, w, h) {
+    var chave = (regiao.codigo || regiao.nome) + "|" + Math.round(w / h * 100) + "|" + String(regiao.d).length;
+    if (cacheRetangulo[chave]) return cacheRetangulo[chave];
+    var aneis = aneisDoCaminho(regiao.d);
+    if (!aneis.length || !(w > 0) || !(h > 0)) return null;
+    var bx1 = Infinity, by1 = Infinity, bx2 = -Infinity, by2 = -Infinity;
+    aneis.forEach(function (a) { a.forEach(function (p) { bx1 = Math.min(bx1, p[0]); bx2 = Math.max(bx2, p[0]); by1 = Math.min(by1, p[1]); by2 = Math.max(by2, p[1]); }); });
+    var kMax = Math.min((bx2 - bx1) / w, (by2 - by1) / h);
+    function cabe(cx, cy, k) {
+      var hw = k * w / 2, hh = k * h / 2, N = 6;
+      for (var i = 0; i <= N; i++) {
+        var fx = cx - hw + 2 * hw * i / N, fy = cy - hh + 2 * hh * i / N;
+        if (!dentroDosAneis(aneis, fx, cy - hh) || !dentroDosAneis(aneis, fx, cy + hh) ||
+            !dentroDosAneis(aneis, cx - hw, fy) || !dentroDosAneis(aneis, cx + hw, fy)) return false;
+      }
+      return dentroDosAneis(aneis, cx, cy);
+    }
+    function maiorK(cx, cy) {
+      if (!dentroDosAneis(aneis, cx, cy)) return 0;
+      var lo = 0, hi = kMax;
+      for (var it = 0; it < 14; it++) { var mid = (lo + hi) / 2; if (cabe(cx, cy, mid)) lo = mid; else hi = mid; }
+      return lo;
+    }
+    var melhor = { x: (bx1 + bx2) / 2, y: (by1 + by2) / 2, k: 0 }, G = 14;
+    for (var i = 1; i < G; i++) for (var j = 1; j < G; j++) {
+      var cx = bx1 + (bx2 - bx1) * i / G, cy = by1 + (by2 - by1) * j / G, k = maiorK(cx, cy);
+      if (k > melhor.k) melhor = { x: cx, y: cy, k: k };
+    }
+    var passoX = (bx2 - bx1) / G, passoY = (by2 - by1) / G;
+    for (var r = 0; r < 2; r++) {
+      var base = melhor;
+      for (var a = -3; a <= 3; a++) for (var b = -3; b <= 3; b++) {
+        var x = base.x + a * passoX / 4, y = base.y + b * passoY / 4, kk = maiorK(x, y);
+        if (kk > melhor.k) melhor = { x: x, y: y, k: kk };
+      }
+      passoX /= 4; passoY /= 4;
+    }
+    if (!melhor.k) return null;
+    cacheRetangulo[chave] = melhor;
+    return melhor;
+  }
   // Tamanho do equipamento no desenho (o que está na tela agora).
   function tamanhoDoNo(eq) {
     var svg = elCanvas.querySelector("svg"), no = svg && obterNodePorId(svg, eq.id);
     try { var b = no && no.getBBox(); if (b && b.width) return { w: b.width, h: b.height }; } catch (e) {}
     return { w: 220, h: 200 };
+  }
+  // Mapa de fundo (uma cidade só): o diagrama inteiro dentro do contorno da cidade
+  // dos equipamentos, não só dentro da caixa do mapa (que deixa pedaços para fora).
+  // Sem cidade conhecida: o mapa só enquadra o diagrama.
+  function encaixarNaCidade(mapa, area) {
+    encaixar(mapa, area, 180);
+    var cidade = null;
+    estado.equipamentos.some(function (eq) { var i = regiaoPorNome(eq.municipio); if (i >= 0) cidade = mapa.regioes[i]; return i >= 0; });
+    var ret = cidade && !cidade.transform && maiorRetanguloDentro(cidade, area.x2 - area.x1 + 2 * FOLGA_GRUPO, area.y2 - area.y1 + 2 * FOLGA_GRUPO);
+    if (!ret) return;
+    var escMax = Math.min((LIMITE_CANVAS.maxX - LIMITE_CANVAS.minX) * 0.8 / mapa.largura, (LIMITE_CANVAS.maxY - LIMITE_CANVAS.minY) * 0.8 / mapa.altura);
+    mapa.escala = Math.round(Math.min(1 / ret.k, escMax) * 1000) / 1000;
+    mapa.x = Math.round((area.x1 + area.x2) / 2 - ret.x * mapa.escala);
+    mapa.y = Math.round((area.y1 + area.y2) / 2 - ret.y * mapa.escala);
+  }
+  // Centro (coordenadas do desenho) onde um grupo com essa caixa cabe inteiro na cidade.
+  var FOLGA_GRUPO = 140;
+  function centroParaGrupo(municipio, caixa) {
+    var i = regiaoPorNome(municipio);
+    if (i < 0) return null;
+    var r = estado.mapa.regioes[i];
+    if (r.transform) return null;
+    var ret = maiorRetanguloDentro(r, caixa.x2 - caixa.x1 + 2 * FOLGA_GRUPO, caixa.y2 - caixa.y1 + 2 * FOLGA_GRUPO);
+    if (!ret) return null;
+    var m = estado.mapa, esc = Number(m.escala) || 1;
+    return { x: Math.round(m.x + ret.x * esc), y: Math.round(m.y + ret.y * esc) };
   }
   // Põe os equipamentos com município dentro dele (os fixados ficam onde estão).
   // Cidade com 3 ou mais equipamentos: o grupo inteiro vai junto, mantendo o
@@ -339,11 +428,12 @@
     Object.keys(grupos).forEach(function (k) {
       var g = grupos[k];
       if (g.length < 3 || !g.every(function (eq) { return posicaoValida(eq.posicao); })) return;
-      var alvo = pontoNoMunicipio(g[0].municipio, 0);
-      if (!alvo) return;
       // Mantém o desenho que o grupo já tinha (estrela, portas, cabos retos) e só
-      // leva o grupo inteiro para dentro da cidade (o mapa é dimensionado para caber).
+      // leva o grupo inteiro para dentro da cidade (o mapa é dimensionado para caber):
+      // o centro do maior retângulo do formato do grupo que cabe no contorno.
       var caixa = caixaDoGrupo(g);
+      var alvo = centroParaGrupo(g[0].municipio, caixa) || pontoNoMunicipio(g[0].municipio, 0);
+      if (!alvo) return;
       var dx = alvo.x - (caixa.x1 + caixa.x2) / 2, dy = alvo.y - (caixa.y1 + caixa.y2) / 2;
       g.forEach(function (eq) {
         eq.posicao = { x: Math.round(eq.posicao.x + dx), y: Math.round(eq.posicao.y + dy) };
@@ -517,6 +607,41 @@
     }
     return "";
   }
+  // Abreviação própria da cidade no nome, fora da tabela da Anatel ("core_pfu_01"
+  // → PFU → Passo Fundo, "COMP MRU" → Marau): as letras aparecem em ordem no nome
+  // da cidade, a primeira é a inicial dela. Vence a que usa mais iniciais de
+  // palavra e letras mais juntas; cidade já achada em outro equipamento do
+  // diagrama (preferidas) vence. Empate entre duas cidades não chuta nenhuma.
+  var NAO_SAO_ABREVIACAO = ("COMP CORP IPTV NETF VOIP CORE DIST EDGE BORD TRNK TRUNK MGMT GERE ACES AGRE BACK LINK UPLK " +
+    "DOWN SERV HOST TEST TEMP NOVO SWT SWI RTR").split(" ");
+  function municipioPorAbreviacao(nomeEquip, nomes, preferidas) {
+    var partes = String(nomeEquip || "").toUpperCase().split(/[^A-Z0-9]+/).map(function (p) { return p.replace(/\d+$/, ""); })
+      .filter(function (p) { return /^[A-Z]{3,4}$/.test(p) && p !== "POP" && NAO_SAO_SIGLA.indexOf(p) < 0 && NAO_SAO_ABREVIACAO.indexOf(p) < 0; });
+    for (var i = 0; i < partes.length; i++) {
+      var letras = partes[i].toLowerCase(), melhor = null, nota = -Infinity, empate = false;
+      nomes.forEach(function (nome) {
+        var t = normalizarTextoEquipamento(nome).replace(/[^a-z ]+/g, "").replace(/\s+/g, " ").trim();
+        if (t[0] !== letras[0]) return;
+        var pos = 0, iniciais = 1, folga = 0;
+        for (var j = 1; j < letras.length; j++) {
+          // Prefere a próxima inicial de palavra com essa letra; senão, a letra mais perto.
+          var inicial = -1;
+          for (var q = pos + 1; q < t.length; q++) if (t[q] === letras[j] && t[q - 1] === " ") { inicial = q; break; }
+          var perto = t.indexOf(letras[j], pos + 1);
+          if (perto < 0) return;
+          var usa = inicial >= 0 && inicial - perto < 6 ? inicial : perto;
+          if (usa === inicial) iniciais++;
+          folga += usa - pos - 1 - (t.slice(pos + 1, usa).split(" ").length - 1);
+          pos = usa;
+        }
+        var n = iniciais * 10 - folga - t.length * 0.05 + (preferidas && preferidas[normalizarTextoEquipamento(nome)] ? 30 : 0);
+        if (n > nota + 0.5) { nota = n; melhor = nome; empate = false; }
+        else if (Math.abs(n - nota) <= 0.5) empate = true;
+      });
+      if (melhor && !empate) return melhor;
+    }
+    return "";
+  }
   async function gerarMapaIbge(uf, soDoDiagrama, detalhado) {
     var codigo = UFS_IBGE[uf];
     if (!codigo) throw new Error("escolha o estado.");
@@ -533,13 +658,20 @@
     });
     // Cidade de cada equipamento, sempre refeita (uma cidade errada gravada antes
     // não fica): 1) a sigla CNL da Anatel no nome do POP (POP-TPA01 → Tapera),
-    // que manda sobre o que já estava; 2) a cidade escrita no nome; 3) a do vizinho.
+    // que manda sobre o que já estava; 2) a cidade escrita no nome; 3) a abreviação
+    // dela (PFU → Passo Fundo); 4) a do vizinho.
     var tabelaUf = (await carregarSiglasCnl())[uf];
-    var preenchidos = 0, semCidade = {}, guardada = {};
+    var preenchidos = 0, semCidade = {}, guardada = {}, achadas = {}, semNome = [];
     estado.equipamentos.forEach(function (eq) {
       var pelaSigla = municipioPelaSigla(eq.nome, tabelaUf);
       var oficial = pelaSigla && nomes.find(function (n) { return normalizarTextoEquipamento(n) === normalizarTextoEquipamento(pelaSigla); });
       var achado = oficial || municipioNoNome(eq.nome, nomes);
+      if (achado) { if (achado !== eq.municipio) preenchidos++; eq.municipio = achado; achadas[normalizarTextoEquipamento(achado)] = true; return; }
+      semNome.push(eq);
+    });
+    // Abreviação depois: assim prefere as cidades já achadas no diagrama.
+    semNome.forEach(function (eq) {
+      var achado = municipioPorAbreviacao(eq.nome, nomes, achadas);
       if (achado) { if (achado !== eq.municipio) preenchidos++; eq.municipio = achado; return; }
       // Sem cidade no nome: some por agora; volta pelo vizinho (ou a de antes).
       semCidade[eq.id] = true;
@@ -595,9 +727,12 @@
       if (!g.length) return; // cidade sem equipamento não manda no tamanho
       var precisa;
       if (g.length >= 3 && g.every(function (eq) { return posicaoValida(eq.posicao); })) {
-        // O desenho do grupo (como está) precisa caber em ~60% da cidade.
+        // O desenho do grupo (como está, com folga) precisa caber inteiro dentro
+        // do contorno da cidade, não só na caixa dela (cidade com recortes).
         var c = caixaDoGrupo(g);
-        precisa = Math.max((c.x2 - c.x1 + 120) / (b.w * 0.6), (c.y2 - c.y1 + 120) / (b.h * 0.6));
+        var gw = c.x2 - c.x1 + 2 * FOLGA_GRUPO, gh = c.y2 - c.y1 + 2 * FOLGA_GRUPO;
+        var ret = !r.transform && maiorRetanguloDentro(r, gw, gh);
+        precisa = ret ? 1 / ret.k : Math.max(gw / (b.w * 0.6), gh / (b.h * 0.6));
       } else {
         precisa = (g.length === 1 ? tamanhoMaximo + 80 : Math.ceil(Math.sqrt(g.length)) * (tamanhoMaximo + 80)) / (Math.sqrt(b.w * b.h) * 0.5);
       }
@@ -606,21 +741,32 @@
     return Math.round(Math.min(esc, 400) * 1000) / 1000;
   }
 
-  // Estado (UF) pelos POPs: em qual UF as siglas CNL dos nomes acham mais cidades.
-  // Empate ou nenhuma: a última UF usada (ou RS).
+  // Estado (UF) pelos POPs: pontua cada UF pelo que os nomes dos equipamentos
+  // apontam nela. Sigla depois de "POP" e cidade escrita por extenso valem 3;
+  // sigla solta ou abreviação própria (PFU) valem 1. Assim um pedaço como "MRU"
+  // (Maraú, na Bahia) não leva o mapa para outro estado quando o resto do
+  // diagrama aponta Marau e Passo Fundo (RS). Empate: a UF usada da última vez.
   async function detectarUf() {
     var tabelas = await carregarSiglasCnl();
-    var melhor = "", pontos = 0;
-    Object.keys(tabelas).forEach(function (uf) {
-      var n = 0;
-      estado.equipamentos.forEach(function (eq) { if (municipioPelaSigla(eq.nome, tabelas[uf])) n++; });
-      if (n > pontos) { pontos = n; melhor = uf; }
-    });
     var salva = "RS";
     try { salva = localStorage.getItem("grafo-mapa-uf-detectada") || localStorage.getItem("grafo-mapa-uf") || "RS"; } catch (e) {}
     if (salva === "AUTO") salva = "RS";
+    var melhor = "", pontos = 0;
+    Object.keys(tabelas).forEach(function (uf) {
+      var tabela = tabelas[uf], nomesUf = [], vistos = {};
+      Object.keys(tabela).forEach(function (k) { if (!vistos[tabela[k]]) { vistos[tabela[k]] = true; nomesUf.push(tabela[k]); } });
+      var n = 0;
+      estado.equipamentos.forEach(function (eq) {
+        var pelaSigla = municipioPelaSigla(eq.nome, tabela), comPop = /POP/i.test(eq.nome || "");
+        if (pelaSigla && comPop) n += 3;
+        else if (municipioNoNome(eq.nome, nomesUf)) n += 3;
+        else if (pelaSigla || municipioPorAbreviacao(eq.nome, nomesUf)) n += 1;
+      });
+      if (n > pontos || (n === pontos && n > 0 && uf === salva)) { pontos = n; melhor = uf; }
+    });
     return { uf: melhor || salva, achados: pontos };
   }
+
   // Monta tudo: baixa a malha do IBGE, acha o município de cada POP, encaixa o
   // mapa e põe cada equipamento na sua cidade. opcoes: { uf ("AUTO"|sigla),
   // soDoDiagrama, detalhado, silencioso (não avisa nada se não der), minimoCidades }.
@@ -650,7 +796,7 @@
       // Uma cidade só: o mapa enquadra o diagrama por trás, sem mexer nele,
       // no estilo suave (verde forte atrás de um POP inteiro atrapalha a leitura).
       if (!anterior.estilo) Object.assign(novo, { estilo: "grafo" }, ESTILOS_MAPA.grafo);
-      encaixar(novo, area, 180);
+      encaixarNaCidade(novo, area);
     } else {
       // Escala do mapa: cada cidade com espaço para os seus equipamentos (grade de
       // ~300 por equipamento) e nenhuma cidade menor que ~2 equipamentos.
