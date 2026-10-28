@@ -210,6 +210,7 @@
             <label>Máscara<input id="editEquipMascara" placeholder="Automática (pelo IP)" autocomplete="off" spellcheck="false"></label>
           </div>
           <button type="button" class="ghost small full" id="editEquipFicha" title="Texto com nome, Host, gateway e máscara para copiar">Copiar ficha do equipamento</button>
+          <button type="button" class="ghost small full" id="editEquipScript" title="Script de monitoramento desta RB para colar no Winbox">Gerar script MikroTik</button>
           <label class="full so-modo-redes">VLAN / rede<input id="editEquipRede" data-limite="rede" placeholder="Ex.: VLAN 10 · 10.0.0.0/24" autocomplete="off" spellcheck="false"></label>
           <div class="nav-form-grid">
             <label>Status<select id="editEquipStatus"><option value="ativo">Ativo</option><option value="manutencao">Manutenção</option><option value="offline">Offline</option></select></label>
@@ -565,6 +566,64 @@
       </div>
     </div>
 
+    <!-- Gerador de script de monitoramento para MikroTik (15-script-mikrotik.js). -->
+    <div class="modal-backdrop hidden" id="mkModal" role="dialog" aria-modal="true" aria-labelledby="mkTitulo">
+      <div class="modal-box mk-card">
+        <div class="modal-header">
+          <h3 id="mkTitulo">Script de monitoramento para MikroTik</h3>
+          <button type="button" class="ghost small" data-mk-fechar aria-label="Fechar">×</button>
+        </div>
+        <p class="mk-intro">Gera o script do procedimento de monitoramento (VLAN do local, IP /30 da RB, rota e rede dos equipamentos) para colar no Winbox. Vem preenchido pelo diagrama; confira com o NetBox.</p>
+        <div class="mk-corpo">
+          <form class="mk-form" autocomplete="off">
+            <fieldset>
+              <legend>1. RB e local</legend>
+              <label class="full">RB (MikroTik)<select id="mkRb"></select></label>
+              <div class="nav-form-grid">
+                <label>Local (sigla)<input id="mkLocal" list="mkLocais" placeholder="PFU" spellcheck="false"></label>
+                <label>VLAN (NetBox: Região → L3)<input id="mkVlan" type="number" min="1" max="4094" placeholder="216"></label>
+              </div>
+              <datalist id="mkLocais"></datalist>
+              <details class="mk-tabela">
+                <summary>Tabela de VLANs por local</summary>
+                <textarea id="mkTabela" rows="4" spellcheck="false" aria-label="Uma linha por local: SIGLA=VLAN"></textarea>
+                <div class="mk-tabela-acoes"><span>Uma linha por local: SIGLA=VLAN</span><button type="button" class="ghost small" id="mkSalvarTabela">Salvar tabela</button></div>
+              </details>
+            </fieldset>
+            <fieldset>
+              <legend>2. Uplink</legend>
+              <label class="full">Porta de uplink<input id="mkUplink" list="mkPortasUplink" placeholder="ether1 ou sfp1" spellcheck="false"></label>
+              <datalist id="mkPortasUplink"><option value="ether1"></option><option value="sfp1"></option><option value="sfp-sfpplus1"></option></datalist>
+              <p class="mk-dica" id="mkVlanNome"></p>
+            </fieldset>
+            <fieldset>
+              <legend>3. Endereçamento da RB</legend>
+              <div class="nav-form-grid">
+                <label>IP da RB (/30)<input id="mkIp" placeholder="10.0.0.2/30" spellcheck="false" inputmode="decimal"></label>
+                <label>Gateway<input id="mkGateway" placeholder="10.0.0.1" spellcheck="false" inputmode="decimal"></label>
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>4. Rede dos equipamentos</legend>
+              <p class="mk-dica">/30 vai direto na porta. /29 cria a <strong>bridge-monitoramento</strong> (câmeras: <strong>bridge-cameras</strong>).</p>
+              <div id="mkRedes" class="mk-redes"></div>
+              <button type="button" class="ghost small" id="mkMaisRede">+ Adicionar rede</button>
+            </fieldset>
+          </form>
+          <div class="mk-saida">
+            <label class="full">Script<textarea id="mkScript" class="mk-script" readonly spellcheck="false" aria-label="Script RouterOS"></textarea></label>
+            <ul class="mk-avisos" id="mkAvisos" hidden></ul>
+            <p class="mk-dica">No Winbox: <strong>New Terminal</strong> e cole o script. Ou <strong>Files</strong>, arraste o .rsc e rode <code>/import file-name=arquivo.rsc</code>.</p>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="ghost" data-mk-fechar>Fechar</button>
+          <button type="button" class="ghost" id="mkBaixar">Baixar .rsc</button>
+          <button type="button" class="primary" id="mkCopiar">Copiar script</button>
+        </div>
+      </div>
+    </div>
+
     <aside class="sidebar" aria-label="Navegação lateral">
       <button class="sidebar-collapse" id="btnSidebarCollapse" type="button" aria-label="Recolher barra lateral" title="Recolher barra lateral">‹</button>
       <div class="brand">
@@ -718,6 +777,7 @@
 
         <div class="nav-section">
           <button class="nav-label" type="button" aria-expanded="true">Importar e exportar</button>
+          <button class="nav-item" id="btnScriptMikrotik" type="button" data-icon="codigo" title="Script de monitoramento para colar no Winbox: VLAN do local, IP da RB, rota e rede dos equipamentos">Script MikroTik</button>
           <button class="nav-item" type="button" data-nav-panel="navJsonCsv" data-icon="codigo" title="Ver e editar o projeto em JSON, ou importar uma planilha CSV">JSON e CSV</button>
           <div class="nav-panel" id="navJsonCsv">
             <div class="nav-form nav-json-csv">

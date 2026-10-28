@@ -922,7 +922,8 @@
 
   // Caminho ortogonal com as quinas arredondadas (curva quadrática em cada canto).
   // O raio encolhe em trechos curtos para a curva não passar do segmento.
-  function caminhoOrtogonalArredondado(pontos) {
+  // raio: o da curva (padrão CONFIG_ROTEAMENTO_CABOS.raioCurva).
+  function caminhoOrtogonalArredondado(pontos, raio) {
     var p = pontos.filter(function (ponto, i) {
       var anterior = pontos[i - 1];
       return !anterior || Math.abs(anterior.x - ponto.x) > 0.01 || Math.abs(anterior.y - ponto.y) > 0.01;
@@ -933,7 +934,7 @@
       var a = p[i - 1], b = p[i], c = p[i + 1];
       var lenAntes = Math.hypot(b.x - a.x, b.y - a.y);
       var lenDepois = Math.hypot(c.x - b.x, c.y - b.y);
-      var r = Math.min(CONFIG_ROTEAMENTO_CABOS.raioCurva, lenAntes / 2, lenDepois / 2);
+      var r = Math.min(raio || CONFIG_ROTEAMENTO_CABOS.raioCurva, lenAntes / 2, lenDepois / 2);
       if (r < 0.5) { d += " L" + fmt(b.x) + "," + fmt(b.y); continue; }
       var entrada = { x: b.x - (b.x - a.x) / lenAntes * r, y: b.y - (b.y - a.y) / lenAntes * r };
       var saida = { x: b.x + (c.x - b.x) / lenDepois * r, y: b.y + (c.y - b.y) / lenDepois * r };
@@ -977,6 +978,8 @@
     (obstaculos || []).forEach(function (r) {
       segmentos.forEach(function (seg) { if (segmentoAtravessaRetangulo(seg, r)) custo += r.custo; });
     });
+    // Com mapa: trecho por fora das cidades custa (o cabo prefere passar por dentro).
+    custo += custoForaDoMapa(segmentos);
     segmentos.forEach(function (a) {
       existentes.forEach(function (b) {
         if (a.horizontal !== b.horizontal) {
@@ -1190,7 +1193,14 @@
     ocupados.push(caixa() || melhor.caixa);
   }
 
+  // Raio da curva pelo tamanho do cabo: 10 nos curtos, até 34 nos bem longos.
+  function raioDaCurva(pts) {
+    var comp = 0;
+    for (var i = 1; i < pts.length; i++) comp += Math.abs(pts[i].x - pts[i - 1].x) + Math.abs(pts[i].y - pts[i - 1].y);
+    return Math.max(CONFIG_ROTEAMENTO_CABOS.raioCurva, Math.min(34, Math.round(comp / 55)));
+  }
   function rotearCabosOrtogonalmente() {
+    prepararContornoDoMapa();
     var svg = elCanvas.querySelector("svg");
     if (!svg) return;
     var pontos = obterPontosDasPortas(svg);
@@ -1222,7 +1232,9 @@
         || tracarRota(rota.s, rota.e, existentes, obstaculosDoCabo(obstaculos, rota.conexao, rota.s, rota.e));
       pts = endireitarDegraus(pts);
       existentes.push.apply(existentes, segmentosDaRota(pts));
-      rota.path.setAttribute("d", caminhoOrtogonalArredondado(pts));
+      // Cabo longo dobra com curva mais aberta (mais redondo); curto, a curva normal.
+      rota.raio = raioDaCurva(pts);
+      rota.path.setAttribute("d", caminhoOrtogonalArredondado(pts, rota.raio));
       prepararRotuloCurto(rota.aresta, rota.conexao);
       rota.pts = pts;
       rotasDesenhadas[estado.conexoes.indexOf(rota.conexao)] = pts;
@@ -5469,7 +5481,7 @@
       else { P[k].x = naGrade(p.x); P[k + 1].x = naGrade(p.x); }
       moveu = true;
       var pts = limparPontos(P.map(function (q) { return { x: q.x, y: q.y }; }));
-      if (caminho) caminho.setAttribute("d", caminhoOrtogonalArredondado(pts));
+      if (caminho) caminho.setAttribute("d", caminhoOrtogonalArredondado(pts, raioDaCurva(pts)));
       if (aresta) desenharExtrasDoCabo(aresta, pts, conexao);
       alcaArrastada.setAttribute("x", arred((P[k].x + P[k + 1].x) / 2 - 6));
       alcaArrastada.setAttribute("y", arred((P[k].y + P[k + 1].y) / 2 - 6));
@@ -7923,7 +7935,7 @@
   }
   function mapaSoDeFundo() { return municipiosComEquipamento() < 2; }
   // Caixa ocupada por um grupo de equipamentos (centros + tamanho de cada um).
-  function caixaDoGrupo(g) {
+  function caixaDosEquipamentosDoGrupo(g) {
     var c = { x1: Infinity, y1: Infinity, x2: -Infinity, y2: -Infinity };
     g.forEach(function (eq) {
       var t = tamanhoDoNo(eq);
@@ -7995,6 +8007,43 @@
     cacheRetangulo[chave] = melhor;
     return melhor;
   }
+  // Contorno das cidades em coordenadas do desenho, para a rota dos cabos
+  // (03-cabos-grupos-e-arraste.js) preferir passar por dentro do mapa.
+  // Preparado uma vez por roteamento; sem mapa (ou mapa escondido), vazio.
+  var contornoDoMapa = null;
+  function prepararContornoDoMapa() {
+    contornoDoMapa = null;
+    if (!temRegioes() || camadasOcultas().mapa) return;
+    var m = estado.mapa, esc = Number(m.escala) || 1, ox = Number(m.x) || 0, oy = Number(m.y) || 0;
+    var lista = [];
+    m.regioes.forEach(function (r) {
+      if (r.oculta || r.transform) return;
+      var aneis = aneisDoCaminho(r.d).map(function (a) { return a.map(function (q) { return [ox + q[0] * esc, oy + q[1] * esc]; }); });
+      if (!aneis.length) return;
+      var c = { x1: Infinity, y1: Infinity, x2: -Infinity, y2: -Infinity };
+      aneis.forEach(function (a) { a.forEach(function (q) { c.x1 = Math.min(c.x1, q[0]); c.x2 = Math.max(c.x2, q[0]); c.y1 = Math.min(c.y1, q[1]); c.y2 = Math.max(c.y2, q[1]); }); });
+      lista.push({ aneis: aneis, caixa: c });
+    });
+    if (lista.length) contornoDoMapa = lista;
+  }
+  function pontoNoMapa(x, y) {
+    return contornoDoMapa.some(function (r) {
+      return x >= r.caixa.x1 && x <= r.caixa.x2 && y >= r.caixa.y1 && y <= r.caixa.y2 && dentroDosAneis(r.aneis, x, y);
+    });
+  }
+  // Custo dos trechos fora das cidades: um ponto a cada ~50 do desenho.
+  var CUSTO_FORA_DO_MAPA = 120;
+  function custoForaDoMapa(segmentos) {
+    if (!contornoDoMapa) return 0;
+    var custo = 0;
+    segmentos.forEach(function (seg) {
+      var comp = Math.abs(seg.x2 - seg.x1) + Math.abs(seg.y2 - seg.y1), n = Math.max(1, Math.round(comp / 50));
+      for (var i = 0; i <= n; i++) {
+        if (!pontoNoMapa(seg.x1 + (seg.x2 - seg.x1) * i / n, seg.y1 + (seg.y2 - seg.y1) * i / n)) custo += CUSTO_FORA_DO_MAPA;
+      }
+    });
+    return custo;
+  }
   // Tamanho do equipamento no desenho (o que está na tela agora).
   function tamanhoDoNo(eq) {
     var svg = elCanvas.querySelector("svg"), no = svg && obterNodePorId(svg, eq.id);
@@ -8008,7 +8057,7 @@
     encaixar(mapa, area, 180);
     var cidade = null;
     estado.equipamentos.some(function (eq) { var i = regiaoPorNome(eq.municipio); if (i >= 0) cidade = mapa.regioes[i]; return i >= 0; });
-    var ret = cidade && !cidade.transform && maiorRetanguloDentro(cidade, area.x2 - area.x1 + 2 * FOLGA_GRUPO, area.y2 - area.y1 + 2 * FOLGA_GRUPO);
+    var ret = cidade && !cidade.transform && maiorRetanguloDentro(cidade, area.x2 - area.x1 + 2 * FOLGA_GRUPO_MAPA, area.y2 - area.y1 + 2 * FOLGA_GRUPO_MAPA);
     if (!ret) return;
     var escMax = Math.min((LIMITE_CANVAS.maxX - LIMITE_CANVAS.minX) * 0.8 / mapa.largura, (LIMITE_CANVAS.maxY - LIMITE_CANVAS.minY) * 0.8 / mapa.altura);
     mapa.escala = Math.round(Math.min(1 / ret.k, escMax) * 1000) / 1000;
@@ -8016,13 +8065,13 @@
     mapa.y = Math.round((area.y1 + area.y2) / 2 - ret.y * mapa.escala);
   }
   // Centro (coordenadas do desenho) onde um grupo com essa caixa cabe inteiro na cidade.
-  var FOLGA_GRUPO = 140;
+  var FOLGA_GRUPO_MAPA = 140;
   function centroParaGrupo(municipio, caixa) {
     var i = regiaoPorNome(municipio);
     if (i < 0) return null;
     var r = estado.mapa.regioes[i];
     if (r.transform) return null;
-    var ret = maiorRetanguloDentro(r, caixa.x2 - caixa.x1 + 2 * FOLGA_GRUPO, caixa.y2 - caixa.y1 + 2 * FOLGA_GRUPO);
+    var ret = maiorRetanguloDentro(r, caixa.x2 - caixa.x1 + 2 * FOLGA_GRUPO_MAPA, caixa.y2 - caixa.y1 + 2 * FOLGA_GRUPO_MAPA);
     if (!ret) return null;
     var m = estado.mapa, esc = Number(m.escala) || 1;
     return { x: Math.round(m.x + ret.x * esc), y: Math.round(m.y + ret.y * esc) };
@@ -8045,7 +8094,7 @@
       // Mantém o desenho que o grupo já tinha (estrela, portas, cabos retos) e só
       // leva o grupo inteiro para dentro da cidade (o mapa é dimensionado para caber):
       // o centro do maior retângulo do formato do grupo que cabe no contorno.
-      var caixa = caixaDoGrupo(g);
+      var caixa = caixaDosEquipamentosDoGrupo(g);
       var alvo = centroParaGrupo(g[0].municipio, caixa) || pontoNoMunicipio(g[0].municipio, 0);
       if (!alvo) return;
       var dx = alvo.x - (caixa.x1 + caixa.x2) / 2, dy = alvo.y - (caixa.y1 + caixa.y2) / 2;
@@ -8343,8 +8392,8 @@
       if (g.length >= 3 && g.every(function (eq) { return posicaoValida(eq.posicao); })) {
         // O desenho do grupo (como está, com folga) precisa caber inteiro dentro
         // do contorno da cidade, não só na caixa dela (cidade com recortes).
-        var c = caixaDoGrupo(g);
-        var gw = c.x2 - c.x1 + 2 * FOLGA_GRUPO, gh = c.y2 - c.y1 + 2 * FOLGA_GRUPO;
+        var c = caixaDosEquipamentosDoGrupo(g);
+        var gw = c.x2 - c.x1 + 2 * FOLGA_GRUPO_MAPA, gh = c.y2 - c.y1 + 2 * FOLGA_GRUPO_MAPA;
         var ret = !r.transform && maiorRetanguloDentro(r, gw, gh);
         precisa = ret ? 1 / ret.k : Math.max(gw / (b.w * 0.6), gh / (b.h * 0.6));
       } else {
@@ -9763,7 +9812,311 @@
     }
   });
 
-  // ==== 15-pagina-e-pdf.js: página, prévia e PDF; inicialização do editor (parte de assets/js/editor/app.js; npm run montar) ====
+  // ==== 15-script-mikrotik.js: gerador de script de monitoramento para MikroTik (Winbox) (parte de assets/js/editor/app.js; npm run montar) ====
+  // Segue o procedimento de monitoramento: VLAN do local (tabela sigla → VLAN,
+  // ex.: PFU → 216) na porta de uplink, IP /30 da RB nessa VLAN com a rota pelo
+  // gateway, e a rede dos equipamentos (VOLT, XPS, nobreak, ar): /30 direto na
+  // porta; /29 numa bridge (bridge-monitoramento; câmeras em bridge-cameras).
+  // Tudo vem preenchido pelo diagrama (RB, cabos e ficha de cada equipamento) e
+  // pode ser ajustado à mão. O script é colado no New Terminal do Winbox ou
+  // importado como arquivo .rsc.
+  var MK_VLANS_PADRAO = "IBR=212\nPFU=216\nSCR=215";
+  var MK_CHAVE_VLANS = "grafo-mikrotik-vlans";
+  var mk = {
+    modal: document.getElementById("mkModal"),
+    campo: function (id) { return document.getElementById(id); }
+  };
+
+  function mkTabelaVlans() {
+    var texto = MK_VLANS_PADRAO;
+    try { texto = localStorage.getItem(MK_CHAVE_VLANS) || MK_VLANS_PADRAO; } catch (e) {}
+    var tabela = [];
+    texto.split(/\r?\n/).forEach(function (linha) {
+      var m = /^\s*([A-Za-z]{2,6})\s*[=:;,\s]\s*(\d{1,4})\s*$/.exec(linha);
+      if (m && +m[2] >= 1 && +m[2] <= 4094) tabela.push({ sigla: m[1].toUpperCase(), vlan: +m[2] });
+    });
+    return tabela;
+  }
+
+  // Endereço → número e volta (IPv4).
+  function mkNumero(ip) { return ip.split(".").reduce(function (a, o) { return a * 256 + Number(o); }, 0); }
+  function mkTexto(n) { return [24, 16, 8, 0].map(function (d) { return Math.floor(n / Math.pow(2, d)) % 256; }).join("."); }
+  // "10.0.0.2/30" → { host, prefixo } (null se inválido).
+  function mkLerEndereco(texto) {
+    var m = /^\s*((?:\d{1,3}\.){3}\d{1,3})\s*\/\s*(\d{1,2})\s*$/.exec(String(texto || ""));
+    if (!m || +m[2] > 32 || m[1].split(".").some(function (o) { return +o > 255; })) return null;
+    return { host: m[1], prefixo: +m[2] };
+  }
+  // Host, prefixo e gateway de um equipamento pela ficha (IP, máscara e gateway;
+  // sem gateway: o primeiro endereço útil, ou o último se o .1 é ele mesmo).
+  function mkRedeDoEquipamento(eq, prefixoPadrao) {
+    var ip = String(eq.ip || "").trim(), barra = ip.indexOf("/");
+    var host = barra >= 0 ? ip.slice(0, barra) : ip;
+    if (!/^(\d{1,3}\.){3}\d{1,3}$/.test(host)) return null;
+    var manual = String(eq.mascara || "").trim();
+    var prefixo = manual ? prefixoDaMascara(manual) : barra >= 0 ? Number(ip.slice(barra + 1)) : prefixoPadrao;
+    if (prefixo == null || !(prefixo >= 8 && prefixo <= 32)) return null;
+    var gateway = String(eq.gateway || "").replace(/\/.*$/, "").trim();
+    if (!gateway && prefixo < 31) {
+      var n = mkNumero(host), tamanho = Math.pow(2, 32 - prefixo), rede = n - (n % tamanho), gw = rede + 1;
+      if (gw === n) gw = rede + tamanho - 2;
+      gateway = mkTexto(gw);
+    }
+    return { host: host, prefixo: prefixo, gateway: gateway };
+  }
+
+  function mkEhMikrotik(eq) {
+    var modelo = modeloDoEquipamento(eq);
+    return /mikrotik/i.test(eq.tipo || "") || (modelo && /mikrotik/i.test(modelo.fabricante || "")) || /^(rb|ccr|crs|hex|hap|l009)/i.test(String(eq.modelo || eq.nome || ""));
+  }
+  function mkEhMonitorado(eq) { return /volt|rps|xps|retificador|ups|nobreak|hvac|ar-?cond|^ar$|camera|câmera/i.test(eq.tipo || ""); }
+  function mkEhCamera(eq) { return /camera|câmera/i.test(eq.tipo || ""); }
+
+  // Sigla do local da RB: um pedaço do nome que está na tabela (POP-PFU01, RB PFU)
+  // ou a abreviação do município dela (Passo Fundo → PFU).
+  function mkSiglaDaRb(eq, tabela) {
+    var partes = String(eq.nome || "").toUpperCase().split(/[^A-Z0-9]+/).map(function (p) { return p.replace(/\d+$/, ""); });
+    var direto = tabela.find(function (t) { return partes.indexOf(t.sigla) >= 0; });
+    if (direto) return direto;
+    if (eq.municipio) return tabela.find(function (t) { return municipioPorAbreviacao(t.sigla, [eq.municipio]); }) || null;
+    return null;
+  }
+  // Porta da RB no cabo c ("" se o cabo não diz).
+  function mkPortaDaRb(c, idRb) { return String((c.de === idRb ? c.saida : c.chegada) || "").trim(); }
+
+  // Preenche o formulário a partir da RB escolhida no diagrama.
+  function mkPreencherPelaRb(id) {
+    var eq = estado.equipamentos.find(function (e) { return e.id === id; });
+    var c = mk.campo;
+    if (!eq) return;
+    var tabela = mkTabelaVlans(), local = mkSiglaDaRb(eq, tabela);
+    c("mkLocal").value = local ? local.sigla : "";
+    c("mkVlan").value = local ? local.vlan : "";
+    var rede = mkRedeDoEquipamento(eq, 30);
+    c("mkIp").value = rede ? rede.host + "/" + rede.prefixo : "";
+    c("mkGateway").value = rede ? rede.gateway : "";
+    // Uplink: o cabo até um equipamento que não é de monitoramento (switch, OLT...).
+    var cabos = estado.conexoes.filter(function (cb) { return cb.de === id || cb.para === id; });
+    var outro = function (cb) { var oid = cb.de === id ? cb.para : cb.de; return estado.equipamentos.find(function (e) { return e.id === oid; }); };
+    var uplink = cabos.find(function (cb) { var o = outro(cb); return o && !mkEhMonitorado(o) && mkPortaDaRb(cb, id); });
+    c("mkUplink").value = uplink ? mkPortaDaRb(uplink, id) : "ether1";
+    // Redes dos equipamentos: pela ficha de cada monitorado ligado na RB (o gateway
+    // dele é o endereço da RB naquela rede); mesma rede = uma linha com as portas.
+    var redes = [];
+    cabos.forEach(function (cb) {
+      var o = outro(cb);
+      if (!o || !mkEhMonitorado(o)) return;
+      var r = mkRedeDoEquipamento(o, 29);
+      if (!r || !r.gateway) return;
+      var endereco = r.gateway + "/" + r.prefixo, uso = mkEhCamera(o) ? "cameras" : "equipamentos";
+      var linha = redes.find(function (x) { return x.endereco === endereco && x.uso === uso; });
+      if (!linha) { linha = { endereco: endereco, uso: uso, portas: [] }; redes.push(linha); }
+      var porta = mkPortaDaRb(cb, id);
+      if (porta && linha.portas.indexOf(porta) < 0) linha.portas.push(porta);
+    });
+    mkDesenharRedes(redes.length ? redes : [{ endereco: "", uso: "equipamentos", portas: [] }]);
+  }
+
+  function mkDesenharRedes(redes) {
+    var lista = mk.campo("mkRedes");
+    lista.innerHTML = "";
+    redes.forEach(mkAdicionarLinha);
+  }
+  function mkAdicionarLinha(r) {
+    r = r || { endereco: "", uso: "equipamentos", portas: [] };
+    var linha = document.createElement("div");
+    linha.className = "mk-rede";
+    linha.innerHTML =
+      '<label>Uso<select data-mk="uso"><option value="equipamentos" title="VOLT, XPS, nobreak, ar-condicionado">Equipamentos</option><option value="cameras">Câmeras</option></select></label>' +
+      '<label>Endereço da RB na rede<input data-mk="endereco" placeholder="10.20.0.1/29" spellcheck="false" autocomplete="off"></label>' +
+      '<label>Porta(s) da RB<input data-mk="portas" placeholder="ether2 ou ether3, ether4" spellcheck="false" autocomplete="off"></label>' +
+      '<button type="button" class="ghost small" data-mk-remover aria-label="Remover esta rede" title="Remover esta rede">×</button>';
+    linha.querySelector('[data-mk="uso"]').value = r.uso;
+    linha.querySelector('[data-mk="endereco"]').value = r.endereco;
+    linha.querySelector('[data-mk="portas"]').value = r.portas.join(", ");
+    linha.querySelector("[data-mk-remover]").addEventListener("click", function () { linha.remove(); mkAtualizar(); });
+    mk.campo("mkRedes").appendChild(linha);
+  }
+
+  // Nome da VLAN pelo procedimento: vlan216-eth01 (ether1), vlan216-sfp (fibra).
+  function mkNomeDaVlan(vlan, uplink) {
+    var m = /^ether(\d+)$/i.exec(uplink);
+    var sufixo = m ? "eth" + ("0" + m[1]).slice(-2) : /^sfp/i.test(uplink) ? "sfp" : uplink.replace(/[^A-Za-z0-9-]/g, "");
+    return "vlan" + vlan + "-" + sufixo;
+  }
+  var MK_PORTA_VALIDA = /^[A-Za-z][A-Za-z0-9\-_.\/]{0,30}$/;
+  // Texto seguro dentro de comment="..." do RouterOS.
+  function mkComentario(t) { return String(t || "").replace(/["\\$\r\n]/g, "").slice(0, 60); }
+
+  // Lê o formulário, confere e monta o script (ou a lista do que falta).
+  function mkGerar() {
+    var c = mk.campo, erros = [], avisos = [];
+    var idRb = c("mkRb").value, rb = estado.equipamentos.find(function (e) { return e.id === idRb; });
+    var sigla = String(c("mkLocal").value || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+    var vlan = Number(c("mkVlan").value);
+    var uplink = String(c("mkUplink").value || "").trim();
+    var ip = mkLerEndereco(c("mkIp").value), gateway = String(c("mkGateway").value || "").trim();
+    if (!(vlan >= 1 && vlan <= 4094)) erros.push("Informe a VLAN do local (1 a 4094) — no NetBox, Região da cidade, campo L3.");
+    if (!MK_PORTA_VALIDA.test(uplink)) erros.push("Informe a porta de uplink (ex.: ether1 ou sfp1).");
+    if (!ip) erros.push("Informe o IP da RB com a máscara (ex.: 10.0.0.2/30) — no NetBox, \"Monitoramento\" + cidade.");
+    else if (ip.prefixo !== 30) avisos.push("O IP da RB costuma ser /30 (está /" + ip.prefixo + ").");
+    if (!/^(\d{1,3}\.){3}\d{1,3}$/.test(gateway)) erros.push("Informe o gateway da RB.");
+    else if (ip) {
+      var tam = Math.pow(2, 32 - ip.prefixo), redeRb = mkNumero(ip.host) - (mkNumero(ip.host) % tam);
+      if (mkNumero(gateway) - (mkNumero(gateway) % tam) !== redeRb) avisos.push("O gateway " + gateway + " não está na mesma rede do IP da RB.");
+      if (gateway === ip.host) erros.push("O gateway não pode ser o próprio IP da RB.");
+    }
+    var portasUsadas = {}, redes = [];
+    mk.campo("mkRedes").querySelectorAll(".mk-rede").forEach(function (linha, i) {
+      var uso = linha.querySelector('[data-mk="uso"]').value;
+      var textoEnd = linha.querySelector('[data-mk="endereco"]').value.trim();
+      var portas = linha.querySelector('[data-mk="portas"]').value.split(/[\s,;]+/).filter(Boolean);
+      if (!textoEnd && !portas.length) return; // linha vazia: ignora
+      var end = mkLerEndereco(textoEnd), n = "Rede " + (i + 1);
+      if (!end) { erros.push(n + ": endereço inválido (ex.: 10.20.0.1/29)."); return; }
+      if (end.prefixo < 24 || end.prefixo > 30) avisos.push(n + ": /" + end.prefixo + " — o procedimento usa /30 ou /29.");
+      if (!portas.length) { erros.push(n + ": informe a porta da RB onde os equipamentos estão ligados."); return; }
+      portas.forEach(function (p) {
+        if (!MK_PORTA_VALIDA.test(p)) erros.push(n + ": porta \"" + p + "\" inválida.");
+        else if (p.toLowerCase() === uplink.toLowerCase()) erros.push(n + ": a porta " + p + " é a de uplink.");
+        else if (portasUsadas[p.toLowerCase()]) erros.push(n + ": a porta " + p + " já está em outra rede.");
+        portasUsadas[p.toLowerCase()] = true;
+      });
+      if (end.prefixo >= 30 && portas.length > 1) erros.push(n + ": /30 vai direto numa porta só; para várias portas, use /29 (bridge).");
+      redes.push({ uso: uso, endereco: end.host + "/" + end.prefixo, prefixo: end.prefixo, portas: portas });
+    });
+    if (erros.length) return { erros: erros, avisos: avisos, script: "" };
+
+    var nomeVlan = mkNomeDaVlan(vlan, uplink), rotulo = sigla || ("VLAN " + vlan);
+    var agora = new Date(), data = agora.toLocaleDateString("pt-BR") + " " + agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    var s = [
+      "# Script de monitoramento gerado pelo Grafo em " + data,
+      "# RB: " + mkComentario(rb ? rb.nome || rb.id : "(não informada)") + " | Local: " + rotulo + " | VLAN " + vlan,
+      "# Winbox: New Terminal > cole tudo. Ou Files > arraste o .rsc e rode /import file-name=<arquivo>.rsc",
+      "",
+      "# 1. VLAN do local na porta de uplink",
+      "/interface vlan",
+      'add name=' + nomeVlan + ' interface=' + uplink + ' vlan-id=' + vlan + ' comment="Monitoramento ' + mkComentario(rotulo) + '"',
+      "",
+      "# 2. IP da RB e rota pelo gateway",
+      "/ip address",
+      'add address=' + ip.host + '/' + ip.prefixo + ' interface=' + nomeVlan + ' comment="RB monitoramento"',
+      "/ip route",
+      'add dst-address=0.0.0.0/0 gateway=' + gateway + ' comment="Gateway monitoramento"'
+    ];
+    // 3. Redes dos equipamentos: /30 direto na porta; /29 numa bridge por uso.
+    var bridges = {};
+    redes.forEach(function (r) {
+      var nomeUso = r.uso === "cameras" ? "Câmeras" : "Equipamentos (VOLT/XPS/nobreak/ar)";
+      s.push("", "# 3. Rede " + nomeUso + " (/" + r.prefixo + ")");
+      if (r.prefixo >= 30) {
+        s.push("/ip address", 'add address=' + r.endereco + ' interface=' + r.portas[0] + ' comment="' + (r.uso === "cameras" ? "Cameras" : "Equipamentos monitoramento") + '"');
+        return;
+      }
+      var base = r.uso === "cameras" ? "bridge-cameras" : "bridge-monitoramento";
+      bridges[base] = (bridges[base] || 0) + 1;
+      var bridge = bridges[base] > 1 ? base + "-" + bridges[base] : base;
+      s.push("/interface bridge", 'add name=' + bridge + ' comment="' + (r.uso === "cameras" ? "Cameras" : "Monitoramento") + '"');
+      s.push("/interface bridge port");
+      r.portas.forEach(function (p) { s.push("add bridge=" + bridge + " interface=" + p); });
+      s.push("/ip address", 'add address=' + r.endereco + ' interface=' + bridge + ' comment="' + (r.uso === "cameras" ? "Cameras" : "Equipamentos monitoramento") + '"');
+    });
+    if (!redes.length) avisos.push("Nenhuma rede de equipamentos: o script só cria a VLAN, o IP e a rota da RB.");
+    return { erros: [], avisos: avisos, script: s.join("\n") + "\n", nomeVlan: nomeVlan, rb: rb, sigla: sigla, vlan: vlan };
+  }
+
+  var mkUltimo = null;
+  function mkAtualizar() {
+    var c = mk.campo, r = mkGerar();
+    mkUltimo = r;
+    var tabela = mkTabelaVlans(), sigla = String(c("mkLocal").value || "").trim().toUpperCase();
+    var daTabela = tabela.find(function (t) { return t.sigla === sigla; });
+    c("mkVlanNome").textContent = r.nomeVlan ? "Nome da VLAN: " + r.nomeVlan : (daTabela ? "" : "");
+    c("mkScript").value = r.script || "# Falta preencher:\n" + r.erros.map(function (e) { return "# - " + e; }).join("\n");
+    var avisos = c("mkAvisos");
+    avisos.innerHTML = r.avisos.map(function (a) { return "<li>" + escaparHtml(a) + "</li>"; }).join("");
+    avisos.hidden = !r.avisos.length;
+    c("mkCopiar").disabled = c("mkBaixar").disabled = !r.script;
+  }
+
+  function mkAbrir(idRb) {
+    var c = mk.campo;
+    var lista = estado.equipamentos.filter(mkEhMikrotik);
+    var opcoes = (lista.length ? lista : estado.equipamentos).map(function (e) {
+      return '<option value="' + escaparHtml(e.id) + '">' + escaparHtml(e.nome || e.id) + (e.ip ? " — " + escaparHtml(e.ip) : "") + "</option>";
+    }).join("");
+    c("mkRb").innerHTML = '<option value="">— Preencher à mão —</option>' + opcoes;
+    c("mkLocais").innerHTML = mkTabelaVlans().map(function (t) { return '<option value="' + t.sigla + '">VLAN ' + t.vlan + "</option>"; }).join("");
+    try { c("mkTabela").value = localStorage.getItem(MK_CHAVE_VLANS) || MK_VLANS_PADRAO; } catch (e) { c("mkTabela").value = MK_VLANS_PADRAO; }
+    var escolhida = idRb && estado.equipamentos.some(function (e) { return e.id === idRb; }) ? idRb : (lista.length === 1 ? lista[0].id : "");
+    c("mkRb").value = escolhida;
+    if (escolhida) mkPreencherPelaRb(escolhida);
+    else {
+      ["mkLocal", "mkVlan", "mkIp", "mkGateway"].forEach(function (k) { c(k).value = ""; });
+      c("mkUplink").value = "ether1";
+      mkDesenharRedes([{ endereco: "", uso: "equipamentos", portas: [] }]);
+    }
+    mkAtualizar();
+    mostrarModalBackdrop(mk.modal);
+    c("mkRb").focus();
+  }
+  function mkFechar() {
+    esconderModal(mk.modal);
+    if (mk.modal.contains(document.activeElement)) document.activeElement.blur();
+  }
+
+  if (mk.modal) {
+    var mc = mk.campo;
+    document.getElementById("btnScriptMikrotik").addEventListener("click", function () { mkAbrir(""); });
+    var botaoEditor = document.getElementById("editEquipScript");
+    if (botaoEditor) botaoEditor.addEventListener("click", function () { if (editor.equipamento) mkAbrir(editor.equipamento.id); });
+    mk.modal.querySelectorAll("[data-mk-fechar]").forEach(function (b) { b.addEventListener("click", mkFechar); });
+    mk.modal.addEventListener("click", function (e) { if (e.target === mk.modal) mkFechar(); });
+    mk.modal.addEventListener("keydown", function (e) { if (e.key === "Escape") { e.stopPropagation(); mkFechar(); } });
+    mc("mkRb").addEventListener("change", function () { if (mc("mkRb").value) mkPreencherPelaRb(mc("mkRb").value); mkAtualizar(); });
+    // Sigla escolhida: a VLAN vem da tabela.
+    mc("mkLocal").addEventListener("input", function () {
+      var t = mkTabelaVlans().find(function (x) { return x.sigla === mc("mkLocal").value.trim().toUpperCase(); });
+      if (t) mc("mkVlan").value = t.vlan;
+      mkAtualizar();
+    });
+    // IP da RB /30: o gateway é o outro endereço útil (se ainda vazio).
+    mc("mkIp").addEventListener("change", function () {
+      var ip = mkLerEndereco(mc("mkIp").value);
+      if (ip && ip.prefixo === 30 && !mc("mkGateway").value.trim()) {
+        var n = mkNumero(ip.host), rede = n - (n % 4);
+        mc("mkGateway").value = mkTexto(n === rede + 1 ? rede + 2 : rede + 1);
+      }
+      mkAtualizar();
+    });
+    mk.modal.querySelector(".mk-form").addEventListener("submit", function (e) { e.preventDefault(); });
+    mk.modal.querySelector(".mk-form").addEventListener("input", mkAtualizar);
+    mk.modal.querySelector(".mk-form").addEventListener("change", mkAtualizar);
+    mc("mkMaisRede").addEventListener("click", function () { mkAdicionarLinha(); mkAtualizar(); });
+    mc("mkSalvarTabela").addEventListener("click", function () {
+      try { localStorage.setItem(MK_CHAVE_VLANS, mc("mkTabela").value); } catch (e) {}
+      mc("mkLocais").innerHTML = mkTabelaVlans().map(function (t) { return '<option value="' + t.sigla + '">VLAN ' + t.vlan + "</option>"; }).join("");
+      avisar("Tabela de VLANs salva neste navegador (" + mkTabelaVlans().length + " locais).");
+      if (mc("mkRb").value) mkPreencherPelaRb(mc("mkRb").value);
+      mkAtualizar();
+    });
+    mc("mkCopiar").addEventListener("click", function () {
+      var campo = mc("mkScript");
+      function copiado() { avisar("Script copiado. No Winbox: New Terminal e cole (Ctrl+V)."); }
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(campo.value).then(copiado, function () { campo.select(); document.execCommand("copy"); copiado(); });
+      else { campo.select(); document.execCommand("copy"); copiado(); }
+    });
+    mc("mkBaixar").addEventListener("click", function () {
+      if (!mkUltimo || !mkUltimo.script) return;
+      var base = (mkUltimo.rb ? mkUltimo.rb.nome || mkUltimo.rb.id : "rb") + "-monitoramento";
+      var nome = base.replace(/[^A-Za-z0-9_-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 60) + ".rsc";
+      baixarBlob(new Blob([mkUltimo.script.replace(/\n/g, "\r\n")], { type: "text/plain" }), nome);
+      avisar("Arquivo " + nome + " baixado. No Winbox: Files, arraste o arquivo e rode /import file-name=" + nome);
+    });
+  }
+  window.GrafoMikrotik = { gerar: mkGerar, nomeDaVlan: mkNomeDaVlan };
+
+  // ==== 16-pagina-e-pdf.js: página, prévia e PDF; inicialização do editor (parte de assets/js/editor/app.js; npm run montar) ====
   // ---- Página, área de desenho e PDF ------------------------------------------
   // Barra lateral direita. A configuração vale para a conta neste navegador.
   var FORMATOS_PAGINA = { A0: [841, 1189], A1: [594, 841], A2: [420, 594], A3: [297, 420], A4: [210, 297], A5: [148, 210] };

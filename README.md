@@ -436,7 +436,7 @@ assets/                     tudo o que o navegador baixa
                             primeiros-passos, racks
   vendor/                   Zod (validação), servido localmente
 
-src/app/                    partes do editor, de 00-catalogo.js a 15-pagina-e-pdf.js — É AQUI QUE SE EDITA
+src/app/                    partes do editor, de 00-catalogo.js a 16-pagina-e-pdf.js — É AQUI QUE SE EDITA
                             (npm run montar junta tudo em assets/js/editor/app.js, na ordem dos números)
 data/equipamentos.json      catálogo de tipos e modelos de equipamento (por fabricante)
 api/                        funções da Vercel: auth-config, equipamentos e ler-imagem (IA)

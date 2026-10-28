@@ -3362,3 +3362,27 @@ body:not([data-modo-diagrama="ftth"]) .so-modo-ftth { display: none; }
 /* Apagar mapa: só aparece quando o diagrama tem mapa. */
 body:not(.com-mapa) #btnApagarMapa { display: none !important; }
 [data-icone="mapa-apagar"] { --icone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 4 3 6v14l6-2 4 1.3'/%3E%3Cpath d='M9 4l6 2 6-2v8'/%3E%3Cpath d='M9 4v14M15 6v6'/%3E%3Cpath d='m16 16 5 5M21 16l-5 5'/%3E%3C/svg%3E"); }
+
+/* ==== Gerador de script MikroTik ==== */
+.mk-card { width: min(100%, 1040px); max-height: calc(100vh - 32px); overflow-y: auto; }
+.mk-card .mk-intro { margin: 0 0 14px; font-size: 0.86rem; }
+.mk-corpo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 18px; align-items: start; }
+.mk-form { display: grid; gap: 12px; }
+.mk-form fieldset { margin: 0; padding: 10px 12px 12px; border: 1px solid var(--line); border-radius: 12px; display: grid; gap: 8px; min-width: 0; }
+.mk-form legend { padding: 0 6px; font: 700 0.78rem var(--sans); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+.mk-form label { display: grid; gap: 4px; font-size: 0.8rem; font-weight: 600; }
+.mk-form input, .mk-form select, .mk-tabela textarea { width: 100%; box-sizing: border-box; }
+.mk-dica { margin: 0 !important; font-size: 0.78rem; color: var(--text-dim); }
+.mk-dica:empty { display: none; }
+.mk-tabela summary { cursor: pointer; font-size: 0.78rem; color: var(--text-dim); font-weight: 600; }
+.mk-tabela textarea { margin-top: 6px; font: 0.82rem/1.4 ui-monospace, Consolas, monospace; }
+.mk-tabela-acoes { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: 0.74rem; color: var(--text-dim); }
+.mk-redes { display: grid; gap: 8px; }
+.mk-rede { display: grid; grid-template-columns: 1.1fr 1fr 1fr auto; gap: 6px; align-items: end; padding: 8px; border-radius: 10px; background: color-mix(in srgb, var(--teal) 6%, transparent); }
+.mk-rede [data-mk-remover] { height: 34px; }
+.mk-saida { display: grid; gap: 8px; }
+.mk-saida label { display: grid; gap: 4px; font-size: 0.8rem; font-weight: 600; }
+.mk-script { width: 100%; box-sizing: border-box; min-height: 320px; resize: vertical; font: 0.8rem/1.45 ui-monospace, Consolas, "Cascadia Mono", monospace; white-space: pre; overflow: auto; background: #0e1f2e; color: #d6e6f0; border-radius: 10px; padding: 12px; border: 1px solid var(--line); }
+.mk-avisos { margin: 0; padding: 8px 12px 8px 26px; border-radius: 10px; background: color-mix(in srgb, #e0932f 12%, transparent); color: var(--text); font-size: 0.8rem; line-height: 1.45; }
+.mk-saida code { font-size: 0.78rem; }
+@media (max-width: 860px) { .mk-corpo { grid-template-columns: 1fr; } .mk-rede { grid-template-columns: 1fr 1fr; } .mk-script { min-height: 240px; } }

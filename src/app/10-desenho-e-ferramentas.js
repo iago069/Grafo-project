@@ -710,7 +710,7 @@
       else { P[k].x = naGrade(p.x); P[k + 1].x = naGrade(p.x); }
       moveu = true;
       var pts = limparPontos(P.map(function (q) { return { x: q.x, y: q.y }; }));
-      if (caminho) caminho.setAttribute("d", caminhoOrtogonalArredondado(pts));
+      if (caminho) caminho.setAttribute("d", caminhoOrtogonalArredondado(pts, raioDaCurva(pts)));
       if (aresta) desenharExtrasDoCabo(aresta, pts, conexao);
       alcaArrastada.setAttribute("x", arred((P[k].x + P[k + 1].x) / 2 - 6));
       alcaArrastada.setAttribute("y", arred((P[k].y + P[k + 1].y) / 2 - 6));

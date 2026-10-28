@@ -309,7 +309,7 @@
   }
   function mapaSoDeFundo() { return municipiosComEquipamento() < 2; }
   // Caixa ocupada por um grupo de equipamentos (centros + tamanho de cada um).
-  function caixaDoGrupo(g) {
+  function caixaDosEquipamentosDoGrupo(g) {
     var c = { x1: Infinity, y1: Infinity, x2: -Infinity, y2: -Infinity };
     g.forEach(function (eq) {
       var t = tamanhoDoNo(eq);
@@ -381,6 +381,43 @@
     cacheRetangulo[chave] = melhor;
     return melhor;
   }
+  // Contorno das cidades em coordenadas do desenho, para a rota dos cabos
+  // (03-cabos-grupos-e-arraste.js) preferir passar por dentro do mapa.
+  // Preparado uma vez por roteamento; sem mapa (ou mapa escondido), vazio.
+  var contornoDoMapa = null;
+  function prepararContornoDoMapa() {
+    contornoDoMapa = null;
+    if (!temRegioes() || camadasOcultas().mapa) return;
+    var m = estado.mapa, esc = Number(m.escala) || 1, ox = Number(m.x) || 0, oy = Number(m.y) || 0;
+    var lista = [];
+    m.regioes.forEach(function (r) {
+      if (r.oculta || r.transform) return;
+      var aneis = aneisDoCaminho(r.d).map(function (a) { return a.map(function (q) { return [ox + q[0] * esc, oy + q[1] * esc]; }); });
+      if (!aneis.length) return;
+      var c = { x1: Infinity, y1: Infinity, x2: -Infinity, y2: -Infinity };
+      aneis.forEach(function (a) { a.forEach(function (q) { c.x1 = Math.min(c.x1, q[0]); c.x2 = Math.max(c.x2, q[0]); c.y1 = Math.min(c.y1, q[1]); c.y2 = Math.max(c.y2, q[1]); }); });
+      lista.push({ aneis: aneis, caixa: c });
+    });
+    if (lista.length) contornoDoMapa = lista;
+  }
+  function pontoNoMapa(x, y) {
+    return contornoDoMapa.some(function (r) {
+      return x >= r.caixa.x1 && x <= r.caixa.x2 && y >= r.caixa.y1 && y <= r.caixa.y2 && dentroDosAneis(r.aneis, x, y);
+    });
+  }
+  // Custo dos trechos fora das cidades: um ponto a cada ~50 do desenho.
+  var CUSTO_FORA_DO_MAPA = 120;
+  function custoForaDoMapa(segmentos) {
+    if (!contornoDoMapa) return 0;
+    var custo = 0;
+    segmentos.forEach(function (seg) {
+      var comp = Math.abs(seg.x2 - seg.x1) + Math.abs(seg.y2 - seg.y1), n = Math.max(1, Math.round(comp / 50));
+      for (var i = 0; i <= n; i++) {
+        if (!pontoNoMapa(seg.x1 + (seg.x2 - seg.x1) * i / n, seg.y1 + (seg.y2 - seg.y1) * i / n)) custo += CUSTO_FORA_DO_MAPA;
+      }
+    });
+    return custo;
+  }
   // Tamanho do equipamento no desenho (o que está na tela agora).
   function tamanhoDoNo(eq) {
     var svg = elCanvas.querySelector("svg"), no = svg && obterNodePorId(svg, eq.id);
@@ -394,7 +431,7 @@
     encaixar(mapa, area, 180);
     var cidade = null;
     estado.equipamentos.some(function (eq) { var i = regiaoPorNome(eq.municipio); if (i >= 0) cidade = mapa.regioes[i]; return i >= 0; });
-    var ret = cidade && !cidade.transform && maiorRetanguloDentro(cidade, area.x2 - area.x1 + 2 * FOLGA_GRUPO, area.y2 - area.y1 + 2 * FOLGA_GRUPO);
+    var ret = cidade && !cidade.transform && maiorRetanguloDentro(cidade, area.x2 - area.x1 + 2 * FOLGA_GRUPO_MAPA, area.y2 - area.y1 + 2 * FOLGA_GRUPO_MAPA);
     if (!ret) return;
     var escMax = Math.min((LIMITE_CANVAS.maxX - LIMITE_CANVAS.minX) * 0.8 / mapa.largura, (LIMITE_CANVAS.maxY - LIMITE_CANVAS.minY) * 0.8 / mapa.altura);
     mapa.escala = Math.round(Math.min(1 / ret.k, escMax) * 1000) / 1000;
@@ -402,13 +439,13 @@
     mapa.y = Math.round((area.y1 + area.y2) / 2 - ret.y * mapa.escala);
   }
   // Centro (coordenadas do desenho) onde um grupo com essa caixa cabe inteiro na cidade.
-  var FOLGA_GRUPO = 140;
+  var FOLGA_GRUPO_MAPA = 140;
   function centroParaGrupo(municipio, caixa) {
     var i = regiaoPorNome(municipio);
     if (i < 0) return null;
     var r = estado.mapa.regioes[i];
     if (r.transform) return null;
-    var ret = maiorRetanguloDentro(r, caixa.x2 - caixa.x1 + 2 * FOLGA_GRUPO, caixa.y2 - caixa.y1 + 2 * FOLGA_GRUPO);
+    var ret = maiorRetanguloDentro(r, caixa.x2 - caixa.x1 + 2 * FOLGA_GRUPO_MAPA, caixa.y2 - caixa.y1 + 2 * FOLGA_GRUPO_MAPA);
     if (!ret) return null;
     var m = estado.mapa, esc = Number(m.escala) || 1;
     return { x: Math.round(m.x + ret.x * esc), y: Math.round(m.y + ret.y * esc) };
@@ -431,7 +468,7 @@
       // Mantém o desenho que o grupo já tinha (estrela, portas, cabos retos) e só
       // leva o grupo inteiro para dentro da cidade (o mapa é dimensionado para caber):
       // o centro do maior retângulo do formato do grupo que cabe no contorno.
-      var caixa = caixaDoGrupo(g);
+      var caixa = caixaDosEquipamentosDoGrupo(g);
       var alvo = centroParaGrupo(g[0].municipio, caixa) || pontoNoMunicipio(g[0].municipio, 0);
       if (!alvo) return;
       var dx = alvo.x - (caixa.x1 + caixa.x2) / 2, dy = alvo.y - (caixa.y1 + caixa.y2) / 2;
@@ -729,8 +766,8 @@
       if (g.length >= 3 && g.every(function (eq) { return posicaoValida(eq.posicao); })) {
         // O desenho do grupo (como está, com folga) precisa caber inteiro dentro
         // do contorno da cidade, não só na caixa dela (cidade com recortes).
-        var c = caixaDoGrupo(g);
-        var gw = c.x2 - c.x1 + 2 * FOLGA_GRUPO, gh = c.y2 - c.y1 + 2 * FOLGA_GRUPO;
+        var c = caixaDosEquipamentosDoGrupo(g);
+        var gw = c.x2 - c.x1 + 2 * FOLGA_GRUPO_MAPA, gh = c.y2 - c.y1 + 2 * FOLGA_GRUPO_MAPA;
         var ret = !r.transform && maiorRetanguloDentro(r, gw, gh);
         precisa = ret ? 1 / ret.k : Math.max(gw / (b.w * 0.6), gh / (b.h * 0.6));
       } else {

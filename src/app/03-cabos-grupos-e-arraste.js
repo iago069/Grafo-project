@@ -10,7 +10,8 @@
 
   // Caminho ortogonal com as quinas arredondadas (curva quadrática em cada canto).
   // O raio encolhe em trechos curtos para a curva não passar do segmento.
-  function caminhoOrtogonalArredondado(pontos) {
+  // raio: o da curva (padrão CONFIG_ROTEAMENTO_CABOS.raioCurva).
+  function caminhoOrtogonalArredondado(pontos, raio) {
     var p = pontos.filter(function (ponto, i) {
       var anterior = pontos[i - 1];
       return !anterior || Math.abs(anterior.x - ponto.x) > 0.01 || Math.abs(anterior.y - ponto.y) > 0.01;
@@ -21,7 +22,7 @@
       var a = p[i - 1], b = p[i], c = p[i + 1];
       var lenAntes = Math.hypot(b.x - a.x, b.y - a.y);
       var lenDepois = Math.hypot(c.x - b.x, c.y - b.y);
-      var r = Math.min(CONFIG_ROTEAMENTO_CABOS.raioCurva, lenAntes / 2, lenDepois / 2);
+      var r = Math.min(raio || CONFIG_ROTEAMENTO_CABOS.raioCurva, lenAntes / 2, lenDepois / 2);
       if (r < 0.5) { d += " L" + fmt(b.x) + "," + fmt(b.y); continue; }
       var entrada = { x: b.x - (b.x - a.x) / lenAntes * r, y: b.y - (b.y - a.y) / lenAntes * r };
       var saida = { x: b.x + (c.x - b.x) / lenDepois * r, y: b.y + (c.y - b.y) / lenDepois * r };
@@ -65,6 +66,8 @@
     (obstaculos || []).forEach(function (r) {
       segmentos.forEach(function (seg) { if (segmentoAtravessaRetangulo(seg, r)) custo += r.custo; });
     });
+    // Com mapa: trecho por fora das cidades custa (o cabo prefere passar por dentro).
+    custo += custoForaDoMapa(segmentos);
     segmentos.forEach(function (a) {
       existentes.forEach(function (b) {
         if (a.horizontal !== b.horizontal) {
@@ -278,7 +281,14 @@
     ocupados.push(caixa() || melhor.caixa);
   }
 
+  // Raio da curva pelo tamanho do cabo: 10 nos curtos, até 34 nos bem longos.
+  function raioDaCurva(pts) {
+    var comp = 0;
+    for (var i = 1; i < pts.length; i++) comp += Math.abs(pts[i].x - pts[i - 1].x) + Math.abs(pts[i].y - pts[i - 1].y);
+    return Math.max(CONFIG_ROTEAMENTO_CABOS.raioCurva, Math.min(34, Math.round(comp / 55)));
+  }
   function rotearCabosOrtogonalmente() {
+    prepararContornoDoMapa();
     var svg = elCanvas.querySelector("svg");
     if (!svg) return;
     var pontos = obterPontosDasPortas(svg);
@@ -310,7 +320,9 @@
         || tracarRota(rota.s, rota.e, existentes, obstaculosDoCabo(obstaculos, rota.conexao, rota.s, rota.e));
       pts = endireitarDegraus(pts);
       existentes.push.apply(existentes, segmentosDaRota(pts));
-      rota.path.setAttribute("d", caminhoOrtogonalArredondado(pts));
+      // Cabo longo dobra com curva mais aberta (mais redondo); curto, a curva normal.
+      rota.raio = raioDaCurva(pts);
+      rota.path.setAttribute("d", caminhoOrtogonalArredondado(pts, rota.raio));
       prepararRotuloCurto(rota.aresta, rota.conexao);
       rota.pts = pts;
       rotasDesenhadas[estado.conexoes.indexOf(rota.conexao)] = pts;
