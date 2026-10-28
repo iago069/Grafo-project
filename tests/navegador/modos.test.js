@@ -239,7 +239,7 @@ test("modelo pelo nome e Ligar a: cadastra o equipamento já com modelo, tipo e 
   await pagina.click('[data-nav-panel="navAddEquip"]');
   await pagina.waitForSelector("#navEquipNome", { state: "visible" });
   await pagina.fill("#navEquipNome", "POP-TPR_DM4270-48XS");
-  assert.equal(await pagina.inputValue("#navEquipModelo"), "DM4270-48XS+6CX");
+  assert.equal(await pagina.inputValue("#navEquipModelo"), "DM4270 48XS+6CX");
   assert.equal(await pagina.inputValue("#navEquipTipo"), "Switch");
   const centro = (await pagina.$$eval("#navEquipLigarA option", os => os.map(o => [o.value, o.textContent]))).find(o => /OLT-Centro/.test(o[1]));
   await pagina.selectOption("#navEquipLigarA", centro[0]);

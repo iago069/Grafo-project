@@ -3175,7 +3175,7 @@
     equipamentos: [
       { id: "ex_borda", nome: "RB-BORDA", tipo: "Roteador", modelo: "CCR2004", ip: "10.0.0.1", grupo: "POP Centro" },
       { id: "ex_core", nome: "SW-CORE", tipo: "Switch", modelo: "CRS326", ip: "10.0.0.2", grupo: "POP Centro" },
-      { id: "ex_olt", nome: "OLT-01", tipo: "OLT", modelo: "DM4610", ip: "10.0.0.10", grupo: "POP Centro" },
+      { id: "ex_olt", nome: "OLT-01", tipo: "OLT", modelo: "DM4610 8GPON+8GX+4GT+2XS", ip: "10.0.0.10", grupo: "POP Centro" },
       { id: "ex_nobreak", nome: "NOBREAK-01", tipo: "Nobreak", grupo: "POP Centro" },
       { id: "ex_acesso", nome: "SW-BAIRRO", tipo: "Switch", ip: "10.0.1.2", grupo: "Armário Bairro", status: "manutencao" }
     ],
@@ -3319,12 +3319,12 @@
       return {
         subtitulo: "Rota final 100G · Ibirubá → Boqueirão do Leão",
         equipamentos: [
-          eq("ibr", "POP-IBR01_DISTR-14 | Ibirubá - Coprel", "Ibirubá", "DM4270 48XS+4CX", 470, 230, { ip: "10.200.200.14" }),
-          eq("qzn", "POP-QZN01_DISTR-13 | Quinze de Novembro - Cidade", "Quinze de Novembro", "NOVO DM4270-48XS-6CS", 512, 330),
-          eq("fvz", "DISTRIBUICAO_FVZ_017", "Fortaleza dos Valos", "NOVO DM4270-48X-6C", 432, 378),
-          eq("esq", "ESQ_GAUCHA_FV_101 | Fortaleza dos Valos - Esquina Gaúcha", "Fortaleza dos Valos", "NOVO DM4270 24X4C", 343, 460),
-          eq("stj", "DISTRIBUICAO_STJ_121 | Salto do Jacuí - Sindicato", "Salto do Jacuí", "NOVO DM4270-48XS-6CS", 432, 572),
-          eq("jacz", "POP-JACZ01_DISTR-136 | Jacuizinho - Cidade", "Jacuizinho", "NOVO DM4270-48XS-6CS", 548, 535),
+          eq("ibr", "POP-IBR01_DISTR-14 | Ibirubá - Coprel", "Ibirubá", "DM4270 48XS+6CX", 470, 230, { ip: "10.200.200.14" }),
+          eq("qzn", "POP-QZN01_DISTR-13 | Quinze de Novembro - Cidade", "Quinze de Novembro", "DM4270 48XS+6CX", 512, 330),
+          eq("fvz", "DISTRIBUICAO_FVZ_017", "Fortaleza dos Valos", "DM4270 48XS+6CX", 432, 378),
+          eq("esq", "ESQ_GAUCHA_FV_101 | Fortaleza dos Valos - Esquina Gaúcha", "Fortaleza dos Valos", "DM4270 24XS+2CX", 343, 460),
+          eq("stj", "DISTRIBUICAO_STJ_121 | Salto do Jacuí - Sindicato", "Salto do Jacuí", "DM4270 48XS+6CX", 432, 572),
+          eq("jacz", "POP-JACZ01_DISTR-136 | Jacuizinho - Cidade", "Jacuizinho", "DM4270 48XS+6CX", 548, 535),
           eq("ths03", "POP-THS03_DISTR-220 | Tunas - Sindicato", "Tunas", "DM4270 48XS+6CX", 632, 612),
           eq("ths01", "POP-THS01_DISTR-137 | Tunas - Cidade", "Tunas", "DM4370 4GT+4GX+4XS", 696, 570),
           eq("laa", "POP-LAA01_DISTR-221 | Lagoão - Torre", "Lagoão", "DM4270 48XS+6CX", 722, 682),
@@ -8643,6 +8643,8 @@
     if (m) return "HU" + m[1];
     m = /^(?:forty-gigabit-ethernet|fortygige)[-\s]?(\d+(?:\/\d+)*)$/i.exec(t);
     if (m) return "XL" + m[1];
+    m = /^(?:twenty-five-g(?:igabit)?-ethernet|twentyfivegige)[-\s]?(\d+(?:\/\d+)*)$/i.exec(t);
+    if (m) return "25GE" + m[1];
     return t;
   }
   function capacidadePelaPorta(porta) {
@@ -8685,7 +8687,7 @@
     return "";
   }
 
-  // Modelo do catálogo citado no nome ("POP-X_DM4270-48XS" → DM4270-48XS+6CX).
+  // Modelo do catálogo citado no nome ("POP-X_DM4270-48XS" → DM4270 48XS+6CX).
   // Procura o nome inteiro do modelo; senão, a família (parte antes do primeiro "-",
   // com 5+ caracteres e um número). Na dúvida entre vários, fica o primeiro do catálogo.
   function modeloPeloNome(nome) {
@@ -8696,7 +8698,7 @@
       .sort(function (a, b) { return limpo(b.nome).length - limpo(a.nome).length; })[0];
     if (inteiro) return inteiro;
     // Senão, o que tiver o maior pedaço inicial do nome dentro do texto
-    // ("DM4270-48XS" escolhe DM4270-48XS+6CX, não o 24XS). Mínimo: a família
+    // ("DM4270-48XS" escolhe DM4270 48XS+6CX, não o 24XS). Mínimo: a família
     // (5+ caracteres com número), para "OLT" ou "RB" sozinhos não chutarem.
     var melhor = null, tamanho = 0;
     catalogoModelos.forEach(function (m) {

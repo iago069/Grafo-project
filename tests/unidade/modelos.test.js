@@ -62,7 +62,9 @@ test("nome curto é reconhecido (vários com o mesmo início: o primeiro do cat�
   assert.equal(nome("CRS326"), "CRS326-24G-2S+");     // usado no exemplo do Grafo
   assert.equal(nome("CCR2004"), "CCR2004-16G-2S+");
   assert.equal(nome("MikroTik CCR2004"), "CCR2004-16G-2S+");
-  assert.equal(nome("DM4610"), "DM4610 8GPON");
+  assert.equal(nome("DM4610"), "DM4610 8GPON+8GX+4GT+2XS");
+  assert.equal(nome("DM4370"), "DM4370 4GT+4GX+4XS");
+  assert.equal(modelos.find(m => m.nome === "DM4370 4GT+4GX+4XS").portas.length, 12); // 4 RJ45 + 4 SFP + 4 SFP+ (ficha da Datacom)
   assert.equal(nome("CRS3"), undefined);               // não é início de nome inteiro
   assert.equal(nome("OLT"), undefined);                // curto demais
 });

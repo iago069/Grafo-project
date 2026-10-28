@@ -57,6 +57,8 @@
     if (m) return "HU" + m[1];
     m = /^(?:forty-gigabit-ethernet|fortygige)[-\s]?(\d+(?:\/\d+)*)$/i.exec(t);
     if (m) return "XL" + m[1];
+    m = /^(?:twenty-five-g(?:igabit)?-ethernet|twentyfivegige)[-\s]?(\d+(?:\/\d+)*)$/i.exec(t);
+    if (m) return "25GE" + m[1];
     return t;
   }
   function capacidadePelaPorta(porta) {
@@ -99,7 +101,7 @@
     return "";
   }
 
-  // Modelo do catálogo citado no nome ("POP-X_DM4270-48XS" → DM4270-48XS+6CX).
+  // Modelo do catálogo citado no nome ("POP-X_DM4270-48XS" → DM4270 48XS+6CX).
   // Procura o nome inteiro do modelo; senão, a família (parte antes do primeiro "-",
   // com 5+ caracteres e um número). Na dúvida entre vários, fica o primeiro do catálogo.
   function modeloPeloNome(nome) {
@@ -110,7 +112,7 @@
       .sort(function (a, b) { return limpo(b.nome).length - limpo(a.nome).length; })[0];
     if (inteiro) return inteiro;
     // Senão, o que tiver o maior pedaço inicial do nome dentro do texto
-    // ("DM4270-48XS" escolhe DM4270-48XS+6CX, não o 24XS). Mínimo: a família
+    // ("DM4270-48XS" escolhe DM4270 48XS+6CX, não o 24XS). Mínimo: a família
     // (5+ caracteres com número), para "OLT" ou "RB" sozinhos não chutarem.
     var melhor = null, tamanho = 0;
     catalogoModelos.forEach(function (m) {
