@@ -79,8 +79,8 @@
   function setMode(next) {
     mode = next;
     notice("");
-    title.textContent = next === "signup" ? "Crie sua conta" : next === "recover" ? "Recuperar acesso" : next === "reset" ? "Defina uma nova senha" : "Entre no Grafo";
-    intro.textContent = next === "recover" ? "Enviaremos um link para o seu e-mail." : next === "reset" ? "Escolha a senha que usará daqui para frente." : "Seus projetos ficam disponíveis na sua conta.";
+    title.textContent = next === "signup" ? "Crie sua conta" : next === "recover" ? "Recuperar acesso" : next === "reset" ? "Defina uma nova senha" : "Entre com seu e-mail e senha";
+    intro.textContent = next === "recover" ? "Enviaremos um link para o seu e-mail." : next === "reset" ? "Escolha a senha que usará daqui para frente." : next === "signup" ? "Seus projetos ficam disponíveis na sua conta." : "";
     emailInput.parentElement.querySelector('label[for="authEmail"]').hidden = next === "reset";
     emailInput.hidden = next === "reset";
     emailInput.required = next !== "reset";

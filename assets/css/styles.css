@@ -3326,3 +3326,35 @@ body:not([data-modo-diagrama="ftth"]) .so-modo-ftth { display: none; }
 .mapa-avancado .mapa-arquivo { margin-top: 10px; font-size: 0.8rem; }
 .mapa-avancado .mapa-arquivo input { font-size: 0.75rem; }
 .mapa-painel .mapa-ajuda, .mapa-painel .mapa-ibge, .mapa-painel .mapa-entradas { display: none; }
+
+/* ==== Login no formato centralizado: logo grande, nome, campos com rótulo na borda (2026-10-28) ==== */
+.login-tela { background: radial-gradient(700px 480px at 50% 22%, rgba(95, 212, 196, 0.10) 0%, transparent 70%), #0e1f2e; }
+.login-tela .landing-rede { opacity: 0.22; }
+.login-tela .auth-card { width: min(100%, 400px); padding: 0; background: none; box-shadow: none; color: #e8f1f7; border-radius: 0; animation: surgir 0.7s var(--ease-out) both; text-align: center; }
+.login-tela .login-marca { display: flex; flex-direction: column; align-items: center; gap: 0; margin: 0 0 10px; }
+.login-tela .login-marca .auth-logo { width: 170px; height: 153px; padding: 0; margin: 0 0 14px; border-radius: 0; background: none; box-shadow: none; filter: drop-shadow(0 10px 30px rgba(224, 147, 47, 0.25)); }
+.login-tela .login-nome { font: 800 3.4rem/1.1 var(--sans); letter-spacing: -0.02em; background: linear-gradient(180deg, #f6b25a 0%, #e0932f 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.login-tela .auth-card h2 { margin: 16px 0 28px; font: 500 1.02rem var(--sans); letter-spacing: 0; color: #dce7ef; }
+.login-tela .auth-card #authIntro { margin: -20px 0 24px; font-size: 0.86rem; color: #9fb2c2; }
+.login-tela .auth-card #authIntro:empty { display: none; }
+.login-tela .campo-borda { position: relative; margin: 0 0 22px; text-align: left; }
+.login-tela .campo-borda:has(input[hidden]) { display: none; }
+.login-tela .auth-card .campo-borda label { position: absolute; top: -9px; left: 12px; z-index: 1; margin: 0; padding: 0 5px; font: 600 0.74rem/18px var(--sans); color: #9fb2c2; pointer-events: none;
+  background: linear-gradient(180deg, #0e1f2e 50%, #173a50 50%); border-radius: 4px; transition: color 0.15s; }
+.login-tela .auth-card .campo-borda:focus-within label { color: #f6b25a; }
+.login-tela .auth-card .campo-borda input { height: 54px; padding: 14px 16px 10px !important; border-radius: 10px !important; border: 1px solid rgba(159, 178, 194, 0.45) !important; background: #173a50 !important; color: #ffffff !important; -webkit-text-fill-color: #ffffff; font: 600 0.98rem var(--sans); }
+.login-tela .auth-card .campo-borda input:hover:not(:focus) { border-color: rgba(159, 178, 194, 0.8) !important; background: #173a50 !important; }
+.login-tela .auth-card .campo-borda input:focus { border: 2px solid #e0932f !important; padding: 13px 15px 9px !important; background: #173a50 !important; box-shadow: 0 0 0 4px rgba(224, 147, 47, 0.14) !important; }
+.login-tela .auth-card .campo-borda input::placeholder { color: #7f97a8 !important; -webkit-text-fill-color: #7f97a8; }
+.login-tela .auth-card .campo-borda input:-webkit-autofill { -webkit-box-shadow: 0 0 0 40px #173a50 inset !important; -webkit-text-fill-color: #ffffff !important; caret-color: #fff; }
+.login-tela .auth-submit { margin-top: 18px; min-height: 46px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.12em; font: 800 0.9rem var(--sans); color: #1b1206; }
+.login-tela .auth-message { color: #ffd59e; }
+.login-tela .auth-links { justify-content: space-between; margin-top: 16px; }
+.login-tela .auth-links button { color: #9fdcd3; }
+.login-tela .login-ou { color: #6f8798; margin: 20px 0 14px; }
+.login-tela .login-ou::before, .login-tela .login-ou::after { background: rgba(159, 178, 194, 0.22); }
+.login-tela .auth-sem-login-botao { background: transparent; color: #e8f1f7; border: 1px solid rgba(159, 178, 194, 0.4); border-radius: 10px; }
+.login-tela .auth-sem-login-botao:hover { background: rgba(255, 255, 255, 0.06); border-color: #9fdcd3; }
+.login-tela .auth-sem-login span { color: #7f97a8; }
+.login-tela .login-rodape { margin-top: 18px; color: #9fb2c2; }
+@media (max-width: 480px) { .login-tela .login-marca .auth-logo { width: 130px; height: 117px; } .login-tela .login-nome { font-size: 2.8rem; } }
