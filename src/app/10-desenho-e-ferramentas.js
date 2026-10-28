@@ -1316,8 +1316,9 @@
     aresta.querySelectorAll(".selo-cabo").forEach(function (e) { e.remove(); });
     var texto = aresta.querySelector("text");
     if (!texto || texto.style.display === "none" || !texto.textContent.trim()) return;
-    var b;
-    try { b = texto.getBBox(); } catch (e) { return; }
+    // Medida guardada por posicionarRotuloDaAresta (mesma posição): não mede de novo.
+    var b = texto.__caixaTexto;
+    if (!b) { try { b = texto.getBBox(); } catch (e) { return; } }
     if (!b.width) return;
     var caminho = aresta.querySelector("path");
     var cor = (caminho && caminho.getAttribute("stroke")) || COR_CABO_PADRAO_APP;

@@ -3386,3 +3386,11 @@ body:not(.com-mapa) #btnApagarMapa { display: none !important; }
 .mk-avisos { margin: 0; padding: 8px 12px 8px 26px; border-radius: 10px; background: color-mix(in srgb, #e0932f 12%, transparent); color: var(--text); font-size: 0.8rem; line-height: 1.45; }
 .mk-saida code { font-size: 0.78rem; }
 @media (max-width: 860px) { .mk-corpo { grid-template-columns: 1fr; } .mk-rede { grid-template-columns: 1fr 1fr; } .mk-script { min-height: 240px; } }
+
+/* ==== Desempenho (2026-10-28) ====
+   O brilho do fundo animava sem parar atrás de painéis e botões com desfoque
+   (backdrop-filter): o navegador refazia o desfoque de todos eles a cada quadro,
+   mesmo com o app parado, e cada botão virava uma camada a recompor. Fundo
+   parado; desfoque só nos menus e janelas que abrem por cima (aparecem pouco). */
+body::after { animation: none; }
+.panel, .sidebar .nav, .rk-props, .rk-bloco, button.ghost { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }

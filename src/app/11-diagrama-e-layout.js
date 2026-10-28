@@ -1476,8 +1476,26 @@
     conexoesRenderizadas = estado.conexoes.slice();
     elDotCode.textContent = dot;
     elCanvas.classList.remove("vazio");
-    elCanvas.innerHTML = vizInstancia.renderString(dot, { format: "svg" });
+    elCanvas.innerHTML = svgDoDot(dot);
     registrarCentrosBase(elCanvas.querySelector("svg"));
+  }
+  // Últimos desenhos do Graphviz pelo texto DOT. O gerar renderiza várias vezes
+  // seguidas (portas, separação, grupos) e quase sempre com o mesmo DOT (as
+  // posições não entram nele); desfazer/refazer também volta a DOTs recentes.
+  // Mesmo DOT = mesmo SVG: reaproveita sem rodar o Graphviz de novo.
+  var cacheSvgDoDot = [];
+  function svgDoDot(dot) {
+    for (var i = 0; i < cacheSvgDoDot.length; i++) {
+      if (cacheSvgDoDot[i].dot === dot) {
+        var achado = cacheSvgDoDot.splice(i, 1)[0];
+        cacheSvgDoDot.push(achado);
+        return achado.svg;
+      }
+    }
+    var svg = vizInstancia.renderString(dot, { format: "svg" });
+    cacheSvgDoDot.push({ dot: dot, svg: svg });
+    if (cacheSvgDoDot.length > 8) cacheSvgDoDot.shift();
+    return svg;
   }
 
   // Posição (px, sem zoom) da origem do g.graph dentro do SVG.

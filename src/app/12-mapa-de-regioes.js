@@ -335,6 +335,44 @@
     });
     return dentro;
   }
+  // Contorno → grade de células (1 = dentro), feita uma vez por varredura de
+  // linhas (par-ímpar, então furos ficam de fora). Depois, "o ponto está dentro?"
+  // é só ler uma célula. Antes cada ponto percorria o contorno inteiro (milhares
+  // de vértices no IBGE) e a rota dos cabos com mapa levava segundos por quadro.
+  // listaDeAneis: [[anel, anel...], ...] (uma lista de anéis por região; a grade é a união).
+  function gradeDosAneis(listaDeAneis, celulasAlvo) {
+    var x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+    listaDeAneis.forEach(function (aneis) { aneis.forEach(function (a) { a.forEach(function (q) {
+      if (q[0] < x1) x1 = q[0]; if (q[0] > x2) x2 = q[0]; if (q[1] < y1) y1 = q[1]; if (q[1] > y2) y2 = q[1];
+    }); }); });
+    if (!isFinite(x1) || x2 <= x1 || y2 <= y1) return null;
+    var cel = Math.sqrt((x2 - x1) * (y2 - y1) / (celulasAlvo || 160000));
+    var cols = Math.max(1, Math.ceil((x2 - x1) / cel)), linhas = Math.max(1, Math.ceil((y2 - y1) / cel));
+    var grade = new Uint8Array(cols * linhas), xs = [];
+    listaDeAneis.forEach(function (aneis) {
+      for (var l = 0; l < linhas; l++) {
+        var y = y1 + (l + 0.5) * cel;
+        xs.length = 0;
+        for (var a = 0; a < aneis.length; a++) {
+          var an = aneis[a];
+          for (var i = 0, j = an.length - 1; i < an.length; j = i++) {
+            var yi = an[i][1], yj = an[j][1];
+            if ((yi > y) !== (yj > y)) xs.push(an[i][0] + (y - yi) * (an[j][0] - an[i][0]) / (yj - yi));
+          }
+        }
+        xs.sort(function (m, n) { return m - n; });
+        for (var k = 0; k + 1 < xs.length; k += 2) {
+          var c1 = Math.max(0, Math.ceil((xs[k] - x1) / cel - 0.5)), c2 = Math.min(cols - 1, Math.floor((xs[k + 1] - x1) / cel - 0.5));
+          for (var c = c1; c <= c2; c++) grade[l * cols + c] = 1;
+        }
+      }
+    });
+    return { x1: x1, y1: y1, x2: x2, y2: y2, cel: cel, cols: cols, linhas: linhas, grade: grade };
+  }
+  function dentroDaGrade(g, x, y) {
+    var c = Math.floor((x - g.x1) / g.cel), l = Math.floor((y - g.y1) / g.cel);
+    return c >= 0 && l >= 0 && c < g.cols && l < g.linhas && g.grade[l * g.cols + c] === 1;
+  }
   // Maior retângulo com a proporção w:h que cabe inteiro dentro da região:
   // devolve o centro (unidades do mapa) e k (o retângulo mede k*w por k*h).
   // Grade de centros candidatos e busca binária do tamanho; depois refina perto
@@ -345,6 +383,9 @@
     if (cacheRetangulo[chave]) return cacheRetangulo[chave];
     var aneis = aneisDoCaminho(regiao.d);
     if (!aneis.length || !(w > 0) || !(h > 0)) return null;
+    var gradeRegiao = gradeDosAneis([aneis], 90000);
+    if (!gradeRegiao) return null;
+    var dentroDosAneis = function (_, x, y) { return dentroDaGrade(gradeRegiao, x, y); };
     var bx1 = Infinity, by1 = Infinity, bx2 = -Infinity, by2 = -Infinity;
     aneis.forEach(function (a) { a.forEach(function (p) { bx1 = Math.min(bx1, p[0]); bx2 = Math.max(bx2, p[0]); by1 = Math.min(by1, p[1]); by2 = Math.max(by2, p[1]); }); });
     var kMax = Math.min((bx2 - bx1) / w, (by2 - by1) / h);
@@ -384,27 +425,21 @@
   // Contorno das cidades em coordenadas do desenho, para a rota dos cabos
   // (03-cabos-grupos-e-arraste.js) preferir passar por dentro do mapa.
   // Preparado uma vez por roteamento; sem mapa (ou mapa escondido), vazio.
-  var contornoDoMapa = null;
+  // A grade é refeita só quando o mapa muda (posição, escala, regiões visíveis).
+  var contornoDoMapa = null, chaveContornoDoMapa = "";
   function prepararContornoDoMapa() {
-    contornoDoMapa = null;
-    if (!temRegioes() || camadasOcultas().mapa) return;
+    if (!temRegioes() || camadasOcultas().mapa) { contornoDoMapa = null; chaveContornoDoMapa = ""; return; }
     var m = estado.mapa, esc = Number(m.escala) || 1, ox = Number(m.x) || 0, oy = Number(m.y) || 0;
-    var lista = [];
-    m.regioes.forEach(function (r) {
-      if (r.oculta || r.transform) return;
-      var aneis = aneisDoCaminho(r.d).map(function (a) { return a.map(function (q) { return [ox + q[0] * esc, oy + q[1] * esc]; }); });
-      if (!aneis.length) return;
-      var c = { x1: Infinity, y1: Infinity, x2: -Infinity, y2: -Infinity };
-      aneis.forEach(function (a) { a.forEach(function (q) { c.x1 = Math.min(c.x1, q[0]); c.x2 = Math.max(c.x2, q[0]); c.y1 = Math.min(c.y1, q[1]); c.y2 = Math.max(c.y2, q[1]); }); });
-      lista.push({ aneis: aneis, caixa: c });
-    });
-    if (lista.length) contornoDoMapa = lista;
+    var visiveis = m.regioes.filter(function (r) { return !r.oculta && !r.transform; });
+    var chave = [ox, oy, esc, visiveis.length, visiveis.reduce(function (t, r) { return t + String(r.d).length; }, 0), visiveis.map(function (r) { return r.codigo || r.nome; }).join(",")].join("|");
+    if (chave === chaveContornoDoMapa) return;
+    chaveContornoDoMapa = chave;
+    var lista = visiveis.map(function (r) {
+      return aneisDoCaminho(r.d).map(function (a) { return a.map(function (q) { return [ox + q[0] * esc, oy + q[1] * esc]; }); });
+    }).filter(function (aneis) { return aneis.length; });
+    contornoDoMapa = lista.length ? gradeDosAneis(lista, 250000) : null;
   }
-  function pontoNoMapa(x, y) {
-    return contornoDoMapa.some(function (r) {
-      return x >= r.caixa.x1 && x <= r.caixa.x2 && y >= r.caixa.y1 && y <= r.caixa.y2 && dentroDosAneis(r.aneis, x, y);
-    });
-  }
+  function pontoNoMapa(x, y) { return dentroDaGrade(contornoDoMapa, x, y); }
   // Custo dos trechos fora das cidades: um ponto a cada ~50 do desenho.
   var CUSTO_FORA_DO_MAPA = 120;
   function custoForaDoMapa(segmentos) {

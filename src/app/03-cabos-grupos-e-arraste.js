@@ -245,9 +245,20 @@
       }
     }
     colocar(trechos[0], 0.5, -1);
-    if (!ocupados || !texto.textContent.trim()) return;
+    if (!ocupados || !texto.textContent.trim()) { delete texto.__caixaTexto; return; }
+    // Mede o texto uma vez só: nas outras posições testadas a caixa é calculada
+    // (mesmo tamanho; muda só o x/y e o alinhamento). Medir a cada tentativa
+    // forçava o navegador a recalcular o layout dezenas de vezes por cabo.
+    var b0;
+    try { b0 = texto.getBBox(); } catch (e) { return; }
+    function deslocAncora(ancora) { return ancora === "middle" ? b0.width / 2 : ancora === "end" ? b0.width : 0; }
+    var offX = b0.x - (Number(texto.getAttribute("x")) - deslocAncora(texto.getAttribute("text-anchor")));
+    var offY = b0.y - Number(texto.getAttribute("y"));
     function caixa() {
-      try { var b = texto.getBBox(); return { x1: b.x - 18, y1: b.y - 4, x2: b.x + b.width + 8, y2: b.y + b.height + 4 }; } catch (e) { return null; }
+      var b = { x: Number(texto.getAttribute("x")) - deslocAncora(texto.getAttribute("text-anchor")) + offX,
+        y: Number(texto.getAttribute("y")) + offY, width: b0.width, height: b0.height };
+      texto.__caixaTexto = b; // o selo do rótulo usa sem medir de novo
+      return { x1: b.x - 18, y1: b.y - 4, x2: b.x + b.width + 8, y2: b.y + b.height + 4 };
     }
     // Quanto a caixa encosta no que já está ocupado. Em cima de equipamento ou
     // porta pesa muito mais que em cima de outro rótulo.
@@ -287,6 +298,17 @@
     for (var i = 1; i < pts.length; i++) comp += Math.abs(pts[i].x - pts[i - 1].x) + Math.abs(pts[i].y - pts[i - 1].y);
     return Math.max(CONFIG_ROTEAMENTO_CABOS.raioCurva, Math.min(34, Math.round(comp / 55)));
   }
+  // Trechos já traçados ao alcance das variantes deste cabo (os longe não mudam
+  // o custo e só pesavam a conta: cada variante comparava com todos).
+  function trechosPerto(existentes, s, e) {
+    var folga = ALCANCE_DESVIO + CONFIG_ROTEAMENTO_CABOS.espaco;
+    var x1 = Math.min(s.x, e.x) - folga, x2 = Math.max(s.x, e.x) + folga, y1 = Math.min(s.y, e.y) - folga, y2 = Math.max(s.y, e.y) + folga;
+    return existentes.filter(function (g) {
+      return Math.max(g.x1, g.x2) >= x1 && Math.min(g.x1, g.x2) <= x2 && Math.max(g.y1, g.y2) >= y1 && Math.min(g.y1, g.y2) <= y2;
+    });
+  }
+  // Equipamentos sendo arrastados ({ id: true }), para refazer só os cabos deles.
+  var idsEmArraste = null;
   function rotearCabosOrtogonalmente() {
     prepararContornoDoMapa();
     var svg = elCanvas.querySelector("svg");
@@ -313,11 +335,26 @@
     var rotulos = obstaculos.filter(function (o) { return o.equipamento; }).map(function (o) {
       return { equipamento: true, x1: o.x1 + FOLGA_OBSTACULO - 2, y1: o.y1 + FOLGA_OBSTACULO - 2, x2: o.x2 - FOLGA_OBSTACULO + 2, y2: o.y2 - FOLGA_OBSTACULO + 2 };
     });
+    // Arrastando: só os cabos dos equipamentos que se movem são refeitos; os
+    // outros ficam como estavam (entram só como trechos a evitar). Antes todos
+    // os cabos eram refeitos a cada quadro do arraste.
+    var anteriores = rotasDesenhadas || {};
+    var fixas = [];
+    if (arrastandoEquipamento && idsEmArraste) {
+      rotas = rotas.filter(function (rota) {
+        var pts = anteriores[estado.conexoes.indexOf(rota.conexao)];
+        if (idsEmArraste[rota.conexao.de] || idsEmArraste[rota.conexao.para] || !pts) return true;
+        rota.pts = pts; fixas.push(rota);
+        existentes.push.apply(existentes, segmentosDaRota(pts));
+        return false;
+      });
+    }
     rotasDesenhadas = {};
+    fixas.forEach(function (rota) { rotasDesenhadas[estado.conexoes.indexOf(rota.conexao)] = rota.pts; });
     rotas.forEach(function (rota) {
       // Rota feita à mão (10-desenho-e-ferramentas.js) passa pelas dobras escolhidas.
       var pts = rotaManualDoCabo(rota.s, rota.e, rota.conexao.rota)
-        || tracarRota(rota.s, rota.e, existentes, obstaculosDoCabo(obstaculos, rota.conexao, rota.s, rota.e));
+        || tracarRota(rota.s, rota.e, trechosPerto(existentes, rota.s, rota.e), obstaculosDoCabo(obstaculos, rota.conexao, rota.s, rota.e));
       pts = endireitarDegraus(pts);
       existentes.push.apply(existentes, segmentosDaRota(pts));
       // Cabo longo dobra com curva mais aberta (mais redondo); curto, a curva normal.
@@ -329,8 +366,13 @@
       desenharExtrasDoCabo(rota.aresta, pts, rota.conexao);
     });
     juntarCabosDeLag(rotas);
-    // Rótulos por último: desviam dos equipamentos, de todos os cabos e dos outros rótulos.
-    rotas.forEach(function (rota) {
+    // Rótulos por último: desviam dos equipamentos, de todos os cabos e dos outros rótulos
+    // (os dos cabos parados ficam onde estão e só ocupam o lugar deles).
+    fixas.forEach(function (rota) {
+      var t = rota.aresta.querySelector("text"), c = t && t.__caixaTexto;
+      if (c && t.style.display !== "none") rotulos.push({ x1: c.x - 18, y1: c.y - 4, x2: c.x + c.width + 8, y2: c.y + c.height + 4 });
+    });
+    rotas.concat(fixas).forEach(function (rota) {
       var linha = rotasDesenhadas[estado.conexoes.indexOf(rota.conexao)] || rota.pts;
       for (var i = 1; i < linha.length; i++) {
         var a = linha[i - 1], b = linha[i];
@@ -736,6 +778,8 @@
         });
         var moveu = false;
         arrastandoEquipamento = true;
+        idsEmArraste = {};
+        grupoArraste.forEach(function (m) { idsEmArraste[m.eq.id] = true; });
         iniciarCacheDeMedidas(); // formato das peças não muda até soltar
         grupoArraste.forEach(function (m) { m.node.classList.add("arrastando"); });
         elCanvas.classList.add("arrastando-no");
@@ -767,6 +811,7 @@
         }
         function soltar() {
           arrastandoEquipamento = false;
+          idsEmArraste = null;
           if (quadroMover) { cancelAnimationFrame(quadroMover); desenharPosicao(); }
           encerrarCacheDeMedidas();
           apagarGuias(svg);
