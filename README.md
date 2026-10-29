@@ -365,9 +365,9 @@ O `scripts/servidor-local.js` lê o `.env` sozinho ao iniciar — se mudar o arq
 | `npm run icones` | Gera `assets/js/editor/icones-embutidos.js` |
 | `npm test` | Roda os testes da pasta `tests/unidade/` (requer Node.js 22+) |
 | `npm run test:navegador` | Abre o site num navegador de verdade e testa página inicial, editor, PDF, celular e tutorial (`tests/navegador/`) |
-| `npm run montar` | Monta `assets/js/editor/app.js` a partir das partes em `src/app/` |
+| `npm run montar` | Monta `assets/js/editor/app.js` a partir das partes em `src/app/` e gera as versões compactadas que o site carrega (`app.min.js` e `assets/css/styles.min.css`) |
 
-**Para mudar o editor, edite os arquivos de `src/app/`**, não o `assets/js/editor/app.js`, e depois rode `npm run montar`. As partes são fatias, em ordem, de um único bloco de código com estado compartilhado (por isso uma parte sozinha não é um arquivo JavaScript completo). O `npm test` avisa se o `app.js` ficou desatualizado.
+**Para mudar o editor, edite os arquivos de `src/app/`**, não o `assets/js/editor/app.js`, e depois rode `npm run montar`. As partes são fatias, em ordem, de um único bloco de código com estado compartilhado (por isso uma parte sozinha não é um arquivo JavaScript completo). O mesmo vale para o CSS: edite `assets/css/styles.css` e rode `npm run montar`. O `npm test` avisa se o `app.js`, o `app.min.js` ou o `styles.min.css` ficaram desatualizados.
 
 Os testes também rodam sozinhos no GitHub a cada envio (`.github/workflows/testes.yml`) e na Vercel antes de publicar (`buildCommand` no `vercel.json`): se algum falhar, o deploy é cancelado e o site continua na versão anterior.
 
@@ -436,7 +436,7 @@ assets/                     tudo o que o navegador baixa
                             primeiros-passos, racks
   vendor/                   Zod (validação), servido localmente
 
-src/app/                    partes do editor, de 00-catalogo.js a 16-pagina-e-pdf.js — É AQUI QUE SE EDITA
+src/app/                    partes do editor, de 00-catalogo.js a 17-pagina-e-pdf.js — É AQUI QUE SE EDITA
                             (npm run montar junta tudo em assets/js/editor/app.js, na ordem dos números)
 data/equipamentos.json      catálogo de tipos e modelos de equipamento (por fabricante)
 api/                        funções da Vercel: auth-config, equipamentos e ler-imagem (IA)

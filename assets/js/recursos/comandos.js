@@ -28,6 +28,8 @@
     { titulo: "Histórico de versões", grupo: "Projeto", icone: "historico", fazer: clicar("btnHistorico"), visivel: existe("btnHistorico"), termos: "versao restaurar desfazer" },
     { titulo: "Editar em equipe", grupo: "Projeto", icone: "equipe", fazer: clicar("btnEquipe"), visivel: existe("btnEquipe"), termos: "compartilhar convidar" },
     { titulo: "Compartilhar link", grupo: "Projeto", icone: "compartilhar", fazer: clicar("btnCompartilhar"), visivel: existe("btnCompartilhar"), termos: "link cliente" },
+    { titulo: "Verificar diagrama", grupo: "Diagrama", icone: "lista", fazer: function () { app.abrirVerificador && app.abrirVerificador(); }, termos: "erros conferir ip repetido porta duplicada rede sobreposta problemas" },
+    { titulo: "Endereços IP", grupo: "Diagrama", icone: "codigo", fazer: function () { app.abrirEnderecosIp && app.abrirEnderecosIp(""); }, termos: "ip rede redes /30 /29 livre proxima subrede ipam" },
     { titulo: "Relatório de inventário (.xlsx)", grupo: "Relatórios", icone: "planilha", fazer: clicar("btnInventario"), termos: "planilha excel inventario" },
     { titulo: "Etiquetas com QR code", grupo: "Relatórios", icone: "qrcode", fazer: clicar("btnEtiquetas"), termos: "etiqueta qr imprimir" },
     { titulo: "JSON e CSV", grupo: "Integração", icone: "codigo", fazer: abrirPainel("navJsonCsv"), termos: "json csv planilha importar" },
@@ -46,10 +48,10 @@
   fundo.innerHTML =
     '<div class="paleta" role="dialog" aria-modal="true" aria-label="Paleta de comandos">' +
       '<div class="paleta-busca"><span class="paleta-lupa" aria-hidden="true"></span>' +
-        '<input type="text" class="paleta-input" placeholder="Buscar equipamento, projeto ou ação…" aria-label="Buscar" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="paletaLista">' +
+        '<input type="text" class="paleta-input" placeholder="Buscar equipamento, IP, cabo, VLAN, projeto ou ação…" aria-label="Buscar" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="paletaLista">' +
         '<kbd>Esc</kbd></div>' +
       '<div class="paleta-lista" id="paletaLista" role="listbox"></div>' +
-      '<div class="paleta-rodape"><span><kbd>↑</kbd><kbd>↓</kbd> navegar</span><span><kbd>Enter</kbd> abrir</span><span><kbd>Ctrl</kbd><kbd>K</kbd> abrir a paleta</span></div>' +
+      '<div class="paleta-rodape"><span><kbd>↑</kbd><kbd>↓</kbd> navegar</span><span><kbd>Enter</kbd> ir até</span><span><kbd>Shift</kbd><kbd>Enter</kbd> editar</span><span><kbd>Ctrl</kbd><kbd>K</kbd> abrir a paleta</span></div>' +
     '</div>';
   document.body.appendChild(fundo);
   var input = fundo.querySelector(".paleta-input");
@@ -67,20 +69,63 @@
     barra.insertBefore(botao, barra.firstChild);
   }
 
+  // Equipamento: Enter vai até ele no diagrama (centraliza e seleciona);
+  // Shift+Enter abre o editor. No Bayface, volta para a topologia antes.
+  function sairDosRacks() { var s = document.getElementById("modoDiagrama"); if (s && s.value === "racks") modo("topologia")(); }
+  // Espera o equipamento aparecer no desenho (depois de trocar de projeto ou de modo).
+  function quandoDesenhado(id, fazer) {
+    var limite = Date.now() + 4000;
+    (function tentar() {
+      var svg = document.querySelector("#canvas svg");
+      var ok = svg && Array.prototype.some.call(svg.querySelectorAll("g.node"), function (n) { return app.idDoNo(n) === id; });
+      if (ok) { fazer(); return; }
+      if (Date.now() < limite) setTimeout(tentar, 120);
+    })();
+  }
+  function irAteEquipamento(id, editar) {
+    sairDosRacks();
+    quandoDesenhado(id, function () {
+      if (editar) app.editarEquipamento(id);
+      else if (app.focarEquipamento) app.focarEquipamento(id);
+      else app.editarEquipamento(id);
+    });
+  }
+  function ehIpv4(t) { return /^\s*(\d{1,3}\.){3}\d{1,3}\s*$/.test(t); }
+
+  var cacheCandidatos = null;
   function candidatos() {
+    if (cacheCandidatos) return cacheCandidatos;
     var lista = [];
     var nomeAtual = app.projetoAtual();
-    var dados = app.dadosProjeto(nomeAtual) || { equipamentos: [] };
+    var dados = app.dadosProjeto(nomeAtual) || { equipamentos: [], conexoes: [] };
+    var nomePorId = {};
     (dados.equipamentos || []).forEach(function (eq) {
-      lista.push({ titulo: eq.nome || eq.id, sub: [eq.tipo, eq.ip, eq.modelo, eq.grupo].filter(Boolean).join(" · "), grupo: "Equipamentos", icone: "equip", termos: [eq.tipo, eq.ip, eq.modelo, eq.grupo].join(" "),
-        fazer: function () { modo(document.getElementById("modoDiagrama").value === "racks" ? "topologia" : document.getElementById("modoDiagrama").value)(); app.editarEquipamento(eq.id); } });
+      nomePorId[eq.id] = eq.nome || eq.id;
+      lista.push({ titulo: eq.nome || eq.id, sub: [eq.tipo, eq.ip, eq.modelo, eq.grupo].filter(Boolean).join(" · "), grupo: "Equipamentos", icone: "equip", termos: [eq.tipo, eq.ip, eq.modelo, eq.grupo, eq.municipio].join(" "),
+        fazer: function () { irAteEquipamento(eq.id, false); }, editar: function () { irAteEquipamento(eq.id, true); } });
+    });
+    // Cabos: por VLAN, porta, rede ou nome das pontas (só aparecem buscando).
+    (dados.conexoes || []).forEach(function (c, i) {
+      var de = nomePorId[c.de] || c.de, para = nomePorId[c.para] || c.para;
+      var portas = [c.saida, c.chegada].filter(Boolean).join(" → ");
+      lista.push({ titulo: de + " ⇄ " + para, sub: [portas, c.vlan ? "VLAN " + c.vlan : "", c.redeVlan, c.tipo, c.potencia].filter(Boolean).join(" · "), grupo: "Cabos", icone: "cabo", soBuscando: true,
+        termos: ["cabo", c.saida, c.chegada, c.vlan ? "vlan " + c.vlan : "", c.redeVlan, c.tipo, c.potencia].join(" "),
+        fazer: function () { sairDosRacks(); setTimeout(function () { if (app.focarCabo) app.focarCabo(i); }, 60); } });
     });
     app.nomesProjetos().forEach(function (nome) {
       if (nome === nomeAtual) return;
       lista.push({ titulo: nome, sub: "Abrir projeto", grupo: "Projetos", icone: "pasta", fazer: function () { app.trocarProjeto(nome); } });
+      // Equipamentos dos outros projetos: abre o projeto e vai até ele.
+      var outro = app.dadosProjeto(nome);
+      ((outro && outro.equipamentos) || []).forEach(function (eq) {
+        lista.push({ titulo: eq.nome || eq.id, sub: [nome, eq.ip, eq.tipo].filter(Boolean).join(" · "), grupo: "Em outros projetos", icone: "equip", soBuscando: true, termos: [eq.ip, eq.modelo, eq.tipo, nome].join(" "),
+          fazer: function () { app.trocarProjeto(nome); irAteEquipamento(eq.id, false); },
+          editar: function () { app.trocarProjeto(nome); irAteEquipamento(eq.id, true); } });
+      });
     });
     if (window.GrafoBiblioteca) lista = lista.concat(window.GrafoBiblioteca.candidatos());
     ACOES.forEach(function (a) { if (!a.visivel || a.visivel()) lista.push(a); });
+    cacheCandidatos = lista;
     if (window.GrafoBiblioteca) {
       lista.push({ titulo: "Documentação deste diagrama", grupo: "Navegar", icone: "lista", termos: "documentos manual procedimento livro pop", fazer: function () { window.GrafoBiblioteca.livroDoProjeto(); } });
     }
@@ -114,8 +159,12 @@
 
   function render() {
     var q = semAcento(input.value).trim();
-    var pont = candidatos().map(function (c) { return { c: c, p: pontuar(c, q) }; }).filter(function (x) { return x.p > 0; });
-    if (q) pont.sort(function (a, b) { return b.p - a.p; });
+    var pont = candidatos().filter(function (c) { return q || !c.soBuscando; }).map(function (c) { return { c: c, p: pontuar(c, q) }; }).filter(function (x) { return x.p > 0; });
+    if (q) pont.sort(function (a, b) { return b.p - a.p || (a.c.grupo === "Em outros projetos") - (b.c.grupo === "Em outros projetos"); });
+    if (ehIpv4(input.value) && app.abrirEnderecosIp) {
+      var ip = input.value.trim();
+      pont.push({ c: { titulo: "Procurar " + ip + " em Endereços IP", sub: "Mostra a rede onde este IP fica e quem está nela", grupo: "Endereços IP", icone: "codigo", fazer: function () { app.abrirEnderecosIp(ip); } }, p: 1 });
+    }
     itens = pont.slice(0, 40).map(function (x) { return x.c; });
     if (!q) itens = itens.filter(function (c) { return c.grupo !== "Equipamentos"; }).concat(itens.filter(function (c) { return c.grupo === "Equipamentos"; }).slice(0, 6));
     ativo = Math.min(ativo, Math.max(0, itens.length - 1));
@@ -141,25 +190,28 @@
     input.setAttribute("aria-activedescendant", "paleta-op-" + ativo);
   }
 
-  function executar(i) {
+  function executar(i, editar) {
     var it = itens[i];
     if (!it) return;
     fechar(false);
-    setTimeout(function () { try { it.fazer(); } catch (e) { console.error(e); } }, 30);
+    var acao = editar && it.editar ? it.editar : it.fazer;
+    setTimeout(function () { try { acao(); } catch (e) { console.error(e); } }, 30);
   }
 
   function abrir() {
-    if (!fundo.hidden) return;
+    // Fechando (animação de saída) conta como fechada: reabre na hora.
+    if (!fundo.hidden && !fundo.classList.contains("saindo")) return;
     focoAntes = document.activeElement;
     fundo.hidden = false;
     fundo.classList.remove("saindo");
+    cacheCandidatos = null;
     input.value = ""; ativo = 0; render();
     input.focus();
   }
   function fechar(devolverFoco) {
-    if (fundo.hidden) return;
+    if (fundo.hidden || fundo.classList.contains("saindo")) return;
     fundo.classList.add("saindo");
-    setTimeout(function () { fundo.hidden = true; fundo.classList.remove("saindo"); }, 140);
+    setTimeout(function () { if (!fundo.classList.contains("saindo")) return; fundo.hidden = true; fundo.classList.remove("saindo"); }, 140);
     if (devolverFoco !== false && focoAntes && focoAntes.focus) focoAntes.focus();
   }
 
@@ -167,7 +219,7 @@
   input.addEventListener("keydown", function (ev) {
     if (ev.key === "ArrowDown") { ev.preventDefault(); mover(1); }
     else if (ev.key === "ArrowUp") { ev.preventDefault(); mover(-1); }
-    else if (ev.key === "Enter") { ev.preventDefault(); executar(ativo); }
+    else if (ev.key === "Enter") { ev.preventDefault(); executar(ativo, ev.shiftKey); }
     else if (ev.key === "Escape") { ev.preventDefault(); fechar(); }
   });
   lista.addEventListener("mousemove", function (ev) {
@@ -176,14 +228,14 @@
     var i = Number(el.getAttribute("data-i"));
     if (i !== ativo) { ativo = i; mover(0); }
   });
-  lista.addEventListener("click", function (ev) { var el = ev.target.closest(".paleta-item"); if (el) executar(Number(el.getAttribute("data-i"))); });
+  lista.addEventListener("click", function (ev) { var el = ev.target.closest(".paleta-item"); if (el) executar(Number(el.getAttribute("data-i")), ev.shiftKey); });
   fundo.addEventListener("mousedown", function (ev) { if (ev.target === fundo) fechar(); });
   document.addEventListener("keydown", function (ev) {
     if (ev.key === "Escape" && !fundo.hidden) { ev.preventDefault(); fechar(); return; }
     if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && (ev.key === "k" || ev.key === "K")) {
       if (document.body.classList.contains("auth-locked")) return;
       ev.preventDefault();
-      if (fundo.hidden) abrir(); else fechar();
+      if (fundo.hidden || fundo.classList.contains("saindo")) abrir(); else fechar();
     }
   });
   // ---- ficha ao passar o mouse num equipamento do diagrama ----------------------

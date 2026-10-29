@@ -12,7 +12,7 @@
       document.documentElement.classList.add("com-sessao");
       // O editor vai abrir: começa já a baixar o que ele usa (auth.js carrega em ordem).
       [["https://cdn.jsdelivr.net/npm/@viz-js/viz@3.31.0/dist/viz-global.js", "sha384-iX6VK6ib27dxYB4T470zbHOsDDoLewuYvrIgv2B3XXe8kgfKsGMf8QIleFy6VPi4"],
-       ["./assets/vendor/zod-3.25.76.min.js"], ["./assets/js/comum/esquema.js"], ["./assets/js/editor/app.js"]].forEach(function (arquivo) {
+       ["./assets/vendor/zod-3.25.76.min.js"], ["./assets/js/comum/esquema.js"], ["./assets/js/recursos/planilha.js"], ["./assets/js/editor/app.min.js"]].forEach(function (arquivo) {
         var link = document.createElement("link");
         link.rel = "preload";
         link.as = "script";

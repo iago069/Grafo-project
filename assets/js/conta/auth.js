@@ -307,10 +307,13 @@
     if (resume) resumePending(resume.copy, resume.sync);
   }
 
-  function loadScript(src, integrity) {
+  // emOrdem: baixa junto com os outros, mas roda na ordem em que foi pedido
+  // (async = false). Sem isso cada arquivo só começava a baixar depois do anterior.
+  function loadScript(src, integrity, emOrdem) {
     return new Promise(function (resolve, reject) {
       var script = document.createElement("script");
       script.src = src;
+      if (emOrdem) script.async = false;
       if (integrity) { script.integrity = integrity; script.crossOrigin = "anonymous"; }
       script.onload = resolve;
       script.onerror = function () { reject(new Error("Não foi possível carregar o editor.")); };
@@ -325,12 +328,12 @@
     ["./assets/vendor/zod-3.25.76.min.js"],
     ["./assets/js/comum/esquema.js"],
     ["./assets/js/recursos/planilha.js"],
-    ["./assets/js/editor/app.js"]
+    ["./assets/js/editor/app.min.js"]
   ];
 
   async function loadApp() {
     if (appLoaded) return;
-    for (var i = 0; i < EDITOR_SCRIPTS.length; i++) await loadScript(EDITOR_SCRIPTS[i][0], EDITOR_SCRIPTS[i][1]);
+    await Promise.all(EDITOR_SCRIPTS.map(function (arquivo) { return loadScript(arquivo[0], arquivo[1], true); }));
     appLoaded = true;
     loadScript("./assets/js/recursos/primeiros-passos.js").catch(function (error) { console.error(error); });
     // Etiquetas exportam um PDF: valem também sem login.

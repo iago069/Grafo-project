@@ -1363,6 +1363,8 @@
   Viz.instance().then(function (viz) {
     vizInstancia = viz;
     if (gerarPendente) { gerarPendente = false; gerar(); }
+    var iniciarDepois = window.requestIdleCallback || function (f) { return setTimeout(f, 1500); };
+    iniciarDepois(function () { iniciarTrabalhadorViz(); }, { timeout: 4000 });
   }).catch(function (e) {
     mostrarErro("Não foi possível carregar o Graphviz.\nDetalhe: " + e.message);
   });
@@ -1460,6 +1462,34 @@
     }
   }
 
+  // Soltar um equipamento sem redesenhar tudo: se as portas continuam do mesmo
+  // lado (o DOT é o mesmo do desenho na tela) e ninguém ficou encostado em
+  // ninguém, o SVG atual já está certo; basta refazer as caixas dos grupos, os
+  // cabos, a legenda e a área do desenho. Retorna false quando precisa do gerar().
+  function soltarSemRedesenhar(fixoId) {
+    if (!vizInstancia || !elCanvas.querySelector("svg") || !ultimoDot) return false;
+    var dot;
+    try { dot = gerarDot(estado, direcaoEfetiva()); } catch (e) { return false; }
+    if (dot !== ultimoDot) return false;
+    try {
+      ajustarCaixasDosGrupos();
+      // Encostou: as funções já afastaram os vizinhos. Se com isso alguma porta
+      // mudou de lado, o resto é com o gerar().
+      if (separarEquipamentosSobrepostos(fixoId) | separarGruposSobrepostos(fixoId)) {
+        if (gerarDot(estado, direcaoEfetiva()) !== ultimoDot) return false;
+        ajustarCaixasDosGrupos();
+      }
+      equipamentoFixoNaSeparacao = null;
+      rotearCabosOrtogonalmente();
+      desenharLegendaCabos();
+      ajustarViewBoxAoConteudo(true);
+      aplicarCamadas();
+      salvarLocal(JSON.stringify(estado) === ultimoEstadoHistorico);
+      solicitarPrevia();
+      return true;
+    } catch (e) { return false; }
+  }
+
   // Uma conexão só existe com os dois equipamentos no diagrama. As exclusões já
   // levam os cabos junto; isto é a rede de segurança para qualquer outro caminho.
   function removerConexoesOrfas() {
@@ -1476,26 +1506,117 @@
     conexoesRenderizadas = estado.conexoes.slice();
     elDotCode.textContent = dot;
     elCanvas.classList.remove("vazio");
-    elCanvas.innerHTML = svgDoDot(dot);
-    registrarCentrosBase(elCanvas.querySelector("svg"));
+    var desenho = desenhoDoDot(dot);
+    elCanvas.innerHTML = desenho.svg;
+    // Mesmo SVG = mesmos centros: mede (getBBox de cada equipamento) só na primeira vez.
+    if (desenho.centros) centrosBase = Object.assign({}, desenho.centros);
+    else { registrarCentrosBase(elCanvas.querySelector("svg")); desenho.centros = Object.assign({}, centrosBase); }
   }
   // Últimos desenhos do Graphviz pelo texto DOT. O gerar renderiza várias vezes
   // seguidas (portas, separação, grupos) e quase sempre com o mesmo DOT (as
   // posições não entram nele); desfazer/refazer também volta a DOTs recentes.
   // Mesmo DOT = mesmo SVG: reaproveita sem rodar o Graphviz de novo.
   var cacheSvgDoDot = [];
-  function svgDoDot(dot) {
+  function guardarDesenho(dot, svg) {
+    var desenho = { dot: dot, svg: svg, centros: null };
+    cacheSvgDoDot.push(desenho);
+    if (cacheSvgDoDot.length > 8) cacheSvgDoDot.shift();
+    return desenho;
+  }
+  function desenhoDoDot(dot) {
     for (var i = 0; i < cacheSvgDoDot.length; i++) {
       if (cacheSvgDoDot[i].dot === dot) {
         var achado = cacheSvgDoDot.splice(i, 1)[0];
         cacheSvgDoDot.push(achado);
-        return achado.svg;
+        return achado;
       }
     }
-    var svg = vizInstancia.renderString(dot, { format: "svg" });
-    cacheSvgDoDot.push({ dot: dot, svg: svg });
-    if (cacheSvgDoDot.length > 8) cacheSvgDoDot.shift();
-    return svg;
+    return guardarDesenho(dot, vizInstancia.renderString(dot, { format: "svg" }));
+  }
+  function svgDoDot(dot) { return desenhoDoDot(dot).svg; }
+  // As medidas guardadas valem para a fonte da época: quando a fonte da web
+  // termina de carregar, os textos mudam de largura e é preciso medir de novo.
+  if (document.fonts && document.fonts.addEventListener) {
+    document.fonts.addEventListener("loadingdone", function () { cacheSvgDoDot.forEach(function (d) { d.centros = null; }); });
+  }
+
+  // ---- Graphviz em segundo plano ---------------------------------------------
+  // O gerar() continua síncrono (várias partes contam com o desenho pronto logo
+  // depois), mas antes dos redesenhos mais comuns (soltar um equipamento, editar
+  // na lista) o DOT novo vai para uma cópia do Graphviz num Web Worker. Quando a
+  // resposta chega, ela entra no cache acima e o gerar() já a encontra pronta:
+  // a parte mais pesada sai da tela. Sem Worker (ou se ele falhar), o gerar()
+  // roda o Graphviz aqui mesmo, como antes.
+  var trabalhadorViz = null, trabalhadorVizFalhou = false, pedidosViz = {}, proximoPedidoViz = 0;
+  function codigoDoTrabalhadorViz() {
+    var pronto = Viz.instance();
+    self.onmessage = function (ev) {
+      var pedido = ev.data;
+      pronto.then(function (viz) {
+        try { self.postMessage({ id: pedido.id, svg: viz.renderString(pedido.dot, { format: "svg" }) }); }
+        catch (e) { self.postMessage({ id: pedido.id, erro: String((e && e.message) || e) }); }
+      }, function (e) { self.postMessage({ id: pedido.id, erro: String((e && e.message) || e) }); });
+    };
+  }
+  function iniciarTrabalhadorViz() {
+    if (trabalhadorViz || trabalhadorVizFalhou) return trabalhadorViz;
+    if (typeof Worker === "undefined" || typeof Blob === "undefined" || !window.fetch) { trabalhadorVizFalhou = true; return null; }
+    var script = document.querySelector('script[src*="@viz-js/viz"]');
+    if (!script) { trabalhadorVizFalhou = true; return null; }
+    // A biblioteca é baixada com a mesma verificação de integridade da página
+    // (o navegador já a tem guardada) e vira um Worker local (blob:).
+    trabalhadorViz = fetch(script.src, script.integrity ? { integrity: script.integrity, mode: "cors", credentials: "omit" } : {})
+      .then(function (resposta) { if (!resposta.ok) throw new Error("HTTP " + resposta.status); return resposta.text(); })
+      .then(function (texto) {
+        var url = URL.createObjectURL(new Blob([texto, "\n;(" + codigoDoTrabalhadorViz.toString() + ")();"], { type: "text/javascript" }));
+        var w = new Worker(url);
+        w.onmessage = function (ev) {
+          var pedido = pedidosViz[ev.data.id];
+          if (!pedido) return;
+          delete pedidosViz[ev.data.id];
+          if (ev.data.svg) pedido.ok(ev.data.svg); else pedido.falhou(new Error(ev.data.erro || "Graphviz"));
+        };
+        w.onerror = function () {
+          trabalhadorVizFalhou = true;
+          Object.keys(pedidosViz).forEach(function (id) { pedidosViz[id].falhou(new Error("Worker do Graphviz parou")); delete pedidosViz[id]; });
+        };
+        return w;
+      })
+      .catch(function (e) { trabalhadorVizFalhou = true; console.warn("Graphviz em segundo plano indisponível:", e.message); return null; });
+    return trabalhadorViz;
+  }
+  // Promessa que termina quando o DOT está no cache (ou quando não deu: aí o
+  // gerar() faz do jeito síncrono). Nunca rejeita.
+  function prepararDotEmSegundoPlano(dot) {
+    if (cacheSvgDoDot.some(function (d) { return d.dot === dot; })) return Promise.resolve();
+    var inicio = iniciarTrabalhadorViz();
+    if (!inicio) return Promise.resolve();
+    return inicio.then(function (w) {
+      if (!w || trabalhadorVizFalhou) return;
+      return new Promise(function (ok, falhou) {
+        var id = ++proximoPedidoViz;
+        pedidosViz[id] = { ok: ok, falhou: falhou };
+        w.postMessage({ id: id, dot: dot });
+        // Rede de segurança: se o Worker não responder, segue sem ele.
+        setTimeout(function () { if (pedidosViz[id]) { delete pedidosViz[id]; ok(null); } }, 4000);
+      }).then(function (svg) {
+        if (svg && !cacheSvgDoDot.some(function (d) { return d.dot === dot; })) guardarDesenho(dot, svg);
+      });
+    }).catch(function () {});
+  }
+  // Redesenha depois de preparar o DOT atual em segundo plano. Se outra coisa
+  // redesenhar antes (ou o estado mudar de novo), não atrapalha: o gerar() usa
+  // o que estiver no cache e roda o Graphviz só no que faltar.
+  var pedidoGerarDepois = 0;
+  function gerarDepoisDoGraphviz(depois) {
+    var meu = ++pedidoGerarDepois;
+    var dot;
+    try { dot = vizInstancia ? gerarDot(estado, direcaoEfetiva()) : null; } catch (e) { dot = null; }
+    (dot ? prepararDotEmSegundoPlano(dot) : Promise.resolve()).then(function () {
+      if (meu !== pedidoGerarDepois || !estado.equipamentos.length || modoAtual() === "racks") return;
+      gerar();
+      if (depois) depois();
+    });
   }
 
   // Posição (px, sem zoom) da origem do g.graph dentro do SVG.

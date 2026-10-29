@@ -391,3 +391,31 @@ test("Volt, RB, retificador, ar e nobreak começam com 2/3 do tamanho", async ()
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("soltar um equipamento perto de onde estava não redesenha o diagrama inteiro, mas salva a posição", async () => {
+  const pagina = await abrirPagina(navegador, site);
+  await esperarDiagrama(pagina);
+  await pagina.waitForTimeout(500);
+  const no = pagina.locator("#canvas svg g.node").first();
+  const id = await no.getAttribute("id");
+  const antes = await pagina.evaluate(() => {
+    document.querySelector("#canvas svg").__marca = true;
+    const d = window.GrafoApp.dadosProjeto(window.GrafoApp.projetoAtual());
+    return d.equipamentos.map(e => e.posicao && e.posicao.x);
+  });
+  const b = await no.boundingBox();
+  await pagina.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+  await pagina.mouse.down();
+  for (let i = 1; i <= 4; i++) await pagina.mouse.move(b.x + b.width / 2 + i * 2, b.y + b.height / 2);
+  await pagina.mouse.up();
+  await pagina.waitForTimeout(800);
+  const depois = await pagina.evaluate(() => {
+    const d = window.GrafoApp.dadosProjeto(window.GrafoApp.projetoAtual());
+    return { mesmoSvg: !!document.querySelector("#canvas svg").__marca, xs: d.equipamentos.map(e => e.posicao && e.posicao.x) };
+  });
+  assert.ok(depois.mesmoSvg, "o SVG foi refeito");
+  assert.notDeepEqual(depois.xs, antes, "a posição nova não foi salva");
+  assert.ok(await pagina.locator("#canvas svg g.node#" + id).count());
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

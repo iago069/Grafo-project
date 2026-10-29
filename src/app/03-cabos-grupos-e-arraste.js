@@ -842,7 +842,12 @@
           // Espera o quadro do "soltar" aparecer: o redesenho completo é o
           // trabalho mais pesado e travaria a mão bem no momento de soltar.
           equipamentoFixoNaSeparacao = equipamento.id;
-          requestAnimationFrame(function () { setTimeout(function () { gerar(); atualizarJsonAvancado(); }, 0); });
+          // Quase sempre nem precisa redesenhar (soltarSemRedesenhar); quando
+          // precisa, o Graphviz roda em segundo plano antes.
+          requestAnimationFrame(function () {
+            if (soltarSemRedesenhar(equipamento.id)) { atualizarJsonAvancado(); return; }
+            gerarDepoisDoGraphviz(atualizarJsonAvancado);
+          });
         }
         node.addEventListener("pointermove", mover);
         node.addEventListener("pointerup", soltar);

@@ -15,7 +15,8 @@ test("Ctrl+K abre a paleta, acha equipamento e ação, e Esc fecha", async () =>
   await pagina.waitForSelector("#paletaComandos:not([hidden]) .paleta-input");
   await pagina.fill(".paleta-input", "olt");
   await pagina.waitForFunction(() => /OLT/.test((document.querySelector(".paleta-item.ativo") || {}).textContent || ""));
-  await pagina.keyboard.press("Enter");
+  // Shift+Enter abre o editor (Enter só vai até o equipamento no diagrama).
+  await pagina.keyboard.press("Shift+Enter");
   await pagina.waitForSelector("#editorEquipForm:not(.hidden)");
   assert.match(await pagina.inputValue("#editEquipNome"), /OLT/i);
   await pagina.keyboard.press("Escape");

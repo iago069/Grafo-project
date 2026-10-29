@@ -199,7 +199,7 @@
     atualizacaoDiagramaPendente = window.setTimeout(function () {
       // No Bayface o diagrama está escondido: redesenha ao voltar para ele.
       if (modoAtual() === "racks") return;
-      if (estado.equipamentos.length) gerar(); else limparDiagrama();
+      if (estado.equipamentos.length) gerarDepoisDoGraphviz(); else limparDiagrama();
     }, 120);
   }
 

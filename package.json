@@ -18,6 +18,7 @@
     "express": "^4.21.2"
   },
   "devDependencies": {
+    "esbuild": "0.25.10",
     "playwright": "1.63.0"
   },
   "license": "AGPL-3.0-only"

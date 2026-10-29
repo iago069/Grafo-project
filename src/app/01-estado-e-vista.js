@@ -129,7 +129,17 @@
     }
     var texto = Math.round(canvasView.scale * 100) + "%";
     if (texto !== textoZoomAtual) { elZoomValue.textContent = texto; textoZoomAtual = texto; }
+    // Zoom bem afastado: os textos pequenos (nomes dos cabos, VLAN, números,
+    // portas) nem dão para ler e são o que mais pesa para desenhar. Somem até
+    // aproximar de novo, como num mapa. Só na tela: a exportação não muda.
+    var nivel = canvasView.scale < 0.2 ? 2 : canvasView.scale < 0.4 ? 1 : 0;
+    if (nivel !== nivelDeDetalheAtual) {
+      nivelDeDetalheAtual = nivel;
+      elCanvas.classList.toggle("zoom-longe", nivel >= 1);
+      elCanvas.classList.toggle("zoom-muito-longe", nivel === 2);
+    }
   }
+  var nivelDeDetalheAtual = 0;
 
   // ---- Câmera suave -------------------------------------------------------------
   // Zoom e "ajustar à tela" deslizam até o alvo a cada quadro (requestAnimationFrame),

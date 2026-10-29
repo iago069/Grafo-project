@@ -37,3 +37,18 @@ test("nenhuma função ou variável de topo repetida entre as partes", () => {
   });
   assert.deepEqual(repetidos, []);
 });
+
+// O site carrega as versões compactadas (app.min.js e styles.min.css), feitas
+// pelo npm run montar. Cada uma guarda o hash da fonte: se a fonte mudou e
+// ninguém rodou o montar, o site estaria servindo código velho.
+test("app.min.js e styles.min.css estão em dia com a fonte", () => {
+  const { hashDaFonte, hashGravado, SAIDA_MIN, CSS, CSS_MIN } = require("../../scripts/montar-app.js");
+  assert.equal(hashGravado(SAIDA_MIN), hashDaFonte(montar()), "app.min.js desatualizado: rode npm run montar");
+  assert.equal(hashGravado(CSS_MIN), hashDaFonte(fs.readFileSync(CSS, "utf8")), "styles.min.css desatualizado: rode npm run montar");
+  assert.doesNotThrow(() => new vm.Script(fs.readFileSync(SAIDA_MIN, "utf8"), { filename: "app.min.js" }));
+  assert.ok(fs.existsSync(SAIDA_MIN + ".map"), "falta o app.min.js.map");
+  // O editor e a página carregam os compactados.
+  const ler = arquivo => fs.readFileSync(path.join(__dirname, "..", "..", arquivo), "utf8");
+  assert.match(ler("assets/js/conta/auth.js"), /"\.\/assets\/js\/editor\/app\.min\.js"/);
+  assert.match(ler("index.html"), /href="\.\/assets\/css\/styles\.min\.css"/);
+});

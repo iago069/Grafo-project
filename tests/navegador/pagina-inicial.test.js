@@ -16,7 +16,7 @@ test("sem login: mostra a página inicial, sem o editor e sem baixar o Graphviz"
   await pagina.waitForSelector("#authCard", { state: "visible" });
   assert.equal(await pagina.isVisible(".app-shell"), false);
   await pagina.waitForTimeout(800);
-  assert.deepEqual(baixados.filter(u => /viz-global|\/app\.js/.test(u)), []);
+  assert.deepEqual(baixados.filter(u => /viz-global|\/app(\.min)?\.js/.test(u)), []);
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
