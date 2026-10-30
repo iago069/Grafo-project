@@ -219,8 +219,11 @@
   // Rótulo do cabo: procura um lugar livre ao longo dos trechos (do mais longo
   // para o mais curto), dos dois lados da linha, sem cair em cima de equipamento,
   // porta ou outro rótulo ("ocupados" já começa com as caixas dos equipamentos).
-  // A caixa escolhida entra em "ocupados". Sem lugar livre: meio do trecho mais longo.
-  function posicionarRotuloDaAresta(aresta, pontos, ocupados) {
+  // Também tenta em cima do próprio cabo (o selo cobre a linha): com cabos
+  // paralelos e próximos é o único lugar livre, e os nomes vizinhos se alternam
+  // ao longo do trecho. Os trechos do próprio cabo (dono === indice) não contam.
+  // A caixa escolhida entra em "ocupados". Sem lugar livre: o que menos encosta.
+  function posicionarRotuloDaAresta(aresta, pontos, ocupados, indice) {
     var texto = aresta.querySelector("text");
     if (!texto) return;
     var trechos = [];
@@ -231,10 +234,16 @@
     if (!trechos.length) return;
     trechos.sort(function (p, q) { return q.comp - p.comp; });
     texto.removeAttribute("transform");
+    var b0 = null; // medida do texto (abaixo); colocar(..., 0) precisa dela
     if (texto.hasAttribute("data-sem-espaco")) { texto.removeAttribute("data-sem-espaco"); texto.style.display = ""; }
     function colocar(trecho, t, lado) {
       var horizontal = Math.abs(trecho.a.y - trecho.b.y) < 0.5;
-      if (horizontal) {
+      if (lado === 0) {
+        // Centro do texto sobre a linha.
+        texto.setAttribute("x", (trecho.a.x + (trecho.b.x - trecho.a.x) * t).toFixed(2));
+        texto.setAttribute("y", (trecho.a.y + (trecho.b.y - trecho.a.y) * t - b0.offY - b0.height / 2).toFixed(2));
+        texto.setAttribute("text-anchor", "middle");
+      } else if (horizontal) {
         texto.setAttribute("x", (trecho.a.x + (trecho.b.x - trecho.a.x) * t).toFixed(2));
         texto.setAttribute("y", (trecho.a.y + (lado > 0 ? 18 : -10)).toFixed(2));
         texto.setAttribute("text-anchor", "middle");
@@ -260,7 +269,8 @@
         offX: bb.x - (Number(texto.getAttribute("x")) - desloc0), offY: bb.y - Number(texto.getAttribute("y")) };
       texto.__medidaRotulo = med;
     }
-    var b0 = med, offX = med.offX, offY = med.offY;
+    b0 = med;
+    var offX = med.offX, offY = med.offY;
     function deslocAncora(ancora) { return ancora === "middle" ? b0.width / 2 : ancora === "end" ? b0.width : 0; }
     function caixa() {
       var b = { x: Number(texto.getAttribute("x")) - deslocAncora(texto.getAttribute("text-anchor")) + offX,
@@ -273,6 +283,7 @@
     function sobreposicao(c) {
       if (!c) return Infinity;
       return ocupados.reduce(function (soma, o) {
+        if (indice != null && o.dono === indice) return soma;
         var w = Math.min(c.x2, o.x2) - Math.max(c.x1, o.x1), h = Math.min(c.y2, o.y2) - Math.max(c.y1, o.y1);
         return w > 0 && h > 0 ? soma + w * h * (o.equipamento ? 20 : 1) : soma;
       }, 0);
@@ -286,7 +297,7 @@
     for (var k = 0; k < trechos.length; k++) {
       if (trechos[k].comp < 24) continue;
       for (var f = 0; f < fracoes.length; f++) {
-        for (var lado = -1; lado <= 1; lado += 2) {
+        for (var lado = -1; lado <= 1; lado++) {
           colocar(trechos[k], fracoes[f], lado);
           var c = caixa(), custo = sobreposicao(c);
           if (custo === 0) { ocupados.push(c); return; }
@@ -384,13 +395,14 @@
       var linha = rotasDesenhadas[estado.conexoes.indexOf(rota.conexao)] || rota.pts;
       for (var i = 1; i < linha.length; i++) {
         var a = linha[i - 1], b = linha[i];
-        rotulos.push({ x1: Math.min(a.x, b.x) - 3, y1: Math.min(a.y, b.y) - 3, x2: Math.max(a.x, b.x) + 3, y2: Math.max(a.y, b.y) + 3 });
+        rotulos.push({ dono: estado.conexoes.indexOf(rota.conexao), x1: Math.min(a.x, b.x) - 3, y1: Math.min(a.y, b.y) - 3, x2: Math.max(a.x, b.x) + 3, y2: Math.max(a.y, b.y) + 3 });
       }
     });
     rotas.forEach(function (rota) {
       var texto = rota.aresta.querySelector("text");
       if (texto && texto.style.display === "none" && !texto.hasAttribute("data-sem-espaco")) return; // membro de LAG
-      posicionarRotuloDaAresta(rota.aresta, rotasDesenhadas[estado.conexoes.indexOf(rota.conexao)] || rota.pts, rotulos);
+      var indice = estado.conexoes.indexOf(rota.conexao);
+      posicionarRotuloDaAresta(rota.aresta, rotasDesenhadas[indice] || rota.pts, rotulos, indice);
     });
     rotas.forEach(function (rota) { desenharSeloDoRotulo(rota.aresta); });
     avisarNomesSemEspaco(svg); // some o aviso antigo, se ainda estiver na tela
