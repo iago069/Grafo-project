@@ -24,7 +24,7 @@ using ((select auth.uid()) = user_id)
 with check ((select auth.uid()) = user_id);
 
 -- Exclusão da conta pela própria pessoa (LGPD). Mesmo conteúdo de
--- supabase/migracoes/2026-09-28-excluir-conta.sql.
+-- supabase/migracoes/2026-10-30-lgpd-excluir-conta.sql.
 create or replace function public.excluir_minha_conta()
 returns void
 language plpgsql
@@ -35,7 +35,9 @@ begin
   if auth.uid() is null then
     raise exception 'É necessário estar logado.';
   end if;
-  -- grafo_user_data sai junto (on delete cascade).
+  -- As versões continuam no histórico da equipe, sem dizer quem salvou.
+  update public.grafo_versoes set criado_por = null, criado_por_email = null where criado_por = auth.uid();
+  -- grafo_user_data, projetos, equipes, histórico próprio, erros etc. saem junto (on delete cascade).
   delete from auth.users where id = auth.uid();
 end;
 $$;

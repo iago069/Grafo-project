@@ -3,13 +3,11 @@
 // - Arquivos do próprio site: busca na rede primeiro (atualizações chegam na
 //   hora) e usa a cópia guardada só quando a rede falha.
 // - Bibliotecas do jsDelivr: as URLs têm versão fixa, então a cópia guardada vale.
-// - Fontes do Google: usa a guardada e atualiza em segundo plano.
 // Nada do Supabase passa por aqui: login e projetos continuam indo direto ao servidor.
 "use strict";
 
-var CACHE = "grafo-offline-v3";
+var CACHE = "grafo-offline-v4";
 var CDN = "https://cdn.jsdelivr.net/";
-var FONTES = /^https:\/\/fonts\.(googleapis|gstatic)\.com\//;
 var APIS_GUARDADAS = ["/api/auth-config", "/api/equipamentos"];
 
 // Na instalação: a página inicial e o que ela referencia (scripts, estilos, ícones).
@@ -26,6 +24,11 @@ self.addEventListener("install", function (event) {
       if (completa.origin === self.location.origin || completa.href.indexOf(CDN) === 0) urls.push(completa.href);
       return _;
     });
+    // As fontes (assets/fonts) aparecem só dentro do fontes.css.
+    try {
+      var css = await (await fetch("/assets/fonts/fontes.css", { cache: "no-cache" })).text();
+      css.replace(/url\(\.\/([^)]+\.woff2)\)/g, function (_, arquivo) { urls.push(new URL("/assets/fonts/" + arquivo, self.location.origin).href); return _; });
+    } catch (e) {}
     await guardar(cache, urls);
     await self.skipWaiting();
   })());
@@ -71,7 +74,6 @@ self.addEventListener("fetch", function (event) {
   var url = new URL(pedido.url);
 
   if (pedido.url.indexOf(CDN) === 0) { event.respondWith(primeiroCache(pedido)); return; }
-  if (FONTES.test(pedido.url)) { event.respondWith(cacheEAtualiza(event, pedido)); return; }
   if (url.origin !== self.location.origin) return;
   if (url.pathname.indexOf("/api/") === 0 && APIS_GUARDADAS.indexOf(url.pathname) < 0) return;
 
@@ -114,14 +116,3 @@ async function primeiroCache(pedido) {
   return resposta;
 }
 
-async function cacheEAtualiza(event, pedido) {
-  var cache = await caches.open(CACHE);
-  var guardada = await cache.match(pedido);
-  var rede = fetch(pedido).then(function (resposta) {
-    // A folha de estilos das fontes vem sem CORS (resposta "opaca", status 0).
-    if (resposta.ok || resposta.type === "opaque") cache.put(pedido, resposta.clone());
-    return resposta;
-  });
-  if (guardada) { event.waitUntil(rede.catch(function () {})); return guardada; }
-  return rede;
-}

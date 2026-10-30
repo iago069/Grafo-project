@@ -32,6 +32,7 @@ function iniciarServidor() {
     if (url === "/api/equipamentos") url = "/data/equipamentos.json";
     if (url === "/") url = "/index.html";
     if (url === "/ver") url = "/ver.html";
+    if (url === "/privacidade") url = "/privacidade.html";
     const arquivo = path.join(RAIZ, url);
     if (!arquivo.startsWith(RAIZ)) { res.writeHead(403); return res.end(); }
     fs.readFile(arquivo, (err, dados) => {
@@ -120,13 +121,34 @@ function supabaseSimulado({ sessao = true, projetos = projetoExemplo(), vencida 
     },
     channel: function(){ return canal; },
     removeChannel: function(){ return Promise.resolve(); },
+    // Storage: window.__arquivos é a lista de caminhos ("u1/biblioteca/l1/a.pdf").
+    // list devolve o que está logo abaixo do prefixo (pasta: id null), como o real.
+    storage: { from: function(){ return {
+      list: function(prefixo, op){
+        var vistos = {}, itens = [], inicio = (op && op.offset) || 0;
+        (window.__arquivos || []).forEach(function(c){
+          if (c.indexOf(prefixo + "/") !== 0) return;
+          var resto = c.slice(prefixo.length + 1), i = resto.indexOf("/"), nome = i < 0 ? resto : resto.slice(0, i);
+          if (vistos[nome]) return;
+          vistos[nome] = true;
+          itens.push({ name: nome, id: i < 0 ? "arq" + itens.length : null });
+        });
+        return Promise.resolve({ data: itens.slice(inicio, inicio + ((op && op.limit) || 100)), error: null });
+      },
+      remove: function(caminhos){
+        window.__arquivos = (window.__arquivos || []).filter(function(c){ return caminhos.indexOf(c) < 0; });
+        localStorage.setItem("__arquivos_restantes", JSON.stringify(window.__arquivos));
+        return Promise.resolve({ data: [], error: null });
+      }
+    }; } },
     auth: {
       onAuthStateChange: function(){ return { data: { subscription: { unsubscribe: function(){} } } }; },
       getSession: function(){
         if (sessao && vencida && semRede()) return Promise.resolve({ data: { session: null }, error: { name: "AuthRetryableFetchError", message: "Failed to fetch", status: 0 } });
         return Promise.resolve({ data: { session: sessao }, error: null });
       },
-      signOut: function(){ return Promise.resolve({ error: null }); }
+      signOut: function(){ return Promise.resolve({ error: null }); },
+      signUp: function(dados){ window.__cadastro = dados; return Promise.resolve({ data: { session: null, user: null }, error: null }); }
     }
   }; } };
 })();`;

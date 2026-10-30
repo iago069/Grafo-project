@@ -28,7 +28,7 @@ test("tela de login alterna entre entrar e criar conta", async () => {
   await pagina.waitForFunction(() => /Crie sua conta/.test(document.getElementById("authTitle").textContent));
   // Cadastro: Nome (com o cursor), E-mail, Senha e Repetir senha.
   await pagina.waitForFunction(() => document.activeElement.id === "authNome", null, { timeout: 3000 });
-  assert.deepEqual(await pagina.$$eval("#authForm input", l => l.filter(i => i.offsetParent).map(i => i.id)), ["authNome", "authEmail", "authPassword", "authRepetir"]);
+  assert.deepEqual(await pagina.$$eval("#authForm input", l => l.filter(i => i.offsetParent).map(i => i.id)), ["authNome", "authEmail", "authPassword", "authRepetir", "authAceite"]);
   await pagina.click("#authBack");
   await pagina.waitForFunction(() => /Entre/.test(document.getElementById("authTitle").textContent));
   // Login: só E-mail e Senha.

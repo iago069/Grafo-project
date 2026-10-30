@@ -3357,6 +3357,16 @@ body:not([data-modo-diagrama="ftth"]) .so-modo-ftth { display: none; }
 .login-tela .auth-sem-login-botao:hover { background: rgba(255, 255, 255, 0.06); border-color: #9fdcd3; }
 .login-tela .auth-sem-login span { color: #7f97a8; }
 .login-tela .login-rodape { margin-top: 18px; color: #9fb2c2; }
+.login-tela .login-rodape a { color: #9fdcd3; text-decoration: none; }
+.login-tela .login-rodape a:hover { text-decoration: underline; }
+/* Aceite da Política de Privacidade no cadastro (LGPD). */
+.login-tela .auth-card label.auth-aceite { display: flex; align-items: flex-start; gap: 10px; margin: -6px 0 4px; padding: 0; font: 500 0.84rem/1.45 var(--sans); color: #c9d7e1; text-align: left; cursor: pointer; pointer-events: auto; }
+.login-tela .auth-card label.auth-aceite[hidden] { display: none; }
+.login-tela .auth-card .auth-aceite input { flex: none; width: 18px; height: 18px; min-height: 0; margin: 1px 0 0; padding: 0 !important; accent-color: #e0932f; cursor: pointer; }
+.login-tela .auth-card .auth-aceite input:focus-visible { outline: 2px solid #e0932f; outline-offset: 2px; box-shadow: none; }
+.login-tela .auth-card .auth-aceite a { color: #f6b25a; font-weight: 600; }
+.modal-box p.conta-politica { margin: 6px 0 0; font-size: 0.82rem; color: var(--text-dim); }
+.modal-box p.conta-politica a { color: #1f7f73; font-weight: 600; }
 @media (max-width: 480px) { .login-tela .login-marca .auth-logo { width: 130px; height: 117px; } .login-tela .login-nome { font-size: 2.8rem; } }
 
 /* Apagar mapa: só aparece quando o diagrama tem mapa. */

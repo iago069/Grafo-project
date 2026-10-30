@@ -45,6 +45,31 @@
   var nameLabel = document.getElementById("authNomeLabel");
   var repeatInput = document.getElementById("authRepetir");
   var repeatLabel = document.getElementById("authRepetirLabel");
+  // Aceite da Política de Privacidade no cadastro (LGPD). A versão é a data do
+  // texto em privacidade.html; a conta guarda qual versão foi aceita e quando.
+  var VERSAO_PRIVACIDADE = "2026-10-30";
+  var acceptLine = document.getElementById("authAceiteLinha");
+  var acceptInput = document.getElementById("authAceite");
+
+  // Senha nova que já apareceu em vazamentos (Have I Been Pwned, "k-anonimato"):
+  // do navegador saem só os 5 primeiros caracteres do SHA-1, nunca a senha.
+  // O Supabase só faz essa checagem no plano Pro. Sem resposta, deixa passar.
+  async function senhaVazada(senha) {
+    try {
+      var bytes = new Uint8Array(await crypto.subtle.digest("SHA-1", new TextEncoder().encode(senha)));
+      var hash = Array.prototype.map.call(bytes, function (b) { return ("0" + b.toString(16)).slice(-2); }).join("").toUpperCase();
+      var controle = new AbortController(), espera = setTimeout(function () { controle.abort(); }, 4000);
+      // Add-Padding: a resposta vem sempre do mesmo tamanho (linhas extras com 0).
+      var r = await fetch("https://api.pwnedpasswords.com/range/" + hash.slice(0, 5), { headers: { "Add-Padding": "true" }, signal: controle.signal });
+      clearTimeout(espera);
+      if (!r.ok) return false;
+      var resto = hash.slice(5);
+      return (await r.text()).split("\n").some(function (linha) {
+        var partes = linha.trim().split(":");
+        return partes[0] === resto && Number(partes[1]) > 0;
+      });
+    } catch (e) { return false; }
+  }
 
   // Nome guardado na conta (Supabase: user_metadata), ou "" se a pessoa não informou.
   function nomeDoUsuario(u) {
@@ -95,6 +120,11 @@
     repeatInput.hidden = repeatLabel.hidden = !pedeRepetir;
     repeatInput.required = pedeRepetir;
     repeatInput.value = "";
+    // Senha nova: no mínimo 8 caracteres (quem já tem conta entra com a que tem).
+    passwordInput.minLength = repeatInput.minLength = next === "login" ? 6 : 8;
+    acceptLine.hidden = !pedeNome;
+    acceptInput.required = pedeNome;
+    acceptInput.checked = false;
     submit.textContent = next === "signup" ? "Cadastrar" : next === "recover" ? "Enviar link" : next === "reset" ? "Salvar nova senha" : "Entrar";
     toggle.hidden = next !== "login";
     recover.hidden = next !== "login";
@@ -685,15 +715,19 @@
     var project = state.projects[name] || {};
     var content = JSON.stringify({ projeto: name, equipamentos: project.equipamentos || [], conexoes: project.conexoes || [] }, null, 2);
     var file = String(name).replace(/[^\wÀ-ſ-]+/g, "-").replace(/^-+|-+$/g, "") || "projeto";
-    var url = URL.createObjectURL(new Blob([content], { type: "application/json" }));
+    baixarArquivo("grafo-" + file + ".json", content);
+  });
+
+  function baixarArquivo(nome, conteudo) {
+    var url = URL.createObjectURL(new Blob([conteudo], { type: "application/json" }));
     var link = document.createElement("a");
     link.href = url;
-    link.download = "grafo-" + file + ".json";
+    link.download = nome;
     document.body.appendChild(link);
     link.click();
     link.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
-  });
+  }
 
   document.getElementById("accountLogout").addEventListener("click", async function () {
     try {
@@ -712,7 +746,52 @@
     }
   });
 
-  // ---- Minha conta (LGPD): cópia dos projetos e exclusão da conta ----------
+  // ---- Minha conta (LGPD): cópia dos dados e exclusão da conta --------------
+  // Todos os dados da conta num arquivo (LGPD, art. 18: acesso e portabilidade).
+  // Cada tabela que falhar (migração não rodada, sem rede) vira "indisponivel".
+  async function baixarMeusDados() {
+    var id = user.id;
+    async function ler(tabela, colunas, coluna) {
+      try {
+        var r = await client.from(tabela).select(colunas).eq(coluna, id);
+        return r.error ? { indisponivel: r.error.message } : r.data;
+      } catch (e) { return { indisponivel: String(e && e.message || e) }; }
+    }
+    var dados = {
+      gerado_em: new Date().toISOString(),
+      politica_de_privacidade: location.origin + "/privacidade",
+      conta: { id: id, email: user.email, nome: nomeDoUsuario(user), criada_em: user.created_at, ultimo_acesso: user.last_sign_in_at, dados_da_conta: user.user_metadata || {} },
+      projetos_pessoais: await ler("grafo_user_data", "projects, current_project, updated_at", "user_id"),
+      biblioteca: await ler("grafo_biblioteca", "dados, atualizado_em", "user_id"),
+      projetos_de_equipe_criados: await ler("grafo_projetos_equipe", "id, nome, dados, atualizado_em", "dono"),
+      equipes_de_que_participa: await ler("grafo_membros", "projeto, email, papel, entrou_em", "usuario"),
+      links_de_compartilhamento: await ler("grafo_compartilhamentos", "token, projeto, atualizado_em", "user_id"),
+      temas_liberados: await ler("grafo_temas_liberados", "tema, liberado_em", "user_id")
+    };
+    baixarArquivo("grafo-meus-dados-" + dados.gerado_em.slice(0, 10) + ".json", JSON.stringify(dados, null, 2));
+  }
+
+  // Arquivos anexados (Storage, bucket "documentos", pasta com o id da conta).
+  // O banco não apaga arquivos do Storage: saem antes da conta.
+  async function apagarArquivosDaConta() {
+    if (!client.storage) return;
+    var pasta = client.storage.from("documentos"), arquivos = [], fila = [user.id];
+    while (fila.length) {
+      var prefixo = fila.shift();
+      for (var inicio = 0; ; inicio += 1000) {
+        var r = await pasta.list(prefixo, { limit: 1000, offset: inicio });
+        if (r.error) { if (/not found/i.test(r.error.message || "")) return; throw r.error; }
+        // Sem id é uma pasta: entra na fila para listar o que tem dentro.
+        r.data.forEach(function (item) { (item.id ? arquivos : fila).push(prefixo + "/" + item.name); });
+        if (r.data.length < 1000) break;
+      }
+    }
+    for (var i = 0; i < arquivos.length; i += 100) {
+      var apagados = await pasta.remove(arquivos.slice(i, i + 100));
+      if (apagados.error) throw apagados.error;
+    }
+  }
+
   var accountModal = document.getElementById("contaModal");
   var accountConfirm = document.getElementById("contaConfirmar");
   var accountDelete = document.getElementById("contaExcluir");
@@ -775,6 +854,19 @@
   accountModal.addEventListener("keydown", function (event) { if (event.key === "Escape") { event.preventDefault(); closeAccount(); } });
   // O botão da barra lateral (app.js) monta o arquivo com todos os projetos.
   document.getElementById("contaBaixar").addEventListener("click", function () { document.getElementById("btnExportarTodos").click(); });
+  document.getElementById("contaBaixarDados").addEventListener("click", async function () {
+    var botao = this;
+    botao.disabled = true;
+    accountNotice("Juntando seus dados...");
+    try {
+      await baixarMeusDados();
+      accountNotice("Arquivo com todos os seus dados baixado.");
+    } catch (error) {
+      accountNotice("Não foi possível juntar os dados. " + traduzirErro(error), true);
+    } finally {
+      botao.disabled = false;
+    }
+  });
   accountConfirm.addEventListener("input", function () { accountDelete.disabled = !confirmationMatches(); });
 
   document.getElementById("contaExcluirForm").addEventListener("submit", async function (event) {
@@ -788,6 +880,9 @@
     pending = null;
     try {
       if (inFlight) await inFlight.catch(function () {});
+      accountNotice("Apagando os arquivos anexados...");
+      await apagarArquivosDaConta();
+      accountNotice("Excluindo a conta...");
       var result = await client.rpc("excluir_minha_conta");
       if (result.error) throw result.error;
       var leavingUserId = user.id;
@@ -842,12 +937,20 @@
         repeatInput.focus();
         return;
       }
+      if ((mode === "signup" || mode === "reset") && await senhaVazada(password)) {
+        notice("Essa senha já apareceu em vazamentos de dados na internet. Escolha outra.", true);
+        passwordInput.focus();
+        return;
+      }
       if (mode === "signup") {
         var nome = nameInput.value.trim().replace(/\s+/g, " ");
         if (nome.length < 2) { notice("Digite seu nome.", true); nameInput.focus(); return; }
+        if (!acceptInput.checked) { notice("Para criar a conta, aceite a Política de Privacidade.", true); acceptInput.focus(); return; }
         // O nome fica na conta (user_metadata): aparece na barra lateral e no menu.
+        // O aceite da política também: qual versão e quando.
         result = await client.auth.signUp({ email: email, password: password, options: {
-          emailRedirectTo: location.origin + location.pathname, data: { nome: nome.slice(0, 60), full_name: nome.slice(0, 60) }
+          emailRedirectTo: location.origin + location.pathname,
+          data: { nome: nome.slice(0, 60), full_name: nome.slice(0, 60), privacidade: VERSAO_PRIVACIDADE, privacidade_aceita_em: new Date().toISOString() }
         } });
         if (result.error) throw result.error;
         notice(result.data.session ? "Conta criada. Carregando..." : "Cadastro recebido. Confirme o e-mail para entrar.");

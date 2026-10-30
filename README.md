@@ -249,7 +249,8 @@ Os projetos ficam na sua conta, no Supabase, e são salvos automaticamente pouco
 - **Equipe** (ao lado da lista de projetos) transforma o projeto aberto em **projeto de equipe**: o dono gera um link de convite, e quem entra por ele (com a própria conta, ou criando uma) passa a editar o projeto. As alterações de cada um aparecem para os outros em segundos; se duas pessoas editarem ao mesmo tempo, vale o aviso de conflito (ninguém sobrescreve o outro sem aviso). Na lista, projetos de equipe aparecem com 👥. O dono vê os membros, remove pessoas, troca ou desativa o link e exclui o projeto para todos (×); os membros podem sair.
 - **Compartilhar** (barra do diagrama) cria um link só para visualizar o projeto aberto: quem abre vê o desenho (com zoom e download em SVG), sem login, sem poder editar e sem acesso à conta. O link se atualiza sozinho poucos segundos depois de cada alteração. **Desativar link** faz o endereço parar de funcionar na hora, e excluir o projeto também apaga o link.
 - **Baixar todos os projetos** (barra lateral ou botão **Conta**) gera um arquivo só com todos os projetos. **Importar projeto** aceita esse arquivo e traz todos de volta; se algum projeto tiver erro, nada é importado.
-- Em **Conta → Excluir conta**, a pessoa apaga a própria conta e todos os projetos, sem volta. Para confirmar, é preciso digitar o e-mail da conta.
+- Em **Conta → Excluir conta**, a pessoa apaga a própria conta e tudo o que está nela (projetos, biblioteca, arquivos anexados), sem volta. Para confirmar, é preciso digitar o e-mail da conta.
+- **Privacidade (LGPD):** a [Política de Privacidade](privacidade.html) fica em `/privacidade`, com link no login, no cadastro (aceite obrigatório, guardado na conta) e em **Conta**. **Conta → Baixar todos os meus dados** gera um JSON com a conta, os projetos, a biblioteca e as equipes. As fontes ficam em `assets/fonts` (nada é pedido ao Google). O registro do tratamento, as configurações do painel e o plano para incidentes estão em [docs/LGPD.md](docs/LGPD.md).
 - Se a mesma conta salvar em outra aba ou computador, o Grafo avisa ("Projeto alterado em outro lugar") em vez de sobrescrever: dá para baixar o projeto aberto, manter a versão desta aba ou carregar a mais recente. O aviso também aparece ao voltar para uma aba que ficou desatualizada.
 - **Sem internet**: depois de entrar uma vez com internet, o Grafo abre no mesmo aparelho mesmo sem conexão (útil em sala de equipamentos sem sinal), com os projetos daquele aparelho. Dá para ver, editar e exportar PDF/PNG/SVG; o topo mostra "Sem internet: as alterações ficam neste aparelho". Quando a conexão volta, a página recarrega e envia o que foi feito — se alguém tiver salvo o mesmo projeto nesse meio-tempo, aparece o aviso de conflito em vez de uma versão apagar a outra. Compartilhar, Equipe e Histórico precisam de internet. **Sair** fica bloqueado enquanto houver alteração por enviar (sair apaga a cópia do aparelho). O site também pode ser **instalado** como aplicativo (no celular: menu do navegador → "Adicionar à tela inicial"). Quem faz isso é o `sw.js` (service worker), junto com `manifest.webmanifest`.
 
@@ -365,6 +366,7 @@ O `scripts/servidor-local.js` lê o `.env` sozinho ao iniciar — se mudar o arq
 | `npm run icones` | Gera `assets/js/editor/icones-embutidos.js` |
 | `npm test` | Roda os testes da pasta `tests/unidade/` (requer Node.js 22+) |
 | `npm run test:navegador` | Abre o site num navegador de verdade e testa página inicial, editor, PDF, celular e tutorial (`tests/navegador/`) |
+| `npm run test:no-ar` | Confere o site publicado (thegrafo.vercel.app): versão do commit, cabeçalhos, login, Supabase e editor sem login (`tests/no-ar/`). Roda sozinho depois de cada deploy e todo dia às 9h |
 | `npm run montar` | Monta `assets/js/editor/app.js` a partir das partes em `src/app/` e gera as versões compactadas que o site carrega (`app.min.js` e `assets/css/styles.min.css`) |
 
 **Para mudar o editor, edite os arquivos de `src/app/`**, não o `assets/js/editor/app.js`, e depois rode `npm run montar`. As partes são fatias, em ordem, de um único bloco de código com estado compartilhado (por isso uma parte sozinha não é um arquivo JavaScript completo). O mesmo vale para o CSS: edite `assets/css/styles.css` e rode `npm run montar`. O `npm test` avisa se o `app.js`, o `app.min.js` ou o `styles.min.css` ficaram desatualizados.
@@ -417,6 +419,7 @@ Também é possível publicar direto do computador com a Vercel CLI: `npx vercel
 ```
 index.html                  o app: login + editor
 ver.html                    página do link compartilhado (/ver?t=...)
+privacidade.html            Política de Privacidade (/privacidade)
 manifest.webmanifest, sw.js instalar como aplicativo e funcionar sem internet (ficam na raiz por causa do escopo)
 vercel.json, .vercelignore  publicação na Vercel (cabeçalhos de segurança, rotas)
 
@@ -446,7 +449,9 @@ scripts/                    montar-app.js, gerar-icones-embutidos.js, servidor-l
 tests/
   unidade/                  testes rápidos (npm test) e simulador.js (navegador simulado)
   navegador/                testes num navegador de verdade (npm run test:navegador) e ajuda.js
+  no-ar/                    teste do site publicado (npm run test:no-ar; workflow site-no-ar.yml)
 docs/imagens/               imagens deste README
+docs/LGPD.md                registro do tratamento de dados e plano para incidentes
 .github/workflows/          testes automáticos no GitHub
 ```
 
@@ -463,7 +468,8 @@ docs/imagens/               imagens deste README
 | `assets/js/comum/esquema.js` | Validação dos dados (formulários, JSON, CSV e o que está salvo) |
 | `assets/js/comum/erros.js` | Envia os erros do navegador para a tabela `grafo_erros` do Supabase |
 | `scripts/servidor-local.js` | Servidor Express para rodar localmente; lê o `.env` da raiz |
-| `sw.js` | Se mudar a forma de guardar, troque o nome `grafo-offline-v3` (o antigo é apagado) |
+| `sw.js` | Se mudar a forma de guardar, troque o nome `grafo-offline-v4` (o antigo é apagado) |
+| `privacidade.html` | Política de Privacidade. Ao mudar o texto, troque a data da versão aqui e em `VERSAO_PRIVACIDADE` (`auth.js`) |
 
 Projetos salvos com os caminhos antigos dos ícones (`assets/images/OLT.jpeg`, `assets/images/OLT.png`) continuam abrindo: o editor troca pelo caminho atual.
 > O catálogo fica em `data/`, fora de `api/`, porque na Vercel `api/equipamentos.js` e `api/equipamentos.json` colidiriam na mesma rota. O servidor local se chama `servidor-local.js` (e não `server.js`) para a Vercel não tratar o projeto como app Express.

@@ -22,9 +22,9 @@
 <link rel="icon" type="image/png" href="./assets/images/app/favicon-64.png">
 <link rel="apple-touch-icon" href="./assets/images/app/apple-touch-icon.png">
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- Fontes servidas pelo próprio site: abrir o Grafo não manda o IP de ninguém ao Google (LGPD). -->
+<link rel="preload" href="./assets/fonts/ibm-plex-sans-latin-400-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="./assets/fonts/fontes.css">
 <link rel="stylesheet" href="./assets/css/styles.min.css">
 </head>
 <body class="auth-locked">
@@ -82,6 +82,8 @@
           <input id="authPassword" type="password" autocomplete="current-password" minlength="6" required></div>
           <div class="campo-borda"><label for="authRepetir" id="authRepetirLabel" hidden>Repetir senha</label>
           <input id="authRepetir" type="password" autocomplete="new-password" minlength="6" hidden></div>
+          <label class="auth-aceite" id="authAceiteLinha" hidden><input id="authAceite" type="checkbox">
+            <span>Li e aceito a <a href="/privacidade" target="_blank" rel="noopener">Política de Privacidade</a></span></label>
           <button class="primary auth-submit" id="authSubmit" type="submit">Entrar</button>
         </form>
         <p id="authMessage" class="auth-message" role="status" aria-live="polite"></p>
@@ -98,7 +100,7 @@
       </div>
       <footer class="login-rodape">
         <a class="login-github" href="https://github.com/iago069/Grafo-project" target="_blank" rel="noopener noreferrer" title="Código aberto no GitHub" aria-label="Código do Grafo no GitHub"><svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" focusable="false"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a>
-        <span>Copyright © Grafo 2026 · Código aberto (AGPL-3.0)</span>
+        <span>Copyright © Grafo 2026 · Código aberto (AGPL-3.0) · <a href="/privacidade">Privacidade</a></span>
         <button type="button" class="login-instalar" data-instalar hidden>Instalar app</button>
       </footer>
     </main>
@@ -356,12 +358,14 @@
         </form>
         <p id="contaNomeMensagem" class="conta-mensagem" role="status" aria-live="polite"></p>
         <h4 class="conta-secao">Seus dados</h4>
-        <p>Baixe uma cópia de todos os seus projetos num arquivo só. Ele pode ser importado de volta em "Importar projeto".</p>
+        <p><strong>Todos os meus dados:</strong> conta, projetos, biblioteca, equipes e links, num arquivo aberto (JSON). <strong>Todos os projetos:</strong> cópia que pode ser importada de volta em "Importar projeto".</p>
         <div class="modal-actions conta-acoes">
+          <button type="button" class="ghost" id="contaBaixarDados">Baixar todos os meus dados</button>
           <button type="button" class="ghost" id="contaBaixar">Baixar todos os projetos</button>
         </div>
+        <p class="conta-politica">Veja como tratamos seus dados na <a href="/privacidade" target="_blank" rel="noopener">Política de Privacidade</a>.</p>
         <h4 class="conta-secao conta-perigo">Excluir conta</h4>
-        <p>Apaga a conta e todos os projetos salvos nela, sem volta, inclusive os projetos de equipe que você criou (para todos os membros). Baixe uma cópia antes se quiser guardar algo.</p>
+        <p>Apaga a conta e tudo o que está nela, sem volta: projetos, biblioteca, arquivos anexados, histórico e os projetos de equipe que você criou (para todos os membros). Baixe uma cópia antes se quiser guardar algo.</p>
         <form id="contaExcluirForm">
           <label class="modal-field">
             <span>Para confirmar, digite o seu e-mail</span>

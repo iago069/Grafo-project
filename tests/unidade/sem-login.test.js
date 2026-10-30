@@ -91,8 +91,15 @@ test("criar conta pede nome e a mesma senha duas vezes", async () => {
   assert.match(aba.els.authMessage.textContent, /Digite seu nome/);
   aba.els.authNome.value = "  Ana   Souza ";
   await aba.els.authForm.disparar("submit");
+  assert.match(aba.els.authMessage.textContent, /aceite a Política de Privacidade/);
+  assert.equal(banco.cadastros, undefined, "não cadastra sem o aceite da política");
+  aba.els.authAceite.checked = true;
+  await aba.els.authForm.disparar("submit");
   assert.equal(banco.cadastros.length, 1);
-  assert.deepEqual(banco.cadastros[0].options.data, { nome: "Ana Souza", full_name: "Ana Souza" });
+  const dados = banco.cadastros[0].options.data;
+  assert.ok(!isNaN(Date.parse(dados.privacidade_aceita_em)), "data do aceite");
+  delete dados.privacidade_aceita_em;
+  assert.deepEqual(dados, { nome: "Ana Souza", full_name: "Ana Souza", privacidade: "2026-10-30" });
   assert.match(aba.els.authMessage.textContent, /Confirme o e-mail/);
   await aba.els.authBack.disparar("click");
   assert.equal(aba.els.authNome.hidden, true, "login não pede nome");

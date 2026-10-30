@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<!--
+  Grafo — Copyright (c) 2026 Iago Ariel Gularte Barbosa. Licença AGPL-3.0.
+  Política de Privacidade (LGPD, Lei 13.709/2018). Ao mudar o texto, troque a
+  VERSÃO aqui e em assets/js/conta/auth.js (VERSAO_PRIVACIDADE).
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Política de Privacidade · Grafo</title>
+<meta name="description" content="Como o Grafo trata os seus dados pessoais, conforme a LGPD.">
+<meta name="theme-color" content="#0f2536">
+<link rel="icon" type="image/png" href="./assets/images/app/favicon-64.png">
+<link rel="stylesheet" href="./assets/fonts/fontes.css">
+<style>
+  :root {
+    --fundo: #0b1a26; --cartao: #10283a; --borda: #1f3f57; --texto: #dbe7ef; --suave: #93aec0;
+    --titulo: #ffffff; --laranja: #f09a2e; --verde: #4fd1c5;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --fundo: #f3f6f9; --cartao: #ffffff; --borda: #d8e2ea; --texto: #1d3344; --suave: #557083; --titulo: #0e1f2e; --laranja: #c26f08; --verde: #13877c; }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--fundo); color: var(--texto); font: 16px/1.65 "IBM Plex Sans", system-ui, sans-serif; }
+  a { color: var(--verde); }
+  header { max-width: 860px; margin: 0 auto; padding: 32px 20px 8px; display: flex; align-items: center; gap: 12px; }
+  header a.marca { display: flex; align-items: center; gap: 10px; color: var(--titulo); text-decoration: none; font: 700 22px "Space Grotesk", sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 8px 20px 64px; }
+  h1 { font: 700 34px/1.2 "Space Grotesk", sans-serif; color: var(--titulo); margin: 18px 0 6px; }
+  .versao { color: var(--suave); margin: 0 0 24px; }
+  .resumo { background: var(--cartao); border: 1px solid var(--borda); border-left: 4px solid var(--laranja); border-radius: 12px; padding: 18px 22px; margin: 0 0 28px; }
+  .resumo ul { margin: 8px 0 0; padding-left: 20px; }
+  nav.indice { columns: 2; column-gap: 28px; margin: 0 0 30px; padding: 0; list-style: none; font-size: 15px; }
+  nav.indice li { margin: 0 0 6px; break-inside: avoid; }
+  h2 { font: 600 22px/1.3 "Space Grotesk", sans-serif; color: var(--titulo); margin: 38px 0 10px; scroll-margin-top: 16px; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 16px; font-size: 15px; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--borda); }
+  th { color: var(--titulo); font-weight: 600; background: var(--cartao); }
+  .tabela { overflow-x: auto; border: 1px solid var(--borda); border-radius: 10px; }
+  .tabela table { margin: 0; }
+  .tabela tr:last-child td { border-bottom: 0; }
+  code { font-family: "IBM Plex Mono", monospace; font-size: 0.92em; }
+  .contato { display: inline-block; background: var(--cartao); border: 1px solid var(--borda); border-radius: 10px; padding: 12px 16px; font-weight: 600; }
+  footer { color: var(--suave); font-size: 14px; border-top: 1px solid var(--borda); margin-top: 48px; padding-top: 18px; }
+  @media (max-width: 640px) { h1 { font-size: 28px; } nav.indice { columns: 1; } th, td { padding: 8px; } }
+</style>
+</head>
+<body>
+<header>
+  <a class="marca" href="/"><img src="./assets/images/app/favicon-64.png" width="32" height="32" alt="">Grafo</a>
+</header>
+<main>
+  <h1>Política de Privacidade</h1>
+  <p class="versao">Versão de 30 de outubro de 2026 · conforme a Lei Geral de Proteção de Dados (Lei nº 13.709/2018, LGPD)</p>
+
+  <div class="resumo">
+    <strong>Em resumo</strong>
+    <ul>
+      <li>Usamos só o necessário para você ter uma conta e guardar seus diagramas.</li>
+      <li>Não vendemos dados, não mostramos anúncios e não usamos cookies de rastreamento nem ferramentas de análise de visitantes.</li>
+      <li>Você baixa uma cópia dos seus dados e exclui a conta sozinho, em <strong>Minha conta</strong>.</li>
+      <li>No modo <strong>Usar sem login</strong>, seus projetos ficam só no seu navegador.</li>
+    </ul>
+  </div>
+
+  <nav class="indice" aria-label="Seções">
+    <li><a href="#controlador">1. Quem cuida dos seus dados</a></li>
+    <li><a href="#dados">2. Quais dados e para quê</a></li>
+    <li><a href="#terceiros">3. Dados de terceiros nos projetos</a></li>
+    <li><a href="#compartilhamento">4. Com quem os dados são compartilhados</a></li>
+    <li><a href="#internacional">5. Transferência internacional</a></li>
+    <li><a href="#prazo">6. Por quanto tempo guardamos</a></li>
+    <li><a href="#direitos">7. Seus direitos e como exercê-los</a></li>
+    <li><a href="#navegador">8. Cookies e armazenamento no navegador</a></li>
+    <li><a href="#seguranca">9. Segurança e incidentes</a></li>
+    <li><a href="#alteracoes">10. Menores e alterações desta política</a></li>
+  </nav>
+
+  <h2 id="controlador">1. Quem cuida dos seus dados</h2>
+  <p>O Grafo é mantido por <strong>Iago Ariel Gularte Barbosa</strong>, que é o <strong>controlador</strong> dos dados pessoais da sua conta (art. 5º, VI, da LGPD). Para qualquer pedido ou dúvida sobre privacidade, inclusive os direitos da seção 7, escreva para o canal de atendimento ao titular (art. 41):</p>
+  <p class="contato">E-mail: <a href="mailto:thegrafobase@gmail.com">thegrafobase@gmail.com</a></p>
+  <p>Respondemos em até 15 dias, como prevê o art. 19 da LGPD.</p>
+
+  <h2 id="dados">2. Quais dados e para quê</h2>
+  <div class="tabela"><table>
+    <thead><tr><th>Dado</th><th>Para quê</th><th>Base legal (art. 7º)</th></tr></thead>
+    <tbody>
+      <tr><td>Nome, e-mail e senha (guardada só como código irreversível, nunca o texto)</td><td>Criar a conta, entrar, recuperar a senha e mostrar seu nome no editor</td><td>Execução de contrato (V)</td></tr>
+      <tr><td>Projetos, biblioteca e arquivos anexados</td><td>Guardar e mostrar seus diagramas e documentos em qualquer aparelho</td><td>Execução de contrato (V)</td></tr>
+      <tr><td>Histórico de versões dos projetos (com o e-mail de quem alterou, em projetos de equipe)</td><td>Permitir voltar a uma versão anterior</td><td>Execução de contrato (V)</td></tr>
+      <tr><td>Equipes: e-mail dos membros e permissão de cada um</td><td>Mostrar aos membros quem participa e quem pode editar</td><td>Execução de contrato (V)</td></tr>
+      <tr><td>Registro de erros: mensagem do erro, página (sem parâmetros), navegador e data. Nunca o conteúdo dos projetos</td><td>Descobrir e corrigir falhas do site</td><td>Legítimo interesse (IX)</td></tr>
+      <tr><td>Datas de criação da conta e do último acesso, quantidade e tamanho dos projetos, bloqueio de conta</td><td>Administrar o serviço e impedir abusos</td><td>Legítimo interesse (IX)</td></tr>
+      <tr><td>Endereço IP e dados técnicos da conexão, registrados pelos fornecedores de hospedagem</td><td>Entregar o site e protegê-lo contra ataques</td><td>Legítimo interesse (IX)</td></tr>
+      <tr><td>Data em que você aceitou esta política</td><td>Comprovar que você foi informado</td><td>Cumprimento de obrigação legal (II)</td></tr>
+    </tbody>
+  </table></div>
+  <p>O administrador do Grafo vê o e-mail, as datas e os totais das contas, mas <strong>não abre o conteúdo dos seus projetos</strong>, a não ser que você peça ajuda com eles ou que uma ordem judicial obrigue.</p>
+  <p><strong>Ler imagem com IA:</strong> só quando você usa essa função, a imagem escolhida é enviada à Anthropic (fornecedora do modelo Claude) para ler as portas e devolvê-las ao editor. O Grafo não guarda a imagem.</p>
+
+  <h2 id="terceiros">3. Dados de terceiros nos projetos</h2>
+  <p>Se você colocar nos seus projetos dados de outras pessoas, como o nome ou o endereço de clientes numa rede FTTH, <strong>você é o controlador desses dados</strong> e responde pela base legal para usá-los. O Grafo atua como <strong>operador</strong> (art. 5º, VII): guarda e mostra esses dados só para você e para quem você der acesso (equipe ou link de compartilhamento), e não os usa para nenhum outro fim.</p>
+
+  <h2 id="compartilhamento">4. Com quem os dados são compartilhados</h2>
+  <p>Não vendemos nem cedemos dados. Eles passam apenas pelos fornecedores que fazem o Grafo funcionar, cada um só com o necessário:</p>
+  <div class="tabela"><table>
+    <thead><tr><th>Fornecedor</th><th>O que faz</th></tr></thead>
+    <tbody>
+      <tr><td>Supabase</td><td>Banco de dados, login, envio dos e-mails da conta e armazenamento dos arquivos anexados</td></tr>
+      <tr><td>Vercel</td><td>Hospedagem do site</td></tr>
+      <tr><td>jsDelivr</td><td>Entrega de bibliotecas de código abertas (recebe o IP de quem abre o editor, como qualquer site)</td></tr>
+      <tr><td>Anthropic</td><td>Leitura de imagens com IA, apenas quando você usa essa função</td></tr>
+      <tr><td>Have I Been Pwned</td><td>Confere se a senha nova já apareceu em vazamentos. Recebe só os 5 primeiros caracteres de um código da senha, nunca a senha nem o seu e-mail</td></tr>
+    </tbody>
+  </table></div>
+  <p>Também compartilhamos dados quando a lei ou uma autoridade competente exigir.</p>
+  <p>Quem você convida para uma equipe vê o seu e-mail na lista de membros. Quem recebe um link de compartilhamento vê o projeto compartilhado, mas não vê seus dados de conta.</p>
+
+  <h2 id="internacional">5. Transferência internacional</h2>
+  <p>Os servidores desses fornecedores podem ficar fora do Brasil, principalmente nos Estados Unidos. A transferência acontece para executar o serviço que você pediu (art. 33, IX) e com as garantias contratuais de proteção de dados oferecidas por esses fornecedores (art. 33, II).</p>
+
+  <h2 id="prazo">6. Por quanto tempo guardamos</h2>
+  <ul>
+    <li><strong>Conta, projetos, biblioteca e anexos:</strong> enquanto a conta existir. Ao excluir a conta, tudo é apagado na hora, inclusive os arquivos anexados e os projetos de equipe que você criou.</li>
+    <li><strong>Histórico de versões:</strong> no máximo as 60 versões mais recentes de cada projeto, por até 90 dias.</li>
+    <li><strong>Registro de erros:</strong> 90 dias.</li>
+    <li><strong>Links de compartilhamento e convites:</strong> até você desativá-los ou excluir o projeto.</li>
+    <li><strong>Registros técnicos dos fornecedores:</strong> pelo prazo de cada fornecedor. Cópias de segurança deles podem levar alguns dias para expirar depois de uma exclusão.</li>
+  </ul>
+
+  <h2 id="direitos">7. Seus direitos e como exercê-los</h2>
+  <p>A LGPD (art. 18) garante a você, a qualquer momento e sem custo:</p>
+  <div class="tabela"><table>
+    <thead><tr><th>Direito</th><th>Como fazer no Grafo</th></tr></thead>
+    <tbody>
+      <tr><td>Confirmar e acessar os dados</td><td><strong>Minha conta → Baixar todos os meus dados</strong> (arquivo com a conta, os projetos, a biblioteca e as equipes)</td></tr>
+      <tr><td>Portabilidade</td><td>O mesmo arquivo, em formato aberto (JSON). Os projetos também podem ser baixados para importar de novo</td></tr>
+      <tr><td>Corrigir dados</td><td>O nome, em <strong>Minha conta</strong>; os projetos, no próprio editor</td></tr>
+      <tr><td>Eliminar dados</td><td><strong>Minha conta → Excluir minha conta</strong></td></tr>
+      <tr><td>Saber com quem os dados são compartilhados</td><td>Seção 4 desta política</td></tr>
+      <tr><td>Se opor a um tratamento ou revisar uma decisão</td><td>Pelo e-mail da seção 1</td></tr>
+      <tr><td>Reclamar à Autoridade Nacional</td><td>Na ANPD, em <a href="https://www.gov.br/anpd" target="_blank" rel="noopener noreferrer">gov.br/anpd</a></td></tr>
+    </tbody>
+  </table></div>
+  <p>O Grafo não toma decisões automatizadas sobre você nem cria perfis de comportamento.</p>
+
+  <h2 id="navegador">8. Cookies e armazenamento no navegador</h2>
+  <p>O Grafo <strong>não usa cookies de rastreamento, anúncios ou ferramentas de análise de visitantes</strong>, e as fontes de letra vêm do próprio site, sem consultar serviços de terceiros. Para funcionar, ele guarda no seu navegador (armazenamento local, do próprio aparelho):</p>
+  <ul>
+    <li>a sessão de login, para você não precisar entrar toda vez;</li>
+    <li>uma cópia dos projetos, para abrir rápido e funcionar sem internet;</li>
+    <li>preferências como tema, idioma do mapa e o progresso dos primeiros passos.</li>
+  </ul>
+  <p>Esses dados são estritamente necessários e ficam só no seu aparelho. Ao <strong>Sair</strong> da conta, a cópia dos projetos é apagada do navegador.</p>
+
+  <h2 id="seguranca">9. Segurança e incidentes</h2>
+  <p>Adotamos medidas técnicas para proteger os dados (art. 46): conexão sempre criptografada (HTTPS), regras no banco que deixam cada pessoa ver só os próprios dados e os das equipes de que participa, senhas guardadas de forma irreversível, acesso administrativo limitado e regras de segurança no navegador contra códigos maliciosos. O código do Grafo é aberto e pode ser auditado por qualquer pessoa.</p>
+  <p>Se acontecer um incidente de segurança que possa trazer risco ou dano relevante a você, avisaremos você e a ANPD, como prevê o art. 48 da LGPD.</p>
+
+  <h2 id="alteracoes">10. Menores e alterações desta política</h2>
+  <p>O Grafo é uma ferramenta profissional e não se destina a menores de 18 anos.</p>
+  <p>Se esta política mudar, a data no topo da página será atualizada e, em mudanças importantes, avisaremos dentro do Grafo antes de elas valerem.</p>
+
+  <footer>Grafo · <a href="/">Voltar ao Grafo</a> · Código aberto (AGPL-3.0) no <a href="https://github.com/iago069/Grafo-project" target="_blank" rel="noopener noreferrer">GitHub</a></footer>
+</main>
+</body>
+</html>
