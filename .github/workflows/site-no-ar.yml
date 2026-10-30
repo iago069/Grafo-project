@@ -1,0 +1,29 @@
+name: Site no ar
+
+# Abre https://thegrafo.vercel.app de verdade (tests/no-ar) depois de cada
+# deploy de produção da Vercel, e uma vez por dia para avisar se o site ou o
+# Supabase saírem do ar. Se falhar, o GitHub manda e-mail.
+on:
+  deployment_status:
+  schedule:
+    - cron: "0 12 * * *"   # 9h no horário de Brasília
+  workflow_dispatch:
+
+jobs:
+  site:
+    if: >-
+      github.event_name != 'deployment_status' ||
+      (github.event.deployment_status.state == 'success' &&
+       github.event.deployment.environment == 'Production – thegrafo')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.deployment.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:no-ar
