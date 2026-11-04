@@ -124,6 +124,7 @@
       });
     });
     if (window.GrafoBiblioteca) lista = lista.concat(window.GrafoBiblioteca.candidatos());
+    if (window.GrafoMapas) lista = lista.concat(window.GrafoMapas.candidatos());
     ACOES.forEach(function (a) { if (!a.visivel || a.visivel()) lista.push(a); });
     cacheCandidatos = lista;
     if (window.GrafoBiblioteca) {

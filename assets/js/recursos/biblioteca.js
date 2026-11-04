@@ -143,34 +143,36 @@
   if (workspace && workspace.parentNode) workspace.parentNode.insertBefore(raiz, workspace);
   else document.body.appendChild(raiz);
 
-  // Alternador no topo: Início | Diagrama.
+  // Alternador no topo: Diagrama | Biblioteca | Mapas.
   var barra = document.querySelector(".theme-toolbar");
   var alternador = document.createElement("div");
   alternador.className = "vista-alternador";
   alternador.setAttribute("role", "tablist");
-  alternador.innerHTML = '<button type="button" role="tab" data-vista-ir="editor">Diagrama</button><button type="button" role="tab" data-vista-ir="biblioteca">Biblioteca</button>';
+  alternador.innerHTML = '<button type="button" role="tab" data-vista-ir="editor">Diagrama</button><button type="button" role="tab" data-vista-ir="biblioteca">Biblioteca</button><button type="button" role="tab" data-vista-ir="mapas">Mapas</button>';
   if (barra) barra.insertBefore(alternador, barra.firstChild);
   alternador.addEventListener("click", function (ev) {
     var b = ev.target.closest("[data-vista-ir]");
     if (!b) return;
     var alvo = b.getAttribute("data-vista-ir");
-    if (alvo === "editor") mostrarEditor(); else irPara({ nome: alvo });
+    if (alvo === "editor") mostrarEditor(); else if (alvo === "mapas") mostrarMapas(); else irPara({ nome: alvo });
   });
   var marca = document.querySelector(".sidebar .brand");
   if (marca) { marca.style.cursor = "pointer"; marca.title = "Ir para o diagrama"; marca.addEventListener("click", function () { mostrarEditor(); }); }
 
   function definirVista(v) {
     document.body.setAttribute("data-vista", v);
-    var aba = v === "editor" ? "editor" : (tela.nome === "inicio" ? "" : "biblioteca");
+    var aba = v === "editor" || v === "mapas" ? v : (tela.nome === "inicio" ? "" : "biblioteca");
     // Guarda onde a pessoa parou, para abrir ali na próxima vez (o Início animado não conta).
-    if (v === "editor" || tela.nome !== "inicio") {
-      try { localStorage.setItem("grafo-ultima-vista", JSON.stringify(v === "editor" ? { vista: "editor" } : { vista: "biblioteca", tela: { nome: tela.nome, estanteId: tela.estanteId, livroId: tela.livroId, paginaId: tela.paginaId } })); } catch (e) {}
+    if (v !== "inicio" || tela.nome !== "inicio") {
+      try { localStorage.setItem("grafo-ultima-vista", JSON.stringify(v === "editor" || v === "mapas" ? { vista: v } : { vista: "biblioteca", tela: { nome: tela.nome, estanteId: tela.estanteId, livroId: tela.livroId, paginaId: tela.paginaId } })); } catch (e) {}
     }
     alternador.querySelectorAll("[data-vista-ir]").forEach(function (b) { var on = b.getAttribute("data-vista-ir") === aba; b.classList.toggle("ativo", on); b.setAttribute("aria-selected", String(on)); });
     if (v === "editor") window.dispatchEvent(new Event("resize"));
   }
   // O diagrama só mede direito com o editor visível: mostra primeiro, depois redesenha.
   function mostrarEditor() { pararCena(); definirVista("editor"); if (app.redesenhar) app.redesenhar(); }
+  // Mapas (mapas.js): outra aplicação, com a tela dela; mostrar() desenha quando o script já chegou.
+  function mostrarMapas() { pararCena(); definirVista("mapas"); window.scrollTo(0, 0); if (window.GrafoMapas) window.GrafoMapas.mostrar(); }
   async function irPara(t) {
     // Sem tela de Início: quem pedia o Início vai para o diagrama.
     if (t.nome === "inicio") { mostrarEditor(); return; }
@@ -628,16 +630,19 @@
   }
 
   // ---- abertura ----------------------------------------------------------------------
-  // Abre onde a pessoa parou (diagrama ou biblioteca). O QR code (?abrir=) vai sempre
+  // Abre onde a pessoa parou (diagrama, biblioteca ou mapas). O QR code (?abrir=) vai sempre
   // para o diagrama. O Início animado fica na logo "Grafo" e na paleta (Ctrl+K).
   var ultima = null;
   try { ultima = JSON.parse(localStorage.getItem("grafo-ultima-vista")); } catch (e) {}
-  var abrirNoEditor = /[?&]abrir=/.test(location.search) || !ultima || ultima.vista !== "biblioteca";
+  var abrirNoEditor = /[?&]abrir=/.test(location.search) || !ultima || (ultima.vista !== "biblioteca" && ultima.vista !== "mapas");
   try { if (localStorage.getItem("grafo-vista-inicial") === "editor") abrirNoEditor = true; } catch (e) {}
   if (migrarDocumentosAntigos()) salvar();
-  if (!abrirNoEditor) tela = ultima.tela && ultima.tela.nome && ultima.tela.nome !== "inicio" ? ultima.tela : { nome: "biblioteca" };
-  definirVista(abrirNoEditor ? "editor" : "inicio");
-  if (!abrirNoEditor) render();
+  if (!abrirNoEditor && ultima.vista === "biblioteca") tela = ultima.tela && ultima.tela.nome && ultima.tela.nome !== "inicio" ? ultima.tela : { nome: "biblioteca" };
+  if (!abrirNoEditor && ultima.vista === "mapas") mostrarMapas();
+  else {
+    definirVista(abrirNoEditor ? "editor" : "inicio");
+    if (!abrirNoEditor) render();
+  }
   carregarDaNuvem().then(function () {
     if (migrarDocumentosAntigos()) salvar();
     if (document.body.getAttribute("data-vista") === "inicio" && !tela.editando) render();

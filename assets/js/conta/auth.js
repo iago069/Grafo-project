@@ -376,6 +376,8 @@
     loadScript("./assets/js/recursos/comandos.js").catch(function (error) { console.error(error); });
     // Início e Biblioteca (documentação separada dos diagramas).
     loadScript("./assets/js/recursos/biblioteca.js").catch(function (error) { console.error(error); });
+    // Mapas: mapa geográfico de POPs e traçados (aba "Mapas").
+    loadScript("./assets/js/recursos/mapas.js").catch(function (error) { console.error(error); });
     // Gerar diagrama a partir de texto colado (Grafana, NetBox, Junos).
     loadScript("./assets/js/recursos/leitor.js").catch(function (error) { console.error(error); });
     if (convidado) { prepararBotoesQuePedemLogin(); return; }
@@ -556,7 +558,7 @@
   function keepEditorOffline() {
     if (!("serviceWorker" in navigator) || !navigator.serviceWorker.controller) return;
     var urls = EDITOR_SCRIPTS.map(function (script) { return script[0]; })
-      .concat(["./assets/js/recursos/primeiros-passos.js", "./assets/js/recursos/compartilhar.js", "./assets/js/recursos/historico.js", "./assets/js/recursos/etiquetas.js", "./assets/js/recursos/integracao.js", "./assets/js/recursos/racks.js", "./assets/js/recursos/comandos.js", "./assets/js/recursos/biblioteca.js", "./assets/js/recursos/leitor.js", "./assets/js/recursos/admin.js"]);
+      .concat(["./assets/js/recursos/primeiros-passos.js", "./assets/js/recursos/compartilhar.js", "./assets/js/recursos/historico.js", "./assets/js/recursos/etiquetas.js", "./assets/js/recursos/integracao.js", "./assets/js/recursos/racks.js", "./assets/js/recursos/comandos.js", "./assets/js/recursos/biblioteca.js", "./assets/js/recursos/mapas.js", "./assets/js/recursos/leitor.js", "./assets/js/recursos/admin.js"]);
     if (window.GrafoApp && window.GrafoApp.arquivosParaGuardar) urls = urls.concat(window.GrafoApp.arquivosParaGuardar());
     navigator.serviceWorker.controller.postMessage({ tipo: "guardar", urls: urls });
   }
@@ -763,6 +765,7 @@
       conta: { id: id, email: user.email, nome: nomeDoUsuario(user), criada_em: user.created_at, ultimo_acesso: user.last_sign_in_at, dados_da_conta: user.user_metadata || {} },
       projetos_pessoais: await ler("grafo_user_data", "projects, current_project, updated_at", "user_id"),
       biblioteca: await ler("grafo_biblioteca", "dados, atualizado_em", "user_id"),
+      mapas: await ler("grafo_mapas", "dados, atualizado_em", "user_id"),
       projetos_de_equipe_criados: await ler("grafo_projetos_equipe", "id, nome, dados, atualizado_em", "dono"),
       equipes_de_que_participa: await ler("grafo_membros", "projeto, email, papel, entrou_em", "usuario"),
       links_de_compartilhamento: await ler("grafo_compartilhamentos", "token, projeto, atualizado_em", "user_id"),

@@ -7389,7 +7389,7 @@
       return r;
     },
     equipamentosDoDiagrama: function () {
-      return estado.equipamentos.map(function (eq) { return { id: eq.id, nome: eq.nome, tipo: eq.tipo || "", modelo: eq.modelo || "" }; });
+      return estado.equipamentos.map(function (eq) { return { id: eq.id, nome: eq.nome, tipo: eq.tipo || "", modelo: eq.modelo || "", municipio: eq.municipio || "", ip: eq.ip || "", status: eq.status || "ativo" }; });
     },
     bibliotecasPdf: async function () {
       var JsPdf = await carregarJsPdf();

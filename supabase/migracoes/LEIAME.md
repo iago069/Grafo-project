@@ -18,6 +18,7 @@ Cada arquivo roda **uma vez**, no SQL Editor do Supabase, **nesta ordem**:
 | 11 | `2026-10-19-equipe-grupos.sql` | Equipes com vários diagramas |
 | 12 | `2026-10-19-equipe-agrupar.sql` | Agrupar diagramas da equipe (depois do 11) |
 | 13 | `2026-10-30-lgpd-excluir-conta.sql` | LGPD: excluir conta tira o e-mail do histórico das equipes |
+| 14 | `2026-11-04-mapas.sql` | Mapas (aba Mapas) salvos na conta |
 
 Os nomes começam pela data em que a migração foi criada; quando duas têm a
 mesma data, vale a ordem da tabela acima.

@@ -20,6 +20,7 @@ Se algo aqui mudar, atualize a política também (e a versão dela, ver abaixo).
 | Nome, e-mail, senha (hash), aceite da política | Supabase Auth (`auth.users`, `user_metadata`) | Conta e login | Contrato (art. 7º, V); aceite: obrigação legal (II) | Enquanto a conta existir |
 | Projetos pessoais | `grafo_user_data` | Guardar os diagramas | Contrato | Enquanto a conta existir |
 | Biblioteca e anexos | `grafo_biblioteca`, Storage `documentos/<id>/` | Guardar documentos | Contrato | Enquanto a conta existir |
+| Mapas (pontos, traçados e camadas) | `grafo_mapas` | Guardar os mapas da aba Mapas | Contrato | Enquanto a conta existir |
 | Projetos de equipe, membros (e-mail, papel), convites | `grafo_projetos_equipe`, `grafo_membros`, `grafo_convites*`, `grafo_grupos` | Trabalho em equipe | Contrato | Enquanto o projeto existir |
 | Histórico de versões (e-mail de quem salvou) | `grafo_versoes` | Restaurar versões | Contrato | 60 versões / 90 dias |
 | Links de compartilhamento | `grafo_compartilhamentos` | Mostrar o projeto a quem tem o link | Contrato | Até desativar |
@@ -29,7 +30,9 @@ Se algo aqui mudar, atualize a política também (e a versão dela, ver abaixo).
 
 Operadores (art. 39): Supabase (banco, login, e-mail, arquivos), Vercel
 (hospedagem), jsDelivr (bibliotecas), Anthropic (só "Ler imagem"), Have I Been
-Pwned (recebe só 5 caracteres do SHA-1 da senha nova; `senhaVazada` em `auth.js`). Todos com
+Pwned (recebe só 5 caracteres do SHA-1 da senha nova; `senhaVazada` em `auth.js`),
+Esri/OpenStreetMap (tiles do mapa de fundo da aba Mapas: recebem IP e a área vista)
+e IBGE (posição dos municípios). Todos com
 servidores possivelmente fora do Brasil (art. 33, II e IX).
 
 O site não usa cookies de rastreamento, análise de visitantes nem anúncios. As

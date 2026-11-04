@@ -12,6 +12,7 @@
 - [Como usar](#como-usar)
 - [Atalhos](#atalhos)
 - [Tipos de diagrama](#tipos-de-diagrama)
+- [Mapas](#mapas)
 - [Importar e exportar](#importar-e-exportar)
 - [Onde ficam os dados](#onde-ficam-os-dados)
 - [Ícones dos equipamentos](#ícones-dos-equipamentos)
@@ -132,6 +133,20 @@ Monta a rede por cima dos municípios (**Editar diagrama → Mapa de regiões**)
 6. **Imagem de fundo:** PNG, JPG ou SVG (o SVG é limpo de scripts). Tem opacidade, rotação, mostrar/ocultar e bloquear. É só um desenho: não tem municípios nem coordenadas.
 
 O mapa fica salvo no projeto (inclusive a imagem) e sai no PDF, PNG e SVG. Camadas: *Mapa* e *Nome das cidades*. Modelo pronto: **Rota 100G no mapa** (exemplo do PDF de Ibirubá a Boqueirão do Leão, com pendências de revisão na nota).
+
+## Mapas
+
+Aba **Mapas** no topo, ao lado de *Diagrama* e *Biblioteca*: outra aplicação dentro do Grafo, com um mapa geográfico de verdade (ruas, OpenStreetMap ou satélite) para ver POPs, torres e clientes pelo status, com os traçados da rede por cima.
+
+- **Importar** (ou arrastar o arquivo para o mapa): **KMZ/KML** do Google Earth (pontos e linhas; cada pasta vira uma camada, com a cor do estilo), **GeoJSON**, **CSV** (`;`, `,` ou tab; colunas *nome*, *código*, *status*, *latitude*, *longitude*, *cidade*, *endereço*; as demais aparecem em "Dados importados") ou JSON.
+- **Status** de cada ponto: *Fora do ar*, *Alerta*, *Atenção*, *Normal*, *Sem status*. Entende os jeitos comuns de escrever (down, offline, high, warning, ok, up, severidade 0–5 do Zabbix…).
+- **Atualizar pelo monitoramento:** importar de novo uma planilha com o mesmo **código** (ou nome) atualiza o ponto em vez de duplicar — exporte os hosts/problemas do Zabbix ou os sites do NetBox em CSV e importe. Traçados de uma camada que já existe substituem os antigos dela.
+- **Do diagrama:** põe no mapa as cidades dos equipamentos do diagrama aberto (campo *Município*), no centro do município (IBGE), com a lista de equipamentos e o status (offline → fora do ar).
+- **Ponto:** clique no mapa para criar; no *Detalhe* edita nome, código, status, endereço e coordenadas, *Mover no mapa*, *Google Maps*.
+- Filtro por status, busca (nome, código, cidade, IP, equipamento), camadas com cor e linha tracejada, vários mapas por conta.
+- **Exportar:** imagem PNG (com o crédito do mapa de fundo), GeoJSON (abre no Google Earth/QGIS), planilha CSV dos pontos e backup de todos os mapas (.json, que também pode ser importado).
+
+Os mapas ficam na conta (tabela `grafo_mapas`, migração `2026-11-04-mapas.sql`) e numa cópia no navegador; sem login, só no navegador. Limite de ~4 MB por conta (KMZ de rede FTTH inteira: importe só as camadas que precisa).
 
 ## Bayface de Racks
 
