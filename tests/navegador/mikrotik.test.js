@@ -83,3 +83,19 @@ test("Script MikroTik pelo editor do equipamento e tabela de VLANs editável", a
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+// Sem a sigla no nome, o local sai do município da RB (base CNL da Anatel):
+// Santa Cruz do Sul → SCR (215), Ibirubá → IBR (212).
+test("Script MikroTik: local pela cidade da RB (Santa Cruz do Sul → SCR, Ibirubá → IBR)", async () => {
+  for (const [municipio, sigla, vlan] of [["Santa Cruz do Sul", "SCR", "215"], ["Ibirubá", "IBR", "212"], ["Passo Fundo", "PFU", "216"]]) {
+    const projetos = { "POP": { equipamentos: [{ id: "rb", nome: "RB-MON 01", tipo: "MikroTik", municipio, ip: "10.50.0.2/30", status: "ativo" }], conexoes: [] } };
+    const pagina = await abrirPagina(navegador, site, { viewport: { width: 1400, height: 900 }, projetos });
+    await esperarDiagrama(pagina);
+    await pagina.click("#btnScriptMikrotik");
+    await pagina.waitForSelector("#mkModal:not(.hidden)");
+    assert.equal(await pagina.inputValue("#mkLocal"), sigla, municipio);
+    assert.equal(await pagina.inputValue("#mkVlan"), vlan, municipio);
+    assert.deepEqual(pagina.erros, []);
+    await pagina.context().close();
+  }
+});

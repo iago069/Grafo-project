@@ -2785,6 +2785,13 @@
     definirSidebarRecolhida(recolher);
   });
   if (telaCelular.matches) definirSidebarRecolhida(true);
+  // Celular: o menu cobre a tela; um item que abre janela ou a lista fecha o menu
+  // (os que abrem formulário dentro do menu, data-nav-panel, deixam aberto).
+  elSidebar.addEventListener("click", function (event) {
+    var item = event.target.closest(".nav-item");
+    if (!telaCelular.matches || !item || item.hasAttribute("data-nav-panel")) return;
+    definirSidebarRecolhida(true);
+  });
   var ouvirTela = function () { definirSidebarRecolhida(elSidebar.classList.contains("collapsed")); };
   if (telaCelular.addEventListener) telaCelular.addEventListener("change", ouvirTela);
 
@@ -2793,6 +2800,8 @@
     elWorkspace.classList.toggle("modo-avancado-fechado", fechado);
     btnModoAvancado.classList.toggle("active", !fechado);
     btnModoAvancado.textContent = fechado ? "Editar em lista" : "Fechar lista";
+    // No celular a lista fica embaixo do diagrama: leva até ela.
+    if (!fechado && telaCelular.matches) setTimeout(function () { elPainelDados.scrollIntoView({ behavior: "smooth", block: "start" }); }, 50);
     // O quadro muda de largura: reenquadra o diagrama depois da animação.
     setTimeout(function () { ajustarATela(true); }, 320);
   });
@@ -10075,6 +10084,7 @@
   // Tudo vem preenchido pelo diagrama (RB, cabos e ficha de cada equipamento) e
   // pode ser ajustado à mão. O script é colado no New Terminal do Winbox ou
   // importado como arquivo .rsc.
+  // IBR = Ibirubá, PFU = Passo Fundo, SCR = Santa Cruz do Sul (siglas CNL da Anatel).
   var MK_VLANS_PADRAO = "IBR=212\nPFU=216\nSCR=215";
   var MK_CHAVE_VLANS = "grafo-mikrotik-vlans";
   var mk = {

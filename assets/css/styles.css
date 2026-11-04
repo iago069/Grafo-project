@@ -948,7 +948,11 @@ button.menu-item:disabled { opacity: 0.45; }
      e no aria), para o projeto e a barra do diagrama caberem numa linha. */
   .project-tools button.equipe-botao, #btnCompartilhar { font-size: 0; width: 40px; min-width: 40px; padding: 0; justify-content: center; gap: 0; }
   .project-tools button.equipe-botao::before, #btnCompartilhar::before { width: 19px; height: 19px; flex-basis: 19px; }
-  #projetoSelect { flex: 1 1 120px; min-width: 120px; }
+  #projetoSelect { flex: 1 1 120px; min-width: 120px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+  /* Exportar também só com o ícone: com o nome, o Compartilhar caía para outra linha. */
+  .render-actions > .menu-ancora > #btnExportarMenu { font-size: 0; width: 40px; min-width: 40px; padding: 0; justify-content: center; gap: 0; }
+  .render-actions > .menu-ancora > #btnExportarMenu::before { width: 19px; height: 19px; flex-basis: 19px; }
+  .render-actions > .menu-ancora > #btnExportarMenu::after { display: none; }
   .render-actions { gap: 8px; }
 
   .busca-diagrama { flex: 1 1 100%; max-width: none; }
@@ -3483,7 +3487,7 @@ body::after { animation: none; }
 .ip-uso span { display: block; height: 100%; background: var(--teal); border-radius: 3px; }
 .ip-tabela small { color: var(--text-dim); }
 .ip-equips { display: flex; flex-wrap: wrap; gap: 4px; }
-.ip-chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--text); font-size: 0.76rem; cursor: pointer; }
+.ip-chip { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--text); font-size: 0.76rem; cursor: pointer; }
 .ip-chip:hover, .ip-chip:focus-visible { border-color: var(--teal); background: color-mix(in srgb, var(--teal) 10%, transparent); }
 .ip-chip code { font-size: 0.72rem; color: var(--text-dim); }
 .ip-cabos { font-size: 0.72rem; color: var(--text-dim); align-self: center; }

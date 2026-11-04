@@ -6,6 +6,7 @@
   // Tudo vem preenchido pelo diagrama (RB, cabos e ficha de cada equipamento) e
   // pode ser ajustado à mão. O script é colado no New Terminal do Winbox ou
   // importado como arquivo .rsc.
+  // IBR = Ibirubá, PFU = Passo Fundo, SCR = Santa Cruz do Sul (siglas CNL da Anatel).
   var MK_VLANS_PADRAO = "IBR=212\nPFU=216\nSCR=215";
   var MK_CHAVE_VLANS = "grafo-mikrotik-vlans";
   var mk = {
