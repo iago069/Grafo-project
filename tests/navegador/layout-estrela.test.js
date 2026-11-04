@@ -68,3 +68,53 @@ test("Automático: projeto pequeno continua em camadas (Esquerda → Direita)", 
   // projetoExemplo: árvore e0 → e1, e2 → ...; filhos sempre à direita do pai.
   assert.ok(p.e1.x > p.e0.x && p.e2.x > p.e0.x);
 });
+
+// Centro com muitas pontas soltas (ex.: switch de distribuição com 22 equipamentos):
+// cada lado em duas colunas em zigue-zague (metade da altura), sem nada encostando.
+test("Estrela com muitas pontas: colunas em zigue-zague, metade da altura e sem sobreposição", async () => {
+  const equipamentos = [{ id: "distr", nome: "POP-PFU01_DISTR-8", tipo: "Switch" }];
+  const conexoes = [];
+  for (let i = 1; i <= 22; i++) {
+    equipamentos.push({ id: "p" + i, nome: "POP-PFU01_OLT-" + (100 + i), tipo: i % 3 ? "OLT" : "Roteador" });
+    conexoes.push({ de: "distr", para: "p" + i, tipo: "Fibra", potencia: "10G", saida: "XE1/1/" + i, chegada: "XE0/0" });
+  }
+  conexoes.push({ de: "distr", para: "p1", tipo: "Fibra", potencia: "10G", saida: "XE1/1/30", chegada: "XE0/1" });
+  const pagina = await abrirPagina(navegador, site, { projetos: { "POP Distribuição": { equipamentos, conexoes } } });
+  await esperarDiagrama(pagina);
+  await pagina.waitForFunction(() => document.querySelectorAll("#canvas svg g.node").length === 23);
+  // Espera o desenho parar (separar sobreposições e rotear os cabos vêm depois).
+  await pagina.waitForFunction(() => new Promise(ok => { const f = () => document.querySelector("#canvas svg").innerHTML.length; const a = f(); setTimeout(() => ok(f() === a), 1200); }), null, { timeout: 30000, polling: 100 });
+  const p = await posicoes(pagina);
+  const c = p.distr;
+  for (const lado of [-1, 1]) {
+    const xs = new Set(Object.keys(p).filter(id => id !== "distr" && Math.sign(p[id].x - c.x) === lado).map(id => Math.round(p[id].x / 40)));
+    assert.ok(xs.size >= 2, "mais de uma coluna de cada lado: " + xs.size);
+  }
+  // Uma coluna só de 11 equipamentos teria ~1900 de altura.
+  const ys = Object.keys(p).filter(id => id !== "distr").map(id => p[id].y);
+  assert.ok(Math.max(...ys) - Math.min(...ys) < 1200, "altura das colunas: " + Math.round(Math.max(...ys) - Math.min(...ys)));
+  // Em coordenadas da tela (cada equipamento é deslocado por transform).
+  const caixas = await pagina.evaluate(() => [...document.querySelectorAll("#canvas svg g.node")].map(g => { const b = g.getBoundingClientRect(); return [b.left, b.top, b.right, b.bottom]; }));
+  const encostam = caixas.some((a, i) => caixas.some((b, j) => j > i && a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3]));
+  assert.equal(encostam, false, "nenhum equipamento em cima de outro");
+  // Nenhum cabo passa por cima de um equipamento que não é dele.
+  const atravessam = await pagina.evaluate(() => {
+    const nos = [...document.querySelectorAll("#canvas svg g.node")].map(g => { const r = g.getBoundingClientRect(); return { id: g.id, b: { x: r.left, y: r.top, width: r.width, height: r.height } }; });
+    let n = 0;
+    document.querySelectorAll("#canvas svg g.edge path").forEach(path => {
+      const d = (path.getAttribute("d") || "").match(/-?\d+(\.\d+)?/g);
+      if (!d) return;
+      const len = path.getTotalLength();
+      const toques = new Set();
+      for (let t = 0.04; t < 0.96; t += 0.01) {
+        const pt = path.getPointAtLength(len * t).matrixTransform(path.getScreenCTM());
+        nos.forEach(no => { const b = no.b; if (pt.x > b.x + 2 && pt.x < b.x + b.width - 2 && pt.y > b.y + 2 && pt.y < b.y + b.height - 2) toques.add(no.id); });
+      }
+      if (toques.size > 0) n++;
+    });
+    return n;
+  });
+  assert.equal(atravessam, 0, "cabos por cima de equipamentos");
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

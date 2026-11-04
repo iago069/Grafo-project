@@ -1031,7 +1031,8 @@
   }
 
   // Pontos de um cabo ortogonal de s até e (cada um com a direção de saída da porta).
-  function tracarRota(s, e, existentes, obstaculos) {
+  // meio (opcional): x preferido do trecho vertical do "Z" (leque do centro da estrela).
+  function tracarRota(s, e, existentes, obstaculos, meio) {
     var saida = CONFIG_ROTEAMENTO_CABOS.saida;
     var a = { x: s.x + s.dx * saida, y: s.y + s.dy * saida };
     var b = { x: e.x + e.dx * saida, y: e.y + e.dy * saida };
@@ -1059,7 +1060,7 @@
         // "Z": portas uma de frente para a outra, trecho vertical no meio.
         // Se o Z bater num equipamento/grupo, tenta contornar por cima ou por baixo.
         return maisBarata(
-          melhorVariante(trechoVertical, (a.x + b.x) / 2, existentes, obstaculos, a.x, b.x),
+          melhorVariante(trechoVertical, meio != null ? meio : (a.x + b.x) / 2, existentes, obstaculos, a.x, b.x),
           melhorVariante(contornoHorizontal, (s.y + e.y) / 2, existentes, obstaculos)
         );
       }
@@ -1250,6 +1251,37 @@
   }
   // Equipamentos sendo arrastados ({ id: true }), para refazer só os cabos deles.
   var idsEmArraste = null;
+  // Leque do centro (estrela com muitas pontas): cabo do centro até uma ponta solta,
+  // porta lateral nos dois lados. O trecho vertical vai no corredor entre o centro e
+  // a coluna mais perto, começando junto da coluna; os cabos de pouca subida/descida
+  // são traçados primeiro, então os seguintes ficam mais perto do centro e ninguém
+  // se cruza. O cabo da coluna de fora segue reto pelo vão da coluna de dentro.
+  function marcarLequeDoCentro(rotas) {
+    var vizinhos = {};
+    estado.conexoes.forEach(function (c) {
+      if (c.de === c.para) return;
+      (vizinhos[c.de] = vizinhos[c.de] || {})[c.para] = true;
+      (vizinhos[c.para] = vizinhos[c.para] || {})[c.de] = true;
+    });
+    function grau(id) { return Object.keys(vizinhos[id] || {}).length; }
+    var borda = {};
+    rotas.forEach(function (r) {
+      var c = r.conexao, centroNoInicio = grau(c.de) >= PONTAS_PARA_ZIGUEZAGUE && grau(c.para) === 1;
+      if (!centroNoInicio && !(grau(c.para) >= PONTAS_PARA_ZIGUEZAGUE && grau(c.de) === 1)) return;
+      var centro = centroNoInicio ? r.s : r.e, ponta = centroNoInicio ? r.e : r.s;
+      if (!centro.dx || ponta.dx !== -centro.dx || (ponta.x - centro.x) * centro.dx <= 0) return;
+      r.chaveLeque = (centroNoInicio ? c.de : c.para) + (centro.dx > 0 ? ">" : "<");
+      r.sinalLeque = centro.dx;
+      var x = ponta.x;
+      borda[r.chaveLeque] = borda[r.chaveLeque] == null ? x : centro.dx > 0 ? Math.min(borda[r.chaveLeque], x) : Math.max(borda[r.chaveLeque], x);
+    });
+    rotas.forEach(function (r) {
+      if (!r.chaveLeque) return;
+      r.meio = borda[r.chaveLeque] - r.sinalLeque * (CONFIG_ROTEAMENTO_CABOS.saida + 10);
+      r.leque = Math.abs(r.s.y - r.e.y);
+    });
+  }
+
   function rotearCabosOrtogonalmente() {
     prepararContornoDoMapa();
     var svg = elCanvas.querySelector("svg");
@@ -1269,7 +1301,8 @@
     var maisGrosso = estado.conexoes.reduce(function (m, c) { return Math.max(m, Number(c.grossura) || 2); }, 2);
     CONFIG_ROTEAMENTO_CABOS.espaco = Math.max(14, Math.round(maisGrosso * 2.2 + 8));
     // Cabos curtos primeiro ficam com a trilha ideal; os longos desviam deles.
-    function comprimento(r) { return Math.abs(r.s.x - r.e.x) + Math.abs(r.s.y - r.e.y); }
+    function comprimento(r) { return r.leque != null ? r.leque : Math.abs(r.s.x - r.e.x) + Math.abs(r.s.y - r.e.y); }
+    marcarLequeDoCentro(rotas);
     rotas.sort(function (a, b) { return comprimento(a) - comprimento(b); });
     var existentes = [];
     // Rótulos não caem em cima de equipamentos nem das caixinhas de porta.
@@ -1295,7 +1328,7 @@
     rotas.forEach(function (rota) {
       // Rota feita à mão (10-desenho-e-ferramentas.js) passa pelas dobras escolhidas.
       var pts = rotaManualDoCabo(rota.s, rota.e, rota.conexao.rota)
-        || tracarRota(rota.s, rota.e, trechosPerto(existentes, rota.s, rota.e), obstaculosDoCabo(obstaculos, rota.conexao, rota.s, rota.e));
+        || tracarRota(rota.s, rota.e, trechosPerto(existentes, rota.s, rota.e), obstaculosDoCabo(obstaculos, rota.conexao, rota.s, rota.e), rota.meio);
       pts = endireitarDegraus(pts);
       existentes.push.apply(existentes, segmentosDaRota(pts));
       // Cabo longo dobra com curva mais aberta (mais redondo); curto, a curva normal.
@@ -6795,7 +6828,7 @@
       if (!s || !e) return;
       [[c.para, e, s], [c.de, s, e]].some(function (par) {
         var id = par[0], meu = par[1], outro = par[2];
-        if (movidos[id] || Object.keys(vizinhos[id] || {}).length !== 1) return false;
+        if (movidos[id] || emZigueZague[id] || Object.keys(vizinhos[id] || {}).length !== 1) return false;
         var eq = estado.equipamentos.find(function (x) { return x.id === id; });
         if (!eq || !posicaoValida(eq.posicao)) return false;
         var lateral = Math.abs(meu.dx) > 0;
@@ -7047,6 +7080,10 @@
 
   // Projeto "grande": algum equipamento com muitas ligações (um núcleo).
   var LIGACOES_PARA_ESTRELA = 5;
+  // Centro com pelo menos tantas pontas soltas: colunas em zigue-zague (posicionarEmEstrela).
+  var PONTAS_PARA_ZIGUEZAGUE = 10;
+  // Equipamentos postos em zigue-zague: alinharPortasDasPontas não os mexe (sairiam do vão).
+  var emZigueZague = {};
   // Espaço entre o centro e a primeira camada: cresce com os cabos que passam ali.
   function vaoDaEstrela(grau) { return 110 + Math.min(grau || 0, 24) * 5; }
   // Largura do maior nome de cabo ligado ao equipamento (texto "tipo · capacidade").
@@ -7124,6 +7161,7 @@
     function porOrdem(a, b) { return ordem[a] - ordem[b]; }
 
     var ENTRE_PARTES = 90;
+    emZigueZague = {};
     function aspas(t) { return '"' + String(t).replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"'; }
     // Layout em camadas (Graphviz) de um lado da estrela, a partir do centro.
     // Devolve { id: {x, y} } com o centro em (0, 0) e y para baixo.
@@ -7250,6 +7288,32 @@
       pos[centro] = { x: 0, y: 0 };
       var alturaColunas = 0;
       try {
+        // Muitas pontas soltas (ninguém atrás delas): cada lado vira 2 colunas em
+        // zigue-zague. Vizinhos seguidos (na ordem das portas) alternam de coluna, a
+        // meia altura um do outro, e o cabo da coluna de fora passa no vão entre dois
+        // da coluna de dentro. A altura cai pela metade. (Mais colunas não ajudam: o
+        // cabo precisa do mesmo vão, então a altura seria a mesma.)
+        var soPontas = ramos.length >= PONTAS_PARA_ZIGUEZAGUE && ramos.every(function (r) { return r.length === 1; });
+        if (soPontas) {
+          var altura = 0;
+          ramos.forEach(function (r) { altura = Math.max(altura, tam[r[0]].h); });
+          var passoY = Math.round(altura / 2 + 26), vaoColunas = 64;
+          var porLado = [["direita", 1], ["esquerda", -1]].map(function (cfg) {
+            var ids = idsDoLado(cfg[0]), largura = 0;
+            ids.forEach(function (id) { largura = Math.max(largura, tam[id].w); });
+            return { ids: ids, sinal: cfg[1], largura: largura };
+          });
+          porLado.forEach(function (l) {
+            var n = l.ids.length;
+            l.ids.forEach(function (id, j) {
+              var coluna = j % 2;
+              var borda = metadeW + vao + coluna * (l.largura + vaoColunas);
+              pos[id] = { x: l.sinal * (borda + tam[id].w / 2), y: (j - (n - 1) / 2) * passoY };
+              emZigueZague[id] = true;
+            });
+          });
+          lados.baixo = [];
+        } else {
         // A linha de baixo precisa caber no vão entre as colunas (é o que dá a
         // porta embaixo do centro, ladoNaEstrela); o que não cabe vai para os lados.
         var pb = null, idsBaixo, minX, maxX, pertoY;
@@ -7286,6 +7350,7 @@
           // Embaixo, na altura em que as colunas terminam (no vão entre elas).
           var topo = Math.max(metadeH + vao * 0.6, alturaColunas / 2 - 20);
           idsBaixo.forEach(function (id) { pos[id] = { x: pb[id].x - meioX, y: pb[id].y + (topo - pertoY) }; });
+        }
         }
       } catch (e) {
         console.error("Centro (estrela): falha no layout, usando a grade.", e);

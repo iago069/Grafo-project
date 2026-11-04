@@ -594,7 +594,7 @@
       if (!s || !e) return;
       [[c.para, e, s], [c.de, s, e]].some(function (par) {
         var id = par[0], meu = par[1], outro = par[2];
-        if (movidos[id] || Object.keys(vizinhos[id] || {}).length !== 1) return false;
+        if (movidos[id] || emZigueZague[id] || Object.keys(vizinhos[id] || {}).length !== 1) return false;
         var eq = estado.equipamentos.find(function (x) { return x.id === id; });
         if (!eq || !posicaoValida(eq.posicao)) return false;
         var lateral = Math.abs(meu.dx) > 0;
@@ -846,6 +846,10 @@
 
   // Projeto "grande": algum equipamento com muitas ligações (um núcleo).
   var LIGACOES_PARA_ESTRELA = 5;
+  // Centro com pelo menos tantas pontas soltas: colunas em zigue-zague (posicionarEmEstrela).
+  var PONTAS_PARA_ZIGUEZAGUE = 10;
+  // Equipamentos postos em zigue-zague: alinharPortasDasPontas não os mexe (sairiam do vão).
+  var emZigueZague = {};
   // Espaço entre o centro e a primeira camada: cresce com os cabos que passam ali.
   function vaoDaEstrela(grau) { return 110 + Math.min(grau || 0, 24) * 5; }
   // Largura do maior nome de cabo ligado ao equipamento (texto "tipo · capacidade").
@@ -923,6 +927,7 @@
     function porOrdem(a, b) { return ordem[a] - ordem[b]; }
 
     var ENTRE_PARTES = 90;
+    emZigueZague = {};
     function aspas(t) { return '"' + String(t).replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"'; }
     // Layout em camadas (Graphviz) de um lado da estrela, a partir do centro.
     // Devolve { id: {x, y} } com o centro em (0, 0) e y para baixo.
@@ -1049,6 +1054,32 @@
       pos[centro] = { x: 0, y: 0 };
       var alturaColunas = 0;
       try {
+        // Muitas pontas soltas (ninguém atrás delas): cada lado vira 2 colunas em
+        // zigue-zague. Vizinhos seguidos (na ordem das portas) alternam de coluna, a
+        // meia altura um do outro, e o cabo da coluna de fora passa no vão entre dois
+        // da coluna de dentro. A altura cai pela metade. (Mais colunas não ajudam: o
+        // cabo precisa do mesmo vão, então a altura seria a mesma.)
+        var soPontas = ramos.length >= PONTAS_PARA_ZIGUEZAGUE && ramos.every(function (r) { return r.length === 1; });
+        if (soPontas) {
+          var altura = 0;
+          ramos.forEach(function (r) { altura = Math.max(altura, tam[r[0]].h); });
+          var passoY = Math.round(altura / 2 + 26), vaoColunas = 64;
+          var porLado = [["direita", 1], ["esquerda", -1]].map(function (cfg) {
+            var ids = idsDoLado(cfg[0]), largura = 0;
+            ids.forEach(function (id) { largura = Math.max(largura, tam[id].w); });
+            return { ids: ids, sinal: cfg[1], largura: largura };
+          });
+          porLado.forEach(function (l) {
+            var n = l.ids.length;
+            l.ids.forEach(function (id, j) {
+              var coluna = j % 2;
+              var borda = metadeW + vao + coluna * (l.largura + vaoColunas);
+              pos[id] = { x: l.sinal * (borda + tam[id].w / 2), y: (j - (n - 1) / 2) * passoY };
+              emZigueZague[id] = true;
+            });
+          });
+          lados.baixo = [];
+        } else {
         // A linha de baixo precisa caber no vão entre as colunas (é o que dá a
         // porta embaixo do centro, ladoNaEstrela); o que não cabe vai para os lados.
         var pb = null, idsBaixo, minX, maxX, pertoY;
@@ -1085,6 +1116,7 @@
           // Embaixo, na altura em que as colunas terminam (no vão entre elas).
           var topo = Math.max(metadeH + vao * 0.6, alturaColunas / 2 - 20);
           idsBaixo.forEach(function (id) { pos[id] = { x: pb[id].x - meioX, y: pb[id].y + (topo - pertoY) }; });
+        }
         }
       } catch (e) {
         console.error("Centro (estrela): falha no layout, usando a grade.", e);
