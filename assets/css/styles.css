@@ -1134,6 +1134,8 @@ button.ghost:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 6
 /* Editar em lista: cartões fora da área visível não são desenhados até a
    rolagem chegar neles (35 equipamentos abriam de uma vez, com travada). */
 #listaEquip .equip-card { content-visibility: auto; contain-intrinsic-size: auto 132px; }
+/* Filtro da lista: a linha do cabo é flex, e display: flex venceria o atributo hidden. */
+#listaEquip .equip-card[hidden], #listaConex .conex-row[hidden] { display: none !important; }
 #listaConex .conex-row { content-visibility: auto; contain-intrinsic-size: auto 58px; }
 
 /* ---------- Usuário no pé da barra lateral (auth.js) ----------
