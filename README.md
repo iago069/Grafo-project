@@ -239,11 +239,11 @@ Separador `;`, `,` ou tab. O arquivo pode estar em UTF-8 ou no formato padrão d
 
 ### Imagem do diagrama
 
-**Imagem PNG** e **Vetor SVG**, no menu **Exportar** acima do diagrama. O arquivo sai com cabeçalho (projeto, data, totais) e legenda.
+**PNG** ou **JPG** em **Exportar → Exportar…** (veja PDF, abaixo: mesmo painel, mesmas opções) e **Vetor SVG** no mesmo menu. O arquivo sai com cabeçalho (projeto, data, totais) e legenda.
 
 ### PDF
 
-Em **Exportar**, **PDF para imprimir…** e **Imagem PNG ou JPG…** abrem a barra lateral direita **Página e exportação**. As opções valem para os três arquivos: a imagem sai igual à prévia (a folha inteira, com margem, cabeçalho e legenda).
+Em **Exportar**, o item **Exportar…** abre a barra lateral direita **Página e exportação**, onde se escolhe o arquivo (PDF, PNG ou JPG; fica guardado para a próxima vez). As opções valem para os três arquivos: a imagem sai igual à prévia (a folha inteira, com margem, cabeçalho e legenda).
 
 | Opção | O que faz |
 |---|---|

@@ -469,7 +469,6 @@
   var btnOrganizar = document.getElementById("btnOrganizarDiagrama");
   var btnCopiar = document.getElementById("btnCopiarDot");
   var btnBaixar = document.getElementById("btnBaixar");
-  var btnBaixarPng = document.getElementById("btnBaixarPng");
   var btnDesfazer = document.getElementById("btnDesfazer");
   var btnRefazer = document.getElementById("btnRefazer");
   var selDirecao = document.getElementById("direcao");
@@ -3359,7 +3358,6 @@
     elDotCode.textContent = "";
     btnCopiar.disabled = true;
     btnBaixar.disabled = true;
-    btnBaixarPng.disabled = true;
     solicitarPrevia();
   }
 
@@ -7712,7 +7710,6 @@
       atualizarLegenda(estado);
       btnCopiar.disabled = false;
       btnBaixar.disabled = false;
-      btnBaixarPng.disabled = false;
       if (idFocado) {
         var noFocado = obterNodePorId(elCanvas.querySelector("svg"), idFocado);
         // Devolver o foco não é "clicar" no equipamento: não mexe na seleção.
@@ -10103,7 +10100,7 @@
       "Se forem imagens novas em assets/images, rode \"npm run icones\"; se vierem de outro site, envie o arquivo pelo campo Imagem do equipamento.", null, { aviso: true });
   }
 
-  // "Imagem PNG ou JPG…" abre o painel Página e exportação (17-pagina-e-pdf.js).
+  // PNG e JPG saem pelo painel Página e exportação (17-pagina-e-pdf.js).
 
   // ==== 15-script-mikrotik.js: gerador de script de monitoramento para MikroTik (Winbox) (parte de assets/js/editor/app.js; npm run montar) ====
   // Segue o procedimento de monitoramento: VLAN do local (tabela sigla → VLAN,
@@ -11327,16 +11324,9 @@
     preencherFormPagina();
     solicitarPrevia();
   }
-  // "Imagem PNG ou JPG…" abre o mesmo painel, já em imagem (PNG, ou o JPG escolhido antes).
-  btnBaixarPng.addEventListener("click", function () {
-    if (configPagina.saida === "pdf") definirSaida("png");
-    if (!painelPaginaAberto()) abrirPainelPagina(true);
-    if (telaCelular.matches) elPainelPagina.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
+  // "Exportar…" abre e fecha o painel; o arquivo (PDF, PNG ou JPG) é escolhido nele
+  // e fica guardado para a próxima vez.
   btnPaginaPdf.addEventListener("click", function () {
-    // Painel aberto em imagem: o PDF troca o arquivo em vez de fechar.
-    if (painelPaginaAberto() && configPagina.saida !== "pdf") { definirSaida("pdf"); return; }
-    definirSaida("pdf");
     abrirPainelPagina(!painelPaginaAberto());
     // No celular o painel fica abaixo do diagrama: leva a tela até ele.
     if (painelPaginaAberto() && telaCelular.matches) elPainelPagina.scrollIntoView({ behavior: "smooth", block: "start" });

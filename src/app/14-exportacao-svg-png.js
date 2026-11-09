@@ -581,5 +581,5 @@
       "Se forem imagens novas em assets/images, rode \"npm run icones\"; se vierem de outro site, envie o arquivo pelo campo Imagem do equipamento.", null, { aviso: true });
   }
 
-  // "Imagem PNG ou JPG…" abre o painel Página e exportação (17-pagina-e-pdf.js).
+  // PNG e JPG saem pelo painel Página e exportação (17-pagina-e-pdf.js).
 

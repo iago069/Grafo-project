@@ -159,7 +159,6 @@
     elDotCode.textContent = "";
     btnCopiar.disabled = true;
     btnBaixar.disabled = true;
-    btnBaixarPng.disabled = true;
     solicitarPrevia();
   }
 

@@ -23,7 +23,6 @@
   var btnOrganizar = document.getElementById("btnOrganizarDiagrama");
   var btnCopiar = document.getElementById("btnCopiarDot");
   var btnBaixar = document.getElementById("btnBaixar");
-  var btnBaixarPng = document.getElementById("btnBaixarPng");
   var btnDesfazer = document.getElementById("btnDesfazer");
   var btnRefazer = document.getElementById("btnRefazer");
   var selDirecao = document.getElementById("direcao");

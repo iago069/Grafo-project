@@ -1478,7 +1478,6 @@
       atualizarLegenda(estado);
       btnCopiar.disabled = false;
       btnBaixar.disabled = false;
-      btnBaixarPng.disabled = false;
       if (idFocado) {
         var noFocado = obterNodePorId(elCanvas.querySelector("svg"), idFocado);
         // Devolver o foco não é "clicar" no equipamento: não mexe na seleção.

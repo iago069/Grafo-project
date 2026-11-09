@@ -515,16 +515,9 @@
     preencherFormPagina();
     solicitarPrevia();
   }
-  // "Imagem PNG ou JPG…" abre o mesmo painel, já em imagem (PNG, ou o JPG escolhido antes).
-  btnBaixarPng.addEventListener("click", function () {
-    if (configPagina.saida === "pdf") definirSaida("png");
-    if (!painelPaginaAberto()) abrirPainelPagina(true);
-    if (telaCelular.matches) elPainelPagina.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
+  // "Exportar…" abre e fecha o painel; o arquivo (PDF, PNG ou JPG) é escolhido nele
+  // e fica guardado para a próxima vez.
   btnPaginaPdf.addEventListener("click", function () {
-    // Painel aberto em imagem: o PDF troca o arquivo em vez de fechar.
-    if (painelPaginaAberto() && configPagina.saida !== "pdf") { definirSaida("pdf"); return; }
-    definirSaida("pdf");
     abrirPainelPagina(!painelPaginaAberto());
     // No celular o painel fica abaixo do diagrama: leva a tela até ele.
     if (painelPaginaAberto() && telaCelular.matches) elPainelPagina.scrollIntoView({ behavior: "smooth", block: "start" });

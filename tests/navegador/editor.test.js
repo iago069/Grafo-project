@@ -97,14 +97,17 @@ test("menu da conta: inicial do e-mail, abre a janela Minha conta e fecha com Es
 test("barra do diagrama: menus Exportar, Organizar (sentido) e Tema", async () => {
   const pagina = await abrirPagina(navegador, site);
   await esperarDiagrama(pagina);
-  // Exportar ▾ → Imagem abre o painel da página já em PNG; Baixar PNG baixa a folha
-  // inteira (A4 paisagem a 150 DPI = 1754 × 1240 px). JPG e 300 DPI também.
+  // Exportar ▾ → Exportar… abre o painel da página (em PDF); escolhendo PNG, Baixar PNG
+  // baixa a folha inteira (A4 paisagem a 150 DPI = 1754 × 1240 px). JPG e 300 DPI também.
   await pagina.click("#btnExportarMenu");
   await pagina.waitForSelector("#menuExportar", { state: "visible" });
-  await pagina.click("#btnBaixarPng");
+  assert.equal(await pagina.$$eval("#menuExportar .menu-item", l => l.filter(b => /Exportar…/.test(b.textContent)).length), 1, "um item só para PDF, PNG e JPG");
+  await pagina.click("#btnPaginaPdf");
   await pagina.waitForSelector("#menuExportar", { state: "hidden" });
   await pagina.waitForSelector("#painelPagina:not([hidden])");
-  assert.equal(await pagina.isChecked('input[name="paginaSaida"][value="png"]'), true);
+  assert.equal(await pagina.isChecked('input[name="paginaSaida"][value="pdf"]'), true);
+  assert.equal(await pagina.isVisible("#paginaResolucao"), false);
+  await pagina.click('label:has(input[name="paginaSaida"][value="png"])');
   assert.equal(await pagina.isVisible("#paginaResolucao"), true);
   await pagina.waitForFunction(() => /1754 × 1240 px/.test(document.getElementById("previaResumo").textContent), null, { timeout: 30000 });
   await pagina.waitForSelector("#btnExportarPdf:not([disabled])", { timeout: 30000 });
@@ -129,12 +132,14 @@ test("barra do diagrama: menus Exportar, Organizar (sentido) e Tema", async () =
   [download] = await Promise.all([pagina.waitForEvent("download", { timeout: 30000 }), pagina.click("#btnExportarPdf")]);
   assert.match(download.suggestedFilename(), /\.jpg$/);
   assert.deepEqual(await tamanhoDaImagem(download), { tipo: "jpg", w: 3508, h: 2480 });
-  // PDF… com o painel em imagem troca para PDF (não fecha).
+  // Exportar… de novo fecha o painel; o arquivo escolhido (JPG) fica para a próxima vez.
   await pagina.click("#btnExportarMenu");
   await pagina.click("#btnPaginaPdf");
-  assert.equal(await pagina.isChecked('input[name="paginaSaida"][value="pdf"]'), true);
-  assert.equal(await pagina.isVisible("#paginaResolucao"), false);
-  assert.equal(await pagina.textContent("#btnExportarPdf"), "Baixar PDF");
+  await pagina.waitForSelector("#painelPagina", { state: "hidden" });
+  await pagina.click("#btnExportarMenu");
+  await pagina.click("#btnPaginaPdf");
+  assert.equal(await pagina.isChecked('input[name="paginaSaida"][value="jpg"]'), true);
+  assert.equal(await pagina.textContent("#btnExportarPdf"), "Baixar JPG");
   await pagina.click("#btnFecharPagina");
 
   // Organizar ▾ → "Cima → Baixo" muda o select que o app lê e fica marcado.
