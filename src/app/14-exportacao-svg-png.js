@@ -534,22 +534,6 @@
     });
   }
 
-  function canvasParaPngBlob(canvas) {
-    return new Promise(function (resolver, rejeitar) {
-      try {
-        canvas.toBlob(function (blob) {
-          if (!blob) {
-            rejeitar(new Error("O navegador retornou um PNG vazio."));
-            return;
-          }
-          resolver(blob);
-        }, "image/png");
-      } catch (erro) {
-        rejeitar(erro);
-      }
-    });
-  }
-
   // Canvas grande demais trava ou sai em branco (Safari: ~16 MP). Acima disso a
   // resolução é reduzida, mantendo o desenho inteiro.
   var MAX_PIXELS_RASTER = 16e6;
@@ -597,25 +581,5 @@
       "Se forem imagens novas em assets/images, rode \"npm run icones\"; se vierem de outro site, envie o arquivo pelo campo Imagem do equipamento.", null, { aviso: true });
   }
 
-  btnBaixarPng.addEventListener("click", async function () {
-    if (!elCanvas.querySelector("svg")) {
-      mostrarErro("Gere o diagrama antes de baixar o PNG.");
-      return;
-    }
-    var textoOriginalBotao = btnBaixarPng.textContent;
-    btnBaixarPng.disabled = true;
-    btnBaixarPng.textContent = "Gerando PNG...";
-    try {
-      var r = await rasterizarDiagrama({ moldura: true });
-      baixarBlob(await canvasParaPngBlob(r.canvas), nomeArquivoExportacao("png"));
-      if (r.imagensIgnoradas > 0) avisarImagensIgnoradas("PNG", r.imagensIgnoradas);
-      else { esconderErro(); avisar("PNG baixado."); }
-      document.dispatchEvent(new CustomEvent("grafo:exportado", { detail: "png" }));
-    } catch (e) {
-      mostrarErro("Não foi possível exportar o diagrama como PNG.\nDetalhe: " + e.message);
-    } finally {
-      btnBaixarPng.disabled = false;
-      btnBaixarPng.textContent = textoOriginalBotao;
-    }
-  });
+  // "Imagem PNG ou JPG…" abre o painel Página e exportação (17-pagina-e-pdf.js).
 

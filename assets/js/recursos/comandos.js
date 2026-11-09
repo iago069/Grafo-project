@@ -19,7 +19,7 @@
     { titulo: "Editar em lista", grupo: "Diagrama", icone: "lista", fazer: clicar("btnModoAvancado"), termos: "lista tabela editar varios" },
     { titulo: "Organizar diagrama", grupo: "Diagrama", icone: "layout", fazer: clicar("btnOrganizarDiagrama"), termos: "layout reorganizar arrumar" },
     { titulo: "Exportar PDF para imprimir", grupo: "Exportar", icone: "pdf", fazer: clicar("btnPaginaPdf"), termos: "pdf imprimir" },
-    { titulo: "Baixar imagem PNG", grupo: "Exportar", icone: "imagem", fazer: clicar("btnBaixarPng"), termos: "png imagem foto" },
+    { titulo: "Baixar imagem PNG ou JPG", grupo: "Exportar", icone: "imagem", fazer: clicar("btnBaixarPng"), termos: "png jpg jpeg imagem foto" },
     { titulo: "Baixar vetor SVG", grupo: "Exportar", icone: "vetor", fazer: clicar("btnBaixar"), termos: "svg vetor" },
     { titulo: "Exportar projeto (.json)", grupo: "Projeto", icone: "baixar", fazer: clicar("btnExportarProjeto"), termos: "backup salvar json", atalho: "Ctrl S" },
     { titulo: "Importar projeto (.json)", grupo: "Projeto", icone: "enviar", fazer: function () { var i = document.getElementById("arquivoProjeto"); if (i) i.click(); }, termos: "abrir arquivo json" },

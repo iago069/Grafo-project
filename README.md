@@ -243,14 +243,16 @@ Separador `;`, `,` ou tab. O arquivo pode estar em UTF-8 ou no formato padrão d
 
 ### PDF
 
-O botão **PDF…** (acima do diagrama) abre a barra lateral direita **Página e PDF**:
+Em **Exportar**, **PDF para imprimir…** e **Imagem PNG ou JPG…** abrem a barra lateral direita **Página e exportação**. As opções valem para os três arquivos: a imagem sai igual à prévia (a folha inteira, com margem, cabeçalho e legenda).
 
 | Opção | O que faz |
 |---|---|
+| Arquivo | **PDF**, **PNG** ou **JPG** (JPG fica menor; PNG deixa o texto mais nítido) |
+| Resolução (PNG e JPG) | 96, 150 ou 300 DPI — A4 paisagem a 300 DPI dá 3508 × 2480 px; a prévia mostra o tamanho em pixels |
 | Área de desenho (largura × altura) | Limite até onde os equipamentos podem ser arrastados (1000 a 20000 px) |
 | Formato | A0, A1, A2, A3, A4 ou A5 |
 | Orientação | Retrato ou paisagem |
-| Escala | **Ajustar à página** (tudo numa folha) ou 25% a 200% — com escala fixa, o desenho é dividido em várias páginas, sem cortar nada |
+| Escala | **Ajustar à página** (tudo numa folha) ou 25% a 200% — com escala fixa, o PDF é dividido em várias páginas, sem cortar nada, e a imagem sai com o desenho inteiro num arquivo só |
 | Margem | 0 a 40 mm |
 | Cabeçalho e legenda | Inclui ou não o título, a data, os totais e a legenda |
 

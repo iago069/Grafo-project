@@ -1022,6 +1022,8 @@ button.menu-item:disabled { opacity: 0.45; }
 }
 .segmentado input:checked + span { background: var(--accent); color: var(--accent-ink); box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 25%, transparent); }
 .segmentado input:focus-visible + span { outline: 2px solid var(--teal); outline-offset: 1px; }
+.segmentado.tres { grid-template-columns: repeat(3, 1fr); }
+.painel-pagina[data-saida="pdf"] .so-imagem { display: none; }
 
 /* Prévia */
 .previa-bloco { display: grid; gap: 8px; }

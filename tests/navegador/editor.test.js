@@ -97,13 +97,45 @@ test("menu da conta: inicial do e-mail, abre a janela Minha conta e fecha com Es
 test("barra do diagrama: menus Exportar, Organizar (sentido) e Tema", async () => {
   const pagina = await abrirPagina(navegador, site);
   await esperarDiagrama(pagina);
-  // Exportar ▾ → PNG baixa um arquivo.
+  // Exportar ▾ → Imagem abre o painel da página já em PNG; Baixar PNG baixa a folha
+  // inteira (A4 paisagem a 150 DPI = 1754 × 1240 px). JPG e 300 DPI também.
   await pagina.click("#btnExportarMenu");
   await pagina.waitForSelector("#menuExportar", { state: "visible" });
-  const download = pagina.waitForEvent("download", { timeout: 30000 });
   await pagina.click("#btnBaixarPng");
-  assert.match((await download).suggestedFilename(), /\.png$/);
   await pagina.waitForSelector("#menuExportar", { state: "hidden" });
+  await pagina.waitForSelector("#painelPagina:not([hidden])");
+  assert.equal(await pagina.isChecked('input[name="paginaSaida"][value="png"]'), true);
+  assert.equal(await pagina.isVisible("#paginaResolucao"), true);
+  await pagina.waitForFunction(() => /1754 × 1240 px/.test(document.getElementById("previaResumo").textContent), null, { timeout: 30000 });
+  await pagina.waitForSelector("#btnExportarPdf:not([disabled])", { timeout: 30000 });
+  assert.equal(await pagina.textContent("#btnExportarPdf"), "Baixar PNG");
+  const tamanhoDaImagem = async download => {
+    const bytes = require("fs").readFileSync(await download.path());
+    if (bytes[0] === 0x89) return { tipo: "png", w: bytes.readUInt32BE(16), h: bytes.readUInt32BE(20) };
+    for (let i = 2; i < bytes.length;) { // JPEG: procura o quadro SOF0/SOF2
+      const marca = bytes[i + 1], tam = bytes.readUInt16BE(i + 2);
+      if (marca === 0xC0 || marca === 0xC2) return { tipo: "jpg", w: bytes.readUInt16BE(i + 7), h: bytes.readUInt16BE(i + 5) };
+      i += 2 + tam;
+    }
+    return null;
+  };
+  let [download] = await Promise.all([pagina.waitForEvent("download", { timeout: 30000 }), pagina.click("#btnExportarPdf")]);
+  assert.match(download.suggestedFilename(), /\.png$/);
+  assert.deepEqual(await tamanhoDaImagem(download), { tipo: "png", w: 1754, h: 1240 });
+  await pagina.click('label:has(input[name="paginaSaida"][value="jpg"])');
+  await pagina.selectOption("#paginaResolucao", "300");
+  await pagina.waitForFunction(() => /JPG de 3508 × 2480 px/.test(document.getElementById("previaResumo").textContent), null, { timeout: 30000 });
+  await pagina.waitForSelector("#btnExportarPdf:not([disabled])", { timeout: 30000 });
+  [download] = await Promise.all([pagina.waitForEvent("download", { timeout: 30000 }), pagina.click("#btnExportarPdf")]);
+  assert.match(download.suggestedFilename(), /\.jpg$/);
+  assert.deepEqual(await tamanhoDaImagem(download), { tipo: "jpg", w: 3508, h: 2480 });
+  // PDF… com o painel em imagem troca para PDF (não fecha).
+  await pagina.click("#btnExportarMenu");
+  await pagina.click("#btnPaginaPdf");
+  assert.equal(await pagina.isChecked('input[name="paginaSaida"][value="pdf"]'), true);
+  assert.equal(await pagina.isVisible("#paginaResolucao"), false);
+  assert.equal(await pagina.textContent("#btnExportarPdf"), "Baixar PDF");
+  await pagina.click("#btnFecharPagina");
 
   // Organizar ▾ → "Cima → Baixo" muda o select que o app lê e fica marcado.
   await pagina.click("#btnLayoutMenu");

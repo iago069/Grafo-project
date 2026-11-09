@@ -3,14 +3,16 @@
   // Barra lateral direita. A configuração vale para a conta neste navegador.
   var FORMATOS_PAGINA = { A0: [841, 1189], A1: [594, 841], A2: [420, 594], A3: [297, 420], A4: [210, 297], A5: [148, 210] };
   var ESCALAS_PAGINA = ["ajustar", "25", "50", "75", "100", "150", "200"];
-  var PAGINA_PADRAO = { formato: "A4", orientacao: "paisagem", escala: "ajustar", margem: 10, moldura: true,
+  var SAIDAS_PAGINA = ["pdf", "png", "jpg"];
+  var RESOLUCOES_IMAGEM = [96, 150, 300];
+  var PAGINA_PADRAO = { saida: "pdf", dpi: 150, formato: "A4", orientacao: "paisagem", escala: "ajustar", margem: 10, moldura: true,
     areaLargura: LIMITE_CANVAS.maxX - LIMITE_CANVAS.minX, areaAltura: LIMITE_CANVAS.maxY - LIMITE_CANVAS.minY };
   var MM_POR_PT = 25.4 / 72;   // o viewBox do Graphviz é em pt
   var DPI_PDF = 200;           // resolução alvo das imagens no PDF
   var MAX_PAGINAS_PDF = 60;
   var elPainelPagina = document.getElementById("painelPagina");
   var btnPaginaPdf = document.getElementById("btnPaginaPdf");
-  var btnExportarPdf = document.getElementById("btnExportarPdf");
+  var btnExportarPdf = document.getElementById("btnExportarPdf"); // "Baixar PDF/PNG/JPG", conforme o arquivo escolhido
   var elPrevia = document.getElementById("previaPagina");
   var elPreviaResumo = document.getElementById("previaResumo");
   var campoPagina = {
@@ -19,7 +21,8 @@
     formato: document.getElementById("paginaFormato"),
     escala: document.getElementById("paginaEscala"),
     margem: document.getElementById("paginaMargem"),
-    moldura: document.getElementById("paginaMoldura")
+    moldura: document.getElementById("paginaMoldura"),
+    dpi: document.getElementById("paginaResolucao")
   };
 
   function limitarNumero(valor, min, max, padrao) {
@@ -29,6 +32,9 @@
 
   function normalizarConfigPagina(bruto) {
     var c = Object.assign({}, PAGINA_PADRAO, bruto && typeof bruto === "object" ? bruto : {});
+    if (SAIDAS_PAGINA.indexOf(c.saida) < 0) c.saida = PAGINA_PADRAO.saida;
+    c.dpi = Number(c.dpi);
+    if (RESOLUCOES_IMAGEM.indexOf(c.dpi) < 0) c.dpi = PAGINA_PADRAO.dpi;
     if (!FORMATOS_PAGINA[c.formato]) c.formato = PAGINA_PADRAO.formato;
     if (c.orientacao !== "retrato" && c.orientacao !== "paisagem") c.orientacao = PAGINA_PADRAO.orientacao;
     if (ESCALAS_PAGINA.indexOf(String(c.escala)) < 0) c.escala = PAGINA_PADRAO.escala;
@@ -64,7 +70,11 @@
     campoPagina.escala.value = configPagina.escala;
     campoPagina.margem.value = configPagina.margem;
     campoPagina.moldura.checked = configPagina.moldura;
+    campoPagina.dpi.value = String(configPagina.dpi);
     document.querySelectorAll('input[name="paginaOrientacao"]').forEach(function (r) { r.checked = r.value === configPagina.orientacao; });
+    document.querySelectorAll('input[name="paginaSaida"]').forEach(function (r) { r.checked = r.value === configPagina.saida; });
+    elPainelPagina.setAttribute("data-saida", configPagina.saida);
+    if (!btnExportarPdf.dataset.gerando) btnExportarPdf.textContent = "Baixar " + configPagina.saida.toUpperCase();
   }
 
   function tamanhoPaginaMm() {
@@ -120,7 +130,25 @@
     return paginas;
   }
 
+  // Imagem: a folha inteira (uma página) ou, com escala fixa que dá várias páginas,
+  // o desenho todo numa imagem só, com a margem em volta. Tamanho em mm.
+  function folhaDaImagem(plano) {
+    if (plano.total === 1) return { w: plano.pagina.w, h: plano.pagina.h, x: plano.margem + (plano.areaW - plano.larguraMm) / 2, y: plano.margem + (plano.areaH - plano.alturaMm) / 2 };
+    return { w: plano.larguraMm + 2 * plano.margem, h: plano.alturaMm + 2 * plano.margem, x: plano.margem, y: plano.margem };
+  }
+  // Pixels por mm da imagem, na resolução escolhida e dentro do máximo seguro do canvas.
+  function pxPorMmDaImagem(folha) {
+    var k = configPagina.dpi / 25.4;
+    return Math.min(k, Math.sqrt(MAX_PIXELS_RASTER / (folha.w * folha.h)), MAX_LADO_RASTER / Math.max(folha.w, folha.h));
+  }
+
   function descreverPlano(plano) {
+    if (configPagina.saida !== "pdf") {
+      var f = folhaDaImagem(plano), k = pxPorMmDaImagem(f);
+      return (plano.total === 1 ? configPagina.formato + " " + configPagina.orientacao : "desenho inteiro, escala " + Math.round(plano.escala * 100) + "%") +
+        " · imagem " + configPagina.saida.toUpperCase() + " de " + Math.round(f.w * k) + " × " + Math.round(f.h * k) + " px" +
+        (k < configPagina.dpi / 25.4 - 0.01 ? " (reduzida para caber no limite do navegador)" : "");
+    }
     var pg = plano.pagina;
     var partes = [configPagina.formato + " " + configPagina.orientacao + " · " + Math.round(pg.w) + " × " + Math.round(pg.h) + " mm",
       "escala " + Math.round(plano.escala * 100) + "%", plural(plano.total, "página", "páginas")];
@@ -197,10 +225,11 @@
         elPrevia.appendChild(mais);
       }
       var resumo = descreverPlano(plano);
-      if (plano.total > MAX_PAGINAS_PDF) resumo += " — acima do máximo de " + MAX_PAGINAS_PDF + "; use uma escala menor.";
+      if (configPagina.saida !== "pdf") { /* imagem: sempre um arquivo só */ }
+      else if (plano.total > MAX_PAGINAS_PDF) resumo += " — acima do máximo de " + MAX_PAGINAS_PDF + "; use uma escala menor.";
       else if (configPagina.escala === "ajustar" && plano.escala < 0.3) resumo += " — o texto pode ficar pequeno; considere um formato maior.";
       elPreviaResumo.textContent = resumo;
-      btnExportarPdf.disabled = plano.total > MAX_PAGINAS_PDF;
+      btnExportarPdf.disabled = configPagina.saida === "pdf" && plano.total > MAX_PAGINAS_PDF;
     } catch (e) {
       if (minha !== geracaoPrevia) return;
       elPrevia.innerHTML = '<div class="previa-vazia">Não foi possível gerar a prévia.</div>';
@@ -386,8 +415,8 @@
 
   async function exportarPdf() {
     if (!elCanvas.querySelector("svg")) { mostrarErro("Gere o diagrama antes de exportar o PDF."); return; }
-    var textoOriginal = btnExportarPdf.textContent;
     btnExportarPdf.disabled = true;
+    btnExportarPdf.dataset.gerando = "1";
     btnExportarPdf.textContent = "Gerando PDF...";
     try {
       var JsPdf = await carregarJsPdf();
@@ -407,7 +436,49 @@
     } catch (e) {
       mostrarErro("Não foi possível exportar o PDF.\nDetalhe: " + e.message);
     } finally {
-      btnExportarPdf.textContent = textoOriginal;
+      delete btnExportarPdf.dataset.gerando;
+      btnExportarPdf.textContent = "Baixar " + configPagina.saida.toUpperCase();
+      btnExportarPdf.disabled = !elCanvas.querySelector("svg");
+    }
+  }
+
+  // PNG ou JPG com a mesma página do PDF (formato, orientação, margem, cabeçalho e legenda).
+  async function exportarImagem() {
+    if (!elCanvas.querySelector("svg")) { mostrarErro("Gere o diagrama antes de baixar a imagem."); return; }
+    var jpg = configPagina.saida === "jpg", tipo = jpg ? "JPG" : "PNG";
+    btnExportarPdf.disabled = true;
+    btnExportarPdf.dataset.gerando = "1";
+    btnExportarPdf.textContent = "Gerando " + tipo + "...";
+    try {
+      var plano = null, folha = null, k = 0;
+      var r = await rasterizarDiagrama({ moldura: configPagina.moldura, aspecto: aspectoDaFolha(), fundo: corDeFundoDaExportacao(), pixelsPorUnidade: function (w, h) {
+        plano = planoDeImpressao(w, h);
+        folha = folhaDaImagem(plano);
+        k = pxPorMmDaImagem(folha);
+        return plano.larguraMm * k / w;
+      } });
+      var canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(folha.w * k));
+      canvas.height = Math.max(1, Math.round(folha.h * k));
+      var ctx = canvas.getContext("2d");
+      ctx.fillStyle = corDeFundoDaExportacao(); // a folha inteira na cor do layout, como no PDF
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(r.canvas, folha.x * k, folha.y * k, plano.larguraMm * k, plano.alturaMm * k);
+      var blob = await new Promise(function (ok, falha) {
+        try { canvas.toBlob(function (b) { if (b) ok(b); else falha(new Error("O navegador retornou uma imagem vazia.")); }, jpg ? "image/jpeg" : "image/png", 0.92); }
+        catch (e) { falha(e); }
+      });
+      var nome = nomeArquivoExportacao(jpg ? "jpg" : "png");
+      baixarBlob(blob, nome);
+      if (r.imagensIgnoradas > 0) avisarImagensIgnoradas(tipo, r.imagensIgnoradas);
+      else { esconderErro(); avisar(tipo + " baixado: " + nome + " (" + canvas.width + " × " + canvas.height + " px)"); }
+      document.dispatchEvent(new CustomEvent("grafo:exportado", { detail: configPagina.saida }));
+    } catch (e) {
+      mostrarErro("Não foi possível exportar o diagrama como " + tipo + ".\nDetalhe: " + e.message);
+    } finally {
+      delete btnExportarPdf.dataset.gerando;
+      btnExportarPdf.textContent = "Baixar " + configPagina.saida.toUpperCase();
       btnExportarPdf.disabled = !elCanvas.querySelector("svg");
     }
   }
@@ -436,7 +507,24 @@
     }
   }
 
+  // Escolhe o arquivo (PDF, PNG ou JPG) no painel.
+  function definirSaida(saida) {
+    if (configPagina.saida === saida) return;
+    configPagina.saida = saida;
+    salvarConfigPagina();
+    preencherFormPagina();
+    solicitarPrevia();
+  }
+  // "Imagem PNG ou JPG…" abre o mesmo painel, já em imagem (PNG, ou o JPG escolhido antes).
+  btnBaixarPng.addEventListener("click", function () {
+    if (configPagina.saida === "pdf") definirSaida("png");
+    if (!painelPaginaAberto()) abrirPainelPagina(true);
+    if (telaCelular.matches) elPainelPagina.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
   btnPaginaPdf.addEventListener("click", function () {
+    // Painel aberto em imagem: o PDF troca o arquivo em vez de fechar.
+    if (painelPaginaAberto() && configPagina.saida !== "pdf") { definirSaida("pdf"); return; }
+    definirSaida("pdf");
     abrirPainelPagina(!painelPaginaAberto());
     // No celular o painel fica abaixo do diagrama: leva a tela até ele.
     if (painelPaginaAberto() && telaCelular.matches) elPainelPagina.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -447,18 +535,20 @@
     var menu = ev.detail && ev.detail.menu;
     if (painelPaginaAberto() && menu && !document.getElementById(menu).contains(btnPaginaPdf)) abrirPainelPagina(false);
   });
-  btnExportarPdf.addEventListener("click", exportarPdf);
+  btnExportarPdf.addEventListener("click", function () { if (configPagina.saida === "pdf") exportarPdf(); else exportarImagem(); });
 
   var timerAreaDesenho = null;
   document.getElementById("formPagina").addEventListener("input", function (event) {
     var alvo = event.target;
     var antes = { w: configPagina.areaLargura, h: configPagina.areaAltura };
     var orientacao = document.querySelector('input[name="paginaOrientacao"]:checked');
+    var saida = document.querySelector('input[name="paginaSaida"]:checked');
+    if (saida && saida.value !== configPagina.saida) { definirSaida(saida.value); return; }
     // Campos numéricos: só aplica valor completo; o blur/change normaliza o que ficou fora da faixa.
     configPagina = normalizarConfigPagina({
       formato: campoPagina.formato.value, orientacao: orientacao ? orientacao.value : configPagina.orientacao,
       escala: campoPagina.escala.value, margem: campoPagina.margem.value === "" ? configPagina.margem : campoPagina.margem.value,
-      moldura: campoPagina.moldura.checked,
+      moldura: campoPagina.moldura.checked, saida: configPagina.saida, dpi: campoPagina.dpi.value,
       areaLargura: campoPagina.areaLargura.value === "" ? configPagina.areaLargura : campoPagina.areaLargura.value,
       areaAltura: campoPagina.areaAltura.value === "" ? configPagina.areaAltura : campoPagina.areaAltura.value
     });

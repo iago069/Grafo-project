@@ -36,7 +36,9 @@ test("novo projeto pergunta o tipo; Monitoramento mostra status com cor, legenda
   assert.match(await pagina.textContent("#legenda"), /4 ativos.*1 em manutenção.*0 offline/);
   assert.equal((await projetoSalvo(pagina)).modo, "monitoramento");
 
-  const [download] = await Promise.all([pagina.waitForEvent("download"), pagina.evaluate(() => document.getElementById("btnBaixarPng").click())]);
+  await pagina.evaluate(() => document.getElementById("btnBaixarPng").click());
+  await pagina.waitForSelector("#btnExportarPdf:not([disabled])", { timeout: 30000 });
+  const [download] = await Promise.all([pagina.waitForEvent("download"), pagina.evaluate(() => document.getElementById("btnExportarPdf").click())]);
   assert.match(download.suggestedFilename(), /^cftv-predio-monitoramento-\d{4}-\d\d-\d\d\.png$/);
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();

@@ -1077,7 +1077,7 @@
                 <button class="ghost botao-com-icone" id="btnExportarMenu" type="button" data-icone="baixar" aria-haspopup="menu" aria-expanded="false" aria-controls="menuExportar">Exportar</button>
                 <div class="menu-flutuante" id="menuExportar" role="menu" aria-labelledby="btnExportarMenu" hidden>
                   <button class="menu-item" id="btnPaginaPdf" type="button" role="menuitem" data-icone="pdf" aria-expanded="false" aria-controls="painelPagina" title="Formato da página, escala, prévia e exportação em PDF">PDF para imprimir…</button>
-                  <button class="menu-item" id="btnBaixarPng" type="button" role="menuitem" data-icone="imagem" disabled>Imagem PNG</button>
+                  <button class="menu-item" id="btnBaixarPng" type="button" role="menuitem" data-icone="imagem" aria-controls="painelPagina" title="Mesma página do PDF (formato, orientação, margem, cabeçalho), em imagem PNG ou JPG" disabled>Imagem PNG ou JPG…</button>
                   <button class="menu-item" id="btnBaixar" type="button" role="menuitem" data-icone="vetor" disabled>Vetor SVG</button>
                   <div class="menu-separador menu-so-diagrama" role="separator"></div>
                   <div class="menu-rotulo">Projeto</div>
@@ -1143,13 +1143,29 @@
     </div>
 
     <!-- Barra lateral direita: área de desenho, página (A0–A5), prévia e PDF. -->
-    <aside class="painel-pagina" id="painelPagina" aria-label="Página e exportação em PDF" hidden>
+    <aside class="painel-pagina" id="painelPagina" aria-label="Página e exportação" hidden>
       <div class="painel-pagina-topo">
-        <h2>Página e PDF</h2>
+        <h2>Página e exportação</h2>
         <button type="button" class="ghost small" id="btnFecharPagina" aria-label="Fechar painel">×</button>
       </div>
 
       <form class="painel-pagina-form" id="formPagina" novalidate>
+        <fieldset>
+          <legend>Arquivo</legend>
+          <div class="segmentado tres" role="radiogroup" aria-label="Formato do arquivo">
+            <label><input type="radio" name="paginaSaida" value="pdf"><span>PDF</span></label>
+            <label><input type="radio" name="paginaSaida" value="png"><span>PNG</span></label>
+            <label><input type="radio" name="paginaSaida" value="jpg"><span>JPG</span></label>
+          </div>
+          <label class="so-imagem">Resolução
+            <select id="paginaResolucao">
+              <option value="96">Tela leve · 96 DPI</option>
+              <option value="150">Tela · 150 DPI</option>
+              <option value="300">Impressão · 300 DPI</option>
+            </select>
+          </label>
+          <p class="dica-campo so-imagem">A imagem sai igual à prévia: a folha inteira, com margem, cabeçalho e legenda. JPG fica menor; PNG deixa o texto mais nítido.</p>
+        </fieldset>
         <fieldset>
           <legend>Cabeçalho</legend>
           <label>Subtítulo (local, POP…)<input type="text" id="paginaSubtitulo" maxlength="120" placeholder="Ex.: POP-PFU01 · Passo Fundo - ERB Petrópolis" autocomplete="off"></label>
