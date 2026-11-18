@@ -111,7 +111,7 @@
   // e assim por diante), cada coluna ligada ao nobreak por um par de cabos (+ e −).
   // x: borda esquerda do conjunto; chao: y do piso. Retorna { svg, largura }.
   function desenharNobreak(nb, x, chao, UH, alturaRack, selecionado, exportar) {
-    var hU = Math.min(17 * UH, alturaRack * 0.82), s = hU / (17 * UH);
+    var hU = Math.min(10.5 * UH, alturaRack * 0.55), s = hU / (17 * UH);
     var wU = 5.4 * UH * s, bw = 3.3 * UH * s, bh = 2.25 * UH * s;
     var gv = Math.max(7, 0.38 * UH * s), gh = Math.max(6, 0.28 * UH * s);
     var n = Math.max(0, Math.min(E.LIMITES.bateriasPorNobreak, Number(nb.baterias) || 0));
