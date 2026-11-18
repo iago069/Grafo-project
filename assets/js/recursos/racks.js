@@ -26,6 +26,9 @@
   var NOMES_STATUS = { planejado: "Planejado", montagem: "Em montagem", instalado: "Instalado", desativado: "Desativado" };
   var NOMES_ESTADO = { instalado: "Instalado", planejado: "Planejado", remover: "A remover" };
   var NOMES_FACE = { ambas: "Profundidade total", frente: "Só frente", tras: "Só traseira" };
+  var NOMES_LADO = { inteira: "Largura inteira (19\")", esquerda: "Metade esquerda", direita: "Metade direita" };
+  var SUFIXO_LADO = { esquerda: " esq.", direita: " dir." };
+  function ehMeia(lado) { return lado === "esquerda" || lado === "direita"; }
   var ALTURAS_COMUNS = [12, 24, 36, 42, 44, 45, 48];
 
   var dados = { racks: [], cabos: [] };
@@ -50,8 +53,8 @@
     return null;
   }
   function nomePorta(item, n) { return (item.prefixoPorta || "") + n; }
-  function faixaU(it) { return it.alturaU > 1 ? "U" + it.u + "–U" + (it.u + it.alturaU - 1) : "U" + it.u; }
-  function faixaUTexto(it) { return it.alturaU > 1 ? "U" + it.u + "-U" + (it.u + it.alturaU - 1) : "U" + it.u; }
+  function faixaU(it) { return (it.alturaU > 1 ? "U" + it.u + "–U" + (it.u + it.alturaU - 1) : "U" + it.u) + (ehMeia(it.lado) ? " (" + NOMES_LADO[it.lado].toLowerCase() + ")" : ""); }
+  function faixaUTexto(it) { return (it.alturaU > 1 ? "U" + it.u + "-U" + (it.u + it.alturaU - 1) : "U" + it.u) + (SUFIXO_LADO[it.lado] || ""); }
   function visivelNaFace(it) { return vista.face === "frente" ? it.face !== "tras" : it.face !== "frente"; }
   function hoje() { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
   function nomeArquivo(base, ext) { return (String(base).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "rack") + "-" + hoje() + "." + ext; }
@@ -101,6 +104,104 @@
 
   // ---- desenho do rack (SVG; o mesmo para a tela e a exportação) ---------------
   var TRILHO = 30, LARGURA_19 = 380, BORDA = 16;
+  var NOMES_LADO_NOBREAK = { direita: "À direita do rack", esquerda: "À esquerda do rack" };
+
+  // Nobreak de pé (torre) no chão, com o banco de baterias em volta: colunas de
+  // baterias empilhadas dos dois lados (a primeira à direita, a segunda à esquerda,
+  // e assim por diante), cada coluna ligada ao nobreak por um par de cabos (+ e −).
+  // x: borda esquerda do conjunto; chao: y do piso. Retorna { svg, largura }.
+  function desenharNobreak(nb, x, chao, UH, alturaRack, selecionado, exportar) {
+    var hU = Math.min(17 * UH, alturaRack * 0.82), s = hU / (17 * UH);
+    var wU = 5.4 * UH * s, bw = 3.3 * UH * s, bh = 2.25 * UH * s;
+    var gv = Math.max(7, 0.38 * UH * s), gh = Math.max(6, 0.28 * UH * s);
+    var n = Math.max(0, Math.min(E.LIMITES.bateriasPorNobreak, Number(nb.baterias) || 0));
+    var porColuna = Math.max(1, Math.floor((hU * 0.9 + gv) / (bh + gv)));
+    var colunas = Math.ceil(n / porColuna);
+    var colDir = Math.ceil(colunas / 2), colEsq = colunas - colDir;
+    var xU = x + colEsq * (bw + gh), yU = chao - hU;
+    var largura = colunas * (bw + gh) + wU;
+    var p = [], fios = [];
+    var id = String(nb.id).replace(/[^a-zA-Z0-9_-]/g, "");
+    p.push('<g class="rk-nobreak" data-nobreak="' + esc(nb.id) + '" font-family="Helvetica, Arial, sans-serif">');
+    p.push('<title>' + esc([nb.nome, [nb.fabricante, nb.modelo].filter(Boolean).join(" "), nb.potencia, n ? n + " bateria" + (n > 1 ? "s" : "") + (nb.tensaoBateria ? " de " + nb.tensaoBateria : "") : "", nb.autonomia ? "autonomia " + nb.autonomia : ""].filter(Boolean).join(" · ")) + '</title>');
+    // Sombra no piso.
+    p.push('<ellipse cx="' + (x + largura / 2) + '" cy="' + (chao + 2) + '" rx="' + (largura / 2 + 8) + '" ry="' + Math.max(4, 6 * s) + '" fill="#000" opacity="0.2"/>');
+    // Baterias: coluna 0 = 1ª à direita, 1 = 1ª à esquerda, 2 = 2ª à direita...
+    var topoBaterias = chao;
+    for (var c = 0; c < colunas; c++) {
+      var direita = c % 2 === 0, k = Math.floor(c / 2);
+      var bx = direita ? xU + wU + gh + k * (bw + gh) : xU - (k + 1) * (bw + gh);
+      var naColuna = Math.min(porColuna, n - c * porColuna);
+      for (var b = 0; b < naColuna; b++) {
+        var by = chao - (b + 1) * bh - b * gv;
+        topoBaterias = Math.min(topoBaterias, by);
+        var numero = c * porColuna + b + 1, tt = Math.max(3, bh * 0.11), tw = bw * 0.15;
+        // Bornes: + vermelho à esquerda, − preto à direita.
+        p.push('<rect x="' + (bx + bw * 0.14) + '" y="' + (by - tt) + '" width="' + tw + '" height="' + (tt + 1) + '" rx="1" fill="#D64545" stroke="#7A1F1F" stroke-width="0.6"/>');
+        p.push('<rect x="' + (bx + bw * 0.71) + '" y="' + (by - tt) + '" width="' + tw + '" height="' + (tt + 1) + '" rx="1" fill="#3A3F46" stroke="#111" stroke-width="0.6"/>');
+        p.push('<rect x="' + bx + '" y="' + by + '" width="' + bw + '" height="' + bh + '" rx="' + (3 * s + 1) + '" fill="url(#rk-g-bateria)" stroke="#0B0D10" stroke-width="0.8"/>');
+        p.push('<rect x="' + (bx + 1) + '" y="' + (by + 1) + '" width="' + (bw - 2) + '" height="' + (bh * 0.2) + '" rx="' + (2 * s + 1) + '" fill="#3E4650"/>');
+        var fsB = Math.max(6, Math.min(11, bh * 0.2));
+        p.push('<text x="' + (bx + bw * 0.215) + '" y="' + (by + bh * 0.17) + '" font-size="' + fsB + '" fill="#FF8A8A" text-anchor="middle" font-weight="bold">+</text>');
+        p.push('<text x="' + (bx + bw * 0.785) + '" y="' + (by + bh * 0.17) + '" font-size="' + fsB + '" fill="#C9D1D9" text-anchor="middle" font-weight="bold">−</text>');
+        // Etiqueta: faixa verde com a tensão e o número da bateria.
+        var ex = bx + bw * 0.1, ey = by + bh * 0.34, ew = bw * 0.8, eh = bh * 0.44;
+        p.push('<rect x="' + ex + '" y="' + ey + '" width="' + ew + '" height="' + eh + '" rx="2" fill="#E9EEF2"/>');
+        p.push('<rect x="' + ex + '" y="' + ey + '" width="' + (ew * 0.3) + '" height="' + eh + '" rx="2" fill="#2FBF71"/>');
+        p.push('<text x="' + (ex + ew * 0.15) + '" y="' + (ey + eh / 2 + fsB * 0.36) + '" font-size="' + (fsB * 0.85) + '" fill="#FFFFFF" text-anchor="middle" font-weight="bold">' + numero + '</text>');
+        p.push('<text x="' + (ex + ew * 0.65) + '" y="' + (ey + eh / 2 + fsB * 0.36) + '" font-size="' + fsB + '" fill="#1E2A33" text-anchor="middle" font-weight="bold">' + esc(String(nb.tensaoBateria || "12V").replace(/s+/g, "").slice(0, 5)) + '</text>');
+      }
+      // Cabos da coluna: saem dos bornes da bateria de cima, sobem e entram na lateral do nobreak.
+      var topo = chao - naColuna * bh - (naColuna - 1) * gv;
+      var yRota = topo - 9 - k * 6;
+      var xLado = direita ? xU + wU : xU;
+      [["#D64545", bx + bw * 0.215], ["#22262B", bx + bw * 0.785]].forEach(function (fio, i) {
+        var yEntrada = yRota - i * 3.5;
+        fios.push('<path d="M' + fio[1] + ' ' + (topo - Math.max(3, bh * 0.11)) + ' V' + yEntrada + ' H' + xLado + '" fill="none" stroke="' + fio[0] + '" stroke-width="' + Math.max(1.6, 2.2 * s) + '" stroke-linecap="round" stroke-linejoin="round"/>');
+      });
+    }
+    p.push(fios.join(""));
+    // Torre do nobreak.
+    var tracejado = nb.estado === "planejado" ? ' stroke-dasharray="7 4"' : "";
+    p.push('<rect x="' + xU + '" y="' + yU + '" width="' + wU + '" height="' + hU + '" rx="' + (7 * s + 2) + '" fill="url(#rk-g-ups)" stroke="#0E1014" stroke-width="1.2"' + tracejado + '/>');
+    p.push('<rect x="' + (xU + 3) + '" y="' + (yU + 8) + '" width="' + Math.max(2, wU * 0.03) + '" height="' + (hU - 16) + '" rx="1.5" fill="#FFFFFF" opacity="0.1"/>');
+    p.push('<rect x="' + (xU + 2) + '" y="' + (yU + 2) + '" width="' + (wU - 4) + '" height="' + (hU * 0.05) + '" rx="' + (6 * s + 1) + '" fill="#1A1E24"/>');
+    // Painel frontal: marca/modelo, visor, LEDs e botão.
+    var px = xU + wU * 0.1, py = yU + hU * 0.08, pw = wU * 0.8, ph = hU * 0.38;
+    p.push('<rect x="' + px + '" y="' + py + '" width="' + pw + '" height="' + ph + '" rx="' + (5 * s + 1) + '" fill="#1E232A" stroke="#4A5562" stroke-width="0.8"/>');
+    var fsM = Math.max(7, Math.min(13, wU * 0.085));
+    var marca = [nb.fabricante, nb.modelo].filter(Boolean).join(" ") || "NOBREAK";
+    var maxM = Math.max(4, Math.floor(pw / (fsM * 0.6)));
+    p.push('<text x="' + (xU + wU / 2) + '" y="' + (py + ph * 0.15) + '" font-size="' + fsM + '" fill="#C9D3DD" text-anchor="middle" font-weight="bold" letter-spacing="0.5">' + esc(marca.length > maxM ? marca.slice(0, maxM - 1) + "…" : marca) + '</text>');
+    var lx = xU + wU * 0.17, ly = py + ph * 0.24, lw = wU * 0.66, lh = ph * 0.36;
+    p.push('<rect x="' + lx + '" y="' + ly + '" width="' + lw + '" height="' + lh + '" rx="3" fill="url(#rk-g-lcd)" stroke="#0A1A14" stroke-width="1"/>');
+    var fsL = Math.max(7, Math.min(14, lh * 0.3));
+    p.push('<text x="' + (lx + lw / 2) + '" y="' + (ly + lh * 0.38) + '" font-size="' + fsL + '" fill="#8CF5C0" text-anchor="middle" font-family="Consolas, Menlo, monospace" font-weight="bold">' + (nb.estado === "planejado" ? "PLANEJADO" : nb.estado === "remover" ? "REMOVER" : "ON-LINE") + '</text>');
+    p.push('<text x="' + (lx + lw / 2) + '" y="' + (ly + lh * 0.68) + '" font-size="' + (fsL * 0.85) + '" fill="#5FD9A0" text-anchor="middle" font-family="Consolas, Menlo, monospace">' + esc((nb.potencia || "").slice(0, 12)) + '</text>');
+    for (var seg = 0; seg < 5; seg++) p.push('<rect x="' + (lx + lw * 0.15 + seg * lw * 0.14) + '" y="' + (ly + lh * 0.8) + '" width="' + (lw * 0.11) + '" height="' + Math.max(2, lh * 0.08) + '" fill="#8CF5C0" opacity="' + (seg < 3 ? 0.9 : 0.25) + '"/>');
+    var yLed = py + ph * 0.78, rLed = Math.max(2.2, wU * 0.025);
+    [["#2FD27A", 1], ["#F2B33D", 0.3], ["#E05555", 0.3]].forEach(function (led, i) {
+      p.push('<circle cx="' + (xU + wU * (0.22 + i * 0.12)) + '" cy="' + yLed + '" r="' + rLed + '" fill="' + led[0] + '" opacity="' + led[1] + '"/>');
+    });
+    var bxBotao = xU + wU * 0.74, rBotao = Math.max(4, wU * 0.065);
+    p.push('<circle cx="' + bxBotao + '" cy="' + yLed + '" r="' + rBotao + '" fill="#2A3038" stroke="#8C96A1" stroke-width="1"/>');
+    p.push('<path d="M' + (bxBotao - rBotao * 0.45) + ' ' + (yLed - rBotao * 0.35) + ' A' + (rBotao * 0.55) + ' ' + (rBotao * 0.55) + ' 0 1 0 ' + (bxBotao + rBotao * 0.45) + ' ' + (yLed - rBotao * 0.35) + ' M' + bxBotao + ' ' + (yLed - rBotao * 0.65) + ' V' + (yLed - rBotao * 0.05) + '" fill="none" stroke="#2FD27A" stroke-width="1.2" stroke-linecap="round"/>');
+    // Ventilação e pés.
+    var yv0 = yU + hU * 0.53, yv1 = yU + hU * 0.92, linhasV = Math.max(4, Math.floor((yv1 - yv0) / Math.max(6, 9 * s)));
+    for (var v = 0; v < linhasV; v++) p.push('<rect x="' + (xU + wU * 0.18) + '" y="' + (yv0 + v * (yv1 - yv0) / linhasV) + '" width="' + (wU * 0.64) + '" height="' + Math.max(1.6, 2.6 * s) + '" rx="1" fill="#14171C"/>');
+    p.push('<rect x="' + (xU + wU * 0.08) + '" y="' + (chao - 3) + '" width="' + (wU * 0.18) + '" height="4" rx="1.5" fill="#0E1014"/><rect x="' + (xU + wU * 0.74) + '" y="' + (chao - 3) + '" width="' + (wU * 0.18) + '" height="4" rx="1.5" fill="#0E1014"/>');
+    // Nome em cima do nobreak.
+    var fsN = Math.max(9, Math.min(13, UH * 0.36));
+    var maxN = Math.max(6, Math.floor((largura + 20) / (fsN * 0.58)));
+    var yNome = Math.min(yU, topoBaterias - 20) - 8;
+    p.push('<text class="rk-nobreak-nome" x="' + (xU + wU / 2) + '" y="' + yNome + '" font-size="' + fsN + '" fill="#2B3640" text-anchor="middle" font-weight="bold">' + esc(nb.nome.length > maxN ? nb.nome.slice(0, maxN - 1) + "…" : nb.nome) + '</text>');
+    if (nb.estado === "remover") p.push('<text x="' + (xU + wU / 2) + '" y="' + (yNome - fsN - 2) + '" font-size="' + (fsN - 2) + '" fill="#C0392B" text-anchor="middle" font-weight="bold">A REMOVER</text>');
+    if (selecionado && !exportar) p.push('<rect x="' + (x - 6) + '" y="' + (yNome - fsN - 4) + '" width="' + (largura + 12) + '" height="' + (chao - yNome + fsN + 12) + '" rx="8" fill="none" stroke="#E8A33D" stroke-width="2.5"/>');
+    // Área de clique inteira (o conjunto todo seleciona o nobreak).
+    p.push('<rect class="rk-nobreak-area" x="' + (x - 6) + '" y="' + (yNome - fsN - 4) + '" width="' + (largura + 12) + '" height="' + (chao - yNome + fsN + 12) + '" fill="transparent"/>');
+    p.push('</g>');
+    return { svg: p.join(""), largura: largura };
+  }
   function desenharRack(rack, opcoes) {
     opcoes = opcoes || {};
     // Proporção real de um rack 19": 1U (44,45 mm) para 482,6 mm de largura útil.
@@ -109,15 +210,27 @@
     var inverter = !!opcoes.inverter;
     var exportar = !!opcoes.exportar;
     var MARGEM_NOMES = opcoes.nomesAoLado ? 200 : 0;
-    var x0 = (opcoes.x || 0) + MARGEM_NOMES, y0 = opcoes.y || 0;
+    var y0 = opcoes.y || 0;
     var larguraRack = TRILHO * 2 + LARGURA_19;
     var altura = BORDA * 2 + UH * rack.alturaU;
+    // Nobreaks de pé à esquerda vêm primeiro e empurram o rack para a direita.
+    var chao = y0 + altura, nobreaksSvg = [], xNobreak = opcoes.x || 0;
+    function nobreakMarcado(nb) { return sel.rack === rack.id && sel.nobreak === nb.id; }
+    (rack.nobreaks || []).forEach(function (nb) {
+      if (nb.lado !== "esquerda") return;
+      var dn = desenharNobreak(nb, xNobreak, chao, UH, altura, nobreakMarcado(nb), exportar);
+      nobreaksSvg.push(dn.svg); xNobreak += dn.largura + 34;
+    });
+    var deslocEsq = xNobreak - (opcoes.x || 0);
+    var x0 = (opcoes.x || 0) + deslocEsq + MARGEM_NOMES;
     var canal = larguraRack + 10;   // cabos que voltam pela lateral direita
-    var larguraTotal = larguraRack + (opcoes.semCanal ? 0 : 150) + MARGEM_NOMES;
+    var larguraTotal = larguraRack + (opcoes.semCanal ? 0 : 150) + MARGEM_NOMES + deslocEsq;
+    var xFimCabos = x0 + larguraRack + 30;
     var alturaDesenho = altura;
     function topoU(u) { return y0 + BORDA + (inverter ? (u - 1) : (rack.alturaU - u)) * UH; }
     function topoItem(it) { return inverter ? topoU(it.u) : topoU(it.u + it.alturaU - 1); }
     var xi = x0 + TRILHO, wi = LARGURA_19;
+    var xiRack = xi, wiRack = wi;
     var p = [];
     p.push('<g class="rk-rack" font-family="Helvetica, Arial, sans-serif">');
     // Estrutura: laterais (trilhos) e topo/base.
@@ -134,7 +247,11 @@
     var oc = E.ocupacaoRack(rack);
     for (var u = 1; u <= rack.alturaU; u++) {
       var y = topoU(u);
-      var ocupadaAqui = oc.porU[u].some(function (it) { return face === "frente" ? it.face !== "tras" : it.face !== "frente"; });
+      // Lados já ocupados nesta face: sobra a U inteira, uma metade ou nada.
+      var ladosOcupados = {};
+      oc.porU[u].forEach(function (it) { if (face === "frente" ? it.face !== "tras" : it.face !== "frente") ladosOcupados[ehMeia(it.lado) ? it.lado : "inteira"] = true; });
+      var ladosLivres = ladosOcupados.inteira || (ladosOcupados.esquerda && ladosOcupados.direita) ? [] :
+        ladosOcupados.esquerda ? ["direita"] : ladosOcupados.direita ? ["esquerda"] : ["inteira"];
       var fonte = Math.max(7, Math.min(10, UH * 0.48));
       p.push('<text x="' + (x0 + TRILHO / 2) + '" y="' + (y + UH / 2 + fonte * 0.35) + '" font-size="' + fonte + '" fill="#8C96A1" text-anchor="middle">' + u + '</text>');
       p.push('<text x="' + (x0 + TRILHO + wi + TRILHO / 2) + '" y="' + (y + UH / 2 + fonte * 0.35) + '" font-size="' + fonte + '" fill="#8C96A1" text-anchor="middle">' + u + '</text>');
@@ -143,9 +260,11 @@
         var yf = y + UH * (0.2 + f * 0.3);
         p.push('<rect x="' + (x0 + TRILHO - 7) + '" y="' + (yf - 1.6) + '" width="4" height="3.2" rx="0.6" fill="#16191E"/><rect x="' + (xi + wi + 3) + '" y="' + (yf - 1.6) + '" width="4" height="3.2" rx="0.6" fill="#16191E"/>');
       }
-      if (!ocupadaAqui) {
-        p.push('<rect class="rk-u-livre' + (sel.u === u && !exportar && sel.rack === rack.id ? " rk-u-sel" : "") + '" data-u="' + u + '" x="' + (xi + 1) + '" y="' + (y + 1) + '" width="' + (wi - 2) + '" height="' + (UH - 2) + '" rx="2.5" fill="' + (sel.u === u && !exportar && sel.rack === rack.id ? "#CDE8D6" : "#F6F8FA") + '" stroke="#D5DCE3" stroke-width="0.7"/>');
-      }
+      ladosLivres.forEach(function (lado) {
+        var marcada = sel.u === u && !exportar && sel.rack === rack.id && (lado === "inteira" || sel.lado === lado);
+        var xl = lado === "direita" ? xi + wi / 2 + 1 : xi + 1, wl = lado === "inteira" ? wi - 2 : wi / 2 - 2;
+        p.push('<rect class="rk-u-livre' + (marcada ? " rk-u-sel" : "") + '" data-u="' + u + '"' + (lado !== "inteira" ? ' data-lado="' + lado + '"' : "") + ' x="' + xl + '" y="' + (y + 1) + '" width="' + wl + '" height="' + (UH - 2) + '" rx="2.5" fill="' + (marcada ? "#CDE8D6" : "#F6F8FA") + '" stroke="#D5DCE3" stroke-width="0.7">' + (lado !== "inteira" ? '<title>U' + u + ' · ' + NOMES_LADO[lado].toLowerCase() + ' livre</title>' : "") + '</rect>');
+      });
     }
     // Os cabos entram aqui (antes dos itens), para passarem por baixo dos
     // equipamentos e aparecerem saindo pela lateral, sem cruzar as outras portas.
@@ -155,6 +274,9 @@
     (rack.itens || []).slice().sort(function (a, b) { return a.u - b.u; }).forEach(function (it) {
       var cat = CATEGORIAS[it.categoria] || CATEGORIAS.personalizado;
       var y = topoItem(it), h = it.alturaU * UH;
+      // Meia largura (ONU, conversor...): metade do vão de 19", do lado escolhido.
+      var meia = ehMeia(it.lado);
+      var xi = xiRack + (it.lado === "direita" ? wiRack / 2 : 0), wi = meia ? wiRack / 2 : wiRack;
       var visivel = face === "frente" ? it.face !== "tras" : it.face !== "frente";
       var selecionado = !exportar && sel.item === it.id;
       var destaque = !exportar && itemConfere(it);
@@ -171,7 +293,9 @@
       p.push('<rect class="rk-item-corpo" x="' + (xi + 1) + '" y="' + (y + 0.5) + '" width="' + (wi - 2) + '" height="' + (h - 1) + '" rx="2" fill="' + fundo + '" stroke="' + (selecionado ? "#E8A33D" : destaque ? "#F2C94C" : "#14171B") + '" stroke-width="' + (selecionado || destaque ? 2.5 : 1) + '"' + tracejado + '/>');
       p.push('<rect x="' + (xi + 1.5) + '" y="' + (y + 1) + '" width="' + (wi - 3) + '" height="' + Math.max(3, (h - 2) * 0.5) + '" rx="2" fill="url(#rk-g-brilho)" pointer-events="none"/>');
       // Orelhas de fixação.
-      p.push('<rect x="' + (xi - 6) + '" y="' + (y + 1.5) + '" width="7" height="' + (h - 3) + '" rx="1.5" fill="url(#rk-g-orelha)"/><rect x="' + (xi + wi - 1) + '" y="' + (y + 1.5) + '" width="7" height="' + (h - 3) + '" rx="1.5" fill="url(#rk-g-orelha)"/>');
+      // (meia largura: só a orelha do lado do trilho)
+      if (it.lado !== "direita") p.push('<rect x="' + (xi - 6) + '" y="' + (y + 1.5) + '" width="7" height="' + (h - 3) + '" rx="1.5" fill="url(#rk-g-orelha)"/>');
+      if (it.lado !== "esquerda") p.push('<rect x="' + (xi + wi - 1) + '" y="' + (y + 1.5) + '" width="7" height="' + (h - 3) + '" rx="1.5" fill="url(#rk-g-orelha)"/>');
       // Foto real do painel frontal (opcional): cobre o corpo, com a borda por cima.
       var comFoto = !!it.foto && opcoes.fotos !== false;
       if (comFoto) {
@@ -188,7 +312,7 @@
       p.push('<text x="' + (xi + 6 + larguraSigla / 2) + '" y="' + (y + h / 2 + fs * 0.36) + '" font-size="' + fs + '" font-weight="bold" fill="#1A1D22" text-anchor="middle">' + esc(cat.sigla) + '</text>');
       // Portas (se couberem) à direita; nome e modelo à esquerda.
       var temPortas = it.portas > 0 && h >= 12;
-      var areaPortasX = xi + wi * 0.5, areaPortasW = wi * 0.5 - 10;
+      var areaPortasX = xi + wi * (meia ? 0.6 : 0.5), areaPortasW = wi * (meia ? 0.4 : 0.5) - 10;
       var lado = Math.max(5, Math.min(9, UH * 0.36)), passo = lado + 2;
       var colunas = Math.max(1, Math.floor(areaPortasW / passo));
       var linhas = Math.ceil(it.portas / colunas);
@@ -264,6 +388,8 @@
         p.push('<text class="rk-cabo-rotulo" x="' + xEtiquetas + '" y="' + (yEtiqueta + 4) + '" font-size="11" fill="#3A4652">' + esc(s.texto.length > 34 ? s.texto.slice(0, 32) + "..." : s.texto) + s.titulo + '</text>');
       });
       if (saidas.length) larguraTotal = Math.max(larguraTotal, xEtiquetas - x0 + 215);
+      if (linhas.length) xFimCabos = Math.max(xFimCabos, x0 + canal + TRILHOS * PASSO_TRILHO + 20);
+      if (saidas.length) xFimCabos = Math.max(xFimCabos, xEtiquetas + 225);
       p.splice.apply(p, [posicaoDosCabos, 0].concat(linhas));
       // Etiquetas que passam da base do rack aumentam a altura do desenho.
       if (saidas.length) alturaDesenho = Math.max(alturaDesenho, ultimaY + 10 - y0);
@@ -281,8 +407,17 @@
       });
       if (nomesLado.length) alturaDesenho = Math.max(alturaDesenho, ultimoNome + 10 - y0);
     }
+    // Nobreaks de pé à direita: depois dos cabos e das etiquetas, no mesmo piso do rack.
+    var xDir = xFimCabos;
+    (rack.nobreaks || []).forEach(function (nb) {
+      if (nb.lado === "esquerda") return;
+      var dn = desenharNobreak(nb, xDir, chao, UH, altura, nobreakMarcado(nb), exportar);
+      nobreaksSvg.push(dn.svg); xDir += dn.largura + 34;
+    });
+    if (xDir > xFimCabos) larguraTotal = Math.max(larguraTotal, xDir - 14 - (opcoes.x || 0));
+    p.push(nobreaksSvg.join(""));
     p.push('</g>');
-    return { svg: p.join(""), largura: larguraTotal, altura: alturaDesenho, UH: UH, topoU: topoU };
+    return { svg: p.join(""), largura: larguraTotal, altura: alturaDesenho, UH: UH, topoU: topoU, xInterior: xiRack, xRack: x0 };
   }
 
   var DEFS = '<defs>' +
@@ -293,6 +428,9 @@
     '<linearGradient id="rk-g-brilho" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.22"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>' +
     '<linearGradient id="rk-g-fundo" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity="0.18"/><stop offset="0.08" stop-color="#000" stop-opacity="0"/><stop offset="0.92" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.18"/></linearGradient>' +
     '<filter id="rk-sombra" x="-10%" y="-5%" width="120%" height="110%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity="0.35"/></filter>' +
+    '<linearGradient id="rk-g-ups" x1="0" x2="1"><stop offset="0" stop-color="#262B32"/><stop offset="0.12" stop-color="#3C444E"/><stop offset="0.55" stop-color="#2E343C"/><stop offset="1" stop-color="#1D2127"/></linearGradient>' +
+    '<linearGradient id="rk-g-bateria" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3A4049"/><stop offset="0.5" stop-color="#272C33"/><stop offset="1" stop-color="#1A1E23"/></linearGradient>' +
+    '<linearGradient id="rk-g-lcd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0F3D2D"/><stop offset="1" stop-color="#0A2A1F"/></linearGradient>' +
     '<pattern id="rk-hachura" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect class="rk-hachura-fundo" width="6" height="6" fill="#EEF1F4"/><line x1="0" y1="0" x2="0" y2="6" stroke="#C3CAD1" stroke-width="2"/></pattern></defs>';
 
   // ---- montagem da interface ---------------------------------------------------
@@ -362,10 +500,10 @@
     if (chave.indexOf("m:") === 0) {
       var m = MODELOS[Number(chave.slice(2))];
       if (!m) return null;
-      return { altura: m.altura, categoria: m.categoria, nome: m.modelo, foto: m.foto, base: { categoria: m.categoria, fabricante: m.fabricante, modelo: m.modelo, alturaU: m.altura, portas: m.portas, tipoPorta: m.tipoPorta } };
+      return { altura: m.altura, categoria: m.categoria, nome: m.modelo, foto: m.foto, lado: "inteira", base: { categoria: m.categoria, fabricante: m.fabricante, modelo: m.modelo, alturaU: m.altura, portas: m.portas, tipoPorta: m.tipoPorta } };
     }
     var c = CATEGORIAS[chave];
-    return c ? { altura: c.altura, categoria: c.valor, nome: c.rotulo, base: { categoria: c.valor } } : null;
+    return c ? { altura: c.altura, categoria: c.valor, nome: c.lado ? c.sigla : c.rotulo, lado: c.lado || "inteira", base: { categoria: c.valor } } : null;
   }
   function chaveDaPeca(el) {
     var peca = el.closest("[data-categoria],[data-modelo]");
@@ -379,9 +517,9 @@
       return new Promise(function (ok) { var leitor = new FileReader(); leitor.onload = function () { ok(String(leitor.result)); }; leitor.onerror = function () { ok(""); }; leitor.readAsDataURL(b); });
     }).catch(function () { return ""; });
   }
-  function instalarPeca(rack, pc, u) {
+  function instalarPeca(rack, pc, u, lado) {
     var n = (rack.itens || []).filter(function (x) { return pc.base.modelo ? x.modelo === pc.base.modelo : x.categoria === pc.categoria; }).length + 1;
-    var base = Object.assign({}, pc.base, { u: u, nome: pc.nome + " " + n });
+    var base = Object.assign({}, pc.base, { u: u, nome: pc.nome + " " + n, lado: lado || pc.lado || "inteira" });
     if (!pc.foto) { adicionarItem(rack, base); return; }
     fotoDoCatalogo(pc.foto).then(function (foto) {
       if (foto && foto.length <= E.LIMITES.fotoRack) base.foto = foto;
@@ -389,9 +527,10 @@
     });
   }
 
-  elBiblioteca.innerHTML = E.CATEGORIAS_RACK.map(function (c) {
-    return '<button type="button" class="rk-peca" draggable="true" data-categoria="' + c.valor + '" title="' + esc(c.rotulo + " · " + c.altura + "U") + '">' +
-      '<span class="rk-sigla" style="background:' + CORES[c.valor] + '">' + esc(c.sigla) + '</span><span>' + esc(c.rotulo) + '</span><small>' + c.altura + 'U</small></button>';
+  elBiblioteca.innerHTML = '<button type="button" class="rk-peca rk-peca-especial" data-rk="novo-nobreak" title="Nobreak de pé (torre), no chão ao lado do rack, com o banco de baterias em volta. Não ocupa U.">' +
+      '<span class="rk-sigla" style="background:' + CORES.nobreak + '">UPS</span><span>Nobreak de pé + baterias</span><small>ao lado</small></button>' + E.CATEGORIAS_RACK.map(function (c) {
+    return '<button type="button" class="rk-peca" draggable="true" data-categoria="' + c.valor + '" title="' + esc(c.rotulo + " · " + c.altura + "U" + (c.lado ? " · duas lado a lado na mesma U" : "")) + '">' +
+      '<span class="rk-sigla" style="background:' + CORES[c.valor] + '">' + esc(c.sigla) + '</span><span>' + esc(c.rotulo) + '</span><small>' + (c.lado ? "½ · " : "") + c.altura + 'U</small></button>';
   }).join("");
 
   // ---- render ----------------------------------------------------------------
@@ -488,7 +627,7 @@
     var x = 30, partes = [], alturaMax = 0, y = y0 + 76 + (fr - 1) * 44;
     racks.forEach(function (r) {
       var d = desenharRack(r, { zoom: 1, face: vista.face, inverter: vista.inverter, cabos: "ocultos", fotos: vista.fotos, nomesAoLado: vista.nomes, semCanal: true, exportar: true, x: x, y: y });
-      var meio = x + (vista.nomes ? 200 : 0) + (TRILHO * 2 + LARGURA_19) / 2;
+      var meio = d.xRack + (TRILHO * 2 + LARGURA_19) / 2;
       var oc = E.ocupacaoRack(r);
       partes.push('<g class="rk-dc-rack' + (atual && r.id === atual.id ? " rk-dc-atual" : "") + '" data-rack="' + esc(r.id) + '">' +
         '<ellipse cx="' + meio + '" cy="' + (y + d.altura + 4) + '" rx="' + ((TRILHO * 2 + LARGURA_19) / 2) + '" ry="9" fill="#000" opacity="0.22"/>' +
@@ -558,6 +697,8 @@
     if (!rack) { elProps.innerHTML = '<div class="rk-props-vazio"><h3>Bayface de Racks</h3><p>Monte a disposição física dos equipamentos: altura em U, posições ocupadas e livres, frente e traseira, portas e cabos.</p><p>O diagrama lógico do projeto continua guardado; volte a ele pelo seletor de tipo.</p></div>'; return; }
     var achado = sel.item ? itemPorId(sel.item) : null;
     if (achado) { renderPropsItem(achado.item, achado.rack); return; }
+    var nobreak = sel.nobreak ? (rack.nobreaks || []).find(function (nb) { return nb.id === sel.nobreak; }) : null;
+    if (nobreak) { renderPropsNobreak(nobreak, rack); return; }
     if (sel.u) { renderPropsNovo(rack, sel.u); return; }
     renderPropsRack(rack);
   }
@@ -583,7 +724,28 @@
       '</form>' +
       '<div class="rk-resumo"><strong>Ocupação</strong><p>' + l.oc.ocupadas + ' de ' + rack.alturaU + 'U ocupadas · ' + (rack.itens || []).length + ' equipamentos</p>' +
         '<p><strong>Livres:</strong> ' + (l.faixas.length ? esc(l.faixas.join(", ")) : "nenhuma") + '</p></div>' +
+      '<div class="rk-resumo"><strong>Nobreaks de pé</strong>' + ((rack.nobreaks || []).length ? '<ul class="rk-lista-nobreaks">' + rack.nobreaks.map(function (nb) {
+        return '<li><button type="button" class="link-btn" data-rk="abrir-nobreak" data-nobreak="' + esc(nb.id) + '">' + esc(nb.nome) + '</button> <small>' + esc([nb.potencia, nb.baterias ? nb.baterias + " baterias" : "", NOMES_LADO_NOBREAK[nb.lado].toLowerCase()].filter(Boolean).join(" · ")) + '</small></li>';
+      }).join("") + '</ul>' : '<p>Nenhum. O nobreak de pé fica no chão, ao lado do rack, com as baterias em volta (não ocupa U).</p>') +
+        '<button type="button" class="ghost small" data-rk="novo-nobreak">+ Nobreak de pé</button></div>' +
       '<div class="nav-form-actions rk-acoes"><button type="button" class="ghost" data-rk="duplicar-rack">Duplicar rack</button><button type="button" class="ghost danger-texto" data-rk="excluir-rack">Excluir rack</button></div>';
+  }
+
+  function renderPropsNobreak(nb, rack) {
+    elProps.innerHTML =
+      '<h3>Nobreak de pé <small>' + esc(NOMES_LADO_NOBREAK[nb.lado].toLowerCase()) + ' · ' + esc(rack.nome) + '</small></h3>' +
+      '<form class="nav-form rk-form" data-rk-form="nobreak">' +
+        campo("Nome / identificação", entrada("nome", nb.nome, 'required maxlength="60"'), "full") +
+        '<div class="nav-form-grid">' + campo("Fabricante", entrada("fabricante", nb.fabricante, 'maxlength="40" placeholder="SMS, APC, Intelbras…"')) + campo("Modelo", entrada("modelo", nb.modelo, 'maxlength="60"')) + '</div>' +
+        '<div class="nav-form-grid">' + campo("Potência", entrada("potencia", nb.potencia, 'maxlength="20" placeholder="3 kVA"')) + campo("Autonomia", entrada("autonomia", nb.autonomia, 'maxlength="30" placeholder="2 h"')) + '</div>' +
+        '<div class="nav-form-grid">' + campo("Baterias", entrada("baterias", nb.baterias, 'type="number" min="0" max="' + E.LIMITES.bateriasPorNobreak + '"')) + campo("Tensão de cada bateria", entrada("tensaoBateria", nb.tensaoBateria, 'maxlength="20" placeholder="12 V"')) + '</div>' +
+        '<div class="nav-form-grid">' + campo("Posição", '<select name="lado">' + opcoes(E.LADOS_NOBREAK, nb.lado, NOMES_LADO_NOBREAK) + '</select>') + campo("Estado", '<select name="estado">' + opcoes(E.ESTADOS_ITEM_RACK, nb.estado, NOMES_ESTADO) + '</select>') + '</div>' +
+        campo("Observações", '<textarea name="obs" maxlength="500" rows="2">' + esc(nb.obs) + '</textarea>', "full") +
+        '<p class="rk-dica">As baterias aparecem em colunas dos dois lados do nobreak, ligadas a ele pelos cabos + e −.</p>' +
+        '<div class="nav-form-actions"><button type="button" class="ghost" data-rk="cancelar">Voltar ao rack</button><button type="submit" class="primary">Salvar</button></div>' +
+      '</form>' +
+      '<div class="nav-form-actions rk-acoes"><button type="button" class="ghost danger-texto" data-rk="remover-nobreak">Remover nobreak</button></div>';
+    elProps.querySelector('[data-rk-form="nobreak"] input[name=nome]').focus();
   }
 
   function renderPropsNovo(rack, u) {
@@ -594,19 +756,25 @@
           var lista = MODELOS.map(function (m, i) { return m.categoria === c.valor ? '<option value="' + i + '">' + esc(m.fabricante + " " + m.modelo + " (" + m.altura + "U)") + '</option>' : ""; }).join("");
           return lista ? '<optgroup label="' + esc(c.rotulo) + '">' + lista + '</optgroup>' : "";
         }).join("") + '</select>', "full") +
-        campo("Categoria", '<select name="categoria">' + opcoesCategoria("switch") + '</select>', "full") +
+        campo("Categoria", '<select name="categoria">' + opcoesCategoria(sel.lado ? "onu" : "switch") + '</select>', "full") +
         campo("Nome", entrada("nome", "", 'required maxlength="60" placeholder="Ex.: SW-CORE-01"'), "full") +
         '<div class="nav-form-grid">' + campo("Altura (U)", entrada("alturaU", 1, 'type="number" min="1" max="' + rack.alturaU + '" required')) + campo("Face", '<select name="face">' + opcoes(E.FACES_RACK, "ambas", NOMES_FACE) + '</select>') + '</div>' +
+        campo("Largura no rack", '<select name="lado">' + opcoes(E.LADOS_RACK, sel.lado || "inteira", NOMES_LADO) + '</select>', "full") +
         '<div class="nav-form-grid">' + campo("Fabricante", entrada("fabricante", "", 'maxlength="40"')) + campo("Modelo", entrada("modelo", "", 'maxlength="60"')) + '</div>' +
-        '<p class="rk-dica">O equipamento ocupa de U' + u + ' para cima.</p>' +
+        '<p class="rk-dica">O equipamento ocupa de U' + u + ' para cima. Meia largura (ONU, conversor de mídia): dois dividem a mesma U, um de cada lado.</p>' +
         '<div class="nav-form-actions"><button type="button" class="ghost" data-rk="cancelar">Cancelar</button><button type="submit" class="primary">Adicionar</button></div>' +
       '</form>';
     var form = elProps.querySelector("form");
-    form.categoria.addEventListener("change", function () { form.alturaU.value = CATEGORIAS[form.categoria.value].altura; });
+    form.categoria.addEventListener("change", function () {
+      var c = CATEGORIAS[form.categoria.value];
+      form.alturaU.value = c.altura;
+      form.lado.value = sel.lado || c.lado || "inteira";
+    });
     form.modeloPronto.addEventListener("change", function () {
       var m = MODELOS[Number(form.modeloPronto.value)];
       if (!form.modeloPronto.value || !m) return;
       form.categoria.value = m.categoria; form.alturaU.value = m.altura; form.fabricante.value = m.fabricante; form.modelo.value = m.modelo;
+      form.lado.value = sel.lado || CATEGORIAS[m.categoria].lado || "inteira";
       if (!form.nome.value) form.nome.value = m.modelo;
     });
     form.nome.focus();
@@ -625,6 +793,7 @@
         '<div class="nav-form-grid">' + campo("Categoria", '<select name="categoria">' + opcoesCategoria(it.categoria) + '</select>') + campo("Estado", '<select name="estado">' + opcoes(E.ESTADOS_ITEM_RACK, it.estado, NOMES_ESTADO) + '</select>') + '</div>' +
         '<div class="nav-form-grid">' + campo("Fabricante", entrada("fabricante", it.fabricante, 'maxlength="40"')) + campo("Modelo", entrada("modelo", it.modelo, 'maxlength="60"')) + '</div>' +
         '<div class="nav-form-grid rk-grid-3">' + campo("U inicial", entrada("u", it.u, 'type="number" min="1" max="' + rack.alturaU + '" required')) + campo("Altura (U)", entrada("alturaU", it.alturaU, 'type="number" min="1" max="' + rack.alturaU + '" required')) + campo("Face", '<select name="face">' + opcoes(E.FACES_RACK, it.face, NOMES_FACE) + '</select>') + '</div>' +
+        campo("Largura no rack", '<select name="lado">' + opcoes(E.LADOS_RACK, it.lado || "inteira", NOMES_LADO) + '</select>', "full") +
         '<div class="nav-form-grid">' + campo("Patrimônio / código", entrada("patrimonio", it.patrimonio, 'maxlength="40"')) +
           campo("Cor", '<span class="rk-cor"><input type="color" name="cor" value="' + esc(it.cor || CORES[it.categoria] || "#4D5966") + '"><label class="opcao-check"><input type="checkbox" name="corPadrao"' + (it.cor ? "" : " checked") + '> Padrão</label></span>') + '</div>' +
         '<div class="nav-form-grid rk-grid-3">' + campo("Portas", entrada("portas", it.portas, 'type="number" min="0" max="' + E.LIMITES.portasPorItem + '"')) + campo("Tipo de porta", entrada("tipoPorta", it.tipoPorta, 'maxlength="30" placeholder="RJ45, SFP+, LC…"')) + campo("Prefixo", entrada("prefixoPorta", it.prefixoPorta, 'maxlength="15" placeholder="ge1/"')) + '</div>' +
@@ -757,9 +926,13 @@
 
   function adicionarItem(rack, base) {
     var cat = CATEGORIAS[base.categoria] || CATEGORIAS.personalizado;
-    var item = Object.assign({ id: novoId("it"), nome: cat.rotulo, categoria: cat.valor, fabricante: "", modelo: "", u: 1, alturaU: cat.altura, face: "ambas", cor: "",
+    var item = Object.assign({ id: novoId("it"), nome: cat.rotulo, categoria: cat.valor, fabricante: "", modelo: "", u: 1, alturaU: cat.altura, face: "ambas", lado: cat.lado || "inteira", cor: "",
       patrimonio: "", portas: cat.portas || 0, tipoPorta: cat.tipoPorta || "", prefixoPorta: "", largura: "", profundidade: "", estado: "instalado", obs: "" }, base);
     item.u = Number(item.u); item.alturaU = Number(item.alturaU);
+    if (!ehMeia(item.lado)) item.lado = "inteira";
+    // Meia largura: se o lado pedido estiver ocupado e o outro livre, vai para o outro.
+    var ladoLivre = E.ladoLivreRack(rack, item);
+    if (ladoLivre) item.lado = ladoLivre;
     var pos = E.verificarPosicaoRack(rack, item);
     if (!pos.ok) { mensagem("Não dá para instalar aí: " + pos.motivo + ".", true); return false; }
     destacar(item.id);
@@ -767,12 +940,16 @@
     return ok;
   }
 
-  function moverItem(itemId, rackDestinoId, novoU) {
+  // lado: o lado pedido (arrastando ou pelas setas); sem ele, um item de meia
+  // largura troca de lado sozinho se só o outro estiver livre.
+  function moverItem(itemId, rackDestinoId, novoU, lado) {
     var origem = itemPorId(itemId);
     if (!origem) return false;
     var destino = dados.racks.find(function (r) { return r.id === rackDestinoId; });
     if (!destino) return false;
     var candidato = Object.assign({}, origem.item, { u: Number(novoU) });
+    if (lado) candidato.lado = lado;
+    else if (ehMeia(candidato.lado)) candidato.lado = E.ladoLivreRack(destino, candidato, itemId) || candidato.lado;
     var pos = E.verificarPosicaoRack(destino, candidato, itemId);
     if (!pos.ok) { mensagem("Não dá para mover: " + pos.motivo + ".", true); render(); return false; }
     var racks = clonar(dados.racks);
@@ -785,11 +962,11 @@
     return gravar(racks, dados.cabos, candidato.nome + " movido para " + faixaU(candidato) + (destino.id !== origem.rack.id ? " em " + destino.nome : "") + ".");
   }
 
-  function primeiraPosicaoLivre(rack, alturaU, face, aPartirDe) {
-    for (var u = aPartirDe || 1; u + alturaU - 1 <= rack.alturaU; u++) {
-      if (E.verificarPosicaoRack(rack, { u: u, alturaU: alturaU, face: face }).ok) return u;
-    }
-    for (u = 1; u < (aPartirDe || 1); u++) if (E.verificarPosicaoRack(rack, { u: u, alturaU: alturaU, face: face }).ok) return u;
+  // Meia largura (lado esquerda/direita): serve uma U com qualquer metade livre.
+  function primeiraPosicaoLivre(rack, alturaU, face, aPartirDe, lado) {
+    function cabe(u) { return !!E.ladoLivreRack(rack, { u: u, alturaU: alturaU, face: face, lado: lado || "inteira" }); }
+    for (var u = aPartirDe || 1; u + alturaU - 1 <= rack.alturaU; u++) if (cabe(u)) return u;
+    for (u = 1; u < (aPartirDe || 1); u++) if (cabe(u)) return u;
     return null;
   }
 
@@ -818,7 +995,7 @@
       var pronto = v.modeloPronto ? MODELOS[Number(v.modeloPronto)] : null;
       var usaPronto = pronto && pronto.modelo === v.modelo;
       var novoItem = Object.assign(usaPronto ? { portas: pronto.portas, tipoPorta: pronto.tipoPorta } : {},
-        { categoria: v.categoria, nome: v.nome, alturaU: v.alturaU, face: v.face, fabricante: v.fabricante, modelo: v.modelo, u: sel.u });
+        { categoria: v.categoria, nome: v.nome, alturaU: v.alturaU, face: v.face, lado: v.lado, fabricante: v.fabricante, modelo: v.modelo, u: sel.u });
       if (usaPronto && pronto.foto && Number(v.alturaU) === pronto.altura) {
         fotoDoCatalogo(pronto.foto).then(function (foto) { if (foto && foto.length <= E.LIMITES.fotoRack) novoItem.foto = foto; adicionarItem(rackAtual() || rack, novoItem); });
       } else adicionarItem(rack, novoItem);
@@ -826,7 +1003,7 @@
       var achado = itemPorId(sel.item);
       if (!achado) return;
       var novo = Object.assign({}, achado.item, {
-        nome: v.nome, categoria: v.categoria, estado: v.estado, fabricante: v.fabricante, modelo: v.modelo, u: Number(v.u), alturaU: Number(v.alturaU), face: v.face,
+        nome: v.nome, categoria: v.categoria, estado: v.estado, fabricante: v.fabricante, modelo: v.modelo, u: Number(v.u), alturaU: Number(v.alturaU), face: v.face, lado: v.lado || "inteira",
         patrimonio: v.patrimonio, cor: v.corPadrao ? "" : v.cor, portas: Number(v.portas) || 0, tipoPorta: v.tipoPorta, prefixoPorta: v.prefixoPorta,
         largura: v.largura, profundidade: v.profundidade, obs: v.obs
       });
@@ -840,6 +1017,14 @@
       var r = racks.find(function (x) { return x.id === achado.rack.id; });
       r.itens = r.itens.map(function (x) { return x.id === novo.id ? novo : x; });
       gravar(racks, dados.cabos.filter(function (c) { return perdidos.indexOf(c) < 0; }), "Equipamento salvo.");
+    } else if (tipo === "nobreak" && rack && sel.nobreak) {
+      comRack(rack.id, function (r, racks) {
+        var nb = (r.nobreaks || []).find(function (x) { return x.id === sel.nobreak; });
+        if (!nb) return false;
+        Object.assign(nb, { nome: v.nome, fabricante: v.fabricante, modelo: v.modelo, potencia: v.potencia, autonomia: v.autonomia,
+          baterias: Math.max(0, Math.min(E.LIMITES.bateriasPorNobreak, Math.round(Number(v.baterias) || 0))), tensaoBateria: v.tensaoBateria, lado: v.lado, estado: v.estado, obs: v.obs });
+        return gravar(racks, dados.cabos, "Nobreak salvo.");
+      });
     } else if (tipo === "cabo") {
       var origemCabo = itemPorId(sel.item);
       if (!origemCabo || !v.paraPorta) { mensagem("Escolha a porta de destino.", true); return; }
@@ -879,6 +1064,28 @@
     var rack = rackAtual();
     var achado = sel.item ? itemPorId(sel.item) : null;
     if (acao === "novo-rack") novoRack();
+    else if (acao === "novo-nobreak") {
+      if (!rack) { mensagem("Crie um rack primeiro.", true); return; }
+      var lista = rack.nobreaks || [];
+      if (lista.length >= E.LIMITES.nobreaksPorRack) { mensagem("Máximo de " + E.LIMITES.nobreaksPorRack + " nobreaks de pé por rack.", true); return; }
+      // O primeiro fica à direita; o segundo, à esquerda (se ela estiver vazia).
+      var ladoNovo = lista.some(function (x) { return x.lado === "direita"; }) && !lista.some(function (x) { return x.lado === "esquerda"; }) ? "esquerda" : "direita";
+      var novoNb = { id: novoId("nb"), nome: "NOBREAK " + (lista.length + 1), fabricante: "", modelo: "", potencia: "3 kVA", baterias: 8, tensaoBateria: "12 V", autonomia: "", lado: ladoNovo, estado: "instalado", obs: "" };
+      comRack(rack.id, function (r, racks) {
+        r.nobreaks = (r.nobreaks || []).concat([novoNb]);
+        sel = { rack: r.id, item: null, u: null, nobreak: novoNb.id };
+        return gravar(racks, dados.cabos, "Nobreak de pé colocado " + (ladoNovo === "direita" ? "à direita" : "à esquerda") + " do " + r.nome + ", com 8 baterias.");
+      });
+    } else if (acao === "abrir-nobreak" && rack) { sel = { rack: rack.id, item: null, u: null, nobreak: b.getAttribute("data-nobreak") }; render(); }
+    else if (acao === "remover-nobreak" && rack && sel.nobreak) {
+      var nbRem = (rack.nobreaks || []).find(function (x) { return x.id === sel.nobreak; });
+      if (!nbRem || !window.confirm('Remover o nobreak "' + nbRem.nome + '" e as baterias? Dá para desfazer com Ctrl+Z.')) return;
+      comRack(rack.id, function (r, racks) {
+        r.nobreaks = (r.nobreaks || []).filter(function (x) { return x.id !== nbRem.id; });
+        sel = { rack: r.id, item: null, u: null };
+        return gravar(racks, dados.cabos, "Nobreak removido.");
+      });
+    }
     else if (acao === "inverter") { vista.inverter = !vista.inverter; guardarVista(); render(); }
     else if (acao === "datacenter") {
       vista.datacenter = !vista.datacenter;
@@ -903,13 +1110,14 @@
     }
     else if (acao === "zoom-mais") { vista.zoom = Math.min(ZOOM_MAX, Math.round((vista.zoom + 0.2) * 10) / 10); guardarVista(); render(); }
     else if (acao === "zoom-menos") { vista.zoom = Math.max(ZOOM_MIN, Math.round((vista.zoom - 0.2) * 10) / 10); guardarVista(); render(); }
-    else if (acao === "cancelar") { sel.u = null; render(); }
+    else if (acao === "cancelar") { sel.u = null; sel.nobreak = null; render(); }
     else if (acao === "duplicar-rack" && rack) {
       if (dados.racks.length >= E.LIMITES.racks) { mensagem("Máximo de " + E.LIMITES.racks + " racks por projeto.", true); return; }
       var copia = clonar(rack);
       copia.id = novoId("rk");
       copia.nome = (rack.nome + " (cópia)").slice(0, 60);
       copia.itens.forEach(function (it) { it.id = novoId("it"); delete it.equipId; });
+      (copia.nobreaks || []).forEach(function (nb) { nb.id = novoId("nb"); });
       sel = { rack: copia.id, item: null, u: null };
       gravar(dados.racks.concat([copia]), dados.cabos, "Rack duplicado (os cabos não são copiados).");
     } else if (acao === "excluir-rack" && rack) {
@@ -919,7 +1127,8 @@
       sel = { rack: null, item: null, u: null };
       gravar(dados.racks.filter(function (r) { return r.id !== rack.id; }), dados.cabos.filter(function (c) { return ids.indexOf(c.deItem) < 0 && ids.indexOf(c.paraItem) < 0; }), "Rack excluído.");
     } else if (acao === "duplicar-item" && achado) {
-      var u = primeiraPosicaoLivre(achado.rack, achado.item.alturaU, achado.item.face, achado.item.u + achado.item.alturaU);
+      // Meia largura: a cópia tenta primeiro a outra metade da mesma U.
+      var u = primeiraPosicaoLivre(achado.rack, achado.item.alturaU, achado.item.face, achado.item.u + (ehMeia(achado.item.lado) ? 0 : achado.item.alturaU), achado.item.lado);
       if (u == null) { mensagem("Não há " + achado.item.alturaU + "U livres neste rack para a cópia.", true); return; }
       var dup = Object.assign(clonar(achado.item), { id: novoId("it"), nome: (achado.item.nome + " (cópia)").slice(0, 60), u: u });
       delete dup.equipId;
@@ -959,13 +1168,22 @@
     if (linha < 0 || linha >= rack.alturaU) return null;
     return vista.inverter ? linha + 1 : rack.alturaU - linha;
   }
-  function mostrarFantasma(uBase, alturaU, ok) {
+  // Metade do rack embaixo do ponteiro (para ONU e outros de meia largura).
+  function ladoNoPonto(clientX) {
+    var svg = elPalco.querySelector("svg");
+    if (!svg || !ultimoDesenho) return "esquerda";
+    var caixa = svg.getBoundingClientRect();
+    var x = (clientX - caixa.left) * (svg.viewBox.baseVal.width / caixa.width);
+    return x < ultimoDesenho.xInterior + LARGURA_19 / 2 ? "esquerda" : "direita";
+  }
+  function mostrarFantasma(uBase, alturaU, ok, lado) {
     var f = elPalco.querySelector(".rk-fantasma");
     var rack = rackAtual();
     if (!f || !rack || uBase == null) { if (f) f.setAttribute("visibility", "hidden"); return; }
     var topoU = vista.inverter ? uBase : uBase + alturaU - 1;
     var y = ultimoDesenho.topoU(Math.min(Math.max(topoU, 1), rack.alturaU));
-    f.setAttribute("x", 20 + TRILHO); f.setAttribute("width", LARGURA_19);
+    var meia = ehMeia(lado);
+    f.setAttribute("x", ultimoDesenho.xInterior + (lado === "direita" ? LARGURA_19 / 2 : 0)); f.setAttribute("width", meia ? LARGURA_19 / 2 : LARGURA_19);
     f.setAttribute("y", y); f.setAttribute("height", alturaU * ultimoDesenho.UH);
     f.setAttribute("fill", ok ? "#27AE60" : "#D64545"); f.setAttribute("fill-opacity", "0.35");
     f.setAttribute("stroke", ok ? "#1E8449" : "#B03A3A"); f.setAttribute("stroke-width", "2");
@@ -1000,7 +1218,7 @@
   }, { passive: false });
   var timerZoom = null, panorama = null;
   elPalco.addEventListener("pointerdown", function (ev) {
-    var fundo = !ev.target.closest(".rk-item, .rk-u-livre, .rk-dc-rack, .rk-porta, button, a, input, select");
+    var fundo = !ev.target.closest(".rk-item, .rk-u-livre, .rk-dc-rack, .rk-porta, .rk-nobreak, button, a, input, select");
     if (ev.button !== 1 && !(ev.button === 0 && fundo)) return;
     panorama = { x: ev.clientX, y: ev.clientY, sl: elPalco.scrollLeft, st: elPalco.scrollTop, moveu: false, id: ev.pointerId };
     if (ev.button === 1) ev.preventDefault();
@@ -1025,29 +1243,33 @@
       vista.datacenter = false; guardarVista(); render();
       return;
     }
+    var gNobreak = ev.target.closest(".rk-nobreak");
+    if (gNobreak) { sel = { rack: sel.rack, item: null, u: null, nobreak: gNobreak.getAttribute("data-nobreak") }; render(); return; }
     var g = ev.target.closest(".rk-item");
     var livre = ev.target.closest(".rk-u-livre");
-    if (livre) { sel = { rack: sel.rack, item: null, u: Number(livre.getAttribute("data-u")) }; render(); return; }
+    if (livre) { sel = { rack: sel.rack, item: null, u: Number(livre.getAttribute("data-u")), lado: livre.getAttribute("data-lado") || null }; render(); return; }
     if (!g) { if (ev.target.closest("svg")) { sel = { rack: sel.rack, item: null, u: null }; render(); } return; }
     var achado = itemPorId(g.getAttribute("data-item"));
     if (!achado) return;
     if (sel.item !== achado.item.id) { sel = { rack: sel.rack, item: achado.item.id, u: null }; renderProps(); renderPalco(); }
     var uClique = uNoPonto(ev.clientY);
-    arraste = { id: achado.item.id, inicioY: ev.clientY, deslocamento: uClique != null ? uClique - achado.item.u : 0, movendo: false, alvo: achado.item.u, pointerId: ev.pointerId };
+    arraste = { id: achado.item.id, inicioX: ev.clientX, inicioY: ev.clientY, deslocamento: uClique != null ? uClique - achado.item.u : 0, movendo: false, alvo: achado.item.u, lado: achado.item.lado, pointerId: ev.pointerId };
     elPalco.setPointerCapture(ev.pointerId);
   });
   elPalco.addEventListener("pointermove", function (ev) {
     if (!arraste) return;
-    if (!arraste.movendo && Math.abs(ev.clientY - arraste.inicioY) < 4) return;
+    if (!arraste.movendo && Math.abs(ev.clientY - arraste.inicioY) < 4 && Math.abs(ev.clientX - arraste.inicioX) < 4) return;
     arraste.movendo = true;
     var achado = itemPorId(arraste.id), rack = rackAtual();
     var u = uNoPonto(ev.clientY);
     if (u == null || !achado) return;
     var alvo = Math.max(1, u - arraste.deslocamento);
     arraste.alvo = alvo;
-    var pos = E.verificarPosicaoRack(rack, Object.assign({}, achado.item, { u: alvo }), achado.item.id);
+    // Meia largura: arrastar para o lado troca de metade.
+    if (ehMeia(achado.item.lado)) arraste.lado = ladoNoPonto(ev.clientX);
+    var pos = E.verificarPosicaoRack(rack, Object.assign({}, achado.item, { u: alvo, lado: arraste.lado }), achado.item.id);
     arraste.ok = pos.ok; arraste.motivo = pos.motivo;
-    mostrarFantasma(alvo, achado.item.alturaU, pos.ok);
+    mostrarFantasma(alvo, achado.item.alturaU, pos.ok, arraste.lado);
   });
   function fimArraste(ev) {
     if (!arraste) return;
@@ -1056,9 +1278,9 @@
     mostrarFantasma(null);
     if (!a.movendo) return;
     var achado = itemPorId(a.id);
-    if (!achado || a.alvo === achado.item.u) return;
+    if (!achado || (a.alvo === achado.item.u && a.lado === achado.item.lado)) return;
     if (!a.ok) { mensagem("Não dá para mover: " + a.motivo + ".", true); return; }
-    moverItem(a.id, achado.rack.id, a.alvo);
+    moverItem(a.id, achado.rack.id, a.alvo, a.lado);
   }
   elPalco.addEventListener("pointerup", fimArraste);
   elPalco.addEventListener("pointercancel", function () { arraste = null; mostrarFantasma(null); });
@@ -1078,9 +1300,10 @@
       var pc = pecaPorChave(chaveDaPeca(ev.target));
       var rack = rackAtual();
       if (!pc || !rack) { if (pc) mensagem("Crie um rack primeiro.", true); return; }
-      var u = sel.u && E.verificarPosicaoRack(rack, { u: sel.u, alturaU: pc.altura }).ok ? sel.u : primeiraPosicaoLivre(rack, pc.altura, "ambas", 1);
+      var lado = ehMeia(pc.lado) ? (sel.u && sel.lado) || pc.lado : "inteira";
+      var u = sel.u && E.ladoLivreRack(rack, { u: sel.u, alturaU: pc.altura, lado: lado }) ? sel.u : primeiraPosicaoLivre(rack, pc.altura, "ambas", 1, lado);
       if (u == null) { mensagem("Não há " + pc.altura + "U livres seguidas neste rack.", true); return; }
-      instalarPeca(rack, pc, u);
+      instalarPeca(rack, pc, u, lado);
     });
   });
   function posicaoDeSoltura(ev) {
@@ -1089,7 +1312,7 @@
     if (!pc || u == null) return null;
     // O ponteiro marca o topo do equipamento.
     var base = vista.inverter ? u : u - pc.altura + 1;
-    return { cat: pc, u: Math.max(1, base) };
+    return { cat: pc, u: Math.max(1, base), lado: ehMeia(pc.lado) ? ladoNoPonto(ev.clientX) : "inteira" };
   }
   elPalco.addEventListener("dragover", function (ev) {
     if (!rackAtual()) return;
@@ -1097,7 +1320,7 @@
     ev.dataTransfer.dropEffect = "copy";
     var p = posicaoDeSoltura(ev);
     if (!p) { mostrarFantasma(null); return; }
-    mostrarFantasma(p.u, p.cat.altura, E.verificarPosicaoRack(rackAtual(), { u: p.u, alturaU: p.cat.altura }).ok);
+    mostrarFantasma(p.u, p.cat.altura, E.verificarPosicaoRack(rackAtual(), { u: p.u, alturaU: p.cat.altura, lado: p.lado }).ok, p.lado);
   });
   elPalco.addEventListener("dragleave", function (ev) { if (!elPalco.contains(ev.relatedTarget)) mostrarFantasma(null); });
   elPalco.addEventListener("drop", function (ev) {
@@ -1107,10 +1330,10 @@
     categoriaArrastada = null;
     var rack = rackAtual();
     if (!p || !rack) return;
-    instalarPeca(rack, p.cat, p.u);
+    instalarPeca(rack, p.cat, p.u, p.lado);
   });
 
-  // Teclado: setas movem 1U, Delete remove, Esc limpa a seleção.
+  // Teclado: setas movem 1U (meia largura: ← e → trocam de metade), Delete remove, Esc limpa a seleção.
   elPalco.addEventListener("keydown", function (ev) {
     var achado = sel.item ? itemPorId(sel.item) : null;
     if (ev.key === "Escape") { sel = { rack: sel.rack, item: null, u: null }; render(); return; }
@@ -1119,6 +1342,10 @@
       ev.preventDefault();
       var passo = (ev.key === "ArrowUp") !== vista.inverter ? 1 : -1;
       moverItem(achado.item.id, achado.rack.id, achado.item.u + passo);
+    } else if ((ev.key === "ArrowLeft" || ev.key === "ArrowRight") && ehMeia(achado.item.lado)) {
+      ev.preventDefault();
+      var novoLado = ev.key === "ArrowLeft" ? "esquerda" : "direita";
+      if (novoLado !== achado.item.lado) moverItem(achado.item.id, achado.rack.id, achado.item.u, novoLado);
     } else if (ev.key === "Delete") {
       ev.preventDefault();
       var btn = elProps.querySelector('[data-rk="remover-item"]');
@@ -1254,25 +1481,30 @@
     var abas = [
       { nome: "Racks", colunas: ["Rack", "Local", "Patrimônio", "Status", "Fabricante", "Modelo", "Altura (U)", "Ocupadas", "Livres", "Ocupação %", "Equipamentos", "U livres", "Observações"],
         linhas: dados.racks.map(function (r) { var l = livresDoRack(r); return [r.nome, r.local, r.patrimonio, NOMES_STATUS[r.status], r.fabricante, r.modelo, r.alturaU, l.oc.ocupadas, l.oc.livres, Math.round(l.oc.ocupadas / r.alturaU * 100), (r.itens || []).length, l.faixas.join(", "), r.obs]; }) },
-      { nome: "Equipamentos", colunas: ["Rack", "Local", "U inicial", "U final", "Altura (U)", "Face", "Nome", "Categoria", "Fabricante", "Modelo", "Patrimônio", "Estado", "Portas", "Tipo de porta", "Largura", "Profundidade", "Observações"],
+      { nome: "Equipamentos", colunas: ["Rack", "Local", "U inicial", "U final", "Altura (U)", "Face", "Largura no rack", "Nome", "Categoria", "Fabricante", "Modelo", "Patrimônio", "Estado", "Portas", "Tipo de porta", "Largura", "Profundidade", "Observações"],
         linhas: [] },
+      { nome: "Nobreaks de pé", colunas: ["Rack", "Local", "Nome", "Posição", "Fabricante", "Modelo", "Potência", "Baterias", "Tensão da bateria", "Autonomia", "Estado", "Observações"],
+        linhas: [].concat.apply([], dados.racks.map(function (r) { return (r.nobreaks || []).map(function (nb) { return [r.nome, r.local, nb.nome, NOMES_LADO_NOBREAK[nb.lado], nb.fabricante, nb.modelo, nb.potencia, nb.baterias, nb.tensaoBateria, nb.autonomia, NOMES_ESTADO[nb.estado], nb.obs]; }); })) },
       { nome: "Unidades U", colunas: ["Rack", "U", "Situação", "Frente", "Traseira"], linhas: [] },
       { nome: "Cabos físicos", colunas: ["Identificação", "Tipo", "Rack origem", "Origem", "Porta origem", "Rack destino", "Destino", "Porta destino", "Comprimento", "Observações"], linhas: [] }
     ];
     dados.racks.forEach(function (r) {
       (r.itens || []).slice().sort(function (a, b) { return b.u - a.u; }).forEach(function (it) {
-        abas[1].linhas.push([r.nome, r.local, it.u, it.u + it.alturaU - 1, it.alturaU, NOMES_FACE[it.face], it.nome, (CATEGORIAS[it.categoria] || {}).rotulo, it.fabricante, it.modelo, it.patrimonio, NOMES_ESTADO[it.estado], it.portas, it.tipoPorta, it.largura, it.profundidade, it.obs]);
+        abas[1].linhas.push([r.nome, r.local, it.u, it.u + it.alturaU - 1, it.alturaU, NOMES_FACE[it.face], NOMES_LADO[it.lado] || NOMES_LADO.inteira, it.nome, (CATEGORIAS[it.categoria] || {}).rotulo, it.fabricante, it.modelo, it.patrimonio, NOMES_ESTADO[it.estado], it.portas, it.tipoPorta, it.largura, it.profundidade, it.obs]);
       });
       var oc = E.ocupacaoRack(r);
       for (var u = r.alturaU; u >= 1; u--) {
         var frente = oc.porU[u].filter(function (it) { return it.face !== "tras"; }).map(function (it) { return it.nome; }).join(", ");
         var tras = oc.porU[u].filter(function (it) { return it.face !== "frente"; }).map(function (it) { return it.nome; }).join(", ");
-        abas[2].linhas.push([r.nome, u, oc.porU[u].length ? "Ocupada" : "Livre", frente, tras]);
+        // Só itens de meia largura, todos do mesmo lado: a outra metade está livre.
+        var lados = oc.porU[u].map(function (it) { return ehMeia(it.lado) ? it.lado : "inteira"; });
+        var metade = lados.length && lados.indexOf("inteira") < 0 && lados.every(function (l) { return l === lados[0]; });
+        abas[3].linhas.push([r.nome, u, !oc.porU[u].length ? "Livre" : metade ? "Metade livre" : "Ocupada", frente, tras]);
       }
     });
     dados.cabos.forEach(function (c) {
       var a = itemPorId(c.deItem), b = itemPorId(c.paraItem);
-      abas[3].linhas.push([c.etiqueta, NOMES_CABO[c.tipo], a ? a.rack.nome : "", a ? a.item.nome : "", a ? nomePorta(a.item, c.dePorta) : c.dePorta, b ? b.rack.nome : "", b ? b.item.nome : "", b ? nomePorta(b.item, c.paraPorta) : c.paraPorta, c.comprimento, c.obs]);
+      abas[4].linhas.push([c.etiqueta, NOMES_CABO[c.tipo], a ? a.rack.nome : "", a ? a.item.nome : "", a ? nomePorta(a.item, c.dePorta) : c.dePorta, b ? b.rack.nome : "", b ? b.item.nome : "", b ? nomePorta(b.item, c.paraPorta) : c.paraPorta, c.comprimento, c.obs]);
     });
     app.baixarArquivo(new Blob([window.GrafoPlanilha.gerarXlsx(abas)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), nomeArquivo(app.projetoAtual() + "-racks", "xlsx"));
     mensagem("Relatório baixado.");

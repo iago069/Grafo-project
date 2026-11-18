@@ -46,6 +46,8 @@
     cabosRack: 3000,
     alturaRackMax: 60,
     portasPorItem: 144,
+    nobreaksPorRack: 4,
+    bateriasPorNobreak: 32,
     textoRack: 60,
     obsRack: 500,
     fotoRack: 340000 // ~250 KB de foto em base64 (o editor reduz e comprime antes)
@@ -692,6 +694,8 @@
   // Rack com altura em U (U1 embaixo). Cada item ocupa de "u" até u + alturaU - 1.
   // Face: "ambas" (profundidade total), "frente" ou "tras" (meia profundidade):
   // um item de frente e outro de trás podem dividir a mesma U; o resto não.
+  // Lado: "inteira" (19" inteiros) ou meia largura, "esquerda" ou "direita" (ONU,
+  // conversor de mídia...): dois itens de meia largura dividem a U, um de cada lado.
   var CATEGORIAS_RACK = [
     { valor: "servidor", rotulo: "Servidor", sigla: "SRV", altura: 2, portas: 4, tipoPorta: "RJ45" },
     { valor: "switch", rotulo: "Switch", sigla: "SW", altura: 1, portas: 24, tipoPorta: "RJ45" },
@@ -699,6 +703,7 @@
     { valor: "storage", rotulo: "Storage", sigla: "STG", altura: 2, portas: 4, tipoPorta: "SAS" },
     { valor: "firewall", rotulo: "Firewall", sigla: "FW", altura: 1, portas: 8, tipoPorta: "RJ45" },
     { valor: "olt", rotulo: "OLT", sigla: "OLT", altura: 2, portas: 16, tipoPorta: "PON" },
+    { valor: "onu", rotulo: "ONU / ONT", sigla: "ONU", altura: 1, portas: 4, tipoPorta: "RJ45", lado: "esquerda" },
     { valor: "dio", rotulo: "DIO / distribuidor óptico", sigla: "DIO", altura: 1, portas: 24, tipoPorta: "SC/APC" },
     { valor: "patch", rotulo: "Patch panel", sigla: "PP", altura: 1, portas: 24, tipoPorta: "RJ45" },
     { valor: "organizador", rotulo: "Organizador de cabos", sigla: "ORG", altura: 1, portas: 0 },
@@ -718,6 +723,7 @@
   var STATUS_RACK = ["planejado", "montagem", "instalado", "desativado"];
   var ESTADOS_ITEM_RACK = ["instalado", "planejado", "remover"];
   var FACES_RACK = ["ambas", "frente", "tras"];
+  var LADOS_RACK = ["inteira", "esquerda", "direita"];
   var TIPOS_CABO_RACK = ["rede", "fibra", "cordao", "energia", "outro"];
 
   // padrao: valor usado quando o campo vem vazio ou ausente (sem padrão = obrigatório).
@@ -733,12 +739,29 @@
   var ESQUEMA_CATEGORIA_RACK = enumTolerante(CATEGORIAS_RACK.map(function (c) { return c.valor; }),
     { servidores: "servidor", switches: "switch", roteadores: "roteador", "patch panel": "patch", "patch-panel": "patch",
       organizadores: "organizador", "bandeja fixa": "bandeja", regua: "pdu", "regua de energia": "pdu", ups: "nobreak",
-      "painel cego": "cego", outro: "personalizado", storages: "storage", fw: "firewall" },
+      "painel cego": "cego", outro: "personalizado", storages: "storage", fw: "firewall", ont: "onu", onus: "onu", "onu / ont": "onu" },
     "personalizado", "categoria desconhecida");
 
   function textoReparado(max) {
     return function (v, o) { return truncar(max)(v) || truncar(max)(o.id) || null; };
   }
+
+  // Nobreak de pé (torre), no chão ao lado do rack, com o banco de baterias em volta.
+  // Não ocupa U: fica em rack.nobreaks (opcional; projetos antigos não têm).
+  var LADOS_NOBREAK = ["direita", "esquerda"];
+  var ESQUEMA_NOBREAK_PE = z.object({
+    id: texto(LIMITES.id, true),
+    nome: texto(LIMITES.textoRack, true),
+    fabricante: texto(40),
+    modelo: texto(LIMITES.modelo),
+    potencia: texto(20),
+    baterias: inteiro(0, LIMITES.bateriasPorNobreak, 0),
+    tensaoBateria: texto(20),
+    autonomia: texto(30),
+    lado: enumTolerante(LADOS_NOBREAK, { dir: "direita", esq: "esquerda", direito: "direita", esquerdo: "esquerda" }, "direita", "use esquerda ou direita"),
+    estado: enumTolerante(ESTADOS_ITEM_RACK, { "a remover": "remover", removido: "remover" }, "instalado", "use instalado, planejado ou remover"),
+    obs: texto(LIMITES.obsRack)
+  });
 
   var CAMPOS_RACK = {
     id: { rotulo: "id", esquema: texto(LIMITES.id, true), reparar: null },
@@ -752,7 +775,8 @@
     largura: { rotulo: "Largura", esquema: texto(20), reparar: truncar(20) },
     profundidade: { rotulo: "Profundidade", esquema: texto(20), reparar: truncar(20) },
     status: { rotulo: "Status", esquema: enumTolerante(STATUS_RACK, { "em montagem": "montagem" }, "planejado", "use planejado, montagem, instalado ou desativado"), reparar: constante("planejado") },
-    obs: { rotulo: "Observações", esquema: texto(LIMITES.obsRack), reparar: truncar(LIMITES.obsRack) }
+    obs: { rotulo: "Observações", esquema: texto(LIMITES.obsRack), reparar: truncar(LIMITES.obsRack) },
+    nobreaks: { rotulo: "Nobreaks de pé", esquema: z.array(ESQUEMA_NOBREAK_PE).max(LIMITES.nobreaksPorRack, "máximo de " + LIMITES.nobreaksPorRack + " nobreaks de pé por rack"), opcional: true }
   };
   var CAMPOS_ITEM_RACK = {
     id: { rotulo: "id", esquema: texto(LIMITES.id, true), reparar: null },
@@ -763,6 +787,7 @@
     u: { rotulo: "U inicial", esquema: inteiro(1, LIMITES.alturaRackMax), reparar: null },
     alturaU: { rotulo: "Altura (U)", esquema: inteiro(1, LIMITES.alturaRackMax, 1), reparar: constante(1) },
     face: { rotulo: "Face", esquema: enumTolerante(FACES_RACK, { traseira: "tras", frontal: "frente", total: "ambas" }, "ambas", "use ambas, frente ou tras"), reparar: constante("ambas") },
+    lado: { rotulo: "Largura no rack", esquema: enumTolerante(LADOS_RACK, { total: "inteira", inteiro: "inteira", "largura inteira": "inteira", "metade esquerda": "esquerda", "meia esquerda": "esquerda", esq: "esquerda", "metade direita": "direita", "meia direita": "direita", dir: "direita" }, "inteira", "use inteira, esquerda ou direita"), reparar: constante("inteira") },
     cor: { rotulo: "Cor", esquema: corOpcional(), reparar: constante("") },
     patrimonio: { rotulo: "Patrimônio", esquema: texto(40), reparar: truncar(40) },
     portas: { rotulo: "Portas", esquema: inteiro(0, LIMITES.portasPorItem, 0), reparar: constante(0) },
@@ -794,6 +819,12 @@
   function facesConflitam(a, b) {
     return !((a === "frente" && b === "tras") || (a === "tras" && b === "frente"));
   }
+  // Dois itens de meia largura só se chocam se estiverem do mesmo lado.
+  function ladosConflitam(a, b) {
+    a = a || "inteira"; b = b || "inteira";
+    return a === "inteira" || b === "inteira" || a === b;
+  }
+  var NOMES_LADO = { esquerda: "metade esquerda", direita: "metade direita" };
   // Regra física de uma posição. item: { u, alturaU, face }; ignorarId: o próprio
   // item ao mover. Retorna { ok, motivo, conflito } (conflito = item que já está lá).
   function verificarPosicaoRack(rack, item, ignorarId) {
@@ -807,11 +838,21 @@
       var outro = lista[i];
       if (outro.id === ignorarId) continue;
       var inicio = Math.max(u, outro.u), fim = Math.min(u + h - 1, outro.u + outro.alturaU - 1);
-      if (inicio <= fim && facesConflitam(face, outro.face || "ambas")) {
-        return { ok: false, conflito: outro, motivo: "U" + inicio + (fim > inicio ? "–U" + fim : "") + " já está ocupada por \"" + outro.nome + "\"" };
+      if (inicio <= fim && facesConflitam(face, outro.face || "ambas") && ladosConflitam(item.lado, outro.lado)) {
+        var lado = NOMES_LADO[item.lado] || NOMES_LADO[outro.lado];
+        return { ok: false, conflito: outro, motivo: "U" + inicio + (fim > inicio ? "–U" + fim : "") + (lado && item.lado !== "inteira" && item.lado ? " (" + lado + ")" : "") + " já está ocupada por \"" + outro.nome + "\"" };
       }
     }
     return { ok: true };
+  }
+  // Item de meia largura: o lado pedido, ou o outro se só ele estiver livre
+  // (null se nenhum couber). Item de largura inteira: "inteira" ou null.
+  function ladoLivreRack(rack, item, ignorarId) {
+    var lado = item.lado || "inteira";
+    if (verificarPosicaoRack(rack, item, ignorarId).ok) return lado;
+    if (lado === "inteira") return null;
+    var outro = lado === "esquerda" ? "direita" : "esquerda";
+    return verificarPosicaoRack(rack, Object.assign({}, item, { lado: outro }), ignorarId).ok ? outro : null;
   }
   // Ocupação por U: { 1: [itens], ... } e totais (U com algo na frente ou atrás conta como ocupada).
   function ocupacaoRack(rack) {
@@ -897,6 +938,9 @@
     STATUS_RACK: STATUS_RACK,
     ESTADOS_ITEM_RACK: ESTADOS_ITEM_RACK,
     FACES_RACK: FACES_RACK,
+    LADOS_RACK: LADOS_RACK,
+    LADOS_NOBREAK: LADOS_NOBREAK,
+    ladoLivreRack: ladoLivreRack,
     TIPOS_CABO_RACK: TIPOS_CABO_RACK,
     verificarPosicaoRack: verificarPosicaoRack,
     ocupacaoRack: ocupacaoRack,

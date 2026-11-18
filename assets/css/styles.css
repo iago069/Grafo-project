@@ -1343,6 +1343,14 @@ body[data-modo-diagrama="racks"] .so-diagrama { display: none !important; }
 .rk-peca-foto { width: 64px; height: 14px; object-fit: contain; flex: none; border-radius: 2px; background: #1A1D22; }
 .rk-modelos[hidden] { display: none; }
 .rk-peca { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 6px; padding: 4px 6px; border: 1px solid var(--line, #dde3ea); border-radius: 5px; background: transparent; cursor: grab; font-size: 0.72rem; color: var(--text); text-align: left; }
+.rk-peca-especial { cursor: pointer; border-style: dashed; border-color: color-mix(in srgb, var(--accent, #2F80ED) 45%, transparent); background: color-mix(in srgb, var(--accent, #2F80ED) 6%, transparent); }
+.rk-peca-especial:hover { background: color-mix(in srgb, var(--accent, #2F80ED) 12%, transparent); }
+.rk-nobreak { cursor: pointer; }
+.rk-nobreak:hover .rk-nobreak-nome { text-decoration: underline; }
+.rk-lista-nobreaks { list-style: none; margin: 6px 0 8px; padding: 0; display: grid; gap: 4px; }
+.rk-lista-nobreaks li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; font-size: 0.8rem; }
+.rk-lista-nobreaks button { background: none; border: 0; padding: 0; color: var(--accent, #2F80ED); font: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.rk-lista-nobreaks small { color: var(--muted, #5A6672); }
 .rk-peca:hover { border-color: var(--accent); }
 .rk-peca small { color: var(--text-dim); font-family: var(--mono); }
 .rk-sigla { color: #fff; font: 700 0.62rem var(--mono); text-align: center; padding: 3px 0; border-radius: 3px; }

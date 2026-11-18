@@ -208,3 +208,129 @@ test("bayface: arrastar da biblioteca e tela estreita", async () => {
   assert.deepEqual(sobra, [], "sem rolagem horizontal da página");
   assert.deepEqual(pagina.erros, []);
 });
+
+test("bayface: ONU de meia largura, duas lado a lado na mesma U", async () => {
+  const pagina = await abrirPagina(navegador, site);
+  await esperarDiagrama(pagina);
+  await pagina.click("#btnNovoProjeto");
+  await pagina.waitForSelector("#novoProjetoModal:not(.hidden)");
+  await pagina.fill("#novoProjetoNome", "POP ONUs");
+  await pagina.click(".modo-opcao:has(input[value=racks])");
+  await pagina.click('#novoProjetoForm button[type="submit"]');
+  await pagina.waitForSelector("#racksApp:not([hidden])");
+  await pagina.click('.rk-palco-vazio [data-rk="novo-rack"]');
+  await pagina.waitForSelector(".rk-svg");
+  const posicoes = () => pagina.evaluate(() => window.GrafoRacks.dados().racks[0].itens.map(i => i.nome + "@" + i.u + ":" + i.lado).sort());
+
+  // Na U5 inteira, a categoria ONU já escolhe meia largura (metade esquerda).
+  await pagina.click('.rk-u-livre[data-u="5"]');
+  await pagina.waitForSelector('[data-rk-form="novo"]');
+  await pagina.selectOption('[data-rk-form="novo"] select[name=categoria]', "onu");
+  assert.equal(await pagina.inputValue('[data-rk-form="novo"] select[name=lado]'), "esquerda");
+  await pagina.fill('[data-rk-form="novo"] input[name=nome]', "ONU-A");
+  await pagina.click('[data-rk-form="novo"] button[type=submit]');
+  await pagina.waitForFunction(() => /ONU-A instalado em U5 \(metade esquerda\)/.test(document.querySelector(".rk-msg").textContent));
+
+  // Sobra a metade direita da U5, clicável; o formulário já vem com ONU e metade direita.
+  assert.equal(await pagina.locator('.rk-u-livre[data-u="5"]').count(), 1);
+  const metade = pagina.locator('.rk-u-livre[data-u="5"][data-lado="direita"]');
+  const inteira = await pagina.locator('.rk-u-livre[data-u="6"]').boundingBox();
+  const caixaMetade = await metade.boundingBox();
+  assert.ok(Math.abs(caixaMetade.width - inteira.width / 2) < 3, "a metade livre tem meia largura");
+  await metade.click();
+  await pagina.waitForSelector('[data-rk-form="novo"]');
+  assert.equal(await pagina.inputValue('[data-rk-form="novo"] select[name=categoria]'), "onu");
+  assert.equal(await pagina.inputValue('[data-rk-form="novo"] select[name=lado]'), "direita");
+  await pagina.fill('[data-rk-form="novo"] input[name=nome]', "ONU-B");
+  await pagina.click('[data-rk-form="novo"] button[type=submit]');
+  await pagina.waitForFunction(() => window.GrafoRacks.dados().racks[0].itens.length === 2);
+  assert.deepEqual(await posicoes(), ["ONU-A@5:esquerda", "ONU-B@5:direita"]);
+  assert.equal(await pagina.locator('.rk-u-livre[data-u="5"]').count(), 0, "U5 cheia");
+  assert.match(await pagina.textContent("[data-rk-titulo]"), /1\/42U ocupadas/);
+  // Lado a lado, sem sobrepor, cada uma com meia largura.
+  const [a, b] = [await pagina.locator('.rk-item:has(text:text("ONU-A")) .rk-item-corpo').boundingBox(), await pagina.locator('.rk-item:has(text:text("ONU-B")) .rk-item-corpo').boundingBox()];
+  assert.ok(a.x + a.width <= b.x + 1, "ONU-A à esquerda da ONU-B");
+  assert.ok(Math.abs(a.width - inteira.width / 2) < 4 && Math.abs(b.width - inteira.width / 2) < 4);
+
+  // Duplicar: a cópia vai para a primeira metade livre do mesmo lado (U6, direita; a U5 está cheia).
+  await pagina.click('.rk-item[data-item] text:text("ONU-B")');
+  await pagina.click('[data-rk="duplicar-item"]');
+  await pagina.waitForFunction(() => window.GrafoRacks.dados().racks[0].itens.length === 3);
+  assert.deepEqual(await posicoes(), ["ONU-A@5:esquerda", "ONU-B (cópia)@6:direita", "ONU-B@5:direita"].sort());
+  // Equipamento comum volta para largura inteira; ocupar uma metade já usada é impedido.
+  await pagina.click('.rk-u-livre[data-u="7"]');
+  await pagina.waitForSelector('[data-rk-form="novo"]');
+  await pagina.selectOption('[data-rk-form="novo"] select[name=categoria]', "switch");
+  assert.equal(await pagina.inputValue('[data-rk-form="novo"] select[name=lado]'), "inteira");
+  await pagina.click('.rk-item[data-item] text:text("ONU-A")');
+  await pagina.fill('[data-rk-form="item"] input[name=u]', "6");
+  await pagina.selectOption('[data-rk-form="item"] select[name=lado]', "direita");
+  await pagina.click('[data-rk-form="item"] button[type=submit]');
+  assert.match(await mensagem(pagina), /U6 \(metade direita\) já está ocupada por "ONU-B \(cópia\)"/);
+  // Setas ← → trocam a metade; a esquerda da U6 está livre.
+  // (o nome longo aparece cortado na meia largura; o item é achado pelo id)
+  const idCopia = await pagina.evaluate(() => window.GrafoRacks.dados().racks[0].itens.find(i => /cópia/.test(i.nome)).id);
+  await pagina.click('.rk-item[data-item="' + idCopia + '"]');
+  await pagina.focus(".rk-palco"); await pagina.keyboard.press("ArrowLeft");
+  await pagina.waitForFunction(() => window.GrafoRacks.dados().racks[0].itens.some(i => i.lado === "esquerda" && i.u === 6));
+  // Salvo no projeto (com o lado) e sem erros.
+  const salvo = await projetoSalvo(pagina);
+  assert.deepEqual(salvo.racks[0].itens.map(i => i.lado).sort(), ["direita", "esquerda", "esquerda"]);
+  assert.deepEqual(pagina.erros, []);
+});
+
+test("bayface: nobreak de pé ao lado do rack, com as baterias em volta", async () => {
+  const pagina = await abrirPagina(navegador, site);
+  await esperarDiagrama(pagina);
+  await pagina.click("#btnNovoProjeto");
+  await pagina.waitForSelector("#novoProjetoModal:not(.hidden)");
+  await pagina.fill("#novoProjetoNome", "POP Nobreak");
+  await pagina.click(".modo-opcao:has(input[value=racks])");
+  await pagina.click('#novoProjetoForm button[type="submit"]');
+  await pagina.waitForSelector("#racksApp:not([hidden])");
+  await pagina.click('.rk-palco-vazio [data-rk="novo-rack"]');
+  await pagina.waitForSelector(".rk-svg");
+  const baterias = () => pagina.locator('.rk-nobreak rect[fill="url(#rk-g-bateria)"]').count();
+
+  // Pela biblioteca: nasce à direita, com 8 baterias, sem ocupar U.
+  await pagina.click(".rk-peca-especial");
+  await pagina.waitForSelector('[data-rk-form="nobreak"]');
+  assert.match(await mensagem(pagina), /Nobreak de pé colocado à direita do RACK-01, com 8 baterias/);
+  assert.equal(await pagina.locator(".rk-nobreak").count(), 1);
+  assert.equal(await baterias(), 8);
+  assert.equal(await pagina.locator(".rk-u-livre").count(), 42, "não ocupa U");
+  const moldura = async () => pagina.locator(".rk-moldura").boundingBox();
+  let rack = await moldura(), nb = await pagina.locator(".rk-nobreak").boundingBox();
+  assert.ok(nb.x > rack.x + rack.width, "à direita do rack");
+  assert.ok(Math.abs((nb.y + nb.height) - (rack.y + rack.height)) < 16, "no mesmo piso do rack");
+
+  // Editar: 14 baterias, à esquerda, com marca e potência.
+  await pagina.fill('[data-rk-form="nobreak"] input[name=nome]', "UPS-POP");
+  await pagina.fill('[data-rk-form="nobreak"] input[name=fabricante]', "SMS");
+  await pagina.fill('[data-rk-form="nobreak"] input[name=potencia]', "6 kVA");
+  await pagina.fill('[data-rk-form="nobreak"] input[name=baterias]', "14");
+  await pagina.selectOption('[data-rk-form="nobreak"] select[name=lado]', "esquerda");
+  await pagina.click('[data-rk-form="nobreak"] button[type=submit]');
+  await pagina.waitForFunction(() => /Nobreak salvo/.test(document.querySelector(".rk-msg").textContent));
+  assert.equal(await baterias(), 14);
+  rack = await moldura(); nb = await pagina.locator(".rk-nobreak").boundingBox();
+  assert.ok(nb.x + nb.width < rack.x, "à esquerda do rack");
+  assert.match(await pagina.textContent(".rk-nobreak"), /UPS-POP/);
+  assert.match(await pagina.textContent(".rk-nobreak"), /6 kVA/);
+  const salvo = (await projetoSalvo(pagina)).racks[0].nobreaks;
+  assert.deepEqual(salvo.map(n => [n.nome, n.lado, n.baterias, n.potencia]), [["UPS-POP", "esquerda", 14, "6 kVA"]]);
+
+  // Clicar no rack volta às propriedades dele, que listam o nobreak; clicar no nobreak abre de novo.
+  await pagina.focus(".rk-palco"); await pagina.keyboard.press("Escape");
+  await pagina.waitForSelector(".rk-lista-nobreaks");
+  assert.match(await pagina.textContent(".rk-lista-nobreaks"), /UPS-POP.*6 kVA · 14 baterias · à esquerda do rack/);
+  await pagina.click(".rk-nobreak .rk-nobreak-area", { force: true });
+  await pagina.waitForSelector('[data-rk-form="nobreak"]');
+
+  // Remover (com confirmação).
+  pagina.once("dialog", d => d.accept());
+  await pagina.click('[data-rk="remover-nobreak"]');
+  await pagina.waitForFunction(() => !document.querySelector(".rk-nobreak"));
+  assert.equal((await projetoSalvo(pagina)).racks[0].nobreaks.length, 0);
+  assert.deepEqual(pagina.erros, []);
+});

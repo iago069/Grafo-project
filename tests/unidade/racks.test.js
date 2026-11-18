@@ -89,3 +89,38 @@ test("cabos físicos: portas existentes, uma por cabo, entre racks", () => {
   assert.equal(fibra.tipo, "fibra");
   assert.equal(fibra.comprimento, "3 m");
 });
+
+test("meia largura (ONU): duas dividem a U, uma de cada lado", () => {
+  const rack = rack42([item("onu1", 5, 1, { categoria: "onu", lado: "esquerda" })]);
+  assert.equal(E.verificarPosicaoRack(rack, { u: 5, alturaU: 1, lado: "direita" }).ok, true, "a metade direita está livre");
+  const mesmoLado = E.verificarPosicaoRack(rack, { u: 5, alturaU: 1, lado: "esquerda" });
+  assert.equal(mesmoLado.ok, false);
+  assert.match(mesmoLado.motivo, /U5 \(metade esquerda\) já está ocupada por "ONU1"/);
+  assert.equal(E.verificarPosicaoRack(rack, { u: 5, alturaU: 1 }).ok, false, "largura inteira não cabe");
+  assert.equal(E.verificarPosicaoRack(rack, { u: 5, alturaU: 1, face: "tras" }).ok, false, "a ONU tem profundidade total: ocupa a metade nas duas faces");
+  assert.equal(E.ladoLivreRack(rack, { u: 5, alturaU: 1, lado: "esquerda" }), "direita", "troca para o lado livre");
+  assert.equal(E.ladoLivreRack(rack, { u: 5, alturaU: 1, lado: "inteira" }), null);
+  rack.itens.push(item("onu2", 5, 1, { lado: "direita" }));
+  assert.equal(E.ladoLivreRack(rack, { u: 5, alturaU: 1, lado: "esquerda" }), null, "U5 cheia");
+  assert.equal(E.ocupacaoRack(rack).ocupadas, 1);
+  // Importação: apelidos e padrão.
+  const v = E.validarRacksDoProjeto([{ id: "r", nome: "R", alturaU: 42, itens: [
+    { id: "a", nome: "A", categoria: "ONT", u: 3, alturaU: 1, lado: "Metade Esquerda" },
+    { id: "b", nome: "B", categoria: "onu", u: 3, alturaU: 1, lado: "dir" },
+    { id: "c", nome: "C", u: 4, alturaU: 1 }] }], []);
+  assert.deepEqual(simples(v.dados.racks[0].itens.map(i => i.categoria + ":" + i.lado)), ["onu:esquerda", "onu:direita", "personalizado:inteira"]);
+});
+
+test("nobreak de pé: opcional, valores padrão e limite por rack", () => {
+  const nb = extra => Object.assign({ id: "n" + Math.random(), nome: "UPS" }, extra);
+  const v = E.validarRacksDoProjeto([{ id: "r", nome: "R", alturaU: 42, itens: [], nobreaks: [nb({ baterias: "16", lado: "Esquerdo" })] }, { id: "s", nome: "S", alturaU: 42, itens: [] }], []);
+  assert.equal(v.ok, true);
+  assert.deepEqual(simples(v.dados.racks[0].nobreaks[0]).lado, "esquerda");
+  assert.equal(v.dados.racks[0].nobreaks[0].baterias, 16);
+  assert.equal(v.dados.racks[0].nobreaks[0].estado, "instalado");
+  assert.equal("nobreaks" in v.dados.racks[1], false, "rack sem nobreak continua sem");
+  const demais = E.validarRacksDoProjeto([{ id: "r", nome: "R", alturaU: 42, itens: [], nobreaks: [nb(), nb(), nb(), nb(), nb()] }], []);
+  assert.equal("nobreaks" in demais.dados.racks[0], false, "mais de 4: descartado");
+  const muitas = E.validarRacksDoProjeto([{ id: "r", nome: "R", alturaU: 42, itens: [], nobreaks: [nb({ baterias: 99 })] }], []);
+  assert.equal("nobreaks" in muitas.dados.racks[0], false, "mais de 32 baterias: inválido");
+});
