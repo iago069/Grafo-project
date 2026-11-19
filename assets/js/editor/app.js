@@ -9310,6 +9310,23 @@
     });
   })();
 
+  // ---- Botão ⇄ entre as portas: troca a porta de origem com a de destino ----
+  document.addEventListener("click", function (event) {
+    var botao = event.target.closest && event.target.closest("[data-trocar-portas]");
+    if (!botao) return;
+    event.preventDefault();
+    var ids = botao.getAttribute("data-trocar-portas").split(" ");
+    var a = document.getElementById(ids[0]), b = document.getElementById(ids[1]);
+    if (!a || !b) return;
+    var va = a.value;
+    a.value = b.value; b.value = va;
+    [a, b].forEach(function (campo) {
+      campo.dispatchEvent(new Event("input", { bubbles: true }));
+      campo.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    botao.classList.remove("girou"); void botao.offsetWidth; botao.classList.add("girou");
+  });
+
   // ---- Formulários de cabo (barra lateral e janela) ----
   [["navCableDe", "navCablePara", "navCableSaida", "navCableChegada", "navCablePotencia", "navCableTipo"],
    ["novoCabDe", "novoCabPara", "novoCabSaida", "novoCabChegada", "novoCabPotencia", "novoCabTipo"]].forEach(function (ids) {

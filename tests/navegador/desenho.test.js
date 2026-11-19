@@ -308,3 +308,38 @@ test("cada ligação com uma cor diferente (LAG com a mesma), tráfego no selo e
   assert.deepEqual(pagina.erros, []);
   await pagina.context().close();
 });
+
+test("botão ⇄ entre as portas inverte origem e destino (editor do cabo e barra lateral)", async () => {
+  const pagina = await abrirPagina(navegador, site);
+  await esperarDiagrama(pagina);
+  // O botão fica no meio, entre os dois campos, na altura deles.
+  const alinhado = async (a, b, botao) => {
+    await pagina.waitForTimeout(400); // o painel termina de abrir (animação)
+    const [ca, cb, cx] = [await pagina.locator(a).boundingBox(), await pagina.locator(b).boundingBox(), await pagina.locator(botao).boundingBox()];
+    assert.ok(cx.x >= ca.x + ca.width - 1 && cx.x + cx.width <= cb.x + 1, "no vão entre os campos");
+    assert.ok(Math.abs((cx.y + cx.height / 2) - (ca.y + ca.height / 2)) < 3, "centralizado na altura dos campos");
+  };
+  await pagina.locator("#canvas g.edge").first().focus();
+  await pagina.keyboard.press("Enter");
+  await pagina.waitForSelector("#editorCaboForm:not(.hidden)");
+  await pagina.fill("#editCaboSaida", "ETH1");
+  await pagina.fill("#editCaboChegada", "GE1/3");
+  await alinhado("#editCaboSaida", "#editCaboChegada", '[data-trocar-portas="editCaboSaida editCaboChegada"]');
+  await pagina.click('[data-trocar-portas="editCaboSaida editCaboChegada"]');
+  assert.equal(await pagina.inputValue("#editCaboSaida"), "GE1/3");
+  assert.equal(await pagina.inputValue("#editCaboChegada"), "ETH1");
+  await pagina.click('#editorCaboForm button[type="submit"]');
+  await pagina.waitForSelector("#editorCaboForm", { state: "hidden" }).catch(() => {});
+  await pagina.keyboard.press("Escape");
+  // Barra lateral (novo cabo).
+  await pagina.click('[data-nav-panel="navAddCable"]');
+  await pagina.waitForSelector("#navCableSaida", { state: "visible" });
+  await pagina.fill("#navCableSaida", "xe1/1/1");
+  await pagina.fill("#navCableChegada", "");
+  await alinhado("#navCableSaida", "#navCableChegada", '[data-trocar-portas="navCableSaida navCableChegada"]');
+  await pagina.click('[data-trocar-portas="navCableSaida navCableChegada"]');
+  assert.equal(await pagina.inputValue("#navCableSaida"), "");
+  assert.equal(await pagina.inputValue("#navCableChegada"), "xe1/1/1");
+  assert.deepEqual(pagina.erros, []);
+  await pagina.context().close();
+});

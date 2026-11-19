@@ -3650,3 +3650,15 @@ body[data-vista="mapas"] .project-tools { display: none; }
   .mp-legenda-camadas, .mp-legenda-rotulos { display: none !important; }
   .mp-escala { bottom: 20px; }
 }
+
+/* Botão ⇄ entre porta de origem e de destino (formulários de cabo). */
+.portas-trocaveis { position: relative; column-gap: 30px; }
+.btn-trocar-portas {
+  position: absolute; left: 50%; bottom: calc(var(--altura-campo-porta, 38px) / 2 - 11px); transform: translateX(-50%);
+  width: 22px; height: 22px; min-height: 0; padding: 0; display: grid; place-items: center; z-index: 1;
+  border: 1px solid var(--line, #d5dce3); border-radius: 50%; background: var(--panel, #fff); color: var(--muted, #5a6672);
+  cursor: pointer; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.btn-trocar-portas:hover, .btn-trocar-portas:focus-visible { color: var(--accent, #2f80ed); border-color: var(--accent, #2f80ed); }
+.btn-trocar-portas svg { transition: transform 0.3s ease; }
+.btn-trocar-portas.girou svg { transform: rotate(180deg); }
